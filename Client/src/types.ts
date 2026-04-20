@@ -1,0 +1,281 @@
+export type Role =
+  | "SuperAdmin"
+  | "ProjectManager"
+  | "DepartmentHead"
+  | "TeamLead"
+  | "TeamMember"
+  | "Viewer";
+
+export interface AuthResponse {
+  token: string;
+  expiry: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  roles: Role[];
+}
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  jobTitle?: string | null;
+  department?: string | null;
+  departmentId?: string | null;
+  availabilityStatus: string;
+  availabilityPercentage: number;
+  aiWorkloadScore: number;
+  aiBurnoutRiskScore: number;
+  aiPerformanceScore: number;
+  activeTaskCount: number;
+  isActive: boolean;
+  lastLoginDate?: string | null;
+  roles: string[];
+  skills: string[];
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  parentDepartmentId?: string | null;
+  departmentHeadUserId?: string | null;
+  maxCapacity: number;
+  capacityUtilization: number;
+}
+
+export interface ProjectSummary {
+  id: string;
+  projectCode: string;
+  name: string;
+  status: string;
+  progressPercentage: number;
+  aiHealthScore: number;
+  aiDelayRiskScore: number;
+}
+
+export interface Milestone {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string;
+  order: number;
+  dueDate: string;
+  completedDate?: string | null;
+  status: string;
+  isCritical: boolean;
+  progressPercentage: number;
+}
+
+export interface Project {
+  id: string;
+  projectCode: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  status: string;
+  priority: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  plannedBudget: number;
+  actualCost: number;
+  budgetVariance: number;
+  progressPercentage: number;
+  aiHealthScore: number;
+  aiDelayRiskScore: number;
+  aiBudgetRiskScore: number;
+  aiInsightsSummary?: string | null;
+  departmentId: string;
+  departmentName?: string | null;
+  projectManagerId: string;
+  projectManagerName?: string | null;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  createdDate: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  priority: string;
+  startDate: string;
+  dueDate: string;
+  completedDate?: string | null;
+  estimatedHours: number;
+  actualHours: number;
+  progressPercentage: number;
+  projectId: string;
+  projectName?: string | null;
+  milestoneId?: string | null;
+  milestoneName?: string | null;
+  parentTaskId?: string | null;
+  assignedToUserId?: string | null;
+  assignedToUserName?: string | null;
+  isEscalated: boolean;
+  escalationLevel: number;
+  escalatedDate?: string | null;
+  aiDelayProbability: number;
+  aiRiskFactors?: string | null;
+  isOverdue: boolean;
+  createdDate: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  priority: string;
+  isRead: boolean;
+  createdDate: string;
+  readDate?: string | null;
+  actionUrl?: string | null;
+}
+
+export interface WorkloadMember {
+  userId: string;
+  fullName: string;
+  jobTitle?: string | null;
+  availabilityPercent: number;
+  workloadScore: number;
+  burnoutRisk: number;
+  performanceScore: number;
+  activeTaskCount: number;
+  completedThisMonth: number;
+  skills: string[];
+  status: string;
+}
+
+export interface WorkloadReport {
+  departmentId?: string | null;
+  totalMembers: number;
+  availableCount: number;
+  overloadedCount: number;
+  averageWorkload: number;
+  averageBurnoutRisk: number;
+  members: WorkloadMember[];
+  generatedAt: string;
+}
+
+export interface DashboardData {
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  onHoldProjects: number;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  escalatedTasks: number;
+  totalTeamMembers: number;
+  availableMembers: number;
+  overallHealthScore: number;
+  overallDelayRisk: number;
+  totalBudget: number;
+  totalActualCost: number;
+  budgetVariance: number;
+  highRiskProjects: ProjectSummary[];
+  recentEscalations: Array<{
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    dueDate: string;
+    aiDelayProbability: number;
+    isEscalated: boolean;
+  }>;
+  projectHealthBreakdown: Array<{
+    id: string;
+    name: string;
+    healthScore: number;
+    delayRisk: number;
+    status: string;
+  }>;
+  workloadDistribution: Array<{
+    userId: string;
+    fullName: string;
+    workloadScore: number;
+    burnoutRisk: number;
+    activeTasks: number;
+  }>;
+  taskCompletionTrend: Array<{
+    date: string;
+    completed: number;
+    created: number;
+  }>;
+  generatedAt: string;
+}
+
+export interface AIProvider {
+  provider: string;
+  displayName: string;
+  isEnabled: boolean;
+  isConfigured: boolean;
+  defaultModel: string;
+  baseUrl: string;
+}
+
+export interface AIModel {
+  provider: string;
+  id: string;
+  name: string;
+  contextLength?: number | null;
+  description?: string | null;
+}
+
+export interface AIProviderTestResult {
+  provider: string;
+  model: string;
+  success: boolean;
+  message: string;
+  rawResponse?: string | null;
+  executedAtUtc: string;
+}
+
+export interface ChatResponse {
+  message: string;
+  intent: string;
+  suggestedActions: string[];
+  contextData?: unknown;
+  requiresConfirmation: boolean;
+}
+
+export interface DelayPrediction {
+  taskId: string;
+  delayProbability: number;
+  expectedDelayDays: number;
+  predictedCompletionDate: string;
+  riskLevel: string;
+  contributingFactors: string[];
+  mitigationStrategies: string[];
+  shouldEscalate: boolean;
+}
+
+export interface ProjectHealth {
+  projectId: string;
+  projectName: string;
+  overallHealthScore: number;
+  scheduleHealth: number;
+  budgetHealth: number;
+  teamHealth: number;
+  qualityHealth: number;
+  healthStatus: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  risks: Array<{
+    category: string;
+    description: string;
+    probability: number;
+    severity: string;
+    mitigationStrategy: string;
+  }>;
+  generatedAt: string;
+}
