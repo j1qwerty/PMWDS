@@ -1,4 +1,5 @@
 namespace PMWDS.Application.DTOs.AI;
+
 public record AssigneeRecommendationDto(
  Guid TaskId,
  string RecommendedUserId,
@@ -22,15 +23,6 @@ public record DelayPredictionDto(
  List<string> ContributingFactors,
  List<string> MitigationStrategies,
  bool ShouldEscalate);
-public record AllocationRecommendationDto(
- Guid TaskId,
- string RecommendedUserId,
- string RecommendedUserName,
- double ConfidenceScore,
- List<string> Rationale,
- List<AlternativeAssignee> Alternatives,
- Dictionary<string, double> FeatureScores,
- DateTime GeneratedAt);
 public record ProjectHealthDto(
  Guid ProjectId,
  string ProjectName,

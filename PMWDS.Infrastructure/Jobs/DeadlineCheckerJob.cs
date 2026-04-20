@@ -28,23 +28,16 @@ public class DeadlineCheckerJob : IDeadlineCheckerJob
         _logger.LogInformation(
         "DeadlineCheckerJob started at {Time}",
         DateTime.UtcNow);
-        var tasks = (await _uow.Tasks
-        .GetAllAsync(ct))
-        .Where(t =>
-        !t.IsEscalated &&
-        t.Status != Domain.Enums.TaskStatus.Completed &&
-        t.DueDate >= DateTime.UtcNow &&
-        t.DueDate <= DateTime.UtcNow.AddHours(48))
-        .ToList();
+        var tasks = await _uow.Tasks
+        .GetUpcomingDeadlinesAsync(
+        withinHours: 48, ct);
         foreach (var task in tasks)
         {
             try
             {
-                var daysRemaining = Math.Max(0,
-                (int)Math.Ceiling((task.DueDate - DateTime.UtcNow).TotalDays));
                 await _notifications
                 .SendDeadlineReminderAsync(
-                task.Id, daysRemaining, ct);
+                task.Id, ct);
             }
             catch (Exception ex)
             {

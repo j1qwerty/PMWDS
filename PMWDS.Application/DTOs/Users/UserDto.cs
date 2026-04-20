@@ -1,5 +1,6 @@
 using PMWDS.Domain.Entities;
 namespace PMWDS.Application.DTOs.Users;
+
 public record UserDto(
  string Id,
  string FirstName,
@@ -22,35 +23,35 @@ public record UserDto(
  List<string> Roles,
  List<string> Skills)
 {
- public static UserDto FromEntity(
- ApplicationUser u,
- IList<string>? roles = null)
- => new(
- Id: u.Id.ToString(),
- FirstName: u.FirstName,
- LastName: u.LastName,
- FullName: u.FullName,
- Email: u.Email ?? "",
- JobTitle: u.JobTitle,
- Department: u.Department?.Name,
- DepartmentId: u.DepartmentId,
- AvailabilityStatus: u.AvailabilityStatus
- .ToString(),
- AvailabilityPercentage: u.AvailabilityPercentage,
- AIWorkloadScore: u.AIWorkloadScore,
- AIBurnoutRiskScore: u.AIBurnoutRiskScore,
- AIPerformanceScore: u.AIPerformanceScore,
- ActiveTaskCount: u.GetActiveTaskCount(),
- IsActive: u.IsActive,
- LastLoginDate: null,
- Roles: roles?.ToList()
- ?? new(),
- Skills: u.Skills
- .Select(s =>
- s.Skill?.Name ?? "")
- .ToList()
- ?? new()
- );
+    public static UserDto FromEntity(
+    ApplicationUser u,
+    IList<string>? roles = null)
+    => new(
+    Id: u.Id,
+    FirstName: u.FirstName,
+    LastName: u.LastName,
+    FullName: u.FullName,
+    Email: u.Email ?? "",
+    JobTitle: u.JobTitle,
+    Department: u.Department?.Name,
+    DepartmentId: u.DepartmentId,
+    AvailabilityStatus: u.AvailabilityStatus
+    .ToString(),
+    AvailabilityPercentage: u.AvailabilityPercentage,
+    AIWorkloadScore: u.AIWorkloadScore,
+    AIBurnoutRiskScore: u.AIBurnoutRiskScore,
+    AIPerformanceScore: u.AIPerformanceScore,
+    ActiveTaskCount: u.GetActiveTaskCount(),
+    IsActive: u.IsActive,
+    LastLoginDate: u.LastLoginDate,
+    Roles: roles?.ToList()
+    ?? new(),
+    Skills: u.UserSkills?
+    .Select(s =>
+    s.Skill?.Name ?? "")
+    .ToList()
+    ?? new()
+    );
 }
 public record UserSummaryDto(
  string Id,
@@ -59,11 +60,11 @@ public record UserSummaryDto(
  double AvailabilityPercentage,
  double WorkloadScore)
 {
- public static UserSummaryDto FromEntity(
- ApplicationUser u)
- => new(u.Id.ToString(), u.FullName, u.JobTitle,
- u.AvailabilityPercentage,
- u.AIWorkloadScore);
+    public static UserSummaryDto FromEntity(
+    ApplicationUser u)
+    => new(u.Id, u.FullName, u.JobTitle,
+    u.AvailabilityPercentage,
+    u.AIWorkloadScore);
 }
 public record RegisterUserDto(
  string FirstName,

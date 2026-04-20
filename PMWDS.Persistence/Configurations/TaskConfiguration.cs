@@ -26,7 +26,6 @@ public class TaskConfiguration
         .HasColumnType("decimal(5,4)");
         b.Property(e => e.AIRiskFactors)
         .HasMaxLength(2000);
-        b.Ignore(e => e.Dependencies);
         // Self-referencing for sub-tasks
         b.HasMany(e => e.SubTasks)
         .WithOne(s => s.ParentTask)

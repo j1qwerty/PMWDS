@@ -1,6 +1,5 @@
-using PMWDS.Application.DTOs.Projects;
-using PMWDS.Application.DTOs.Tasks;
 namespace PMWDS.Application.DTOs.Dashboard;
+
 public record DashboardDto(
  int TotalProjects,
  int ActiveProjects,

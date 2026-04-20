@@ -73,3 +73,4 @@ public class AzureBlobStorageService : IFileStorageService
         return Task.FromResult(blobClient.Uri.ToString());
     }
 }
+

@@ -47,13 +47,26 @@ public class UserRepository
     GetUsersByRoleAsync(
     string roleName,
     CancellationToken ct = default)
-    => await Task.FromResult(Enumerable.Empty<ApplicationUser>());
+    {
+        // Join with AspNetUserRoles via Identity
+        var userIds = await _context.UserRoles
+        .Join(_context.Roles,
+        ur => ur.RoleId,
+        r => r.Id,
+        (ur, r) => new { ur.UserId, r.Name })
+        .Where(x => x.Name == roleName)
+        .Select(x => x.UserId)
+        .ToListAsync(ct);
+        return await _dbSet
+        .Where(u => userIds.Contains(u.Id))
+        .ToListAsync(ct);
+    }
     public async Task<double> GetUserWorkloadScoreAsync(
     string userId,
     CancellationToken ct = default)
     {
         var user = await _dbSet
-        .FirstOrDefaultAsync(u => u.Id.ToString() == userId, ct);
+        .FirstOrDefaultAsync(u => u.Id == userId, ct);
         return user?.AIWorkloadScore ?? 0;
     }
 }

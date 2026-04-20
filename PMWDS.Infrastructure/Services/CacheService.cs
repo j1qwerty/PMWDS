@@ -2,6 +2,19 @@ using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 using PMWDS.Application.Interfaces.Services;
 namespace PMWDS.Infrastructure.Services;
+
+public interface ICacheService
+{
+    Task<T?> GetAsync<T>(string key,
+    CancellationToken ct = default);
+    Task SetAsync<T>(string key, T value,
+    TimeSpan? expiration = null,
+    CancellationToken ct = default);
+    Task RemoveAsync(string key,
+    CancellationToken ct = default);
+    Task<bool> ExistsAsync(string key,
+    CancellationToken ct = default);
+}
 public class RedisCacheService : ICacheService
 {
     private readonly IDistributedCache _cache;

@@ -1,6 +1,6 @@
 using PMWDS.Domain.Entities;
-using PMWDS.Domain.Enums;
 namespace PMWDS.Application.DTOs.Tasks;
+
 public record TaskDto(
  Guid Id,
  string Title,
@@ -28,34 +28,34 @@ public record TaskDto(
  bool IsOverdue,
  DateTime CreatedDate)
 {
- public static TaskDto FromEntity(ProjectTask t)
- => new(
- Id: t.Id,
- Title: t.Title,
- Description: t.Description,
- Status: t.Status.ToString(),
- Priority: t.Priority.ToString(),
- StartDate: t.StartDate,
- DueDate: t.DueDate,
- CompletedDate: t.CompletedDate,
- EstimatedHours: t.EstimatedHours,
- ActualHours: t.ActualHours,
- ProgressPercentage: t.ProgressPercentage,
- ProjectId: t.ProjectId,
- ProjectName: t.Project?.Name,
- MilestoneId: t.MilestoneId,
- MilestoneName: t.Milestone?.Name,
- ParentTaskId: t.ParentTaskId,
- AssignedToUserId: t.AssignedToUserId,
- AssignedToUserName: null,
- IsEscalated: t.IsEscalated,
- EscalationLevel: t.EscalationLevel,
- EscalatedDate: t.EscalatedDate,
- AIDelayProbability: t.AIDelayProbability,
- AIRiskFactors: t.AIRiskFactors,
- IsOverdue: t.IsOverdue(),
- CreatedDate: t.CreatedDate
- );
+    public static TaskDto FromEntity(ProjectTask t)
+    => new(
+    Id: t.Id,
+    Title: t.Title,
+    Description: t.Description,
+    Status: t.Status.ToString(),
+    Priority: t.Priority.ToString(),
+    StartDate: t.StartDate,
+    DueDate: t.DueDate,
+    CompletedDate: t.CompletedDate,
+    EstimatedHours: t.EstimatedHours,
+    ActualHours: t.ActualHours,
+    ProgressPercentage: t.ProgressPercentage,
+    ProjectId: t.ProjectId,
+    ProjectName: t.Project?.Name,
+    MilestoneId: t.MilestoneId,
+    MilestoneName: t.Milestone?.Name,
+    ParentTaskId: t.ParentTaskId,
+    AssignedToUserId: t.AssignedToUserId,
+    AssignedToUserName: t.AssignedUser?.FullName,
+    IsEscalated: t.IsEscalated,
+    EscalationLevel: t.EscalationLevel,
+    EscalatedDate: t.EscalatedDate,
+    AIDelayProbability: t.AIDelayProbability,
+    AIRiskFactors: t.AIRiskFactors,
+    IsOverdue: t.IsOverdue(),
+    CreatedDate: t.CreatedDate
+    );
 }
 public record TaskSummaryDto(
  Guid Id,
@@ -66,15 +66,15 @@ public record TaskSummaryDto(
  double AIDelayProbability,
  bool IsEscalated)
 {
- public static TaskSummaryDto FromEntity(ProjectTask t)
- => new(t.Id, t.Title,
- t.Status.ToString(),
+    public static TaskSummaryDto FromEntity(ProjectTask t)
+    => new(t.Id, t.Title,
+    t.Status.ToString(),
 
 
- t.Priority.ToString(),
- t.DueDate,
- t.AIDelayProbability,
- t.IsEscalated);
+    t.Priority.ToString(),
+    t.DueDate,
+    t.AIDelayProbability,
+    t.IsEscalated);
 }
 public record CreateTaskDto(
  string Title,
@@ -86,15 +86,15 @@ public record CreateTaskDto(
  Guid? MilestoneId,
  Guid? ParentTaskId,
  string? AssignedToUserId,
- TaskPriority Priority =
- TaskPriority.Medium);
+ Domain.Enums.Priority Priority =
+ Domain.Enums.Priority.Medium);
 public record UpdateTaskDto(
  string Title,
  string? Description,
  DateTime StartDate,
  DateTime DueDate,
  float EstimatedHours,
- TaskPriority Priority,
+ Domain.Enums.Priority Priority,
  Guid? MilestoneId);
 public record UpdateTaskProgressDto(
  double ProgressPercentage,

@@ -29,13 +29,13 @@ public class ScheduledReportJob : IScheduledReportJob
         "ScheduledReportJob started at {Time}",
         DateTime.UtcNow);
         var managers = await _uow.Users
-        .GetUsersByRoleAsync("ProjectManager", ct);
+        .GetByRoleAsync("ProjectManager", ct);
         foreach (var manager in managers)
         {
             try
             {
                 var projects = await _uow.Projects
-                .GetByManagerAsync(manager.Id.ToString(), ct);
+                .GetByManagerAsync(manager.Id, ct);
                 foreach (var project in projects)
                 {
                     var reportBytes = await _reports
@@ -45,7 +45,7 @@ public class ScheduledReportJob : IScheduledReportJob
                     project.Id, "pdf", ct);
                     await _email.SendEmailWithAttachmentAsync(
                     manager.Email!,
-                   $"Weekly Status Report â€” " +
+                   $"Weekly Status Report — " +
                     $"{project.Name}",
                     $"<p>Dear {manager.FirstName},</p>" +
                     $"<p>Please find attached the " +

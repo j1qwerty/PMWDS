@@ -2,6 +2,16 @@ using System.Text.Json;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 namespace PMWDS.Infrastructure.Services;
+
+public interface IAuditService
+{
+    Task LogAsync(string userId, string action,
+    string entityType, string entityId,
+    object? oldValues = null, object? newValues = null,
+    string? ip = null, string? userAgent = null,
+    bool isAI = false, string? aiModel = null,
+    CancellationToken ct = default);
+}
 public class AuditService : IAuditService
 {
     private readonly IUnitOfWork _uow;

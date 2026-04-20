@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PMWDS.Application\PMWDS.Application.csproj" />
     <ProjectReference Include="..\PMWDS.Domain\PMWDS.Domain.csproj" />
+    <ProjectReference Include="..\PMWDS.Infrastructure\PMWDS.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.AI.Services;
 namespace PMWDS.Infrastructure.Jobs;
 
 public interface IEscalationCheckerJob
@@ -9,17 +10,17 @@ public interface IEscalationCheckerJob
 public class EscalationCheckerJob : IEscalationCheckerJob
 {
     private readonly IUnitOfWork _uow;
-    private readonly IAIService _ai;
+    private readonly IDelayPredictionEngine _predictor;
     private readonly INotificationService _notifications;
     private readonly ILogger<EscalationCheckerJob> _logger;
     public EscalationCheckerJob(
     IUnitOfWork uow,
-    IAIService ai,
+    IDelayPredictionEngine predictor,
     INotificationService notifications,
     ILogger<EscalationCheckerJob> logger)
     {
         _uow = uow;
-        _ai = ai;
+        _predictor = predictor;
         _notifications = notifications;
         _logger = logger;
     }
@@ -29,24 +30,24 @@ public class EscalationCheckerJob : IEscalationCheckerJob
         "EscalationCheckerJob started at {Time}",
         DateTime.UtcNow);
         int escalatedCount = 0;
-        var activeTasks = (await _uow.Tasks
-        .GetAllAsync(ct))
-        .Where(t => t.Status == Domain.Enums.TaskStatus.Assigned
-        || t.Status == Domain.Enums.TaskStatus.InProgress);
+        var activeTasks = await _uow.Tasks
+        .GetActiveTasksAsync(ct);
         foreach (var task in activeTasks
         .Where(t => !t.IsEscalated))
         {
             try
             {
                 var prediction =
-                await _ai.PredictTaskDelayAsync(task.Id, ct);
+                await _predictor.PredictAsync(task, ct);
                 if (prediction.ShouldEscalate)
                 {
                     task.Escalate();
-                    task.UpdateAIPrediction(
-                    prediction.DelayProbability,
-                    prediction.PredictedCompletionDate,
+                    task.UpdateAIScores(
+                     prediction.DelayProbability,
+                    task.AIOptimalAssigneeScore,
                     string.Join("; ",
+
+
                     prediction.ContributingFactors));
                     await _uow.Tasks.UpdateAsync(task, ct);
                     await _notifications

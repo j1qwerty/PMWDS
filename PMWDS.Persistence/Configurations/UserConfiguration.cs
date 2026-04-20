@@ -28,7 +28,10 @@ public class UserConfiguration
         .HasColumnType("decimal(5,2)");
         b.Property(e => e.AIBurnoutRiskScore)
         .HasColumnType("decimal(5,4)");
-        b.Ignore(e => e.Skills);
+        b.HasMany(e => e.Skills)
+        .WithOne(s => s.User)
+        .HasForeignKey(s => s.UserId)
+        .OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(e => e.EmployeeCode).IsUnique();
         b.HasIndex(e => e.DepartmentId);
     }

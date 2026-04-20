@@ -1,28 +1,30 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Entities;
 namespace PMWDS.Persistence.Context;
 
 public class ApplicationDbContext
- : DbContext
+ : IdentityDbContext<ApplicationUser>
 {
-    // Core 
+    // ── Core ─────────────────────────────────────────────
     public DbSet<Department> Departments { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<Milestone> Milestones { get; set; }
     public DbSet<ProjectTask> Tasks { get; set; }
+    public DbSet<SubTask> SubTasks { get; set; }
     public DbSet<TaskDependency> TaskDependencies { get; set; }
     public DbSet<TaskAssignment> TaskAssignments { get; set; }
     public DbSet<TaskComment> TaskComments { get; set; }
     public DbSet<TaskAttachment> TaskAttachments { get; set; }
     public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<ProjectDocument> ProjectDocuments { get; set; }
-    //  People & Skills 
+    // ── People & Skills ───────────────────────────────────
     public DbSet<Skill> Skills { get; set; }
     public DbSet<UserSkill> UserSkills { get; set; }
-    //  Notifications 
+    // ── Notifications ─────────────────────────────────────
     public DbSet<Notification> Notifications { get; set; }
-    //  Audit 
+    // ── Audit ─────────────────────────────────────────────
     public DbSet<AuditLog> AuditLogs { get; set; }
     public ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options)
@@ -34,14 +36,6 @@ public class ApplicationDbContext
         // Apply all IEntityTypeConfiguration<T> in assembly
         builder.ApplyConfigurationsFromAssembly(
         typeof(ApplicationDbContext).Assembly);
-        builder.Entity<TaskDependency>()
-        .Ignore(e => e.PredecessorTask);
-        builder.Entity<TaskDependency>()
-        .Ignore(e => e.SuccessorTask);
-        builder.Entity<TaskAssignment>()
-        .Ignore(e => e.User);
-        builder.Entity<TimeEntry>()
-        .Ignore(e => e.User);
         // Global soft-delete query filter
         foreach (var entityType in builder.Model.GetEntityTypes())
         {

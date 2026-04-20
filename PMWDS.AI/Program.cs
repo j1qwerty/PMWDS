@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using PMWDS.AI.Models;
 using PMWDS.AI.Services;
+using PMWDS.Infrastructure.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
