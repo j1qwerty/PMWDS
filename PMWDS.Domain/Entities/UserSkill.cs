@@ -5,7 +5,7 @@ public class UserSkill : BaseEntity
 {
     public string UserId { get; private set; } = string.Empty;
     public Guid SkillId { get; private set; }
-    public int ProficiencyLevel { get; private set; } // 1â€“5
+    public int ProficiencyLevel { get; private set; } // 1–5
     public int ExperienceMonths { get; private set; }
     public DateTime LastUsed { get; private set; }
     public double AIConfidenceScore { get; private set; }

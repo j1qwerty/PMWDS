@@ -130,15 +130,15 @@ public class AIService : IAIService
  var suggestions = new List<ReallocationSuggestion>();
  foreach (var task in project.Tasks.Where(t => t.AssignedToUserId == null).Take(5))
  {
- suggestions.Add(new ReallocationSuggestion(
- task.Id,
- task.Title,
- string.Empty,
- string.Empty,
- string.Empty,
- "Unassigned",
- "Assign to an available team member.",
- 10));
+            suggestions.Add(new ReallocationSuggestion(
+                task.Id,
+                task.Title,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                "Unassigned - Assign to an available team member.",
+                10));
  }
  return new ResourceOptimizationDto(
  projectId,

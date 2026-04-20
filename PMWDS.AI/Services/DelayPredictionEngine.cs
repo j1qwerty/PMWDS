@@ -105,21 +105,21 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
  // Placeholder for scheduled re-training
  return Task.CompletedTask;
  }
- private static TaskDelayInput BuildInput(ProjectTask task)
- => new()
- {
- EstimatedHours = task.EstimatedHours,
- ActualHours = task.ActualHours,
- ProgressPercentage = (float)task.ProgressPercentage,
- DaysUntilDue =
- (float)(task.DueDate - DateTime.UtcNow)
- .TotalDays,
- EscalationLevel = task.EscalationLevel,
- AssigneeWorkload = 50,
- AssigneeBurnoutRisk = 0.3f,
- DependencyCount =
- task.Dependencies?.Count ?? 0
- };
+    private static TaskDelayInput BuildInput(ProjectTask task)
+    => new()
+    {
+        EstimatedHours = (float)task.EstimatedHours,
+        ActualHours = (float)task.ActualHours,
+        ProgressPercentage = (float)task.ProgressPercentage,
+        DaysUntilDue =
+        (float)(task.DueDate - DateTime.UtcNow)
+        .TotalDays,
+        EscalationLevel = (float)task.EscalationLevel,
+        AssigneeWorkload = 50,
+        AssigneeBurnoutRisk = 0.3f,
+        DependencyCount =
+        task.Dependencies?.Count ?? 0
+    };
  private static double ComputeHeuristicRisk(ProjectTask task)
  {
  double risk = 0.0;

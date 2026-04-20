@@ -47,8 +47,7 @@ public class Milestone : AuditableEntity
         ProgressPercentage = Math.Clamp(percentage, 0, 100);
         if (percentage >= 100) MarkComplete();
     }
-    public bool IsOverdue()
-    => Status != MilestoneStatus.Completed
+    public bool IsOverdue() => Status != MilestoneStatus.Completed
     && DateTime.UtcNow > DueDate;
     public int GetDaysRemaining()
     => (int)(DueDate - DateTime.UtcNow).TotalDays;

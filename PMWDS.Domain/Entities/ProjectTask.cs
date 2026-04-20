@@ -121,11 +121,11 @@ public class ProjectTask : AuditableEntity
         if (percentage >= 100) Complete();
     }
     public void AddComment(TaskComment comment)
-    => _comments.Add(comment);
+        => _comments.Add(comment);
     public void AddAttachment(TaskAttachment attachment)
-    => _attachments.Add(attachment);
+        => _attachments.Add(attachment);
     public void AddDependency(TaskDependency dependency)
-    => _dependencies.Add(dependency);
+        => _dependencies.Add(dependency);
     public void LogTime(TimeEntry entry)
     {
         _timeEntries.Add(entry);
@@ -172,13 +172,13 @@ public class ProjectTask : AuditableEntity
         AIRecommendedAssigneeId = recommendedAssigneeId;
     }
     public bool IsOverdue()
-    => Status != TaskStatus.Completed
-    && DateTime.UtcNow > DueDate;
+        => Status != TaskStatus.Completed
+        && DateTime.UtcNow > DueDate;
     public int GetEfficiencyRatio()
     {
         if (ActualHours == 0) return 0;
         return (int)(EstimatedHours / (double)ActualHours * 100);
     }
     public void ClearDomainEvents()
-    => _domainEvents.Clear();
+        => _domainEvents.Clear();
 }
