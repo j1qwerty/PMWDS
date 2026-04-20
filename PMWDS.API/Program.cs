@@ -18,6 +18,7 @@ using PMWDS.Persistence.Context;
 using PMWDS.Persistence.Migrations;
 using PMWDS.Persistence.Repositories;
 using Serilog;
+using Microsoft.Data.SqlClient;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,11 +40,43 @@ builder.Services.Configure<AISettings>(
     builder.Configuration.GetSection("AI"));
 builder.Services.Configure<HangfireSettings>(
     builder.Configuration.GetSection("Hangfire"));
+builder.Services.Configure<DatabaseSettings>(
+    builder.Configuration.GetSection("Database"));
+
+var databaseSettings = builder.Configuration
+    .GetSection("Database")
+    .Get<DatabaseSettings>() ?? new DatabaseSettings();
+var sqlServerConnection = builder.Configuration.GetConnectionString("Default");
+var sqliteConnection = databaseSettings.SqliteConnectionString;
+var useSqlite = builder.Environment.IsDevelopment() &&
+    (databaseSettings.ForceSqlite ||
+     (databaseSettings.EnableSqliteFallback &&
+      !CanConnectToSqlServer(sqlServerConnection)));
+
+if (useSqlite)
+{
+    Console.WriteLine($"[PMWDS] Using SQLite failsafe database: {sqliteConnection}");
+}
+else
+{
+    Console.WriteLine("[PMWDS] Using SQL Server database.");
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
-    opt.UseSqlServer(
-        builder.Configuration.GetConnectionString("Default"),
-        sql => sql.MigrationsAssembly("PMWDS.Persistence")));
+{
+    if (useSqlite)
+    {
+        opt.UseSqlite(
+            sqliteConnection,
+            sql => sql.MigrationsAssembly("PMWDS.Persistence"));
+    }
+    else
+    {
+        opt.UseSqlServer(
+            sqlServerConnection,
+            sql => sql.MigrationsAssembly("PMWDS.Persistence"));
+    }
+});
 
 var jwt = builder.Configuration
     .GetSection("Jwt")
@@ -122,12 +155,15 @@ builder.Services.AddStackExchangeRedisCache(opt =>
     opt.InstanceName = "PMWDS:";
 });
 
-builder.Services.AddHangfire(cfg =>
-    cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-       .UseSimpleAssemblyNameTypeSerializer()
-       .UseRecommendedSerializerSettings()
-       .UseSqlServerStorage(builder.Configuration.GetConnectionString("Hangfire")));
-builder.Services.AddHangfireServer();
+if (!useSqlite)
+{
+    builder.Services.AddHangfire(cfg =>
+        cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+           .UseSimpleAssemblyNameTypeSerializer()
+           .UseRecommendedSerializerSettings()
+           .UseSqlServerStorage(builder.Configuration.GetConnectionString("Hangfire")));
+    builder.Services.AddHangfireServer();
+}
 
 builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
@@ -163,10 +199,13 @@ app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+if (!useSqlite)
 {
-    Authorization = new[] { new HangfireAuthorizationFilter() }
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireAuthorizationFilter() }
+    });
+}
 
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<DashboardHub>("/hubs/dashboard");
@@ -175,25 +214,72 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
+    if (useSqlite)
+    {
+        var sqlitePath = sqliteConnection.Replace("Data Source=", string.Empty).Trim();
+        var sqliteDirectory = Path.GetDirectoryName(sqlitePath);
+        if (!string.IsNullOrWhiteSpace(sqliteDirectory))
+        {
+            Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, sqliteDirectory));
+        }
+
+        try
+        {
+            await db.Database.MigrateAsync();
+        }
+        catch
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
     await SeedData.SeedAsync(db);
 
-    RecurringJob.AddOrUpdate<IDeadlineCheckerJob>(
-        "deadline-checker",
-        j => j.ExecuteAsync(CancellationToken.None),
-        Cron.Hourly);
-    RecurringJob.AddOrUpdate<IEscalationCheckerJob>(
-        "escalation-checker",
-        j => j.ExecuteAsync(CancellationToken.None),
-        Cron.Hourly(30));
-    RecurringJob.AddOrUpdate<IAIModelTrainingJob>(
-        "ai-model-training",
-        j => j.ExecuteAsync(CancellationToken.None),
-        Cron.Daily(2));
-    RecurringJob.AddOrUpdate<IScheduledReportJob>(
-        "scheduled-reports",
-        j => j.ExecuteAsync(CancellationToken.None),
-        Cron.Weekly(DayOfWeek.Monday, 7));
+    if (!useSqlite)
+    {
+        RecurringJob.AddOrUpdate<IDeadlineCheckerJob>(
+            "deadline-checker",
+            j => j.ExecuteAsync(CancellationToken.None),
+            Cron.Hourly);
+        RecurringJob.AddOrUpdate<IEscalationCheckerJob>(
+            "escalation-checker",
+            j => j.ExecuteAsync(CancellationToken.None),
+            Cron.Hourly(30));
+        RecurringJob.AddOrUpdate<IAIModelTrainingJob>(
+            "ai-model-training",
+            j => j.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(2));
+        RecurringJob.AddOrUpdate<IScheduledReportJob>(
+            "scheduled-reports",
+            j => j.ExecuteAsync(CancellationToken.None),
+            Cron.Weekly(DayOfWeek.Monday, 7));
+    }
 }
 
 app.Run();
+
+static bool CanConnectToSqlServer(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return false;
+    }
+
+    try
+    {
+        var builder = new SqlConnectionStringBuilder(connectionString)
+        {
+            ConnectTimeout = 2
+        };
+        using var connection = new SqlConnection(builder.ConnectionString);
+        connection.Open();
+        return true;
+    }
+    catch
+    {
+        return false;
+    }
+}

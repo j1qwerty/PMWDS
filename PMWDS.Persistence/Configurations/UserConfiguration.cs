@@ -8,6 +8,8 @@ public class UserConfiguration
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> b)
     {
+        b.ToTable("Users");
+
         b.Property(e => e.FirstName)
         .HasMaxLength(100).IsRequired();
         b.Property(e => e.LastName)
@@ -32,6 +34,12 @@ public class UserConfiguration
         .WithOne(s => s.User)
         .HasForeignKey(s => s.UserId)
         .OnDelete(DeleteBehavior.Cascade);
+
+        // Task assignments still use string-based user ids in the domain model.
+        // Keep them out of EF relationship discovery until those ids are
+        // normalized to Guid across the task aggregate.
+        b.Ignore(e => e.TaskAssignments);
+
         b.HasIndex(e => e.EmployeeCode).IsUnique();
         b.HasIndex(e => e.DepartmentId);
     }

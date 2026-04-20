@@ -87,6 +87,10 @@ bld/
 # Logs
 *.log
 logs/
+*.sqlite
+*.db
+App_Data/
+PMWDS.API/App_Data/
 
 # OS generated files
 .DS_Store

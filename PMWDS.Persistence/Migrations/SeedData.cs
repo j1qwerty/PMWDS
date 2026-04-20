@@ -58,8 +58,10 @@ public static class SeedData
             {
                 ApplicationUser.Create("admin@pmwds.com", "System", "Administrator", "ADMIN001", "SuperAdmin", departmentId),
                 ApplicationUser.Create("manager@pmwds.com", "Project", "Manager", "PM001", "ProjectManager", departmentId),
+                ApplicationUser.Create("head@pmwds.com", "Department", "Head", "DH001", "DepartmentHead", departmentId),
                 ApplicationUser.Create("lead@pmwds.com", "Team", "Lead", "TL001", "TeamLead", departmentId),
-                ApplicationUser.Create("member@pmwds.com", "Team", "Member", "TM001", "TeamMember", departmentId)
+                ApplicationUser.Create("member@pmwds.com", "Team", "Member", "TM001", "TeamMember", departmentId),
+                ApplicationUser.Create("viewer@pmwds.com", "Read", "Only", "VW001", "Viewer", departmentId)
             };
 
             foreach (var user in users)

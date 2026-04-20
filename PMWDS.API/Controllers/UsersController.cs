@@ -161,7 +161,7 @@ public class UsersController : BaseApiController
         }
 
         user.AddSkill(UserSkill.Create(
-            user.Id.ToString(),
+            user.Id,
             req.SkillId,
             req.ProficiencyLevel,
             req.ExperienceMonths));

@@ -3,7 +3,7 @@ namespace PMWDS.Domain.Entities;
 
 public class UserSkill : BaseEntity
 {
-    public string UserId { get; private set; } = string.Empty;
+    public Guid UserId { get; private set; }
     public Guid SkillId { get; private set; }
     public int ProficiencyLevel { get; private set; } // 1–5
     public int ExperienceMonths { get; private set; }
@@ -13,7 +13,7 @@ public class UserSkill : BaseEntity
     public Skill? Skill { get; private set; }
     protected UserSkill() { }
     public static UserSkill Create(
-    string userId, Guid skillId,
+    Guid userId, Guid skillId,
     int proficiencyLevel, int experienceMonths)
     {
         return new UserSkill
