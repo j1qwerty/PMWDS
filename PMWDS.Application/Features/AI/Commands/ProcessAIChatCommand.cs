@@ -23,6 +23,6 @@ public class ProcessAIChatCommandHandler
  var userId = _currentUser.UserId
  ?? throw new UnauthorizedAccessException();
  return await _ai.ProcessChatMessageAsync(
- userId, req.Message, ct);
+ userId, req.Message, ct: ct);
  }
 }

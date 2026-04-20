@@ -111,3 +111,41 @@ Examples:
 
 - Hangfire startup is disabled while SQLite fallback is active.
 - The current domain still contains some string-based user references in task-related entities. The SQLite fallback path works, but further normalization of user IDs would reduce mapping complexity in the rest of the model.
+
+## AI Providers
+
+The API now supports multiple OpenAI-compatible AI providers through the `AI` section in [PMWDS.API/appsettings.json](PMWDS.API/appsettings.json):
+
+- `OpenAI`
+- `OpenRouter`
+- `OpenCode` / Zen
+
+Key fields:
+
+- `AI.DefaultProvider`
+- `AI.DefaultModel`
+- `AI.OpenAI`
+- `AI.OpenRouter`
+- `AI.OpenCode`
+
+Available API endpoints:
+
+- `GET /api/ai/providers`
+- `GET /api/ai/providers/{provider}/models?search=...&limit=...`
+- `POST /api/ai/providers/{provider}/test`
+
+Provider notes:
+
+- `OpenRouter` uses `https://openrouter.ai/api/v1` and supports remote model discovery through `/models`.
+- `OpenCode` uses `https://opencode.ai/zen/v1`.
+- `bigpickle` is configured as the default `OpenCode` model in the sample config.
+
+## AI Tests
+
+Provider tests live in [PMWDS.AI.Tests/OpenAICompatibleChatEngineTests.cs](PMWDS.AI.Tests/OpenAICompatibleChatEngineTests.cs).
+
+Run them with:
+
+```powershell
+dotnet test PMWDS.AI.Tests\PMWDS.AI.Tests.csproj
+```

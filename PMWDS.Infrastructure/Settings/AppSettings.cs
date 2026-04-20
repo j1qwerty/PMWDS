@@ -28,11 +28,43 @@ public class JwtSettings
 public class AISettings
 {
     public string OpenAIApiKey { get; set; } = string.Empty;
-    public string OpenAIModel { get; set; } = "gpt-4";
+    public string OpenAIModel { get; set; } = "gpt-4o";
+    public string DefaultProvider { get; set; } = "OpenAI";
+    public string DefaultModel { get; set; } = string.Empty;
+    public string AppName { get; set; } = "PMWDS";
+    public string AppUrl { get; set; } = "http://localhost:5177";
     public string MLModelPath { get; set; } = string.Empty;
     public bool UseLocalModel { get; set; } = false;
     public double RiskThreshold { get; set; } = 0.7;
     public int TrainingCronHour { get; set; } = 2; // 2 AM
+    public AIProviderOptions OpenAI { get; set; } = new()
+    {
+        Enabled = true,
+        BaseUrl = "https://api.openai.com/v1",
+        DefaultModel = "gpt-4o"
+    };
+    public AIProviderOptions OpenRouter { get; set; } = new()
+    {
+        Enabled = false,
+        BaseUrl = "https://openrouter.ai/api/v1",
+        DefaultModel = "openai/gpt-4o-mini"
+    };
+    public AIProviderOptions OpenCode { get; set; } = new()
+    {
+        Enabled = false,
+        BaseUrl = "https://opencode.ai/zen/v1",
+        DefaultModel = "bigpickle"
+    };
+}
+
+public class AIProviderOptions
+{
+    public bool Enabled { get; set; } = false;
+    public string ApiKey { get; set; } = string.Empty;
+    public string BaseUrl { get; set; } = string.Empty;
+    public string DefaultModel { get; set; } = string.Empty;
+    public string ModelsPath { get; set; } = "/models";
+    public Dictionary<string, string> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public class HangfireSettings

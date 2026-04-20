@@ -141,7 +141,7 @@ public class AIService : IAIService
             $"�{highBurnout.Count()} team member(s) " +
             $"show high burnout risk.");
         // AI-generated narrative via LLM
-        if (!string.IsNullOrEmpty(_settings.OpenAIApiKey))
+        if (_chat.IsConfigured())
         {
             var summary = await _chat
             .GenerateSummaryAsync(
@@ -151,7 +151,7 @@ public class AIService : IAIService
             $"Delays={project.GetDelayDays()} days, " +
             $"Budget variance=" +
             $"{project.GetBudgetVariance():C}",
-            ct);
+            ct: ct);
             insights.Add($"�AI Summary: {summary}");
         }
         return insights;
@@ -214,11 +214,28 @@ public class AIService : IAIService
     GenerateNaturalLanguageSummaryAsync(
     string context,
     CancellationToken ct = default)
-    => await _chat.GenerateSummaryAsync(context, ct);
+    => await _chat.GenerateSummaryAsync(context, ct: ct);
+    public Task<IReadOnlyList<AIProviderInfoDto>> GetProvidersAsync(
+    CancellationToken ct = default)
+    => _chat.GetProvidersAsync(ct);
+    public Task<IReadOnlyList<AIModelInfoDto>> SearchModelsAsync(
+    string provider,
+    string? search = null,
+    int limit = 25,
+    CancellationToken ct = default)
+    => _chat.SearchModelsAsync(provider, search, limit, ct);
+    public Task<AIProviderTestResultDto> TestProviderAsync(
+    string provider,
+    string? model = null,
+    string? prompt = null,
+    CancellationToken ct = default)
+    => _chat.TestProviderAsync(provider, model, prompt, ct);
     public async Task<ChatResponseDto> ProcessChatMessageAsync(
     string userId, string message,
+    string? provider = null,
+    string? model = null,
     CancellationToken ct = default)
-    => await _chat.ProcessAsync(userId, message, ct);
+    => await _chat.ProcessAsync(userId, message, provider, model, ct);
     public async Task TrainModelsAsync(
     CancellationToken ct = default)
     {

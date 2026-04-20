@@ -11,7 +11,7 @@ builder.Services.Configure<AISettings>(
 
 builder.Services.AddSingleton<ITaskAllocationEngine, MLTaskAllocationEngine>();
 builder.Services.AddSingleton<IDelayPredictionEngine, MLDelayPredictionEngine>();
-builder.Services.AddSingleton<IChatEngine, OpenAIChatEngine>();
+builder.Services.AddHttpClient<IChatEngine, OpenAICompatibleChatEngine>();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();

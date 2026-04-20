@@ -49,6 +49,26 @@ public record ChatResponseDto(
  List<string> SuggestedActions,
  object? ContextData,
  bool RequiresConfirmation);
+public record AIProviderInfoDto(
+ string Provider,
+ string DisplayName,
+ bool IsEnabled,
+ bool IsConfigured,
+ string DefaultModel,
+ string BaseUrl);
+public record AIModelInfoDto(
+ string Provider,
+ string Id,
+ string Name,
+ int? ContextLength,
+ string? Description);
+public record AIProviderTestResultDto(
+ string Provider,
+ string Model,
+ bool Success,
+ string Message,
+ string? RawResponse,
+ DateTime ExecutedAtUtc);
 public record BurnoutRiskDto(
  string UserId,
  string FullName,

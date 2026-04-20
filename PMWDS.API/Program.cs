@@ -136,7 +136,7 @@ builder.Services.AddSingleton<PMWDS.Application.Interfaces.Services.ICacheServic
 
 builder.Services.AddScoped<ITaskAllocationEngine, MLTaskAllocationEngine>();
 builder.Services.AddScoped<IDelayPredictionEngine, MLDelayPredictionEngine>();
-builder.Services.AddScoped<IChatEngine, OpenAIChatEngine>();
+builder.Services.AddHttpClient<IChatEngine, OpenAICompatibleChatEngine>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IAIService, AIService>();
 
 builder.Services.AddScoped<IDeadlineCheckerJob, DeadlineCheckerJob>();

@@ -49,7 +49,37 @@ public class AIController : BaseApiController
     [HttpPost("chat")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Chat([FromBody] ChatRequest req, CancellationToken ct)
-        => Ok(await Mediator.Send(new ProcessAIChatCommand(req.Message), ct));
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await _ai.ProcessChatMessageAsync(userId, req.Message, req.Provider, req.Model, ct));
+    }
+
+    [HttpGet("providers")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetProviders(CancellationToken ct)
+        => Ok(await _ai.GetProvidersAsync(ct));
+
+    [HttpGet("providers/{provider}/models")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> SearchModels(
+        string provider,
+        [FromQuery] string? search,
+        [FromQuery] int limit,
+        CancellationToken ct)
+        => Ok(await _ai.SearchModelsAsync(provider, search, limit <= 0 ? 25 : limit, ct));
+
+    [HttpPost("providers/{provider}/test")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> TestProvider(
+        string provider,
+        [FromBody] ProviderTestRequest? req,
+        CancellationToken ct)
+        => Ok(await _ai.TestProviderAsync(provider, req?.Model, req?.Prompt, ct));
 
     [HttpPost("train")]
     [Authorize(Policy = "SuperAdmin")]
@@ -57,4 +87,11 @@ public class AIController : BaseApiController
         => Ok(await Mediator.Send(new TriggerAITrainingCommand(), ct));
 }
 
-public record ChatRequest(string Message);
+public record ChatRequest(
+    string Message,
+    string? Provider = null,
+    string? Model = null);
+
+public record ProviderTestRequest(
+    string? Model = null,
+    string? Prompt = null);
