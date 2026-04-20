@@ -18,6 +18,14 @@ public interface INotificationService
     Task SendEscalationAlertAsync(
     Guid taskId, int escalationLevel,
     CancellationToken ct = default);
+    Task SendProjectCreatedAsync(
+    Guid projectId,
+    CancellationToken ct = default);
+    Task SendProjectStatusChangedAsync(
+    Guid projectId,
+    PMWDS.Domain.Enums.ProjectStatus oldStatus,
+    PMWDS.Domain.Enums.ProjectStatus newStatus,
+    CancellationToken ct = default);
     Task SendAIInsightAsync(
     string userId, string insight,
     CancellationToken ct = default);

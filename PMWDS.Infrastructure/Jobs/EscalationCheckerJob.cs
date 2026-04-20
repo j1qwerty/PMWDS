@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using PMWDS.Application.Interfaces.Services;
-using PMWDS.AI.Services;
 namespace PMWDS.Infrastructure.Jobs;
 
 public interface IEscalationCheckerJob
@@ -10,17 +9,17 @@ public interface IEscalationCheckerJob
 public class EscalationCheckerJob : IEscalationCheckerJob
 {
     private readonly IUnitOfWork _uow;
-    private readonly IDelayPredictionEngine _predictor;
+    private readonly IAIService _ai;
     private readonly INotificationService _notifications;
     private readonly ILogger<EscalationCheckerJob> _logger;
     public EscalationCheckerJob(
     IUnitOfWork uow,
-    IDelayPredictionEngine predictor,
+    IAIService ai,
     INotificationService notifications,
     ILogger<EscalationCheckerJob> logger)
     {
         _uow = uow;
-        _predictor = predictor;
+        _ai = ai;
         _notifications = notifications;
         _logger = logger;
     }
@@ -30,25 +29,27 @@ public class EscalationCheckerJob : IEscalationCheckerJob
         "EscalationCheckerJob started at {Time}",
         DateTime.UtcNow);
         int escalatedCount = 0;
-        var activeTasks = await _uow.Tasks
-        .GetActiveTasksAsync(ct);
+        var activeTasks = (await _uow.Tasks.GetAllAsync(ct))
+        .Where(t =>
+        t.Status != Domain.Enums.TaskStatus.Completed
+        && t.Status != Domain.Enums.TaskStatus.Cancelled)
+        .ToList();
         foreach (var task in activeTasks
         .Where(t => !t.IsEscalated))
         {
             try
             {
                 var prediction =
-                await _predictor.PredictAsync(task, ct);
+                await _ai.PredictTaskDelayAsync(task.Id, ct);
                 if (prediction.ShouldEscalate)
                 {
                     task.Escalate();
-                    task.UpdateAIScores(
-                     prediction.DelayProbability,
-                    task.AIOptimalAssigneeScore,
+                    task.UpdateAIPrediction(
+                    prediction.DelayProbability,
+                    prediction.PredictedCompletionDate,
                     string.Join("; ",
-
-
-                    prediction.ContributingFactors));
+                    prediction.ContributingFactors),
+                    task.AIRecommendedAssigneeId);
                     await _uow.Tasks.UpdateAsync(task, ct);
                     await _notifications
                     .SendEscalationAlertAsync(

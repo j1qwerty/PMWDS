@@ -24,7 +24,7 @@ public class AIService : IAIService
         _chat = chat;
         _settings = settings.Value;
     }
-    public async Task<AllocationRecommendationDto>
+    public async Task<AssigneeRecommendationDto>
     GetOptimalAssigneeAsync(
     Guid taskId,
     CancellationToken ct = default)
@@ -82,18 +82,31 @@ public class AIService : IAIService
         / (double)project.PlannedBudget);
         var insights = await GenerateProjectInsightsAsync(
         projectId, ct);
+        var strengths = new List<string>();
+        var weaknesses = new List<string>();
+        if (completed > 0)
+            strengths.Add($"{completed} task(s) completed.");
+        if (overdue > 0)
+            weaknesses.Add($"{overdue} overdue task(s).");
+        if (highRisk > 0)
+            weaknesses.Add($"{highRisk} high-risk task(s).");
         return new ProjectHealthDto(
         ProjectId: projectId,
-        HealthScore: health,
-        DelayRiskScore: delayRisk,
-        BudgetRiskScore: budgetRisk,
-        OverallStatus: health >= 75 ? "Healthy"
+        ProjectName: project.Name,
+        OverallHealthScore: health,
+        ScheduleHealth: Math.Max(0, 100 - (delayRisk * 100)),
+        BudgetHealth: Math.Max(0, 100 - (budgetRisk * 100)),
+        TeamHealth: Math.Max(0, 100 - (highRisk * 10.0)),
+        QualityHealth: totalTasks == 0 ? 100 : (completed / (double)totalTasks) * 100,
+        HealthStatus: health >= 75 ? "Healthy"
         : health >= 50 ? "At Risk" : "Critical",
-        Insights: insights,
+        Strengths: strengths,
+        Weaknesses: weaknesses.Concat(insights).ToList(),
         Recommendations: GetRecommendations(
         health, delayRisk, budgetRisk),
-        RiskFactors: BuildRiskFactors(
-        project, overdue, highRisk)
+        Risks: BuildRiskFactors(
+        project, overdue, highRisk),
+        GeneratedAt: DateTime.UtcNow
         );
     }
     public async Task<List<string>>
@@ -159,40 +172,42 @@ public class AIService : IAIService
         .ToList();
         var available = await _uow.Users
         .GetAvailableUsersAsync(ct);
-        var steps = new List<string>();
-        var optimized = new List<ResourceAllocationDto>();
+        var actionPlan = new List<string>();
+        var suggestions = new List<ReallocationSuggestion>();
         foreach (var user in available)
         {
             var workload = await _uow.Users
             .GetUserWorkloadScoreAsync(
             user.Id.ToString(), ct);
-            optimized.Add(new ResourceAllocationDto(
-            UserId: user.Id.ToString(),
-            UserName: user.FullName,
-            WorkloadPercentage: workload,
-            AssignedTaskCount: user.GetActiveTaskCount(),
-            PerformanceScore: user.AIPerformanceScore
-            ));
+            if (workload > 80)
+                actionPlan.Add(
+                $"Reduce workload for {user.FullName}.");
+        }
+        foreach (var task in unassigned)
+        {
+            var recommendation = await GetOptimalAssigneeAsync(
+            task.Id, ct);
+            suggestions.Add(new ReallocationSuggestion(
+            TaskId: task.Id,
+            TaskTitle: task.Title,
+            CurrentAssigneeId: task.AssignedToUserId ?? string.Empty,
+            CurrentAssigneeName: string.Empty,
+            SuggestedAssigneeId: recommendation.RecommendedUserId,
+            SuggestedAssigneeName: recommendation.RecommendedUserName,
+            Reason: recommendation.Rationale.FirstOrDefault()
+            ?? "AI-based allocation recommendation.",
+            ImprovementScore: recommendation.ConfidenceScore));
         }
         if (unassigned.Any())
-            steps.Add(
-
-
-               $"Assign {unassigned.Count} " +
-            $"unassigned tasks using AI matching.");
-        var overloaded = optimized
-        .Where(u => u.WorkloadPercentage > 80)
-        .ToList();
-        if (overloaded.Any())
-            steps.Add(
-            $"Rebalance workload for " +
-            $"{overloaded.Count} overloaded member(s).");
+            actionPlan.Add(
+            $"Assign {unassigned.Count} unassigned task(s) using AI recommendations.");
         return new ResourceOptimizationDto(
         ProjectId: projectId,
-        CurrentAllocation: optimized,
-        OptimizedAllocation: optimized,
-        ExpectedEfficiencyGain: overloaded.Any() ? 20 : 5,
-        OptimizationSteps: steps
+        Suggestions: suggestions,
+        ExpectedEfficiencyGain: suggestions.Any() ? 20 : 5,
+        TasksAtRisk: unassigned.Count,
+        ActionPlan: actionPlan,
+        GeneratedAt: DateTime.UtcNow
         );
     }
     public async Task<string>
@@ -224,24 +239,31 @@ public class AIService : IAIService
             "Escalate budget overrun to executive sponsor.");
         return recs;
     }
-    private static List<RiskFactorDto> BuildRiskFactors(
+    private static List<RiskItem> BuildRiskFactors(
     Domain.Entities.Project project,
     int overdue, int highRisk)
     {
-        var risks = new List<RiskFactorDto>();
+        var risks = new List<RiskItem>();
         if (overdue > 0)
-            risks.Add(new RiskFactorDto(
-            "Overdue Tasks", "High",
+            risks.Add(new RiskItem(
+            "Overdue Tasks",
+            "Tasks are running past due dates.",
             overdue * 0.1,
+            "High",
             "Reassign or reprioritize overdue tasks."));
         if (highRisk > 0)
-            risks.Add(new RiskFactorDto(
-            "High-Risk Tasks", "Medium",
+            risks.Add(new RiskItem(
+            "High-Risk Tasks",
+            "Several tasks exceed the configured AI risk threshold.",
             highRisk * 0.05,
+            "Medium",
             "Monitor closely and provide support."));
         if (project.IsOverBudget())
-            risks.Add(new RiskFactorDto(
-            "Budget Overrun", "High", 0.3,
+            risks.Add(new RiskItem(
+            "Budget Overrun",
+            "Project spend is above the planned budget.",
+            0.3,
+            "High",
             "Review and control spending immediately."));
         return risks;
     }

@@ -3,19 +3,10 @@ using System.Text.Json;
 using PMWDS.Application.Interfaces.Services;
 namespace PMWDS.Infrastructure.Services;
 
-public interface ICacheService
+public interface ICacheService : PMWDS.Application.Interfaces.Services.ICacheService
 {
-    Task<T?> GetAsync<T>(string key,
-    CancellationToken ct = default);
-    Task SetAsync<T>(string key, T value,
-    TimeSpan? expiration = null,
-    CancellationToken ct = default);
-    Task RemoveAsync(string key,
-    CancellationToken ct = default);
-    Task<bool> ExistsAsync(string key,
-    CancellationToken ct = default);
 }
-public class RedisCacheService : ICacheService
+public class RedisCacheService : PMWDS.Application.Interfaces.Services.ICacheService
 {
     private readonly IDistributedCache _cache;
     private static readonly TimeSpan _defaultExpiry =

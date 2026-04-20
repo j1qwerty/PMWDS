@@ -53,12 +53,14 @@ public class AssignTaskCommandHandler
         ?? throw new NotFoundException(
         "User", finalAssigneeId);
         var oldAssignee = task.AssignedToUserId;
-        task.AssignTo(finalAssigneeId);
+        task.AssignTo(
+        finalAssigneeId,
+        _currentUser.UserId ?? "system");
         task.SetModified(
         _currentUser.UserId ?? "system");
         await _uow.Tasks.UpdateAsync(task, ct);
         await _uow.SaveChangesAsync(ct);
-        await _notifications.SendTaskAssignedAsync(
+        await _notifications.SendTaskAssignmentAlertAsync(
         task.Id, finalAssigneeId, ct);
         await _audit.LogAsync(
         _currentUser.UserId ?? "system",

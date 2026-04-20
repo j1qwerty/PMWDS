@@ -104,10 +104,18 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
         // Real implementation: load historical data from DB,
         // build pipeline, train, save model
         // Placeholder for scheduled re-training
-        return Task.CompletedTask;
-    }
+ return Task.CompletedTask;
+ }
+ private static ApplicationUser? GetAssignedUser(
+ ProjectTask task)
+ => task.Assignments
+ .Where(a => a.IsActive)
+ .Select(a => a.User)
+ .FirstOrDefault(u => u != null);
     private static TaskDelayInput BuildInput(ProjectTask task)
-    => new()
+    {
+    var assignedUser = GetAssignedUser(task);
+    return new()
     {
         EstimatedHours = task.EstimatedHours,
         ActualHours = task.ActualHours,
@@ -117,14 +125,15 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
     .TotalDays,
         EscalationLevel = task.EscalationLevel,
         AssigneeWorkload =
-    (float)(task.AssignedUser?
+    (float)(assignedUser?
     .AIWorkloadScore ?? 50),
         AssigneeBurnoutRisk =
-    (float)(task.AssignedUser?
+    (float)(assignedUser?
     .AIBurnoutRiskScore ?? 0.3),
         DependencyCount =
     task.Dependencies?.Count ?? 0
     };
+    }
     private static double ComputeHeuristicRisk(ProjectTask task)
     {
         double risk = 0.0;
@@ -158,7 +167,8 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
         if (task.IsEscalated)
             risk += 0.10;
         // Assignee burnout
-        if (task.AssignedUser?.AIBurnoutRiskScore > 0.7)
+        var assignedUser = GetAssignedUser(task);
+        if (assignedUser?.AIBurnoutRiskScore > 0.7)
             risk += 0.10;
         return Math.Min(1.0, risk);
     }
@@ -180,9 +190,10 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
             factors.Add(
             $"{task.Dependencies.Count} " +
             $"dependency(ies) may cause blocking.");
-        if (task.AssignedUser?.AIBurnoutRiskScore > 0.7)
+        var assignedUser = GetAssignedUser(task);
+        if (assignedUser?.AIBurnoutRiskScore > 0.7)
             factors.Add("Assignee shows high burnout risk.");
-        if (task.AssignedUser?.AIWorkloadScore > 80)
+        if (assignedUser?.AIWorkloadScore > 80)
             factors.Add("Assignee is overloaded.");
         return factors.Any()
         ? factors

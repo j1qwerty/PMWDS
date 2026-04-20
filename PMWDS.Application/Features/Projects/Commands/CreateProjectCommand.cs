@@ -42,25 +42,18 @@ public class CreateProjectCommandHandler
         ?? throw new NotFoundException(
         "User", dto.ProjectManagerId);
         // Check for duplicate project code
-        var existing = await _uow.Projects
-        .FindAsync(p =>
-        p.ProjectCode == dto.ProjectCode, ct);
-        if (existing.Any())
-            throw new ConflictException(
-            $"Project code '{dto.ProjectCode}' " +
-            $"already exists.");
         var project = Project.Create(
-        dto.ProjectCode,
         dto.Name,
-        dto.Description,
+        dto.Description ?? string.Empty,
         dto.Category,
+        dto.Priority,
+        dto.DepartmentId,
+        dto.ProjectManagerId,
         dto.PlannedStartDate,
         dto.PlannedEndDate,
         dto.PlannedBudget,
-        dto.DepartmentId,
-        dto.ProjectManagerId,
-        dto.Priority);
-        project.SetCreated(_currentUser.UserId ?? "system");
+        null);
+        project.SetCreatedBy(_currentUser.UserId ?? "system");
 
 
         await _uow.Projects.AddAsync(project, ct);
@@ -73,8 +66,6 @@ public class CreateProjectCommandHandler
         null, new { project.Id, project.Name },
         ct: ct);
         // Notify project manager
-        await _notifications.SendProjectCreatedAsync(
-        project.Id, ct);
         return ProjectDto.FromEntity(project);
     }
 }

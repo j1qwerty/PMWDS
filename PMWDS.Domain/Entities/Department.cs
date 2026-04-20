@@ -39,6 +39,15 @@ public class Department : AuditableEntity
     }
     public void AssignHead(string userId)
     => DepartmentHeadUserId = userId;
+    public void Update(
+    string name,
+    string code,
+    string? description)
+    {
+        Name = name;
+        Code = code.ToUpper();
+        Description = description;
+    }
     public void SetMaxCapacity(int capacity)
     => MaxCapacity = capacity;
     public double CalculateCapacityUtilization()

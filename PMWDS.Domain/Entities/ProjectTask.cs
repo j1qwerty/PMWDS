@@ -100,6 +100,32 @@ public class ProjectTask : AuditableEntity
         _domainEvents.Add(new TaskAssignedEvent(
         Id, userId, assignedBy));
     }
+    public void UpdateDetails(
+    string title,
+    string description,
+    TaskPriority priority,
+    DateTime startDate,
+    DateTime dueDate,
+    int estimatedHours,
+    Guid? milestoneId)
+    {
+        Title = title;
+        Description = description;
+        Priority = priority;
+        StartDate = startDate;
+        DueDate = dueDate;
+        EstimatedHours = estimatedHours;
+        MilestoneId = milestoneId;
+    }
+    public void UpdateStatus(TaskStatus status)
+    {
+        Status = status;
+        if (status == TaskStatus.Completed)
+        {
+            CompletedDate = DateTime.UtcNow;
+            ProgressPercentage = 100;
+        }
+    }
     public void Start()
     {
         if (Status == TaskStatus.NotStarted

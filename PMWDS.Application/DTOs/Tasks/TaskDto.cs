@@ -47,7 +47,10 @@ public record TaskDto(
     MilestoneName: t.Milestone?.Name,
     ParentTaskId: t.ParentTaskId,
     AssignedToUserId: t.AssignedToUserId,
-    AssignedToUserName: t.AssignedUser?.FullName,
+    AssignedToUserName: t.Assignments
+    .Where(a => a.IsActive)
+    .Select(a => a.User != null ? a.User.FullName : null)
+    .FirstOrDefault(n => !string.IsNullOrEmpty(n)),
     IsEscalated: t.IsEscalated,
     EscalationLevel: t.EscalationLevel,
     EscalatedDate: t.EscalatedDate,
@@ -86,15 +89,15 @@ public record CreateTaskDto(
  Guid? MilestoneId,
  Guid? ParentTaskId,
  string? AssignedToUserId,
- Domain.Enums.Priority Priority =
- Domain.Enums.Priority.Medium);
+ Domain.Enums.TaskPriority Priority =
+ Domain.Enums.TaskPriority.Medium);
 public record UpdateTaskDto(
  string Title,
  string? Description,
  DateTime StartDate,
  DateTime DueDate,
  float EstimatedHours,
- Domain.Enums.Priority Priority,
+ Domain.Enums.TaskPriority Priority,
  Guid? MilestoneId);
 public record UpdateTaskProgressDto(
  double ProgressPercentage,

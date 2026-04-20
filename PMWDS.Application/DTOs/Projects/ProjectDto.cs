@@ -1,4 +1,6 @@
 using PMWDS.Domain.Entities;
+using PMWDS.Application.DTOs.Tasks;
+using PMWDS.Application.DTOs.Users;
 namespace PMWDS.Application.DTOs.Projects;
 
 public record ProjectDto(
@@ -54,7 +56,7 @@ public record ProjectDto(
     DepartmentId: p.DepartmentId,
     DepartmentName: p.Department?.Name,
     ProjectManagerId: p.ProjectManagerId,
-    ProjectManagerName: p.ProjectManager?.FullName,
+    ProjectManagerName: null,
     TotalTasks: p.Tasks?.Count ?? 0,
     CompletedTasks: p.Tasks?.Count(t =>
     t.Status ==
@@ -127,8 +129,8 @@ public record CreateProjectDto(
  decimal PlannedBudget,
  Guid DepartmentId,
  string ProjectManagerId,
- Domain.Enums.Priority Priority =
- Domain.Enums.Priority.Medium);
+ Domain.Enums.ProjectPriority Priority =
+ Domain.Enums.ProjectPriority.Medium);
 public record UpdateProjectDto(
  string Name,
  string? Description,
@@ -136,4 +138,4 @@ public record UpdateProjectDto(
  DateTime PlannedStartDate,
  DateTime PlannedEndDate,
  decimal PlannedBudget,
- Domain.Enums.Priority Priority);
+ Domain.Enums.ProjectPriority Priority);

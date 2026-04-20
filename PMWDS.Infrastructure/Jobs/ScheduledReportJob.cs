@@ -29,13 +29,13 @@ public class ScheduledReportJob : IScheduledReportJob
         "ScheduledReportJob started at {Time}",
         DateTime.UtcNow);
         var managers = await _uow.Users
-        .GetByRoleAsync("ProjectManager", ct);
+        .GetUsersByRoleAsync("ProjectManager", ct);
         foreach (var manager in managers)
         {
             try
             {
                 var projects = await _uow.Projects
-                .GetByManagerAsync(manager.Id, ct);
+                .GetByManagerAsync(manager.Id.ToString(), ct);
                 foreach (var project in projects)
                 {
                     var reportBytes = await _reports

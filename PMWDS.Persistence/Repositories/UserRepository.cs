@@ -48,25 +48,37 @@ public class UserRepository
     string roleName,
     CancellationToken ct = default)
     {
-        // Join with AspNetUserRoles via Identity
-        var userIds = await _context.UserRoles
-        .Join(_context.Roles,
-        ur => ur.RoleId,
-        r => r.Id,
-        (ur, r) => new { ur.UserId, r.Name })
-        .Where(x => x.Name == roleName)
-        .Select(x => x.UserId)
-        .ToListAsync(ct);
-        return await _dbSet
-        .Where(u => userIds.Contains(u.Id))
-        .ToListAsync(ct);
+        return roleName switch
+        {
+            "SuperAdmin" => await _dbSet
+                .Where(u => u.Email == "admin@pmwds.com" || u.JobTitle == "SuperAdmin")
+                .ToListAsync(ct),
+            "ProjectManager" => await _dbSet
+                .Where(u => _context.Projects.Any(p => p.ProjectManagerId == u.Id.ToString()))
+                .ToListAsync(ct),
+            "DepartmentHead" => await _dbSet
+                .Where(u => _context.Departments.Any(d => d.DepartmentHeadUserId == u.Id.ToString()))
+                .ToListAsync(ct),
+            "TeamLead" => await _dbSet
+                .Where(u => u.JobTitle.Contains("Lead"))
+                .ToListAsync(ct),
+            "TeamMember" => await _dbSet
+                .Where(u => u.IsActive)
+                .ToListAsync(ct),
+            _ => Enumerable.Empty<ApplicationUser>()
+        };
     }
     public async Task<double> GetUserWorkloadScoreAsync(
     string userId,
     CancellationToken ct = default)
     {
+        if (!Guid.TryParse(userId, out var parsedUserId))
+        {
+            return 0;
+        }
+
         var user = await _dbSet
-        .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        .FirstOrDefaultAsync(u => u.Id == parsedUserId, ct);
         return user?.AIWorkloadScore ?? 0;
     }
 }

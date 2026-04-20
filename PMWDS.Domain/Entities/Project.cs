@@ -106,6 +106,51 @@ public class Project : AuditableEntity
       Status = ProjectStatus.OnHold;
       DelayJustification = justification;
    }
+   public void Update(
+   string name,
+   string description,
+   string category,
+   DateTime plannedStartDate,
+   DateTime plannedEndDate,
+   decimal plannedBudget,
+   ProjectPriority priority)
+   {
+      Name = name;
+      Description = description;
+      Category = category;
+      PlannedStartDate = plannedStartDate;
+      PlannedEndDate = plannedEndDate;
+      PlannedBudget = plannedBudget;
+      Priority = priority;
+   }
+   public void UpdateStatus(ProjectStatus newStatus)
+   {
+      switch (newStatus)
+      {
+         case ProjectStatus.NotStarted:
+            Status = ProjectStatus.NotStarted;
+            ActualStartDate = null;
+            ActualEndDate = null;
+            break;
+         case ProjectStatus.InProgress:
+            if (Status == ProjectStatus.NotStarted)
+               ActualStartDate = DateTime.UtcNow;
+            Status = ProjectStatus.InProgress;
+            break;
+         case ProjectStatus.OnHold:
+            Status = ProjectStatus.OnHold;
+            break;
+         case ProjectStatus.Completed:
+            Status = ProjectStatus.Completed;
+            ActualEndDate = DateTime.UtcNow;
+            ProgressPercentage = 100;
+            break;
+         case ProjectStatus.Cancelled:
+         case ProjectStatus.Delayed:
+            Status = newStatus;
+            break;
+      }
+   }
    public void UpdateTimeline(
    DateTime newEndDate, string justification)
    {

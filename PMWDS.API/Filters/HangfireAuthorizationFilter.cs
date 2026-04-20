@@ -1,5 +1,5 @@
 using Hangfire.Dashboard;
-namespace PMWDS.API;
+namespace PMWDS.API.Filters;
 
 public class HangfireAuthorizationFilter
  : IDashboardAuthorizationFilter

@@ -1,44 +1,39 @@
 using Microsoft.Extensions.Logging;
-using PMWDS.AI.Services;
+using PMWDS.Application.Interfaces.Services;
+
 namespace PMWDS.Infrastructure.Jobs;
 
 public interface IAIModelTrainingJob
 {
     Task ExecuteAsync(CancellationToken ct);
 }
+
 public class AIModelTrainingJob : IAIModelTrainingJob
 {
-    private readonly IDelayPredictionEngine _engine;
-    private readonly ITaskAllocationEngine _allocation;
+    private readonly IAIService _ai;
     private readonly ILogger<AIModelTrainingJob> _logger;
+
     public AIModelTrainingJob(
-    IDelayPredictionEngine engine,
-    ITaskAllocationEngine allocation,
-    ILogger<AIModelTrainingJob> logger)
+        IAIService ai,
+        ILogger<AIModelTrainingJob> logger)
     {
-        _engine = engine;
-        _allocation = allocation;
+        _ai = ai;
         _logger = logger;
     }
+
     public async Task ExecuteAsync(CancellationToken ct)
     {
         _logger.LogInformation(
-        "AI Model Training started at {Time}",
-        DateTime.UtcNow);
+            "AI model training started at {Time}",
+            DateTime.UtcNow);
+
         try
         {
-            await _engine.TrainAsync(ct);
-            _logger.LogInformation(
-            "DelayPredictionEngine re-trained.");
+            await _ai.TrainModelsAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-            "Failed to re-train " +
-            "DelayPredictionEngine.");
+            _logger.LogError(ex, "AI model training failed.");
         }
-        _logger.LogInformation(
-        "AI Model Training completed at {Time}",
-        DateTime.UtcNow);
     }
 }

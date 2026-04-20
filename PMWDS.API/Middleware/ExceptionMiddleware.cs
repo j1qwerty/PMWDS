@@ -32,21 +32,33 @@ public class ExceptionMiddleware
     HttpContext ctx, Exception ex)
     {
         ctx.Response.ContentType = "application/json";
-        var (statusCode, message) = ex switch
+        HttpStatusCode statusCode;
+        string message;
+        if (ex is NotFoundException)
         {
-            NotFoundException e =>
-            (HttpStatusCode.NotFound, e.Message),
-            ValidationException e =>
-            (HttpStatusCode.BadRequest, e.Message),
-            UnauthorizedAccessException e =>
-            (HttpStatusCode.Unauthorized, e.Message),
-            ForbiddenException e =>
-            (HttpStatusCode.Forbidden, e.Message),
-            ConflictException e =>
-            (HttpStatusCode.Conflict, e.Message),
-            _ => (HttpStatusCode.InternalServerError,
-            "An unexpected error occurred.")
-        };
+            statusCode = HttpStatusCode.NotFound;
+            message = ex.Message;
+        }
+        else if (ex is ValidationException)
+        {
+            statusCode = HttpStatusCode.BadRequest;
+            message = ex.Message;
+        }
+        else if (ex is UnauthorizedAccessException)
+        {
+            statusCode = HttpStatusCode.Unauthorized;
+            message = ex.Message;
+        }
+        else if (ex is ConflictException)
+        {
+            statusCode = HttpStatusCode.Conflict;
+            message = ex.Message;
+        }
+        else
+        {
+            statusCode = HttpStatusCode.InternalServerError;
+            message = "An unexpected error occurred.";
+        }
         ctx.Response.StatusCode = (int)statusCode;
         var response = new
         {

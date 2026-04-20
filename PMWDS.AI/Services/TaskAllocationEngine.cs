@@ -6,7 +6,7 @@ namespace PMWDS.AI.Services;
 
 public interface ITaskAllocationEngine
 {
-    Task<AllocationRecommendationDto> RecommendAsync(
+    Task<AssigneeRecommendationDto> RecommendAsync(
     ProjectTask task,
     List<ApplicationUser> candidates,
     CancellationToken ct = default);
@@ -18,7 +18,7 @@ public class MLTaskAllocationEngine : ITaskAllocationEngine
     private ITransformer? _model;
     public MLTaskAllocationEngine()
     => _ml = new MLContext(seed: 42);
-    public async Task<AllocationRecommendationDto>
+    public async Task<AssigneeRecommendationDto>
     RecommendAsync(
     ProjectTask task,
     List<ApplicationUser> candidates,
@@ -37,21 +37,21 @@ public class MLTaskAllocationEngine : ITaskAllocationEngine
         .OrderByDescending(x => x.Score)
         .ToList();
         var best = scores.First();
-        return new AllocationRecommendationDto(
+        return new AssigneeRecommendationDto(
         TaskId: task.Id,
         RecommendedUserId: best.User.Id.ToString(),
         RecommendedUserName: best.User.FullName,
-        MatchScore: best.Score,
-
-
+        ConfidenceScore: best.Score,
         Rationale: BuildRationale(task, best.User),
-        FeatureScores: GetFeatureScores(task, best.User),
         Alternatives: scores.Skip(1).Take(3)
-        .Select(s => new AlternativeAssigneeDto(
+        .Select(s => new AlternativeAssignee(
         s.User.Id.ToString(),
        s.User.FullName,
-       s.Score))
-        .ToList()
+       s.Score,
+       $"Lower score than {best.User.FullName}"))
+        .ToList(),
+        FeatureScores: GetFeatureScores(task, best.User),
+        GeneratedAt: DateTime.UtcNow
         );
     }
     public Task TrainAsync(CancellationToken ct = default)

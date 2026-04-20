@@ -14,6 +14,7 @@ public class CurrentUserService : ICurrentUserService
     public string? UserName =>
     _http.HttpContext?.User
     .FindFirstValue(ClaimTypes.Name);
+    public string? FullName => UserName;
     public string? Email =>
     _http.HttpContext?.User
     .FindFirstValue(ClaimTypes.Email);

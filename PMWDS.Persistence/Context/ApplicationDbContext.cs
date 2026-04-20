@@ -1,18 +1,16 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Entities;
 namespace PMWDS.Persistence.Context;
 
 public class ApplicationDbContext
- : IdentityDbContext<ApplicationUser>
+ : DbContext
 {
     // ── Core ─────────────────────────────────────────────
     public DbSet<Department> Departments { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<Milestone> Milestones { get; set; }
     public DbSet<ProjectTask> Tasks { get; set; }
-    public DbSet<SubTask> SubTasks { get; set; }
     public DbSet<TaskDependency> TaskDependencies { get; set; }
     public DbSet<TaskAssignment> TaskAssignments { get; set; }
     public DbSet<TaskComment> TaskComments { get; set; }

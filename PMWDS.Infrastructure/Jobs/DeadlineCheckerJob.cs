@@ -28,16 +28,24 @@ public class DeadlineCheckerJob : IDeadlineCheckerJob
         _logger.LogInformation(
         "DeadlineCheckerJob started at {Time}",
         DateTime.UtcNow);
-        var tasks = await _uow.Tasks
-        .GetUpcomingDeadlinesAsync(
-        withinHours: 48, ct);
+        var tasks = (await _uow.Tasks.GetAllAsync(ct))
+        .Where(t =>
+        t.AssignedToUserId != null
+        && t.Status != Domain.Enums.TaskStatus.Completed
+        && t.Status != Domain.Enums.TaskStatus.Cancelled
+        && t.DueDate > DateTime.UtcNow
+        && t.DueDate <= DateTime.UtcNow.AddHours(48))
+        .ToList();
         foreach (var task in tasks)
         {
             try
             {
                 await _notifications
                 .SendDeadlineReminderAsync(
-                task.Id, ct);
+                task.Id,
+                Math.Max(0, (int)Math.Ceiling(
+                (task.DueDate - DateTime.UtcNow).TotalDays)),
+                ct);
             }
             catch (Exception ex)
             {
@@ -47,8 +55,8 @@ public class DeadlineCheckerJob : IDeadlineCheckerJob
                 task.Id);
             }
         }
-        var overdue = await _uow.Tasks
-        .GetOverdueTasksAsync(ct);
+        var overdue = (await _uow.Tasks
+        .GetOverdueTasksAsync(ct)).ToList();
         foreach (var task in overdue
         .Where(t => !t.IsEscalated))
         {

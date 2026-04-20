@@ -42,6 +42,19 @@ public class Milestone : AuditableEntity
         CompletedDate = DateTime.UtcNow;
         ProgressPercentage = 100;
     }
+    public void Update(
+    string name,
+    string description,
+    DateTime dueDate,
+    int order,
+    bool isCritical)
+    {
+        Name = name;
+        Description = description;
+        DueDate = dueDate;
+        Order = order;
+        IsCritical = isCritical;
+    }
     public void UpdateProgress(double percentage)
     {
         ProgressPercentage = Math.Clamp(percentage, 0, 100);

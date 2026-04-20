@@ -1,100 +1,74 @@
-using Microsoft.AspNetCore.Identity;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
+
 namespace PMWDS.Persistence.Migrations;
 
 public static class SeedData
 {
     public static async Task SeedAsync(
-    ApplicationDbContext context,
-    UserManager<ApplicationUser> userManager,
-    RoleManager<IdentityRole> roleManager)
+        ApplicationDbContext context,
+        CancellationToken ct = default)
     {
-        // ── Roles ─────────────────────────────────────────
-        string[] roles =
-        {
-            "SuperAdmin",
-            "DepartmentHead",
-            "ProjectManager",
-            "TeamLead",
-            "TeamMember",
-            "Viewer"
-            };
-        foreach (var role in roles)
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(
-                new IdentityRole(role));
-        // ── Super Admin User ──────────────────────────────
-        const string adminEmail = "admin@pmwds.com";
-        if (await userManager
-        .FindByEmailAsync(adminEmail) == null)
-        {
-            var admin = new ApplicationUser
-            {
-                UserName = adminEmail,
-                Email = adminEmail,
-                FirstName = "System",
-                LastName = "Administrator",
-                JobTitle = "Super Administrator",
-                IsActive = true,
-                EmailConfirmed = true,
-                AvailabilityStatus =
-            Domain.Enums.AvailabilityStatus.Available,
-                AvailabilityPercentage = 100
-            };
-            var result = await userManager
-            .CreateAsync(admin, "Admin@12345!");
-            if (result.Succeeded)
-                await userManager.AddToRoleAsync(
-                admin, "SuperAdmin");
-        }
-        // ── Default Department ────────────────────────────
         if (!context.Departments.Any())
         {
-            var dept = new Department
-            {
-                Id = Guid.NewGuid(),
+            var department = Department.Create(
+                "Information Technology",
+                "IT",
+                "Default PMWDS department");
+            department.SetCreatedBy("system");
 
-
-                Name = "Information Technology",
-                Code = "IT",
-                Description =
-            "IT Department — PMWDS Default",
-                Budget = 500000m,
-                IsActive = true
-            };
-            dept.SetCreated("system");
-            context.Departments.Add(dept);
-            await context.SaveChangesAsync();
+            await context.Departments.AddAsync(department, ct);
+            await context.SaveChangesAsync(ct);
         }
-        // ── Skills ────────────────────────────────────────
+
         if (!context.Skills.Any())
         {
             var skills = new[]
             {
-                "C#", ".NET", "Angular", "React",
-                "SQL Server", "Azure", "Python",
-                "Project Management", "Agile", "DevOps",
-                "UI/UX Design", "Business Analysis",
-                "Testing & QA", "Docker", "Kubernetes"
-                };
+                "C#",
+                ".NET",
+                "React",
+                "SQL Server",
+                "SQLite",
+                "Azure",
+                "Project Management",
+                "Agile",
+                "Testing",
+                "DevOps"
+            };
+
             foreach (var name in skills)
             {
-                var skill = new Skill
-                {
-                    Id = Guid.NewGuid(),
-                    Name = name,
-                    Category = name is
-                "C#" or ".NET" or "Angular" or
-                "React" or "Python" or "Docker" or
-                "Kubernetes"
-                ? "Technical"
-               : "Professional"
-                };
-                skill.SetCreated("system");
-                context.Skills.Add(skill);
+                var skill = Skill.Create(
+                    name,
+                    name is "Project Management" or "Agile" ? "Professional" : "Technical",
+                    $"{name} skill");
+                skill.SetCreatedBy("system");
+                await context.Skills.AddAsync(skill, ct);
             }
-            await context.SaveChangesAsync();
+
+            await context.SaveChangesAsync(ct);
+        }
+
+        if (!context.Set<ApplicationUser>().Any())
+        {
+            var departmentId = context.Departments.Select(d => d.Id).First();
+
+            var users = new[]
+            {
+                ApplicationUser.Create("admin@pmwds.com", "System", "Administrator", "ADMIN001", "SuperAdmin", departmentId),
+                ApplicationUser.Create("manager@pmwds.com", "Project", "Manager", "PM001", "ProjectManager", departmentId),
+                ApplicationUser.Create("lead@pmwds.com", "Team", "Lead", "TL001", "TeamLead", departmentId),
+                ApplicationUser.Create("member@pmwds.com", "Team", "Member", "TM001", "TeamMember", departmentId)
+            };
+
+            foreach (var user in users)
+            {
+                user.SetCreatedBy("system");
+                await context.Set<ApplicationUser>().AddAsync(user, ct);
+            }
+
+            await context.SaveChangesAsync(ct);
         }
     }
 }

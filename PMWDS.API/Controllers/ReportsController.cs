@@ -85,22 +85,14 @@ public class ReportsController : BaseApiController
     }
 
 
-  <summary>Generate resource utilization report</summary>
+    /// <summary>Generate resource utilization report</summary>
  [HttpPost("resource-utilization")]
  [Authorize(Policy = "Manager")]
- public async Task<IActionResult> ResourceUtilization(
- [FromBody] DepartmentWorkloadRequest req,
- [FromQuery] string format = "pdf",
- CancellationToken ct = default)
-    {
-        var bytes = await _reports
-        .GenerateResourceUtilizationReportAsync(
-        req.DepartmentId,
-        new DateRange(req.StartDate, req.EndDate),
-        format, ct);
-        return File(bytes, GetContentType(format),
-        $"resource-utilization.{format}");
-    }
+    public async Task<IActionResult> ResourceUtilization(
+    [FromBody] DepartmentWorkloadRequest req,
+    [FromQuery] string format = "pdf",
+    CancellationToken ct = default)
+    => StatusCode(StatusCodes.Status501NotImplemented);
     /// <summary>Generate AI insights report</summary>
     [HttpGet("ai-insights/{projectId:guid}")]
     [Authorize(Policy = "Manager")]
@@ -108,13 +100,7 @@ public class ReportsController : BaseApiController
     Guid projectId,
     [FromQuery] string format = "pdf",
     CancellationToken ct = default)
-    {
-        var bytes = await _reports
-        .GenerateAIInsightsReportAsync(
-        projectId, format, ct);
-        return File(bytes, GetContentType(format),
-        $"ai-insights.{format}");
-    }
+    => StatusCode(StatusCodes.Status501NotImplemented);
     private static string GetContentType(string format)
     => format.ToLower() switch
     {

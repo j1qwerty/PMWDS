@@ -4,7 +4,7 @@ namespace PMWDS.Application.Interfaces.Services;
 
 public interface IAIService
 {
-   Task<AllocationRecommendationDto> GetOptimalAssigneeAsync(
+   Task<AssigneeRecommendationDto> GetOptimalAssigneeAsync(
    Guid taskId,
    CancellationToken ct = default);
    Task<DelayPredictionDto> PredictTaskDelayAsync(

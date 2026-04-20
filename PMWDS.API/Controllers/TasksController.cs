@@ -1,180 +1,234 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.Application.DTOs.Tasks;
+using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Tasks.Commands;
-using PMWDS.Application.Features.Tasks.Queries;
+using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Entities;
+using PMWDS.Infrastructure.Services;
+
 namespace PMWDS.API.Controllers;
 
 public class TasksController : BaseApiController
 {
-    /// <summary>Get all tasks for a project</summary>
+    private readonly IUnitOfWork _uow;
+    private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
+    private readonly IFileStorageService _files;
+
+    public TasksController(
+        IUnitOfWork uow,
+        ICurrentUserService currentUser,
+        INotificationService notifications,
+        IFileStorageService files)
+    {
+        _uow = uow;
+        _currentUser = currentUser;
+        _notifications = notifications;
+        _files = files;
+    }
+
     [HttpGet("by-project/{projectId:guid}")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetByProject(
-    Guid projectId, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetTasksByProjectQuery(projectId), ct));
-    /// <summary>Get tasks assigned to current user</summary>
+    public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
+        => Ok((await _uow.Tasks.GetByProjectAsync(projectId, ct)).Select(TaskDto.FromEntity));
+
     [HttpGet("my-tasks")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetMyTasks(
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetMyTasksQuery(), ct));
-    /// <summary>Get task by ID with full details</summary>
+    public async Task<IActionResult> GetMyTasks(CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(_currentUser.UserId))
+            return Unauthorized();
+
+        var tasks = await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct);
+        return Ok(tasks.Select(TaskDto.FromEntity));
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetById(
-    Guid id, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetTaskDetailsQuery(id), ct));
-    /// <summary>Create a new task</summary>
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        return task == null ? NotFound() : Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpPost]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> Create(
-    [FromBody] CreateTaskDto dto,
-    CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreateTaskDto dto, CancellationToken ct)
     {
-        var result = await Mediator.Send(
-        new CreateTaskCommand(dto), ct);
-        return CreatedAtAction(
-        nameof(GetById),
-        new { id = result.Id },
-        result);
+        var result = await Mediator.Send(new CreateTaskCommand(dto), ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
-    /// <summary>Update task details</summary>
+
     [HttpPut("{id:guid}")]
     [Authorize(Policy = "TeamLead")]
-    public async Task<IActionResult> Update(
-    Guid id,
-    [FromBody] UpdateTaskDto dto,
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new UpdateTaskCommand(id, dto), ct));
-    /// <summary>Update task progress</summary>
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        task.UpdateDetails(
+            dto.Title,
+            dto.Description ?? string.Empty,
+            dto.Priority,
+            dto.StartDate,
+            dto.DueDate,
+            (int)dto.EstimatedHours,
+            dto.MilestoneId);
+        task.SetModified(_currentUser.UserId ?? "system");
+
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpPatch("{id:guid}/progress")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> UpdateProgress(
-    Guid id,
-    [FromBody] UpdateTaskProgressDto dto,
-    CancellationToken ct)
+    public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
+        => Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
 
-
-    => HandleResult(await Mediator.Send(
-    new UpdateTaskProgressCommand(id, dto), ct));
-    /// <summary>Update task status</summary>
     [HttpPatch("{id:guid}/status")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> UpdateStatus(
-    Guid id,
-    [FromBody] UpdateTaskStatusRequest req,
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new UpdateTaskStatusCommand(
-    id, req.NewStatus), ct));
-    /// <summary>Assign task to a user</summary>
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        task.UpdateStatus(req.NewStatus);
+        task.SetModified(_currentUser.UserId ?? "system");
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpPost("{id:guid}/assign")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> Assign(
-    Guid id,
-    [FromBody] AssignTaskRequest req,
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new AssignTaskCommand(
-    id,
-    req.AssigneeId,
-    req.UseAIRecommendation), ct));
-    /// <summary>Get AI optimal assignee recommendation</summary>
+    public async Task<IActionResult> Assign(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
+        => Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+
     [HttpGet("{id:guid}/ai/recommend-assignee")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetAIAssignee(
-    Guid id, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetAIAssigneeRecommendationQuery(id), ct));
-    /// <summary>Get AI delay prediction for a task</summary>
+    public async Task<IActionResult> GetAIAssignee(Guid id, CancellationToken ct)
+        => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(id), ct));
+
     [HttpGet("{id:guid}/ai/delay-prediction")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetDelayPrediction(
-    Guid id, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetTaskDelayPredictionQuery(id), ct));
-    /// <summary>Manually escalate a task</summary>
+    public async Task<IActionResult> GetDelayPrediction(Guid id, CancellationToken ct)
+        => Ok(await Mediator.Send(new GetTaskDelayPredictionQuery(id), ct));
+
     [HttpPost("{id:guid}/escalate")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> Escalate(
-    Guid id, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new EscalateTaskCommand(id), ct));
-    /// <summary>Add a comment to a task</summary>
+    public async Task<IActionResult> Escalate(Guid id, CancellationToken ct)
+        => Ok(await Mediator.Send(new EscalateTaskCommand(id), ct));
+
     [HttpPost("{id:guid}/comments")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> AddComment(
-    Guid id,
-    [FromBody] AddCommentRequest req,
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new AddTaskCommentCommand(id, req.Comment), ct));
-    /// <summary>Upload attachment to a task</summary>
+    public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentRequest req, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        task.AddComment(TaskComment.Create(
+            id,
+            _currentUser.UserId ?? "system",
+            req.Comment));
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpPost("{id:guid}/attachments")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> UploadAttachment(
-    Guid id, IFormFile file,
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new UploadTaskAttachmentCommand(id, file), ct));
-    /// <summary>Start time tracking for a task</summary>
+    public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        await using var stream = file.OpenReadStream();
+        var filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
+        task.AddAttachment(TaskAttachment.Create(
+            id,
+            file.FileName,
+            filePath,
+            file.ContentType,
+            file.Length,
+            _currentUser.UserId ?? "system"));
+
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpPost("{id:guid}/time/start")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> StartTimer(
-    Guid id,
-    [FromBody] StartTimerRequest req,
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new StartTaskTimerCommand(
-    id, req.Description, req.IsBillable), ct));
-    /// <summary>Stop time tracking for a task</summary>
+    public async Task<IActionResult> StartTimer(Guid id, [FromBody] StartTimerRequest req, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        task.LogTime(TimeEntry.StartTimer(
+            id,
+            _currentUser.UserId ?? "system",
+            req.Description,
+            req.IsBillable));
+
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpPost("{id:guid}/time/stop")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> StopTimer(
-    Guid id, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new StopTaskTimerCommand(id), ct));
-    /// <summary>Get overdue tasks</summary>
+    public async Task<IActionResult> StopTimer(Guid id, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        var runningEntry = task.TimeEntries
+            .Where(t => t.UserId == (_currentUser.UserId ?? "system") && !t.EndTime.HasValue)
+            .OrderByDescending(t => t.StartTime)
+            .FirstOrDefault();
+        if (runningEntry == null)
+            return NotFound("No running timer found.");
+
+        runningEntry.StopTimer();
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
     [HttpGet("overdue")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetOverdue(
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetOverdueTasksQuery(), ct));
-    /// <summary>Get escalated tasks</summary>
+    public async Task<IActionResult> GetOverdue(CancellationToken ct)
+        => Ok((await _uow.Tasks.GetOverdueTasksAsync(ct)).Select(TaskDto.FromEntity));
+
     [HttpGet("escalated")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetEscalated(
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetEscalatedTasksQuery(), ct));
-    /// <summary>Get unassigned tasks</summary>
+    public async Task<IActionResult> GetEscalated(CancellationToken ct)
+        => Ok((await _uow.Tasks.GetEscalatedTasksAsync(ct)).Select(TaskDto.FromEntity));
+
     [HttpGet("unassigned")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetUnassigned(
-    CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new GetUnassignedTasksQuery(), ct));
-    /// <summary>Delete a task</summary>
+    public async Task<IActionResult> GetUnassigned(CancellationToken ct)
+        => Ok((await _uow.Tasks.GetUnassignedTasksAsync(ct)).Select(TaskDto.FromEntity));
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> Delete(
-    Guid id, CancellationToken ct)
-    => HandleResult(await Mediator.Send(
-    new DeleteTaskCommand(id), ct));
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _uow.Tasks.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+        return NoContent();
+    }
 }
-public record UpdateTaskStatusRequest(
- Domain.Enums.TaskStatus NewStatus);
-public record AssignTaskRequest(
- string AssigneeId,
 
-
- bool UseAIRecommendation = false);
+public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus);
+public record AssignTaskRequest(string AssigneeId, bool UseAIRecommendation = false);
 public record AddCommentRequest(string Comment);
-public record StartTimerRequest(
- string Description, bool IsBillable = false);
+public record StartTimerRequest(string Description, bool IsBillable = false);

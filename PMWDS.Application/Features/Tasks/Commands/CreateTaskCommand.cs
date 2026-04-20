@@ -37,40 +37,38 @@ public class CreateTaskCommandHandler
         ?? throw new NotFoundException(
         "Project", dto.ProjectId);
         var task = ProjectTask.Create(
+        dto.ProjectId,
         dto.Title,
-        dto.Description,
+        dto.Description ?? string.Empty,
+        dto.Priority,
         dto.StartDate,
         dto.DueDate,
-        dto.EstimatedHours,
-        dto.ProjectId,
+        (int)dto.EstimatedHours,
         dto.MilestoneId,
-        dto.ParentTaskId,
-        dto.Priority);
-        task.SetCreated(
+        dto.ParentTaskId);
+        task.SetCreatedBy(
         _currentUser.UserId ?? "system");
-        // AI: get initial delay prediction
-        var prediction = await _ai
-        .PredictTaskDelayAsync(task.Id, ct)
-        .ContinueWith(t =>
-        t.IsCompletedSuccessfully
-        ? t.Result : null, ct);
-        if (prediction != null)
-        {
-            task.UpdateAIScores(
-            prediction.DelayProbability, 0,
-            string.Join("; ",
-            prediction.ContributingFactors));
-        }
         await _uow.Tasks.AddAsync(task, ct);
         // Auto-assign if specified
         if (!string.IsNullOrEmpty(dto.AssignedToUserId))
         {
-            task.AssignTo(dto.AssignedToUserId);
+            task.AssignTo(
+            dto.AssignedToUserId,
+            _currentUser.UserId ?? "system");
             await _notifications
-            .SendTaskAssignedAsync(
+            .SendTaskAssignmentAlertAsync(
             task.Id,
            dto.AssignedToUserId, ct);
         }
+        await _uow.SaveChangesAsync(ct);
+        var prediction = await _ai
+        .PredictTaskDelayAsync(task.Id, ct);
+        task.UpdateAIPrediction(
+        prediction.DelayProbability,
+        prediction.PredictedCompletionDate,
+        string.Join("; ",
+        prediction.ContributingFactors));
+        await _uow.Tasks.UpdateAsync(task, ct);
         await _uow.SaveChangesAsync(ct);
         await _audit.LogAsync(
         _currentUser.UserId ?? "system",

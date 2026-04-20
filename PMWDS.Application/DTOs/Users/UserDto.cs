@@ -27,11 +27,11 @@ public record UserDto(
     ApplicationUser u,
     IList<string>? roles = null)
     => new(
-    Id: u.Id,
+    Id: u.Id.ToString(),
     FirstName: u.FirstName,
     LastName: u.LastName,
     FullName: u.FullName,
-    Email: u.Email ?? "",
+    Email: u.Email,
     JobTitle: u.JobTitle,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
@@ -43,10 +43,10 @@ public record UserDto(
     AIPerformanceScore: u.AIPerformanceScore,
     ActiveTaskCount: u.GetActiveTaskCount(),
     IsActive: u.IsActive,
-    LastLoginDate: u.LastLoginDate,
+    LastLoginDate: null,
     Roles: roles?.ToList()
     ?? new(),
-    Skills: u.UserSkills?
+    Skills: u.Skills
     .Select(s =>
     s.Skill?.Name ?? "")
     .ToList()
@@ -62,7 +62,7 @@ public record UserSummaryDto(
 {
     public static UserSummaryDto FromEntity(
     ApplicationUser u)
-    => new(u.Id, u.FullName, u.JobTitle,
+    => new(u.Id.ToString(), u.FullName, u.JobTitle,
     u.AvailabilityPercentage,
     u.AIWorkloadScore);
 }
