@@ -103,13 +103,15 @@ string? DepartmentName,
  DateTime CreatedDate,
  string CreatedBy);
 public record ProjectSummaryDto(
- Guid Id,
- string ProjectCode,
- string Name,
- string Status,
- double ProgressPercentage,
- double AIHealthScore,
- double AIDelayRiskScore)
+  Guid Id,
+  string ProjectCode,
+  string Name,
+  string Status,
+  double ProgressPercentage,
+  double AIHealthScore,
+  double AIDelayRiskScore,
+  int DelayDays,
+  DateTime PlannedEndDate)
 {
     public static ProjectSummaryDto FromEntity(Project p)
     => new(
@@ -117,7 +119,9 @@ public record ProjectSummaryDto(
     p.Status.ToString(),
     p.ProgressPercentage,
     (double)p.AIHealthScore,
-    (double)p.AIDelayRiskScore);
+    (double)p.AIDelayRiskScore,
+    p.GetDelayDays(),
+    p.PlannedEndDate);
 }
 public record CreateProjectDto(
  string ProjectCode,

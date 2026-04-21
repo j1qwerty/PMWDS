@@ -1,5 +1,4 @@
 using MediatR;
-using AutoMapper;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Enums;
@@ -8,39 +7,25 @@ namespace PMWDS.Application.Features.Projects.Queries;
 public record GetProjectDashboardQuery(
  Guid? DepartmentId = null) : IRequest<ProjectDashboardDto>;
 public record ProjectDashboardDto(
- int TotalProjects,
- int ActiveProjects,
- int CompletedProjects,
- int OverdueProjects,
- int HighRiskProjects,
- double AverageHealthScore,
- decimal TotalBudget,
- decimal TotalActualCost,
- List<ProjectSummaryDto> RecentProjects,
- List<ProjectSummaryDto> AtRiskProjects
-);
-public record ProjectSummaryDto(
- Guid Id,
- string ProjectCode,
- string Name,
- string Status,
- double ProgressPercentage,
- double AIHealthScore,
- double AIDelayRiskScore,
- int DelayDays,
- DateTime PlannedEndDate
+  int TotalProjects,
+  int ActiveProjects,
+  int CompletedProjects,
+  int OverdueProjects,
+  int HighRiskProjects,
+  double AverageHealthScore,
+  decimal TotalBudget,
+  decimal TotalActualCost,
+  List<ProjectSummaryDto> RecentProjects,
+  List<ProjectSummaryDto> AtRiskProjects
 );
 public class GetProjectDashboardQueryHandler
  : IRequestHandler<GetProjectDashboardQuery,
  ProjectDashboardDto>
 {
     private readonly IUnitOfWork _uow;
-    private readonly IMapper _mapper;
-    public GetProjectDashboardQueryHandler(
-    IUnitOfWork uow, IMapper mapper)
+    public GetProjectDashboardQueryHandler(IUnitOfWork uow)
     {
         _uow = uow;
-        _mapper = mapper;
     }
     public async Task<ProjectDashboardDto> Handle(
     GetProjectDashboardQuery request,
@@ -69,13 +54,13 @@ public class GetProjectDashboardQueryHandler
         TotalActualCost: list.Sum(p => p.ActualCost),
         RecentProjects: list.OrderByDescending(p => p.CreatedDate)
         .Take(5)
-        .Select(p => _mapper.Map<ProjectSummaryDto>(p))
+        .Select(p => ProjectSummaryDto.FromEntity(p))
         .ToList(),
         AtRiskProjects: list
         .Where(p => p.AIDelayRiskScore >= 0.7)
         .OrderByDescending(p => p.AIDelayRiskScore)
         .Take(10)
-        .Select(p => _mapper.Map<ProjectSummaryDto>(p))
+        .Select(p => ProjectSummaryDto.FromEntity(p))
         .ToList()
         );
     }

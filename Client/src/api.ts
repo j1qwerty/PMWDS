@@ -62,7 +62,12 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const text = await response.text();
+    let message = text;
+    try {
+      const json = JSON.parse(text);
+      message = json.message || json.error || text;
+    } catch {}
     throw new Error(message || `Request failed with status ${response.status}`);
   }
 

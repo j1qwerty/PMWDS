@@ -51,20 +51,21 @@ export function DashboardPage() {
   useEffect(() => {
     if (!auth) return;
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       api.getDashboard(auth.token),
       api.getMyTasks(auth.token),
       api.getNotifications(auth.token, true),
       hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardData, tasks, notifications, overdueTasks]) => {
-        setDashboard(dashboardData);
-        setMyTasks(tasks);
-        setUnread(notifications);
-        setOverdue(overdueTasks as Task[]);
-        setError("");
+      .then(([dashboardResult, tasksResult, notificationsResult, overdueResult]) => {
+        if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
+        if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
+        if (notificationsResult.status === "fulfilled") setUnread(notificationsResult.value);
+        if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
+        if (dashboardResult.status === "rejected") {
+          setError(dashboardResult.reason instanceof Error ? dashboardResult.reason.message : "Dashboard unavailable");
+        }
       })
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "Failed to load dashboard."))
       .finally(() => setLoading(false));
   }, [auth]);
 
@@ -136,11 +137,11 @@ export function ProjectsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [_milestones, setMilestones] = useState<Milestone[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [message, setMessage] = useState("");
+  const [_message, setMessage] = useState("");
   const [form, setForm] = useState({
     projectCode: "",
     name: "",
@@ -182,16 +183,16 @@ export function ProjectsPage() {
 
   useEffect(() => {
     if (!auth || !selectedProjectId) return;
-    Promise.all([
+    Promise.allSettled([
       api.getMilestonesByProject(auth.token, selectedProjectId),
       api.getProjectInsights(auth.token, selectedProjectId),
       hasRole("SuperAdmin", "ProjectManager", "DepartmentHead")
         ? api.getProjectHealth(auth.token, selectedProjectId)
         : Promise.resolve(null),
-    ]).then(([milestoneData, insightData, healthData]) => {
-      setMilestones(milestoneData);
-      setInsights(insightData);
-      setHealth(healthData as ProjectHealth | null);
+    ]).then(([milestoneResult, insightResult, healthResult]) => {
+      if (milestoneResult.status === "fulfilled") setMilestones(milestoneResult.value);
+      if (insightResult.status === "fulfilled") setInsights(insightResult.value);
+      if (healthResult.status === "fulfilled") setHealth(healthResult.value as ProjectHealth | null);
     });
   }, [auth, selectedProjectId]);
 
@@ -201,13 +202,6 @@ export function ProjectsPage() {
     await api.createProject(auth.token, form);
     setMessage("Project created.");
     await loadProjects();
-  }
-
-  async function handleMilestoneCreate(event: FormEvent) {
-    event.preventDefault();
-    if (!auth || !selectedProjectId) return;
-    await api.createMilestone(auth.token, { ...milestoneForm, projectId: selectedProjectId });
-    setMilestones(await api.getMilestonesByProject(auth.token, selectedProjectId));
   }
 
   return (
@@ -336,6 +330,31 @@ export function ProjectsPage() {
               </select>
             </label>
             <button className="primary-button wide" type="submit">Create Project</button>
+          </form>
+        </Panel>
+      ) : null}
+
+      {selectedProjectId && hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
+        <Panel title="Create Milestone" subtitle="Add milestone to selected project">
+          <form
+            className="form-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!auth || !selectedProjectId) return;
+              void api.createMilestone(auth.token, { ...milestoneForm, projectId: selectedProjectId }).then(() => {
+                setMessage("Milestone created.");
+              });
+            }}
+          >
+            <label><span>Name</span><input value={milestoneForm.name} onChange={(event) => setMilestoneForm({ ...milestoneForm, name: event.target.value })} /></label>
+            <label><span>Due Date</span><input type="date" value={milestoneForm.dueDate} onChange={(event) => setMilestoneForm({ ...milestoneForm, dueDate: event.target.value })} /></label>
+            <label className="wide"><span>Description</span><textarea value={milestoneForm.description} onChange={(event) => setMilestoneForm({ ...milestoneForm, description: event.target.value })} /></label>
+            <label><span>Order</span><input type="number" value={milestoneForm.order} onChange={(event) => setMilestoneForm({ ...milestoneForm, order: Number(event.target.value) })} /></label>
+            <label>
+              <span>Critical</span>
+              <input type="checkbox" checked={milestoneForm.isCritical} onChange={(event) => setMilestoneForm({ ...milestoneForm, isCritical: event.target.checked })} />
+            </label>
+            <button className="primary-button wide" type="submit">Create Milestone</button>
           </form>
         </Panel>
       ) : null}
@@ -873,6 +892,73 @@ export function ReportsPage() {
               <span>Downloaded</span>
             </div>
           ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+export function LoginPage() {
+  const [email, setEmail] = useState("admin@pmwds.com");
+  const [password, setPassword] = useState("ADMIN001");
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await login(email, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    }
+  };
+
+  return (
+    <div className="login-container">
+      <div className="login-box">
+        <h2>PMWDS Login</h2>
+        {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+          />
+          <button type="submit">Login</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export function SettingsPage() {
+  const { logout, auth } = useAuth();
+  const [saved, setSaved] = useState("");
+
+  const handleSave = () => {
+    setSaved("Settings saved!");
+    setTimeout(() => setSaved(""), 2000);
+  };
+
+  return (
+    <div className="page">
+      <Panel title="Settings" subtitle="Manage your preferences">
+        {saved && <div style={{ color: "green", marginBottom: "1rem" }}>{saved}</div>}
+        <div className="form-grid">
+          <label><span>Email</span><input value={auth?.email ?? ""} disabled /></label>
+          <label><span>Name</span><input value={auth?.fullName ?? ""} disabled /></label>
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <button onClick={handleSave}>Save Settings</button>
+          <button onClick={logout} style={{ marginLeft: "0.5rem", background: "#dc3545" }}>Logout</button>
         </div>
       </Panel>
     </div>

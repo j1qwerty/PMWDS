@@ -158,11 +158,15 @@ export function TaskList({
 export function SimpleProjectList({
   projects,
 }: {
-  projects: Array<{ id: string; name: string; status: string; progressPercentage?: number }>;
+  projects?: Array<{ id: string; name: string; status: string; progressPercentage?: number }>;
 }) {
+  const projectList = projects ?? [];
+  if (!projectList.length) {
+    return <EmptyState title="No projects" description="No high-risk projects to display." compact />;
+  }
   return (
     <div className="list-column">
-      {projects.map((project) => (
+      {projectList.map((project) => (
         <div className="list-card" key={project.id}>
           <strong>{project.name}</strong>
           <span>{project.status}</span>

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -17,7 +18,7 @@ public class OpenAICompatibleChatEngineTests
     {
         var settings = BuildSettings();
         settings.OpenRouter.Enabled = true;
-        settings.OpenRouter.ApiKey = "test-key";
+        settings.OpenRouter.ApiKey = "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";
 
         var handler = new StubHttpMessageHandler(_ =>
             new HttpResponseMessage(HttpStatusCode.OK)
@@ -82,6 +83,40 @@ public class OpenAICompatibleChatEngineTests
         Assert.Contains("provider test ok", result.RawResponse);
     }
 
+    [Fact]
+    public async Task TestProviderAsync_Sends_Hi_To_OpenRouter_And_Logs_Response()
+    {
+        var settings = BuildSettings();
+        settings.OpenRouter.Enabled = true;
+        settings.OpenRouter.ApiKey = "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";
+        settings.OpenRouter.DefaultModel = "openai/gpt-oss-120b:free";
+        settings.OpenRouter.Headers = new Dictionary<string, string>
+        {
+            ["HTTP-Referer"] = "http://localhost:5177",
+            ["X-OpenRouter-Title"] = "PMWDS"
+        };
+
+        var httpClient = new HttpClient();
+        var engine = new OpenAICompatibleChatEngine(httpClient, Options.Create(settings), new NullUnitOfWork());
+
+        Console.WriteLine("=== Testing OpenRouter Provider ===");
+        Console.WriteLine($"Model: {settings.OpenRouter.DefaultModel}");
+        Console.WriteLine($"ApiKey: {settings.OpenRouter.ApiKey.Substring(0, 10)}...");
+        Console.WriteLine($"Headers: {string.Join(", ", settings.OpenRouter.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+        Console.WriteLine("Sending: hi");
+        Console.WriteLine();
+
+        var result = await engine.TestProviderAsync("OpenRouter");
+
+        Console.WriteLine($"Provider: {result.Provider}");
+        Console.WriteLine($"Model: {result.Model}");
+        Console.WriteLine($"Success: {result.Success}");
+        Console.WriteLine($"Message: {result.Message}");
+        Console.WriteLine($"Response: {result.RawResponse}");
+        Console.WriteLine($"ExecutedAt: {result.ExecutedAtUtc}");
+        Console.WriteLine("===================================");
+    }
+
     private static OpenAICompatibleChatEngine CreateEngine(
         AISettings settings,
         HttpMessageHandler handler)
@@ -105,7 +140,12 @@ public class OpenAICompatibleChatEngineTests
             OpenRouter = new AIProviderOptions
             {
                 BaseUrl = "https://openrouter.ai/api/v1",
-                DefaultModel = "openai/gpt-4o-mini"
+                DefaultModel = "openai/gpt-oss-120b:free",
+                Headers = new Dictionary<string, string>
+                {
+                    ["HTTP-Referer"] = "http://localhost:5177",
+                    ["X-OpenRouter-Title"] = "PMWDS"
+                }
             },
             OpenCode = new AIProviderOptions
             {
