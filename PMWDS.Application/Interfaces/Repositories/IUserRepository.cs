@@ -5,6 +5,8 @@ public interface IUserRepository : IRepository<ApplicationUser>
 {
     Task<ApplicationUser?> GetByEmailAsync(string email,
     CancellationToken ct = default);
+    Task<ApplicationUser?> GetByIdWithSkillsAsync(
+    Guid userId, CancellationToken ct = default);
     Task<IEnumerable<ApplicationUser>> GetByDepartmentAsync(
     Guid departmentId,
     CancellationToken ct = default);

@@ -13,6 +13,12 @@ public class UserRepository
     string email, CancellationToken ct = default)
     => await _dbSet.FirstOrDefaultAsync(
     u => u.Email == email.ToLower(), ct);
+    public async Task<ApplicationUser?> GetByIdWithSkillsAsync(
+    Guid userId, CancellationToken ct = default)
+    => await _dbSet
+    .Include(u => u.Skills)
+    .ThenInclude(s => s.Skill)
+    .FirstOrDefaultAsync(u => u.Id == userId, ct);
     public async Task<IEnumerable<ApplicationUser>>
     GetByDepartmentAsync(
     Guid departmentId,

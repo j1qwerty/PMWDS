@@ -4,8 +4,6 @@ namespace PMWDS.Application.DTOs.Users;
 public record UserDto(
  string Id,
  string FirstName,
-
-
  string LastName,
  string FullName,
  string Email,
@@ -21,7 +19,7 @@ public record UserDto(
  bool IsActive,
  DateTime? LastLoginDate,
  List<string> Roles,
- List<string> Skills)
+ List<string>? Skills)
 {
     public static UserDto FromEntity(
     ApplicationUser u,
@@ -46,13 +44,43 @@ public record UserDto(
     LastLoginDate: null,
     Roles: roles?.ToList()
     ?? new(),
+    Skills: null
+    );
+    public static UserDto FromEntityWithSkills(
+    ApplicationUser u,
+    IList<string>? roles = null)
+    => new(
+    Id: u.Id.ToString(),
+    FirstName: u.FirstName,
+    LastName: u.LastName,
+    FullName: u.FullName,
+    Email: u.Email,
+    JobTitle: u.JobTitle,
+    Department: u.Department?.Name,
+    DepartmentId: u.DepartmentId,
+    AvailabilityStatus: u.AvailabilityStatus
+    .ToString(),
+    AvailabilityPercentage: u.AvailabilityPercentage,
+    AIWorkloadScore: u.AIWorkloadScore,
+    AIBurnoutRiskScore: u.AIBurnoutRiskScore,
+    AIPerformanceScore: u.AIPerformanceScore,
+    ActiveTaskCount: u.GetActiveTaskCount(),
+    IsActive: u.IsActive,
+    LastLoginDate: null,
+    Roles: roles?.ToList()
+    ?? new(),
     Skills: u.Skills
-    .Select(s =>
-    s.Skill?.Name ?? "")
+    .Select(s => s.Skill?.Name ?? "")
     .ToList()
-    ?? new()
     );
 }
+
+public record UserSkillDto(
+ Guid SkillId,
+ string SkillName,
+ int ProficiencyLevel,
+ int ExperienceMonths,
+ DateTime LastUsed);
 public record UserSummaryDto(
  string Id,
  string FullName,

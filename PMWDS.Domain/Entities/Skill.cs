@@ -24,4 +24,10 @@ public class Skill : AuditableEntity
             ParentSkillId = parentSkillId
         };
     }
+    public void Update(string name, string category, string description)
+    {
+        Name = name;
+        Category = category;
+        Description = description;
+    }
 }

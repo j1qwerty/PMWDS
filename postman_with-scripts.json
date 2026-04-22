@@ -1954,7 +1954,6 @@
                 }
             ]
         },
-       
         {
             "name": "Users",
             "item": [
@@ -2255,9 +2254,68 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"skillId\": \"00000000-0000-0000-0000-000000000001\",\n  \"proficiencyLevel\": 4,\n  \"experienceMonths\": 36\n}"
+                            "raw": "{\n  \"skillId\": \"A81D8794-8F3C-47F6-91AB-381127B1AD4A\",\n  \"proficiencyLevel\": 4,\n  \"experienceMonths\": 36\n}"
                         },
                         "url": "{{baseUrl}}/users/{{userId}}/skills"
+                    }
+                },
+                {
+                    "name": "Update User Skill",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== Update User Skill ===');",
+                                    "const skillId = pm.collectionVariables.get('skillId') || pm.environment.get('skillId');",
+                                    "console.log('Updating skill ID:', skillId);",
+                                    "if (pm.response.code === 200) console.log('✅ User skill updated');",
+                                    "pm.test('Update user skill successful', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"proficiencyLevel\": 5,\n  \"experienceMonths\": 12\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}/skills/{{skillId}}"
+                    }
+                },
+                {
+                    "name": "Remove Skill from User",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== Remove Skill from User ===');",
+                                    "const skillId = pm.collectionVariables.get('skillId') || pm.environment.get('skillId');",
+                                    "console.log('Removing skill ID:', skillId);",
+                                    "if (pm.response.code === 200 || pm.response.code === 204) {",
+                                    "    console.log('✅ Skill removed from user');",
+                                    "    pm.collectionVariables.unset('userSkillId');",
+                                    "}",
+                                    "pm.test('Remove skill from user successful', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/users/{{userId}}/skills/{{skillId}}"
                     }
                 },
                 {
@@ -2361,6 +2419,161 @@
                     "request": {
                         "method": "PATCH",
                         "url": "{{baseUrl}}/users/{{userId}}/deactivate"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Skills",
+            "item": [
+                {
+                    "name": "List All Skills",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== List All Skills ===');",
+                                    "if (pm.response.code === 200) {",
+                                    "    const res = pm.response.json();",
+                                    "    const count = Array.isArray(res) ? res.length : (res.data ? res.data.length : 'unknown');",
+                                    "    console.log(`✅ Retrieved ${count} skills`);",
+                                    "}",
+                                    "pm.test('List skills successful', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/skills"
+                    }
+                },
+                {
+                    "name": "Get Skill by ID",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== Get Skill by ID ===');",
+                                    "const skillId = pm.collectionVariables.get('skillId') || pm.environment.get('skillId');",
+                                    "console.log('Skill ID:', skillId);",
+                                    "if (!skillId) console.warn('⚠️ No skillId found. Create a skill first.');",
+                                    "if (pm.response.code === 200) console.log('✅ Skill found');",
+                                    "pm.test('Get skill by ID successful', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/skills/{{skillId}}"
+                    }
+                },
+                {
+                    "name": "Create Skill",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== Create Skill ===');",
+                                    "if (pm.response.code === 201 || pm.response.code === 200) {",
+                                    "    const res = pm.response.json();",
+                                    "    console.log('✅ Skill created');",
+                                    "    const skillId = res.id || res.skillId || (res.data && res.data.id);",
+                                    "    if (skillId) {",
+                                    "        pm.collectionVariables.set('skillId', skillId);",
+                                    "        pm.environment.set('skillId', skillId);",
+                                    "        console.log('✅ Skill ID saved:', skillId);",
+                                    "    }",
+                                    "}",
+                                    "pm.test('Create skill successful', () => {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Python\",\n  \"category\": \"Technical\",\n  \"description\": \"Python programming language\"\n}"
+                        },
+                        "url": "{{baseUrl}}/skills"
+                    }
+                },
+                {
+                    "name": "Update Skill",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== Update Skill ===');",
+                                    "const skillId = pm.collectionVariables.get('skillId') || pm.environment.get('skillId');",
+                                    "console.log('Updating skill ID:', skillId);",
+                                    "if (!skillId) console.warn('⚠️ No skillId found.');",
+                                    "if (pm.response.code === 200) console.log('✅ Skill updated');",
+                                    "pm.test('Update skill successful', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Python 3\",\n  \"category\": \"Technical\",\n  \"description\": \"Python 3.x programming language\"\n}"
+                        },
+                        "url": "{{baseUrl}}/skills/{{skillId}}"
+                    }
+                },
+                {
+                    "name": "Delete Skill",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "console.log('=== Delete Skill ===');",
+                                    "const skillId = pm.collectionVariables.get('skillId') || pm.environment.get('skillId');",
+                                    "console.log('Deleting skill ID:', skillId);",
+                                    "if (pm.response.code === 200 || pm.response.code === 204) {",
+                                    "    console.log('✅ Skill deleted');",
+                                    "    pm.collectionVariables.unset('skillId');",
+                                    "    pm.environment.unset('skillId');",
+                                    "}",
+                                    "pm.test('Delete skill successful', () => {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/skills/{{skillId}}"
                     }
                 }
             ]
@@ -3075,7 +3288,7 @@
                 }
             ]
         },
-         {
+        {
             "name": "AI",
             "item": [
                 {

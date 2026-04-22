@@ -42,8 +42,8 @@ public class UsersController : BaseApiController
             return BadRequest("Invalid user id.");
         }
 
-        var user = await _uow.Users.GetByIdAsync(parsedId, ct);
-        return user == null ? NotFound() : Ok(UserDto.FromEntity(user, ResolveRoles(user)));
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        return user == null ? NotFound() : Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
     }
 
     [HttpGet("me")]
@@ -56,8 +56,8 @@ public class UsersController : BaseApiController
             return Unauthorized();
         }
 
-        var user = await _uow.Users.GetByIdAsync(parsedId, ct);
-        return user == null ? NotFound() : Ok(UserDto.FromEntity(user, ResolveRoles(user)));
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        return user == null ? NotFound() : Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
     }
 
     [HttpPut("{id}")]
@@ -72,7 +72,7 @@ public class UsersController : BaseApiController
             return BadRequest("Invalid user id.");
         }
 
-        var user = await _uow.Users.GetByIdAsync(parsedId, ct);
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
         if (user == null)
         {
             return NotFound();
@@ -94,7 +94,7 @@ public class UsersController : BaseApiController
 
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(UserDto.FromEntity(user, ResolveRoles(user)));
+        return Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
     }
 
     [HttpPost("register")]
@@ -103,6 +103,14 @@ public class UsersController : BaseApiController
         [FromBody] RegisterUserDto dto,
         CancellationToken ct)
     {
+        var existingEmail = await _uow.Users.FindAsync(
+            u => u.Email == dto.Email.ToLower().Trim(),
+            ct);
+        if (existingEmail.Any())
+        {
+            return Conflict(new { message = $"A user with email '{dto.Email}' already exists." });
+        }
+
         var user = ApplicationUser.Create(
             dto.Email,
             dto.FirstName,
@@ -115,7 +123,7 @@ public class UsersController : BaseApiController
         await _uow.Users.AddAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
 
-        return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntity(user, ResolveRoles(user)));
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
     }
 
     [HttpPatch("{id}/availability")]
@@ -130,7 +138,7 @@ public class UsersController : BaseApiController
             return BadRequest("Invalid user id.");
         }
 
-        var user = await _uow.Users.GetByIdAsync(parsedId, ct);
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
         if (user == null)
         {
             return NotFound();
@@ -139,7 +147,7 @@ public class UsersController : BaseApiController
         user.UpdateAvailability(req.Status, req.AvailabilityPercentage);
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(UserDto.FromEntity(user, ResolveRoles(user)));
+        return Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
     }
 
     [HttpPost("{id}/skills")]
@@ -154,21 +162,136 @@ public class UsersController : BaseApiController
             return BadRequest("Invalid user id.");
         }
 
-        var user = await _uow.Users.GetByIdAsync(parsedId, ct);
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
         if (user == null)
         {
             return NotFound();
         }
 
-        user.AddSkill(UserSkill.Create(
-            user.Id,
-            req.SkillId,
-            req.ProficiencyLevel,
-            req.ExperienceMonths));
+        var existing = user.Skills
+            .FirstOrDefault(s => s.SkillId == req.SkillId);
 
-        await _uow.Users.UpdateAsync(user, ct);
+        if (existing != null)
+        {
+            existing.UpdateProficiency(req.ProficiencyLevel);
+            existing.UpdateExperience(req.ExperienceMonths);
+        }
+        else
+        {
+            var skill = UserSkill.Create(
+                user.Id,
+                req.SkillId,
+                req.ProficiencyLevel,
+                req.ExperienceMonths);
+            await _uow.UserSkills.AddAsync(skill, ct);
+        }
+
         await _uow.SaveChangesAsync(ct);
-        return Ok(UserDto.FromEntity(user, ResolveRoles(user)));
+
+        var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        var skillDtos = refreshed!.Skills
+            .Select(s => new UserSkillDto(
+                s.SkillId,
+                s.Skill?.Name ?? "",
+                s.ProficiencyLevel,
+                s.ExperienceMonths,
+                s.LastUsed))
+            .ToList();
+        return Ok(new
+        {
+            User = UserDto.FromEntityWithSkills(refreshed, ResolveRoles(refreshed)),
+            Skills = skillDtos
+        });
+    }
+
+    [HttpPut("{id}/skills/{skillId:guid}")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> UpdateSkill(
+        string id,
+        Guid skillId,
+        [FromBody] UpdateUserSkillRequest req,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(id, out var parsedId))
+        {
+            return BadRequest("Invalid user id.");
+        }
+
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var existing = user.Skills
+            .FirstOrDefault(s => s.SkillId == skillId);
+        if (existing == null)
+        {
+            return NotFound(new { message = "User does not have this skill." });
+        }
+
+        existing.UpdateProficiency(req.ProficiencyLevel);
+        existing.UpdateExperience(req.ExperienceMonths);
+        await _uow.SaveChangesAsync(ct);
+
+        var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        var skillDtos = refreshed!.Skills
+            .Select(s => new UserSkillDto(
+                s.SkillId,
+                s.Skill?.Name ?? "",
+                s.ProficiencyLevel,
+                s.ExperienceMonths,
+                s.LastUsed))
+            .ToList();
+        return Ok(new
+        {
+            User = UserDto.FromEntityWithSkills(refreshed, ResolveRoles(refreshed)),
+            Skills = skillDtos
+        });
+    }
+
+    [HttpDelete("{id}/skills/{skillId:guid}")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> RemoveSkill(
+        string id,
+        Guid skillId,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(id, out var parsedId))
+        {
+            return BadRequest("Invalid user id.");
+        }
+
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var existing = user.Skills
+            .FirstOrDefault(s => s.SkillId == skillId);
+        if (existing == null)
+        {
+            return NotFound(new { message = "User does not have this skill." });
+        }
+
+        await _uow.UserSkills.DeleteAsync(existing.Id, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        var skillDtos = refreshed!.Skills
+            .Select(s => new UserSkillDto(
+                s.SkillId,
+                s.Skill?.Name ?? "",
+                s.ProficiencyLevel,
+                s.ExperienceMonths,
+                s.LastUsed))
+            .ToList();
+        return Ok(new
+        {
+            User = UserDto.FromEntityWithSkills(refreshed, ResolveRoles(refreshed)),
+            Skills = skillDtos
+        });
     }
 
     [HttpGet("available")]
@@ -176,7 +299,7 @@ public class UsersController : BaseApiController
     public async Task<IActionResult> GetAvailable(CancellationToken ct)
     {
         var users = await _uow.Users.GetAvailableUsersAsync(ct);
-        return Ok(users.Select(u => UserDto.FromEntity(u, ResolveRoles(u))));
+        return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, ResolveRoles(u))));
     }
 
     [HttpGet("workload")]
@@ -228,5 +351,9 @@ public record UpdateAvailabilityRequest(
 
 public record AddUserSkillRequest(
     Guid SkillId,
+    int ProficiencyLevel,
+    int ExperienceMonths);
+
+public record UpdateUserSkillRequest(
     int ProficiencyLevel,
     int ExperienceMonths);

@@ -35,6 +35,12 @@ public class UserSkill : BaseEntity
         ExperienceMonths += months;
         LastUsed = DateTime.UtcNow;
     }
+
+     public void UpdateExperience(int months)
+    {
+        ExperienceMonths = months;
+        LastUsed = DateTime.UtcNow;
+    }
     public void SetAIConfidenceScore(double score)
     => AIConfidenceScore = Math.Clamp(score, 0, 1);
 }
