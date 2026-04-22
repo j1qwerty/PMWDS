@@ -19,6 +19,10 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Skill> Skills { get; }
     public IRepository<ProjectDocument> ProjectDocuments { get; }
     public IRepository<UserSkill> UserSkills { get; }
+public IRepository<TaskAssignment> TaskAssignments { get; }
+public IRepository<TaskComment> TaskComments { get; }
+public IRepository<TaskAttachment> TaskAttachments { get; }
+    public IRepository<TimeEntry> TimeEntries { get; }
     public UnitOfWork(ApplicationDbContext context)
     {
         _context = context;
@@ -32,6 +36,10 @@ public class UnitOfWork : IUnitOfWork
         Skills = new BaseRepository<Skill>(context);
         ProjectDocuments = new BaseRepository<ProjectDocument>(context);
         UserSkills = new BaseRepository<UserSkill>(context);
+        TaskAssignments = new BaseRepository<TaskAssignment>(context);
+        TaskComments = new BaseRepository<TaskComment>(context);
+        TaskAttachments = new BaseRepository<TaskAttachment>(context);
+        TimeEntries = new BaseRepository<TimeEntry>(context);
     }
     public async Task<int> SaveChangesAsync(
     CancellationToken ct = default)

@@ -13,6 +13,10 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.Skill> Skills { get; }
     IRepository<Domain.Entities.ProjectDocument> ProjectDocuments { get; }
     IRepository<Domain.Entities.UserSkill> UserSkills { get; }
+    IRepository<Domain.Entities.TaskAssignment> TaskAssignments { get; }
+    IRepository<Domain.Entities.TaskComment> TaskComments { get; }
+    IRepository<Domain.Entities.TaskAttachment> TaskAttachments { get; }
+    IRepository<Domain.Entities.TimeEntry> TimeEntries { get; }
     Task<int> SaveChangesAsync(
     CancellationToken ct = default);
     Task BeginTransactionAsync(

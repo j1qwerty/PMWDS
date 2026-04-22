@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "PMWDS 2.0 — Full API Collection",
-        "_postman_id": "pmwds-2025-collection",
+        "_postman_id": "pmwds-2026-collection",
         "description": "Project Management Workflow & Deadline System — Complete API",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
@@ -624,31 +624,24 @@
             ]
         },
         {
-            "name": "Tasks",
+            "name": "Skills",
             "item": [
                 {
-                    "name": "Get Tasks By Project",
+                    "name": "List All Skills",
                     "request": {
                         "method": "GET",
-                        "url": "{{baseUrl}}/tasks/by-project/{{projectId}}"
+                        "url": "{{baseUrl}}/skills"
                     }
                 },
                 {
-                    "name": "Get My Tasks",
+                    "name": "Get Skill by ID",
                     "request": {
                         "method": "GET",
-                        "url": "{{baseUrl}}/tasks/my-tasks"
+                        "url": "{{baseUrl}}/skills/{{skillId}}"
                     }
                 },
                 {
-                    "name": "Get Task By ID",
-                    "request": {
-                        "method": "GET",
-                        "url": "{{baseUrl}}/tasks/{{taskId}}"
-                    }
-                },
-                {
-                    "name": "Create Task",
+                    "name": "Create Skill",
                     "event": [
                         {
                             "listen": "test",
@@ -656,12 +649,8 @@
                                 "exec": [
                                     "var res = pm.response.json();",
                                     "if (res.id) {",
-                                    "    pm.collectionVariables.set('taskId', res.id);",
-                                    "    console.log('TaskId saved:', res.id);",
-                                    "}",
-                                    "pm.test('Task created (201)', () => {",
-                                    "    pm.response.to.have.status(201);",
-                                    "});"
+                                    "    pm.collectionVariables.set('skillId', res.id);",
+                                    "}"
                                 ]
                             }
                         }
@@ -676,13 +665,13 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"title\": \"Design System Architecture\",\n \"description\": \"Create detailed system architecture diagrams and documentation\",\n \"startDate\": \"2025-02-01T00:00:00Z\",\n \"dueDate\": \"2025-02-15T00:00:00Z\",\n \"estimatedHours\": 40,\n \"projectId\": \"{{projectId}}\",\n \"milestoneId\": null,\n \"parentTaskId\": null,\n \"assignedToUserId\": \"{{userId}}\",\n \"priority\": \"High\"\n}"
+                            "raw": "{\n  \"name\": \"Python\",\n  \"category\": \"Technical\",\n  \"description\": \"Python programming language\"\n}"
                         },
-                        "url": "{{baseUrl}}/tasks"
+                        "url": "{{baseUrl}}/skills"
                     }
                 },
                 {
-                    "name": "Update Task",
+                    "name": "Update Skill",
                     "request": {
                         "method": "PUT",
                         "header": [
@@ -693,167 +682,184 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"title\": \"Design System Architecture — Revised\",\n \"description\": \"Updated scope: includes API design\",\n \"startDate\": \"2025-02-01T00:00:00Z\",\n \"dueDate\": \"2025-02-20T00:00:00Z\",\n \"estimatedHours\": 50,\n \"priority\": \"Critical\",\n \"milestoneId\": null\n}"
+                            "raw": "{\n  \"name\": \"Python 3\",\n  \"category\": \"Technical\",\n  \"description\": \"Python 3.x programming language\"\n}"
                         },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}"
+                        "url": "{{baseUrl}}/skills/{{skillId}}"
                     }
                 },
                 {
-                    "name": "Update Task Progress",
-                    "request": {
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n \"progressPercentage\": 65,\n \"notes\": \"Architecture diagrams complete. Working on API specs.\"\n}"
-                        },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/progress"
-                    }
-                },
-                {
-                    "name": "Update Task Status",
-                    "request": {
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n \"newStatus\": \"InProgress\"\n}"
-                        },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/status"
-                    }
-                },
-                {
-                    "name": "Assign Task",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n \"assigneeId\": \"{{userId}}\",\n \"useAIRecommendation\": false\n}"
-                        },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/assign"
-                    }
-                },
-                {
-                    "name": "Assign Task with AI",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n \"assigneeId\": \"\",\n \"useAIRecommendation\": true\n}"
-                        },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/assign"
-                    }
-                },
-                {
-                    "name": "Get AI Assignee Recommendation",
-                    "request": {
-                        "method": "GET",
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/ai/recommend-assignee"
-                    }
-                },
-                {
-                    "name": "Get AI Delay Prediction",
-                    "request": {
-                        "method": "GET",
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/ai/delay-prediction"
-                    }
-                },
-                {
-                    "name": "Escalate Task",
-                    "request": {
-                        "method": "POST",
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/escalate"
-                    }
-                },
-                {
-                    "name": "Add Comment",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n \"comment\": \"Architecture review completed. Ready for Phase 2.\"\n}"
-                        },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/comments"
-                    }
-                },
-                {
-                    "name": "Start Timer",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n \"description\": \"Working on DB schema design\",\n \"isBillable\": true\n}"
-                        },
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/time/start"
-                    }
-                },
-                {
-                    "name": "Stop Timer",
-                    "request": {
-                        "method": "POST",
-                        "url": "{{baseUrl}}/tasks/{{taskId}}/time/stop"
-                    }
-                },
-                {
-                    "name": "Get Overdue Tasks",
-                    "request": {
-                        "method": "GET",
-                        "url": "{{baseUrl}}/tasks/overdue"
-                    }
-                },
-                {
-                    "name": "Get Escalated Tasks",
-                    "request": {
-                        "method": "GET",
-                        "url": "{{baseUrl}}/tasks/escalated"
-                    }
-                },
-                {
-                    "name": "Get Unassigned Tasks",
-                    "request": {
-                        "method": "GET",
-                        "url": "{{baseUrl}}/tasks/unassigned"
-                    }
-                },
-                {
-                    "name": "Delete Task",
+                    "name": "Delete Skill",
                     "request": {
                         "method": "DELETE",
-                        "url": "{{baseUrl}}/tasks/{{taskId}}"
+                        "url": "{{baseUrl}}/skills/{{skillId}}"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Users",
+            "item": [
+                {
+                    "name": "Get All Users",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/users?departmentId={{deptId}}",
+                            "query": [
+                                {
+                                    "key": "departmentId",
+                                    "value": "{{deptId}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Current User (Me)",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/users/me"
+                    }
+                },
+                {
+                    "name": "Get User By ID",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/users/{{userId}}"
+                    }
+                },
+                {
+                    "name": "Register New User",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var res = pm.response.json();",
+                                    "if (res.id) {",
+                                    "    pm.collectionVariables.set('userId', res.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"firstName\": \"John\",\n \"lastName\": \"Doe\",\n \"email\": \"john.doe@pmwds.com\",\n \"password\": \"User@12345!\",\n \"jobTitle\": \"Senior Developer\",\n \"departmentId\": \"{{deptId}}\",\n \"role\": \"TeamMember\"\n}"
+                        },
+                        "url": "{{baseUrl}}/users/register"
+                    }
+                },
+                {
+                    "name": "Update User",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"firstName\": \"John\",\n \"lastName\": \"Doe\",\n \"jobTitle\": \"Lead Developer\",\n \"phoneNumber\": \"+1234567890\",\n \"departmentId\": \"{{deptId}}\",\n \"availabilityPercentage\": 80\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}"
+                    }
+                },
+                {
+                    "name": "Update User Availability",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"status\": \"Available\",\n \"availabilityPercentage\": 100\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}/availability"
+                    }
+                },
+                {
+                    "name": "Add Skill to User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skillId\": \"{{skillId}}\",\n  \"proficiencyLevel\": 4,\n  \"experienceMonths\": 24\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}/skills"
+                    }
+                },
+                {
+                    "name": "Update User Skill",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"proficiencyLevel\": 5,\n  \"experienceMonths\": 12\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}/skills/{{skillId}}"
+                    }
+                },
+                {
+                    "name": "Remove Skill from User",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/users/{{userId}}/skills/{{skillId}}"
+                    }
+                },
+                {
+                    "name": "Get Available Users",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/users/available"
+                    }
+                },
+                {
+                    "name": "Get Workload Distribution",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/workload?departmentId={{deptId}}",
+                            "query": [
+                                {
+                                    "key": "departmentId",
+                                    "value": "{{deptId}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Deactivate User",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{baseUrl}}/users/{{userId}}/deactivate"
                     }
                 }
             ]

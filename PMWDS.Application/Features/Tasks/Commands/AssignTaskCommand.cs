@@ -38,7 +38,6 @@ public class AssignTaskCommandHandler
         ?? throw new NotFoundException(
         "Task", req.TaskId);
         string finalAssigneeId = req.AssigneeId;
-        // Use AI recommendation if requested
         if (req.UseAIRecommendation)
         {
             var recommendation = await _ai
@@ -46,7 +45,6 @@ public class AssignTaskCommandHandler
             finalAssigneeId =
             recommendation.RecommendedUserId;
         }
-        // Validate assignee exists
         var assignee = await _uow.Users
         .GetByIdAsync(
         Guid.Parse(finalAssigneeId), ct)
@@ -56,9 +54,8 @@ public class AssignTaskCommandHandler
         task.AssignTo(
         finalAssigneeId,
         _currentUser.UserId ?? "system");
-        task.SetModified(
-        _currentUser.UserId ?? "system");
-        await _uow.Tasks.UpdateAsync(task, ct);
+        var assignment = Domain.Entities.TaskAssignment.Create(task.Id, finalAssigneeId);
+        await _uow.TaskAssignments.AddAsync(assignment, ct);
         await _uow.SaveChangesAsync(ct);
         await _notifications.SendTaskAssignmentAlertAsync(
         task.Id, finalAssigneeId, ct);

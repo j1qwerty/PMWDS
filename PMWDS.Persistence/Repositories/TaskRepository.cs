@@ -17,7 +17,6 @@ public class TaskRepository
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
     .Include(t => t.Assignments)
-    .ThenInclude(a => a.User)
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)

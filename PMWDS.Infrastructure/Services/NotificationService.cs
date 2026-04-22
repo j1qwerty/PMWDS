@@ -48,11 +48,19 @@ public class NotificationService : INotificationService
             var user = await _uow.Users.GetByIdAsync(userId, ct);
             if (user != null && !string.IsNullOrWhiteSpace(user.Email))
             {
-                await _email.SendEmailAsync(
-                    user.Email,
-                    dto.Title,
-                    dto.Message,
-                    ct);
+                try
+                {
+                    await _email.SendEmailAsync(
+                        user.Email,
+                        dto.Title,
+                        dto.Message,
+                        ct);
+                }
+                catch
+                {
+                    // Email sending failed (e.g., SMTP not configured)
+                    // Notification is already saved in DB
+                }
             }
         }
     }

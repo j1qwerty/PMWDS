@@ -77,8 +77,6 @@ public class TasksController : BaseApiController
             (int)dto.EstimatedHours,
             dto.MilestoneId);
         task.SetModified(_currentUser.UserId ?? "system");
-
-        await _uow.Tasks.UpdateAsync(task, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok(TaskDto.FromEntity(task));
     }
@@ -127,80 +125,80 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentRequest req, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
-        task.AddComment(TaskComment.Create(
+        var comment = TaskComment.Create(
             id,
             _currentUser.UserId ?? "system",
-            req.Comment));
-        await _uow.Tasks.UpdateAsync(task, ct);
+            req.Comment);
+        await _uow.TaskComments.AddAsync(comment, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(TaskDto.FromEntity(task));
+        return Ok(new { Message = "Comment added.", Comment = comment.Content });
     }
 
     [HttpPost("{id:guid}/attachments")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
         await using var stream = file.OpenReadStream();
         var filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
-        task.AddAttachment(TaskAttachment.Create(
+
+        var attachment = TaskAttachment.Create(
             id,
             file.FileName,
             filePath,
             file.ContentType,
             file.Length,
-            _currentUser.UserId ?? "system"));
-
-        await _uow.Tasks.UpdateAsync(task, ct);
+            _currentUser.UserId ?? "system");
+        await _uow.TaskAttachments.AddAsync(attachment, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(TaskDto.FromEntity(task));
+        return Ok(new { Message = "Attachment uploaded.", FileName = file.FileName });
     }
 
     [HttpPost("{id:guid}/time/start")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> StartTimer(Guid id, [FromBody] StartTimerRequest req, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
-        task.LogTime(TimeEntry.StartTimer(
+        task.Start();
+        var entry = TimeEntry.StartTimer(
             id,
             _currentUser.UserId ?? "system",
             req.Description,
-            req.IsBillable));
-
-        await _uow.Tasks.UpdateAsync(task, ct);
+            req.IsBillable);
+        await _uow.TimeEntries.AddAsync(entry, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(TaskDto.FromEntity(task));
+        return Ok(new { Message = "Timer started.", EntryId = entry.Id });
     }
 
     [HttpPost("{id:guid}/time/stop")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> StopTimer(Guid id, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
-        var runningEntry = task.TimeEntries
-            .Where(t => t.UserId == (_currentUser.UserId ?? "system") && !t.EndTime.HasValue)
-            .OrderByDescending(t => t.StartTime)
-            .FirstOrDefault();
-        if (runningEntry == null)
+        var entry = _uow.TimeEntries.FindAsync(
+            e => e.TaskId == id
+                && e.UserId == (_currentUser.UserId ?? "system")
+                && !e.EndTime.HasValue,
+            ct).Result.FirstOrDefault();
+        if (entry == null)
             return NotFound("No running timer found.");
 
-        runningEntry.StopTimer();
-        await _uow.Tasks.UpdateAsync(task, ct);
+        entry.StopTimer();
         await _uow.SaveChangesAsync(ct);
-        return Ok(TaskDto.FromEntity(task));
+        return Ok(new { Message = "Timer stopped.", DurationMinutes = entry.Duration.TotalMinutes });
     }
 
     [HttpGet("overdue")]

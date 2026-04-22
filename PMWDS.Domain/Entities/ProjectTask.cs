@@ -90,13 +90,12 @@ public class ProjectTask : AuditableEntity
             EstimatedHours = estimatedHours
         };
     }
-    public void AssignTo(string userId, string assignedBy)
+public void AssignTo(string userId, string assignedBy)
     {
         AssignedToUserId = userId;
         AssignedByUserId = assignedBy;
         AssignedDate = DateTime.UtcNow;
         Status = TaskStatus.Assigned;
-        _assignments.Add(TaskAssignment.Create(Id, userId));
         _domainEvents.Add(new TaskAssignedEvent(
         Id, userId, assignedBy));
     }
