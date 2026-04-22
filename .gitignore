@@ -100,5 +100,6 @@ PMWDS.API/App_Data/
 .Trashes
 ehthumbs.db
 Thumbs.db
-docs
 .dotnet
+Client\node_modules
+**node_modules\**

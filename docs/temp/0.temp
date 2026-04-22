@@ -1,0 +1,28 @@
+## error and miss
+- PMWDS.Application\Features\Projects\Commands\UpdateProjectCommand.cs
+4.1
+- PMWDS.Persistence\Context\ApplicationDbContext.cs
+4.2
+- PMWDS.Persistence\Repositories\UserRepository.cs
+5.2
+- PMWDS.AI\Services\DelayPredictionEngine.cs
+6.1
+- PMWDS.API\Program.cs
+- PMWDS.API\Middleware\ExceptionMiddleware.cs
+
+## miss 2.3 
+### application
+- PMWDS.Application\Features\Projects\Commands\UpdateProjectCommand.cs
+- PMWDS.Application\Features\Projects\Queries\GetProjectHealthQuery.cs
+- PMWDS.Application\DTOs\Projects\MilestoneDto.cs
+
+- PMWDS.Application\Interfaces\Services\IEmailService.cs
+- PMWDS.Application\Interfaces\Services\ICacheService.cs
+- PMWDS.Application\Interfaces\Services\IAuditService.cs
+
+- PMWDS.Application\Features\Tasks\Commands\UpdateTaskProgressCommand.cs
+
+- PMWDS.Infrastructure\Services\ReportService.cs
+4.1
+- PMWDS.Persistence\Context\ApplicationDbContextFactory.cs
+
