@@ -56,7 +56,7 @@ var useSqlite = builder.Environment.IsDevelopment() &&
 
 if (useSqlite)
 {
-    Console.WriteLine($"[PMWDS] Using SQLite failsafe database: {sqliteConnection}");
+    Console.WriteLine($"[PMWDS] Development: Using SQLite database ({Path.GetFileName(sqliteConnection)})");
 }
 else
 {
@@ -148,7 +148,8 @@ builder.Services.AddScoped<IScheduledReportJob, ScheduledReportJob>();
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<
         PMWDS.Application.Features.Projects.Commands.CreateProjectCommand>());
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddAutoMapper(cfg =>
+    cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 
 builder.Services.AddStackExchangeRedisCache(opt =>
 {
