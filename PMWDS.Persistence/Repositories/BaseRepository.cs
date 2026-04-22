@@ -34,7 +34,7 @@ public class BaseRepository<T>
     public virtual Task UpdateAsync(
     T entity, CancellationToken ct = default)
     {
-        _dbSet.Update(entity);
+        _context.Entry(entity).State = EntityState.Modified;
         return Task.CompletedTask;
     }
     public virtual async Task DeleteAsync(

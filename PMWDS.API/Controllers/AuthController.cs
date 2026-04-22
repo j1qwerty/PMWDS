@@ -11,7 +11,6 @@ using System.Text;
 
 namespace PMWDS.API.Controllers;
 
-[AllowAnonymous]
 public class AuthController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
@@ -25,6 +24,7 @@ public class AuthController : BaseApiController
         _jwt = jwt.Value;
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest req,
@@ -52,9 +52,44 @@ public class AuthController : BaseApiController
 
     [HttpPost("change-password")]
     [Authorize]
-    public IActionResult ChangePassword(
-        [FromBody] ChangePasswordRequest req)
-        => Ok(new { Message = "Password change is not available in the current setup." });
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest req,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userId, out var parsedUserId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _uow.Users.GetByIdAsync(parsedUserId, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        // Validate old password
+        if (!IsPasswordValid(user, req.OldPassword))
+        {
+            return BadRequest(new { message = "Current password is incorrect." });
+        }
+
+        // Validate new password requirements
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
+        {
+            return BadRequest(new { message = "New password must be at least 6 characters." });
+        }
+
+        // Simple hash (in production, use proper password hashing library)
+        var newHash = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(req.NewPassword + parsedUserId.ToString())));
+        user.SetPassword(newHash);
+
+        await _uow.SaveChangesAsync(ct);
+
+        return Ok(new { message = "Password changed successfully." });
+    }
 
     [HttpPost("refresh")]
     [Authorize]
@@ -89,6 +124,16 @@ public class AuthController : BaseApiController
             return false;
         }
 
+        // Check if user has a custom password set
+        if (!string.IsNullOrEmpty(user.PasswordHash))
+        {
+            var hash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(normalized + user.Id.ToString())));
+            return hash == user.PasswordHash;
+        }
+
+        // Fallback to legacy hardcoded passwords
         return normalized == "Pmwds@123"
             || normalized == "Admin@12345!"
             || normalized == user.EmployeeCode

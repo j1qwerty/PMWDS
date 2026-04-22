@@ -279,3 +279,39 @@ export interface ProjectHealth {
   }>;
   generatedAt: string;
 }
+
+export interface AISettingsResponse {
+  defaultProvider: string;
+  defaultModel: string;
+  riskThreshold: number;
+  useLocalModel: boolean;
+  mlModelPath: string;
+  providers: AIProviderConfig[];
+}
+
+export interface AIProviderConfig {
+  provider: string;
+  displayName: string;
+  enabled: boolean;
+  baseUrl: string;
+  apiKey: string;
+  defaultModel: string;
+}
+
+export interface AISettingsRequest {
+  defaultProvider: string;
+  defaultModel: string;
+  riskThreshold: number;
+  useLocalModel: boolean;
+  mlModelPath: string;
+  providers: AIProviderConfigRequest[];
+}
+
+export interface AIProviderConfigRequest {
+  provider: string;
+  displayName: string;
+  enabled: boolean;
+  baseUrl: string;
+  apiKey: string;
+  defaultModel: string;
+}

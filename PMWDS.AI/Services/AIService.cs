@@ -134,6 +134,7 @@ public class AIService : IAIService
         var highBurnout = await _uow.Users
         .FindAsync(u =>
         u.AIBurnoutRiskScore > 0.8
+        && u.DepartmentId != null
         && u.DepartmentId == project.DepartmentId,
         ct);
         if (highBurnout.Any())

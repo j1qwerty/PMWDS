@@ -109,21 +109,22 @@ public class ProjectsController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UploadDocument(Guid id, IFormFile file, CancellationToken ct)
     {
-        var project = await _uow.Projects.GetWithDetailsAsync(id, ct);
+        var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
             return NotFound();
 
         await using var stream = file.OpenReadStream();
         var filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
-        project.AddDocument(ProjectDocument.Create(
+
+        var doc = ProjectDocument.Create(
             id,
             file.FileName,
             filePath,
             file.ContentType,
             file.Length,
-            _currentUser.UserId ?? "system"));
+            _currentUser.UserId ?? "system");
 
-        await _uow.Projects.UpdateAsync(project, ct);
+        await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok();
     }

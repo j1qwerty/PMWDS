@@ -8,7 +8,7 @@
     "variable": [
         {
             "key": "baseUrl",
-            "value": "https://localhost:7001/api/v1"
+            "value": "http://localhost:5177/api/v1"
         },
         {
             "key": "token",
@@ -41,9 +41,87 @@
             }
         ]
     },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "exec": [
+                    "// ============================================",
+                    "// COLLECTION-LEVEL PRE-REQUEST SCRIPT",
+                    "// ============================================",
+                    "",
+                    "// Skip token check for auth endpoints",
+                    "const url = pm.request.url.toString();",
+                    "const isAuthEndpoint = url.includes('/Auth/login');",
+                    "",
+                    "if (isAuthEndpoint) {",
+                    "    console.log('Auth endpoint - skipping token check');",
+                    "    return;",
+                    "}",
+                    "",
+                    "// Get token from collection variables",
+                    "let token = pm.collectionVariables.get('token');",
+                    "let expiry = pm.collectionVariables.get('tokenExpiry');",
+                    "",
+                    "if (!token) {",
+                    "    // Try environment variable",
+                    "    token = pm.environment.get('token');",
+                    "    expiry = pm.environment.get('tokenExpiry');",
+                    "}",
+                    "",
+                    "if (!token) {",
+                    "    throw new Error('No token. Run Login first.');",
+                    "}",
+                    "",
+                    "// Check if token is expired or about to expire",
+                    "if (expiry) {",
+                    "    const now = new Date();",
+                    "    const expiryDate = new Date(expiry);",
+                    "    const fiveMinutes = 5 * 60 * 1000;",
+                    "",
+                    "    if (expiryDate <= now) {",
+                    "        throw new Error('Token expired. Run Login.');",
+                    "    }",
+                    "    ",
+                    "    if ((expiryDate - now) <= fiveMinutes) {",
+                    "        console.log('Token expires soon. Consider refreshing.');",
+                    "    }",
+                    "}",
+                    "",
+                    "console.log('Token OK');"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "exec": [
+                    "// ============================================",
+                    "// COLLECTION-LEVEL TEST SCRIPT",
+                    "// ============================================",
+                    "",
+                    "// Log response time",
+                    "const time = pm.response.responseTime;",
+                    "console.log('Response time: ' + time + 'ms');",
+                    "",
+                    "// Auto-save token on refresh",
+                    "if (pm.request.url.includes('/Auth/refresh')) {",
+                    "    const res = pm.response.json();",
+                    "    if (res.token) {",
+                    "        pm.collectionVariables.set('token', res.token);",
+                    "        if (res.expiry) {",
+                    "            pm.collectionVariables.set('tokenExpiry', res.expiry);",
+                    "        }",
+                    "        console.log('✓ Token refreshed');",
+                    "    }",
+                    "}"
+                ]
+            }
+        }
+    ],
     "item": [
         {
-            "name": "�Auth",
+            "name": "Auth",
             "item": [
                 {
                     "name": "Login",
@@ -53,13 +131,33 @@
                             "script": {
                                 "exec": [
                                     "var res = pm.response.json();",
+                                    "",
+                                    "// Save token and user data",
                                     "if (res.token) {",
-                                    " pm.collectionVariables.set('token', res.token);",
-                                    " pm.collectionVariables.set('userId', res.userId);",
-                                    " console.log('�Token saved');",
+                                    "    pm.collectionVariables.set('token', res.token);",
+                                    "    console.log('✓ Token saved');",
                                     "}",
+                                    "if (res.userId) {",
+                                    "    pm.collectionVariables.set('userId', res.userId);",
+                                    "}",
+                                    "if (res.fullName) {",
+                                    "    pm.environment.set('fullName', res.fullName);",
+                                    "}",
+                                    "if (res.email) {",
+                                    "    pm.environment.set('email', res.email);",
+                                    "}",
+                                    "",
+                                    "// Save expiry - convert string to timestamp",
+                                    "if (res.expiry) {",
+                                    "    var expiryDate = new Date(res.expiry);",
+                                    "    pm.environment.set('tokenExpiry', res.expiry);",
+                                    "    pm.environment.set('tokenExpiryTimestamp', expiryDate.getTime());",
+                                    "    console.log('✓ Token valid until: ' + expiryDate.toLocaleString());",
+                                    "}",
+                                    "",
                                     "pm.test('Login successful', () => {",
-                                    " pm.response.to.have.status(200);",
+                                    "    pm.response.to.have.status(200);",
+                                    "    pm.expect(res.token).to.not.be.undefined;",
                                     "});"
                                 ]
                             }
@@ -78,10 +176,9 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"email\": \"admin@pmwds.com\",\n \"password\":
-\"Admin@12345!\"\n}"
+                            "raw": "{\n \"email\": \"admin@pmwds.com\",\n \"password\": \"Admin@12345!\"\n}"
                         },
-                        "url": "{{baseUrl}}/auth/login"
+                        "url": "{{baseUrl}}/Auth/login"
                     }
                 },
                 {
@@ -96,10 +193,9 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"oldPassword\": \"Admin@12345!\",\n \"newPassword\":
-\"NewPass@2025!\"\n}"
+                            "raw": "{\n \"oldPassword\": \"Admin@12345!\",\n \"newPassword\": \"NewPass@2025!\"\n}"
                         },
-                        "url": "{{baseUrl}}/auth/change-password"
+                        "url": "{{baseUrl}}/Auth/change-password"
                     }
                 },
                 {
@@ -111,7 +207,8 @@
                                 "exec": [
                                     "var res = pm.response.json();",
                                     "if (res.token) {",
-                                    " pm.collectionVariables.set('token', res.token);",
+                                    "    pm.collectionVariables.set('token', res.token);",
+                                    "    console.log('✓ Token refreshed');",
                                     "}"
                                 ]
                             }
@@ -119,13 +216,23 @@
                     ],
                     "request": {
                         "method": "POST",
-                        "url": "{{baseUrl}}/auth/refresh"
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"token\": \"{{token}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/Auth/refresh"
                     }
                 }
             ]
         },
         {
-            "name": "�Departments",
+            "name": "Departments",
             "item": [
                 {
                     "name": "Get All Departments",
@@ -157,8 +264,8 @@
                                 "exec": [
                                     "var res = pm.response.json();",
                                     "if (res.id) {",
-                                    " pm.collectionVariables.set('deptId', res.id);",
-                                    " console.log('�DeptId saved:', res.id);",
+                                    "    pm.collectionVariables.set('deptId', res.id);",
+                                    "    console.log('DeptId saved:', res.id);",
                                     "}"
                                 ]
                             }
@@ -174,8 +281,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"name\": \"Software Engineering\",\n \"code\": \"SE\",\n
-\"description\": \"Core software development department\",\n \"budget\": 750000.00\n}"
+                            "raw": "{\n \"name\": \"Software Engineering\",\n \"code\": \"SE\",\n \"description\": \"Core software development department\",\n \"budget\": 750000.00\n}"
                         },
                         "url": "{{baseUrl}}/departments"
                     }
@@ -192,8 +298,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"name\": \"Software Engineering (Updated)\",\n \"code\":
-\"SE\",\n \"description\": \"Updated description\",\n \"budget\": 800000.00\n}"
+                            "raw": "{\n \"name\": \"Software Engineering (Updated)\",\n \"code\": \"SE\",\n \"description\": \"Updated description\",\n \"budget\": 800000.00\n}"
                         },
                         "url": "{{baseUrl}}/departments/{{deptId}}"
                     }
@@ -208,7 +313,7 @@
             ]
         },
         {
-            "name": "�Users",
+            "name": "Users",
             "item": [
                 {
                     "name": "Get All Users",
@@ -248,8 +353,8 @@
                                 "exec": [
                                     "var res = pm.response.json();",
                                     "if (res.id) {",
-                                    " pm.collectionVariables.set('userId', res.id);",
-                                    " console.log('�UserId saved:', res.id);",
+                                    "    pm.collectionVariables.set('userId', res.id);",
+                                    "    console.log('UserId saved:', res.id);",
                                     "}"
                                 ]
                             }
@@ -265,9 +370,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"firstName\": \"John\",\n \"lastName\": \"Doe\",\n \"email\":
-\"john.doe@pmwds.com\",\n \"password\": \"User@12345!\",\n \"jobTitle\": \"Senior
-Developer\",\n \"departmentId\": \"{{deptId}}\",\n \"role\": \"TeamMember\"\n}"
+                            "raw": "{\n \"firstName\": \"John\",\n \"lastName\": \"Doe\",\n \"email\": \"john.doe@pmwds.com\",\n \"password\": \"User@12345!\",\n \"jobTitle\": \"Senior Developer\",\n \"departmentId\": \"{{deptId}}\",\n \"role\": \"TeamMember\"\n}"
                         },
                         "url": "{{baseUrl}}/users/register"
                     }
@@ -284,9 +387,7 @@ Developer\",\n \"departmentId\": \"{{deptId}}\",\n \"role\": \"TeamMember\"\n}"
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"firstName\": \"John\",\n \"lastName\": \"Doe\",\n
-\"jobTitle\": \"Lead Developer\",\n \"phoneNumber\": \"+1234567890\",\n \"departmentId\":
-\"{{deptId}}\",\n \"availabilityPercentage\": 80\n}"
+                            "raw": "{\n \"firstName\": \"John\",\n \"lastName\": \"Doe\",\n \"jobTitle\": \"Lead Developer\",\n \"phoneNumber\": \"+1234567890\",\n \"departmentId\": \"{{deptId}}\",\n \"availabilityPercentage\": 80\n}"
                         },
                         "url": "{{baseUrl}}/users/{{userId}}"
                     }
@@ -303,853 +404,832 @@ Developer\",\n \"departmentId\": \"{{deptId}}\",\n \"role\": \"TeamMember\"\n}"
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"status\": \"Available\",\n \"availabilityPercentage\":100\n
-                        }"
-                    },
-                    "url": "{{baseUrl}}/users/{{userId}}/availability"
-                }
-            },
-            {
-                "name": "Add Skill to User",
-                "request": {
-                    "method": "POST",
-                    "header": [
-                        {
-                            "key": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ],
-                    "body": {
-                        "mode": "raw",
-                        "raw": "{\n \"skillId\": \"00000000-0000-0000-0000-000000000001\",\n
-\"proficiencyLevel\": 4,\n \"experienceMonths\": 36\n}"
-                    },
-                    "url": "{{baseUrl}}/users/{{userId}}/skills"
-                }
-            },
-            {
-                "name": "Get Available Users",
-                "request": {
-                    "method": "GET",
-                    "url": "{{baseUrl}}/users/available"
-                }
-            },
-            {
-                "name": "Get Workload Distribution",
-                "request": {
-                    "method": "GET",
-                    "url": {
-                        "raw": "{{baseUrl}}/users/workload?departmentId={{deptId}}",
-                        "query": [
-                            {
-                                "key": "departmentId",
-                                "value": "{{deptId}}"
-                            }
-                        ]
+                            "raw": "{\n \"status\": \"Available\",\n \"availabilityPercentage\": 100\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}/availability"
                     }
-                }
-            },
-            {
-                "name": "Deactivate User",
-                "request": {
-                    "method": "PATCH",
-                    "url": "{{baseUrl}}/users/{{userId}}/deactivate"
-                }
-            }
-        ]
-    },
-    {
-        "name": "�Projects",
-        "item": [
-            {
-                "name": "Get Dashboard",
-                "request": {
-                    "method": "GET",
-                    "url": {
-                        "raw": "{{baseUrl}}/projects/dashboard?departmentId={{deptId}}",
-                        "query": [
+                },
+                {
+                    "name": "Add Skill to User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
                             {
-                                "key": "departmentId",
-                                "value": "{{deptId}}"
+                                "key": "Content-Type",
+                                "value": "application/json"
                             }
-                        ]
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"skillId\": \"00000000-0000-0000-0000-000000000001\",\n \"proficiencyLevel\": 4,\n \"experienceMonths\": 36\n}"
+                        },
+                        "url": "{{baseUrl}}/users/{{userId}}/skills"
                     }
-                }
-            },
-            {
-                "name": "Get All Projects",
-                "request": {
-                    "method": "GET",
-                    "url": {
-                        "raw": "{{baseUrl}}/projects?departmentId={{deptId}}&status=InProgress",
-                        "query": [
-                            {
-                                "key": "departmentId",
-                                "value": "{{deptId}}"
-                            },
-                            {
-                                "key": "status",
-                                "value": "InProgress"
-                            }
-                        ]
+                },
+                {
+                    "name": "Get Available Users",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/users/available"
                     }
-                }
-            },
-            {
-                "name": "Get Project By ID",
-                "request": {
-                    "method": "GET",
-                    "url": "{{baseUrl}}/projects/{{projectId}}"
-                }
-            },
-            {
-                "name": "Create Project",
-                "event": [
-                    {
-                        "listen": "test",
-                        "script": {
-                            "exec": [
-                                "var res = pm.response.json();",
-                                "if (res.id) {",
-                                " pm.collectionVariables.set('projectId', res.id);",
-                                " console.log('�ProjectId saved:', res.id);",
-                                "}",
-                                "pm.test('Project created (201)', () => {",
-                                " pm.response.to.have.status(201);",
-                                "});"
+                },
+                {
+                    "name": "Get Workload Distribution",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/workload?departmentId={{deptId}}",
+                            "query": [
+                                {
+                                    "key": "departmentId",
+                                    "value": "{{deptId}}"
+                                }
                             ]
                         }
                     }
-                ],
-                "request": {
-                    "method": "POST",
-                    "header": [
-                        {
-                            "key": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ],
-                    "body": {
-                        "mode": "raw",
-                        "raw": "{\n \"projectCode\": \"PROJ-001\",\n \"name\": \"PMWDS Portal
-Development\",\n \"description\": \"Build the full PMWDS web portal with AI
-integration\",\n \"category\": \"Software Development\",\n \"plannedStartDate\": \"2025-02-01T00: 00: 00Z\",\n \"plannedEndDate\": \"2025-08-31T00:00:00Z\",\n \"plannedBudget\":250000.00,\n \"departmentId\": \"{{deptId}}\",\n \"projectManagerId\": \"{{userId}}\",\n
-\"priority\": \"High\"\n}"
-                    },
-                    "url": "{{baseUrl}}/projects"
-                }
-            },
-            {
-                "name": "Update Project",
-                "request": {
-                    "method": "PUT",
-                    "header": [
-                        {
-                            "key": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ],
-                    "body": {
-                        "mode": "raw",
-                        "raw": "{\n \"name\": \"PMWDS Portal — Phase 2\",\n \"description\":
-\"Updated project scope\",\n \"category\": \"Software Development\",\n
-\"plannedStartDate\": \"2025-02-01T00:00:00Z\",\n \"plannedEndDate\": \"2025-09-30T00: 00: 00Z\",\n \"plannedBudget\": 300000.00,\n \"priority\": \"Critical\"\n}"
-                    },
-                    "url": "{{baseUrl}}/projects/{{projectId}}"
-                }
-            },
-            {
-                "name": "Update Project Status",
-                "request": {
-                    "method": "PATCH",
-                    "header": [
-                        {
-                            "key": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ],
-                    "body": {
-                        "mode": "raw",
-                        "raw": "{\n \"newStatus\": \"InProgress\",\n \"justification\": \"All
-prerequisites met. Starting development.\"\n}"
-                    },
-                    "url": "{{baseUrl}}/projects/{{projectId}}/status"
-                }
-            },
-            {
-                "name": "Get Project Progress",
-                "request": {
-                    "method": "GET",
-                    "url": "{{baseUrl}}/projects/{{projectId}}/progress"
-                }
-            },
-            {
-                "name": "Get AI Health Analysis",
-                "request": {
-                    "method": "GET",
-                    "url": "{{baseUrl}}/projects/{{projectId}}/ai/health"
-                }
-            },
-            {
-                "name": "Get AI Insights",
-                "request": {
-                    "method": "GET",
-                    "url": "{{baseUrl}}/projects/{{projectId}}/ai/insights"
-                }
-            },
-            {
-                "name": "Optimize Resources (AI)",
-                "request": {
-                    "method": "POST",
-                    "url": "{{baseUrl}}/projects/{{projectId}}/ai/optimize-resources"
-                }
-            },
-            {
-                "name": "Upload Project Document",
-                "request": {
-                    "method": "POST",
-                    "body": {"mode": "formdata",
-                    "formdata": [
-                        {
-                            "key": "file",
-                            "type": "file",
-                            "src": "/path/to/document.pdf"
-                        }
-                    ]
                 },
-                "url": "{{baseUrl}}/projects/{{projectId}}/documents"
-            }
+                {
+                    "name": "Deactivate User",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{baseUrl}}/users/{{userId}}/deactivate"
+                    }
+                }
+            ]
         },
         {
-            "name": "Delete Project",
-            "request": {
-                "method": "DELETE",
-                "url": "{{baseUrl}}/projects/{{projectId}}"
-            }
+            "name": "Projects",
+            "item": [
+                {
+                    "name": "Get Dashboard",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/projects/dashboard?departmentId={{deptId}}",
+                            "query": [
+                                {
+                                    "key": "departmentId",
+                                    "value": "{{deptId}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Projects",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/projects?departmentId={{deptId}}&status=InProgress",
+                            "query": [
+                                {
+                                    "key": "departmentId",
+                                    "value": "{{deptId}}"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "InProgress"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Project By ID",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/projects/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Create Project",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var res = pm.response.json();",
+                                    "if (res.id) {",
+                                    "    pm.collectionVariables.set('projectId', res.id);",
+                                    "    console.log('ProjectId saved:', res.id);",
+                                    "}",
+                                    "pm.test('Project created (201)', () => {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"projectCode\": \"PROJ-001\",\n \"name\": \"PMWDS Portal Development\",\n \"description\": \"Build the full PMWDS web portal with AI integration\",\n \"category\": \"Software Development\",\n \"plannedStartDate\": \"2025-02-01T00:00:00Z\",\n \"plannedEndDate\": \"2025-08-31T00:00:00Z\",\n \"plannedBudget\": 250000.00,\n \"departmentId\": \"{{deptId}}\",\n \"projectManagerId\": \"{{userId}}\",\n \"priority\": \"High\"\n}"
+                        },
+                        "url": "{{baseUrl}}/projects"
+                    }
+                },
+                {
+                    "name": "Update Project",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"name\": \"PMWDS Portal — Phase 2\",\n \"description\": \"Updated project scope\",\n \"category\": \"Software Development\",\n \"plannedStartDate\": \"2025-02-01T00:00:00Z\",\n \"plannedEndDate\": \"2025-09-30T00:00:00Z\",\n \"plannedBudget\": 300000.00,\n \"priority\": \"Critical\"\n}"
+                        },
+                        "url": "{{baseUrl}}/projects/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Update Project Status",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"newStatus\": \"InProgress\",\n \"justification\": \"All prerequisites met. Starting development.\"\n}"
+                        },
+                        "url": "{{baseUrl}}/projects/{{projectId}}/status"
+                    }
+                },
+                {
+                    "name": "Get Project Progress",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/projects/{{projectId}}/progress"
+                    }
+                },
+                {
+                    "name": "Get AI Health Analysis",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/projects/{{projectId}}/ai/health"
+                    }
+                },
+                {
+                    "name": "Get AI Insights",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/projects/{{projectId}}/ai/insights"
+                    }
+                },
+                {
+                    "name": "Optimize Resources (AI)",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/projects/{{projectId}}/ai/optimize-resources"
+                    }
+                },
+                {
+                    "name": "Upload Project Document",
+                    "request": {
+                        "method": "POST",
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": "/path/to/document.pdf"
+                                }
+                            ]
+                        },
+                        "url": "{{baseUrl}}/projects/{{projectId}}/documents"
+                    }
+                },
+                {
+                    "name": "Delete Project",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/projects/{{projectId}}"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Tasks",
+            "item": [
+                {
+                    "name": "Get Tasks By Project",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/by-project/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Get My Tasks",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/my-tasks"
+                    }
+                },
+                {
+                    "name": "Get Task By ID",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/{{taskId}}"
+                    }
+                },
+                {
+                    "name": "Create Task",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var res = pm.response.json();",
+                                    "if (res.id) {",
+                                    "    pm.collectionVariables.set('taskId', res.id);",
+                                    "    console.log('TaskId saved:', res.id);",
+                                    "}",
+                                    "pm.test('Task created (201)', () => {",
+                                    "    pm.response.to.have.status(201);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"title\": \"Design System Architecture\",\n \"description\": \"Create detailed system architecture diagrams and documentation\",\n \"startDate\": \"2025-02-01T00:00:00Z\",\n \"dueDate\": \"2025-02-15T00:00:00Z\",\n \"estimatedHours\": 40,\n \"projectId\": \"{{projectId}}\",\n \"milestoneId\": null,\n \"parentTaskId\": null,\n \"assignedToUserId\": \"{{userId}}\",\n \"priority\": \"High\"\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks"
+                    }
+                },
+                {
+                    "name": "Update Task",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"title\": \"Design System Architecture — Revised\",\n \"description\": \"Updated scope: includes API design\",\n \"startDate\": \"2025-02-01T00:00:00Z\",\n \"dueDate\": \"2025-02-20T00:00:00Z\",\n \"estimatedHours\": 50,\n \"priority\": \"Critical\",\n \"milestoneId\": null\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}"
+                    }
+                },
+                {
+                    "name": "Update Task Progress",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"progressPercentage\": 65,\n \"notes\": \"Architecture diagrams complete. Working on API specs.\"\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/progress"
+                    }
+                },
+                {
+                    "name": "Update Task Status",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"newStatus\": \"InProgress\"\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/status"
+                    }
+                },
+                {
+                    "name": "Assign Task",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"assigneeId\": \"{{userId}}\",\n \"useAIRecommendation\": false\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/assign"
+                    }
+                },
+                {
+                    "name": "Assign Task with AI",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"assigneeId\": \"\",\n \"useAIRecommendation\": true\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/assign"
+                    }
+                },
+                {
+                    "name": "Get AI Assignee Recommendation",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/ai/recommend-assignee"
+                    }
+                },
+                {
+                    "name": "Get AI Delay Prediction",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/ai/delay-prediction"
+                    }
+                },
+                {
+                    "name": "Escalate Task",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/escalate"
+                    }
+                },
+                {
+                    "name": "Add Comment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"comment\": \"Architecture review completed. Ready for Phase 2.\"\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/comments"
+                    }
+                },
+                {
+                    "name": "Start Timer",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"description\": \"Working on DB schema design\",\n \"isBillable\": true\n}"
+                        },
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/time/start"
+                    }
+                },
+                {
+                    "name": "Stop Timer",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/tasks/{{taskId}}/time/stop"
+                    }
+                },
+                {
+                    "name": "Get Overdue Tasks",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/overdue"
+                    }
+                },
+                {
+                    "name": "Get Escalated Tasks",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/escalated"
+                    }
+                },
+                {
+                    "name": "Get Unassigned Tasks",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/tasks/unassigned"
+                    }
+                },
+                {
+                    "name": "Delete Task",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/tasks/{{taskId}}"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "AI",
+            "item": [
+                {
+                    "name": "Recommend Assignee",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/ai/recommend-assignee/{{taskId}}"
+                    }
+                },
+                {
+                    "name": "Predict Delay",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/ai/predict-delay/{{taskId}}"
+                    }
+                },
+                {
+                    "name": "Project Health Analysis",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/ai/project-health/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Optimize Resources",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/ai/optimize-resources/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Get Burnout Risk",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/ai/burnout-risk?departmentId={{deptId}}",
+                            "query": [
+                                {
+                                    "key": "departmentId",
+                                    "value": "{{deptId}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Project Insights",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/ai/insights/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Chat with AI Assistant",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"message\": \"Which tasks are at highest risk of delay this week?\"\n}"
+                        },
+                        "url": "{{baseUrl}}/ai/chat"
+                    }
+                },
+                {
+                    "name": "Trigger AI Model Training",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/ai/train"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Reports",
+            "item": [
+                {
+                    "name": "Project Status Report (PDF)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/project-status/{{projectId}}?format=pdf",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "pdf"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Project Status Report (Excel)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/project-status/{{projectId}}?format=excel",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "excel"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Task Completion Report",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"startDate\": \"2025-01-01T00:00:00Z\",\n \"endDate\": \"2025-12-31T00:00:00Z\",\n \"departmentId\": \"{{deptId}}\",\n \"projectId\": \"{{projectId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/task-completion?format=pdf",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "pdf"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Department Workload Report",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"departmentId\": \"{{deptId}}\",\n \"startDate\": \"2025-01-01T00:00:00Z\",\n \"endDate\": \"2025-06-30T00:00:00Z\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/department-workload?format=pdf",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "pdf"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Budget Variance Report",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/budget-variance/{{projectId}}?format=excel",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "excel"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delay Analysis Report",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"startDate\": \"2025-01-01T00:00:00Z\",\n \"endDate\": \"2025-12-31T00:00:00Z\",\n \"departmentId\": \"{{deptId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/delay-analysis?format=pdf",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "pdf"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "AI Insights Report",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/ai-insights/{{projectId}}?format=pdf",
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "pdf"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Notifications",
+            "item": [
+                {
+                    "name": "Get My Notifications",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/notifications?unreadOnly=false&page=1&pageSize=20",
+                            "query": [
+                                {
+                                    "key": "unreadOnly",
+                                    "value": "false"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "20"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Unread Count",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/notifications/unread-count"
+                    }
+                },
+                {
+                    "name": "Mark Notification Read",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{baseUrl}}/notifications/{{notificationId}}/read"
+                    }
+                },
+                {
+                    "name": "Mark All Read",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{baseUrl}}/notifications/read-all"
+                    }
+                },
+                {
+                    "name": "Delete Notification",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/notifications/{{notificationId}}"
+                    }
+                },
+                {
+                    "name": "Broadcast Notification",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"title\": \"System Maintenance\",\n \"message\": \"Scheduled maintenance on Sunday 2:00 AM — 4:00 AM UTC.\",\n \"departmentId\": null\n}"
+                        },
+                        "url": "{{baseUrl}}/notifications/broadcast"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Milestones",
+            "item": [
+                {
+                    "name": "Get Milestones By Project",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/milestones/by-project/{{projectId}}"
+                    }
+                },
+                {
+                    "name": "Get Milestone By ID",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/milestones/{{milestoneId}}"
+                    }
+                },
+                {
+                    "name": "Create Milestone",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var res = pm.response.json();",
+                                    "if (res.id) {",
+                                    "    pm.collectionVariables.set('milestoneId', res.id);",
+                                    "    console.log('MilestoneId saved:', res.id);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"name\": \"Phase 1 — Architecture Complete\",\n \"description\": \"All architecture documents approved\",\n \"dueDate\": \"2025-03-01T00:00:00Z\",\n \"projectId\": \"{{projectId}}\"\n}"
+                        },
+                        "url": "{{baseUrl}}/milestones"
+                    }
+                },
+                {
+                    "name": "Update Milestone",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n \"name\": \"Phase 1 — Architecture Complete (Revised)\",\n \"description\": \"Updated milestone scope\",\n \"dueDate\": \"2025-03-15T00:00:00Z\"\n}"
+                        },
+                        "url": "{{baseUrl}}/milestones/{{milestoneId}}"
+                    }
+                },
+                {
+                    "name": "Complete Milestone",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{baseUrl}}/milestones/{{milestoneId}}/complete"
+                    }
+                },
+                {
+                    "name": "Delete Milestone",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/milestones/{{milestoneId}}"
+                    }
+                }
+            ]
         }
     ]
-},
-{
-    "name": "�Tasks",
-    "item": [
-        {
-            "name": "Get Tasks By Project",
-            "request": {
-                "method": "GET",
-                "url": "{{baseUrl}}/tasks/by-project/{{projectId}}"
-            }
-        },
-        {
-            "name": "Get My Tasks",
-            "request": {
-                "method": "GET",
-                "url": "{{baseUrl}}/tasks/my-tasks"
-            }
-        },
-        {
-            "name": "Get Task By ID",
-            "request": {
-                "method": "GET",
-                "url": "{{baseUrl}}/tasks/{{taskId}}"
-            }
-        },
-        {
-            "name": "Create Task",
-            "event": [
-                {
-                    "listen": "test",
-                    "script": {
-                        "exec": [
-                            "var res = pm.response.json();",
-                            "if (res.id) {",
-                            " pm.collectionVariables.set('taskId', res.id);",
-                            " console.log('�TaskId saved:', res.id);",
-                            "}",
-                            "pm.test('Task created (201)', () => {",
-                            " pm.response.to.have.status(201);",
-                            "});"
-                        ]
-                    }
-                }
-            ],
-            "request": {
-                "method": "POST",
-                "header": [
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n \"title\": \"Design System Architecture\",\n \"description\":
-\"Create detailed system architecture diagrams and documentation\",\n \"startDate\":
-\"2025-02-01T00:00:00Z\",\n \"dueDate\": \"2025-02-15T00:00:00Z\",\n \"estimatedHours\":40,\n \"projectId\": \"{{projectId}}\",\n \"milestoneId\": null,\n \"parentTaskId\":null,\n \"assignedToUserId\": \"{{userId}}\",\n \"priority\": \"High\"\n}"
-                },
-                "url": "{{baseUrl}}/tasks"
-            }
-        },
-        {
-            "name": "Update Task",
-            "request": {
-                "method": "PUT",
-                "header": [
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n \"title\": \"Design System Architecture — Revised\",\n
-\"description\": \"Updated scope: includes API design\",\n \"startDate\": \"2025-02-01T00: 00: 00Z\",\n \"dueDate\": \"2025-02-20T00:00:00Z\",\n \"estimatedHours\": 50,\n
-\"priority\": \"Critical\",\n \"milestoneId\": null\n}"
-                },
-                "url": "{{baseUrl}}/tasks/{{taskId}}"
-            }
-        },
-        {
-            "name": "Update Task Progress",
-            "request": {
-                "method": "PATCH",
-                "header": [
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n \"progressPercentage\": 65,\n \"notes\": \"Architecture
-diagrams complete. Working on API specs.\"\n}"
-                },
-                "url": "{{baseUrl}}/tasks/{{taskId}}/progress"
-            }
-        },
-        {
-            "name": "Update Task Status",
-            "request": {
-                "method": "PATCH",
-                "header": [
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n \"newStatus\": \"InProgress\"\n}"
-                },
-                "url": "{{baseUrl}}/tasks/{{taskId}}/status"
-            }
-        },
-        {
-            "name": "Assign Task",
-            "request": {
-                "method": "POST",
-                "header": [
-                    {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                    }
-                ],
-                "body": {
-                    "mode": "raw",
-                    "raw": "{\n \"assigneeId\": \"{{userId}}\",\n \"useAIRecommendation\":
-false\n
-                }"
-            },
-            "url": "{{baseUrl}}/tasks/{{taskId}}/assign"
-        }
-    },
-    {
-        "name": "Assign Task with AI",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"assigneeId\": \"\",\n \"useAIRecommendation\": true\n}"
-            },
-            "url": "{{baseUrl}}/tasks/{{taskId}}/assign"
-        }
-    },
-    {
-        "name": "Get AI Assignee Recommendation",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/tasks/{{taskId}}/ai/recommend-assignee"
-        }
-    },
-    {
-        "name": "Get AI Delay Prediction",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/tasks/{{taskId}}/ai/delay-prediction"
-        }
-    },
-    {
-        "name": "Escalate Task",
-        "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/tasks/{{taskId}}/escalate"
-        }
-    },
-    {
-        "name": "Add Comment",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"comment\": \"Architecture review completed. Ready for Phase
-2.\"\n}"
-            },
-            "url": "{{baseUrl}}/tasks/{{taskId}}/comments"
-        }
-    },
-    {
-        "name": "Start Timer",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"description\": \"Working on DB schema design\",\n
-\"isBillable\": true\n}"
-            },
-            "url": "{{baseUrl}}/tasks/{{taskId}}/time/start"
-        }
-    },
-    {
-        "name": "Stop Timer",
-        "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/tasks/{{taskId}}/time/stop"
-        }
-    },
-    {
-        "name": "Get Overdue Tasks",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/tasks/overdue"
-        }
-    },
-    {
-        "name": "Get Escalated Tasks",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/tasks/escalated"
-        }
-    },
-    {
-        "name": "Get Unassigned Tasks",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/tasks/unassigned"
-        }
-    },
-    {
-        "name": "Delete Task",
-        "request": {
-            "method": "DELETE",
-            "url": "{{baseUrl}}/tasks/{{taskId}}"
-        }
-    }
-]
-},
-{
-"name": "�AI",
-"item": [
-    {
-        "name": "Recommend Assignee",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/ai/recommend-assignee/{{taskId}}"
-        }
-    },
-    {
-        "name": "Predict Delay",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/ai/predict-delay/{{taskId}}"
-        }
-    },
-    {
-        "name": "Project Health Analysis",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/ai/project-health/{{projectId}}"
-        }
-    },
-    {
-        "name": "Optimize Resources",
-        "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/ai/optimize-resources/{{projectId}}"
-        }
-    },
-    {
-        "name": "Get Burnout Risk",
-        "request": {
-            "method": "GET",
-            "url": {
-                "raw": "{{baseUrl}}/ai/burnout-risk?departmentId={{deptId}}",
-                "query": [
-                    {
-                        "key": "departmentId",
-                        "value": "{{deptId}}"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Get Project Insights",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/ai/insights/{{projectId}}"
-        }
-    },
-    {
-        "name": "Chat with AI Assistant",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"message\": \"Which tasks are at highest risk of delay this
-week?\"\n}"
-            },
-            "url": "{{baseUrl}}/ai/chat"
-        }
-    },
-    {
-        "name": "Trigger AI Model Training",
-        "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/ai/train"
-        }
-    }
-]
-},
-{
-"name": "�Reports",
-"item": [
-    {
-        "name": "Project Status Report (PDF)",
-        "request": {
-            "method": "GET",
-            "url": {
-                "raw": "{{baseUrl}}/reports/project-status/{{projectId}}?format=pdf",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "pdf"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Project Status Report (Excel)",
-        "request": {
-            "method": "GET",
-            "url": {
-                "raw": "{{baseUrl}}/reports/project-status/{{projectId}}?format=excel",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "excel"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Task Completion Report",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"startDate\": \"2025-01-01T00:00:00Z\",\n \"endDate\": \"2025-12-31T00: 00: 00Z\",\n \"departmentId\": \"{{deptId}}\",\n \"projectId\":
-\"{{projectId}}\"\n}"
-            },
-            "url": {
-                "raw": "{{baseUrl}}/reports/task-completion?format=pdf",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "pdf"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Department Workload Report",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"departmentId\": \"{{deptId}}\",\n \"startDate\": \"2025-01-01T00: 00: 00Z\",\n \"endDate\": \"2025-06-30T00:00:00Z\"\n}"
-            },
-            "url": {
-                "raw": "{{baseUrl}}/reports/department-workload?format=pdf",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "pdf"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Budget Variance Report",
-        "request": {
-            "method": "GET",
-            "url": {
-                "raw": "{{baseUrl}}/reports/budget-variance/{{projectId}}?format=excel",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "excel"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Delay Analysis Report",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"startDate\": \"2025-01-01T00:00:00Z\",\n \"endDate\": \"2025-12-31T00: 00: 00Z\",\n \"departmentId\": \"{{deptId}}\"\n}"
-            },
-            "url": {
-                "raw": "{{baseUrl}}/reports/delay-analysis?format=pdf",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "pdf"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "AI Insights Report",
-        "request": {
-            "method": "GET",
-            "url": {
-                "raw": "{{baseUrl}}/reports/ai-insights/{{projectId}}?format=pdf",
-                "query": [
-                    {
-                        "key": "format",
-                        "value": "pdf"
-                    }
-                ]
-            }
-        }
-    }
-]
-},
-{
-"name": "�Notifications",
-"item": [
-    {
-        "name": "Get My Notifications",
-        "request": {
-            "method": "GET",
-            "url": {
-                "raw": "{{baseUrl}}/notifications?unreadOnly=false&page=1&pageSize=20",
-                "query": [
-                    {
-                        "key": "unreadOnly",
-                        "value": "false"
-                    },
-                    {
-                        "key": "page",
-                        "value": "1"
-                    },
-                    {
-                        "key": "pageSize",
-                        "value": "20"
-                    }
-                ]
-            }
-        }
-    },
-    {
-        "name": "Get Unread Count",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/notifications/unread-count"
-        }
-    },
-    {
-        "name": "Mark Notification Read",
-        "request": {
-            "method": "PATCH",
-            "url": "{{baseUrl}}/notifications/{{notificationId}}/read"
-        }
-    },
-    {
-        "name": "Mark All Read",
-        "request": {
-            "method": "PATCH",
-            "url": "{{baseUrl}}/notifications/read-all"
-        }
-    },
-    {
-        "name": "Delete Notification",
-        "request": {
-            "method": "DELETE",
-            "url": "{{baseUrl}}/notifications/{{notificationId}}"
-        }
-    },
-    {
-        "name": "Broadcast Notification",
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"title\": \"System Maintenance\",\n \"message\": \"Scheduled
-maintenance on Sunday 2: 00 AM — 4: 00 AM UTC.\",\n \"departmentId\": null\n}"
-            },
-            "url": "{{baseUrl}}/notifications/broadcast"
-        }
-    }
-]
-},
-{
-"name": "�Milestones",
-"item": [
-    {
-        "name": "Get Milestones By Project",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/milestones/by-project/{{projectId}}"
-        }
-    },
-    {
-        "name": "Get Milestone By ID",
-        "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/milestones/{{milestoneId}}"
-        }
-    },
-    {
-        "name": "Create Milestone",
-        "event": [
-            {
-                "listen": "test",
-                "script": {
-                    "exec": [
-                        "var res = pm.response.json();",
-                        "if (res.id) {",
-                        " pm.collectionVariables.set('milestoneId', res.id);",
-                        " console.log('�MilestoneId saved:', res.id);",
-                        "}"
-                    ]
-                }
-            }
-        ],
-        "request": {
-            "method": "POST",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"name\": \"Phase 1 — Architecture Complete\",\n
-\"description\": \"All architecture documents approved\",\n \"dueDate\": \"2025-03-01T00: 00: 00Z\",\n \"projectId\": \"{{projectId}}\"\n}"
-            },
-            "url": "{{baseUrl}}/milestones"
-        }
-    },
-    {
-        "name": "Update Milestone",
-        "request": {
-            "method": "PUT",
-            "header": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                }
-            ],
-            "body": {
-                "mode": "raw",
-                "raw": "{\n \"name\": \"Phase 1 — Architecture Complete (Revised)\",\n
-\"description\": \"Updated milestone scope\",\n \"dueDate\": \"2025-03-15T00:00:00Z\"\n}"
-            },
-            "url": "{{baseUrl}}/milestones/{{milestoneId}}"
-        }
-    },
-    {
-        "name": "Complete Milestone",
-        "request": {
-            "method": "PATCH",
-            "url": "{{baseUrl}}/milestones/{{milestoneId}}/complete"
-        }
-    },
-    {
-        "name": "Delete Milestone",
-        "request": {
-            "method": "DELETE",
-            "url": "{{baseUrl}}/milestones/{{milestoneId}}"
-        }
-    }
-]
-}
-]
 }

@@ -12,6 +12,7 @@ public class ApplicationUser : AuditableEntity
     public string PhoneNumber { get; private set; } = string.Empty;
     public string? ProfilePictureUrl { get; private set; }
     public string TimeZone { get; private set; } = "UTC";
+    public string? PasswordHash { get; private set; }
     // Organization
     public Guid? DepartmentId { get; private set; }
     public string JobTitle { get; private set; } = string.Empty;
@@ -87,4 +88,8 @@ public class ApplicationUser : AuditableEntity
     => _taskAssignments
     .Count(t => t.Task?.Status == TaskStatus.InProgress
     || t.Task?.Status == TaskStatus.Assigned);
+    public void SetPassword(string passwordHash)
+    {
+        PasswordHash = passwordHash;
+    }
 }

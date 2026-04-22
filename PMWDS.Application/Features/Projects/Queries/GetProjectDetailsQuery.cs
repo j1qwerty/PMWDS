@@ -1,5 +1,4 @@
 using MediatR;
-using AutoMapper;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Application.DTOs.Projects;
@@ -11,12 +10,9 @@ public class GetProjectDetailsQueryHandler
  : IRequestHandler<GetProjectDetailsQuery, ProjectDto>
 {
     private readonly IUnitOfWork _uow;
-    private readonly IMapper _mapper;
-    public GetProjectDetailsQueryHandler(
-    IUnitOfWork uow, IMapper mapper)
+    public GetProjectDetailsQueryHandler(IUnitOfWork uow)
     {
         _uow = uow;
-        _mapper = mapper;
     }
     public async Task<ProjectDto> Handle(
     GetProjectDetailsQuery request,
@@ -26,6 +22,6 @@ public class GetProjectDetailsQueryHandler
         .GetWithDetailsAsync(request.ProjectId, ct)
         ?? throw new NotFoundException(
         nameof(Project), request.ProjectId);
-        return _mapper.Map<ProjectDto>(project);
+        return ProjectDto.FromEntity(project);
     }
 }

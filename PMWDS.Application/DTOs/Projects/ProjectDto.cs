@@ -87,7 +87,7 @@ public record ProjectDetailDto(
  double AIDelayRiskScore,
  double AIBudgetRiskScore,
  string? AIInsightsSummary,
- Guid DepartmentI,
+ Guid DepartmentId,
 
 
 string? DepartmentName,

@@ -363,4 +363,14 @@ export const api = {
       query: { format: options?.format ?? "pdf" },
     });
   },
+  getAISettings(token: string) {
+    return request<AISettingsResponse>("ai/settings", { token });
+  },
+  saveAISettings(token: string, settings: AISettingsRequest) {
+    return request<{ success: boolean; message: string }>("ai/settings", {
+      token,
+      method: "POST",
+      body: settings,
+    });
+  },
 };

@@ -83,6 +83,22 @@ public class DepartmentsController : BaseApiController
         [FromBody] CreateDepartmentDto dto,
         CancellationToken ct)
     {
+        var existingByCode = await _uow.Departments.FindAsync(
+            d => d.Code == dto.Code.ToUpper(),
+            ct);
+        if (existingByCode.Any())
+        {
+            return Conflict(new { message = $"Department with code '{dto.Code}' already exists." });
+        }
+
+        var existingByName = await _uow.Departments.FindAsync(
+            d => d.Name.ToLower() == dto.Name.ToLower().Trim(),
+            ct);
+        if (existingByName.Any())
+        {
+            return Conflict(new { message = $"Department with name '{dto.Name}' already exists." });
+        }
+
         var department = Department.Create(dto.Name, dto.Code, dto.Description, dto.ParentDepartmentId);
         department.SetCreatedBy("system");
         if (!string.IsNullOrWhiteSpace(dto.DepartmentHeadUserId))
@@ -120,6 +136,30 @@ public class DepartmentsController : BaseApiController
         if (department == null)
         {
             return NotFound();
+        }
+
+        var newCode = dto.Code.ToUpper();
+        if (newCode != department.Code)
+        {
+            var existingByCode = await _uow.Departments.FindAsync(
+                d => d.Code == newCode,
+                ct);
+            if (existingByCode.Any())
+            {
+                return Conflict(new { message = $"Department with code '{dto.Code}' already exists." });
+            }
+        }
+
+        var newName = dto.Name.ToLower().Trim();
+        if (newName != department.Name.ToLower())
+        {
+            var existingByName = await _uow.Departments.FindAsync(
+                d => d.Name.ToLower() == newName,
+                ct);
+            if (existingByName.Any())
+            {
+                return Conflict(new { message = $"Department with name '{dto.Name}' already exists." });
+            }
         }
 
         department.Update(dto.Name, dto.Code, dto.Description);

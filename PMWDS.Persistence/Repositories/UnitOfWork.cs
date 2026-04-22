@@ -17,6 +17,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Notification> Notifications { get; }
     public IRepository<AuditLog> AuditLogs { get; }
     public IRepository<Skill> Skills { get; }
+    public IRepository<ProjectDocument> ProjectDocuments { get; }
     public UnitOfWork(ApplicationDbContext context)
     {
         _context = context;
@@ -28,6 +29,7 @@ public class UnitOfWork : IUnitOfWork
         Notifications = new BaseRepository<Notification>(context);
         AuditLogs = new BaseRepository<AuditLog>(context);
         Skills = new BaseRepository<Skill>(context);
+        ProjectDocuments = new BaseRepository<ProjectDocument>(context);
     }
     public async Task<int> SaveChangesAsync(
     CancellationToken ct = default)

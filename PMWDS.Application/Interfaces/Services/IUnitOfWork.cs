@@ -11,6 +11,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.Notification> Notifications { get; }
     IRepository<Domain.Entities.AuditLog> AuditLogs { get; }
     IRepository<Domain.Entities.Skill> Skills { get; }
+    IRepository<Domain.Entities.ProjectDocument> ProjectDocuments { get; }
     Task<int> SaveChangesAsync(
     CancellationToken ct = default);
     Task BeginTransactionAsync(
