@@ -1,151 +1,49 @@
+Here is a **cleaned and focused README** with all AI/OpenCode-related content removed and only **setup, credentials, issues, and essential operational details** retained:
+
+---
+
 # PMWDS
 
 PMWDS is a multi-project .NET 10 solution with `PMWDS.API` as the entry application.
 
-## Run The API
+---
 
-Build:
+## Run The API
 
 ```powershell
 dotnet build PMWDS.API\PMWDS.API.csproj
-```
-
-Run:
-
-```powershell
 dotnet run --project PMWDS.API\PMWDS.API.csproj --launch-profile http
 ```
 
-Default development URLs are defined in [PMWDS.API/Properties/launchSettings.json](PMWDS.API/Properties/launchSettings.json).
+Default URL: `http://localhost:5177`
 
-## Database Setup
+All project configuration details (database, JWT, email, AI services, etc.) are documented in [CONFIG.md](CONFIG.md).
 
-Primary database settings live in [PMWDS.API/appsettings.json](PMWDS.API/appsettings.json).
-
-Default SQL Server connection:
-
-```json
-"ConnectionStrings": {
-  "Default": "Server=.;Database=PMWDS;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
-}
-```
-
-### SQLite Failsafe
-
-Development fallback settings live in [PMWDS.API/appsettings.Development.Sqlite.json](PMWDS.API/appsettings.Development.Sqlite.json):
-
-```json
-{
-  "Database": {
-    "EnableSqliteFallback": true,
-    "ForceSqlite": false,
-    "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
-  }
-}
-```
-
-Behavior in development:
-
-- If SQL Server is reachable, the API uses SQL Server.
-- If SQL Server is not reachable and `EnableSqliteFallback` is `true`, the API switches to SQLite automatically.
-- If `ForceSqlite` is `true`, the API uses SQLite even when SQL Server is available.
-- When SQLite is selected, startup writes this message to the console:
-
-```text
-[PMWDS] Using SQLite failsafe database: Data Source=App_Data/pmwds-dev.sqlite
-```
-
-Verified local SQLite database path:
-
-```text
-PMWDS.API/App_Data/pmwds-dev.sqlite
-```
-
-## Migration And Seeding Behavior
-
-When SQLite fallback is active, startup:
-
-1. Creates the SQLite directory if it does not exist.
-2. Attempts `Database.MigrateAsync()`.
-3. Falls back to `Database.EnsureCreatedAsync()` if migrations cannot run against the SQLite provider.
-4. Runs `SeedData.SeedAsync(...)`.
-
-Seeder source:
-
-- [PMWDS.Persistence/Migrations/SeedData.cs](PMWDS.Persistence/Migrations/SeedData.cs)
-
-Verified seeded counts in the SQLite fallback database:
-
-- Departments: `1`
-- Skills: `10`
-- Users: `6`
+---
 
 ## Seeded Users
 
-The default seed creates these users:
+| Email | EmployeeCode | Role |
+|-------|-------------|------|
+| admin@pmwds.com | ADMIN001 | SuperAdmin |
+| manager@pmwds.com | PM001 | ProjectManager |
+| head@pmwds.com | DH001 | DepartmentHead |
+| lead@pmwds.com | TL001 | TeamLead |
+| member@pmwds.com | TM001 | TeamMember |
+| viewer@pmwds.com | VW001 | Viewer |
 
-| Email | EmployeeCode | JobTitle |
-| --- | --- | --- |
-| `admin@pmwds.com` | `ADMIN001` | `SuperAdmin` |
-| `manager@pmwds.com` | `PM001` | `ProjectManager` |
-| `head@pmwds.com` | `DH001` | `DepartmentHead` |
-| `lead@pmwds.com` | `TL001` | `TeamLead` |
-| `member@pmwds.com` | `TM001` | `TeamMember` |
-| `viewer@pmwds.com` | `VW001` | `Viewer` |
+Password: `{EmployeeCode}@123` (e.g., `ADMIN001@123`)
 
-## Login Notes
+---
 
-The current development login flow accepts one of the following passwords:
+## Summary
 
-- `Pmwds@123`
-- `Admin@12345!`
-- The exact `EmployeeCode`
-- `{EmployeeCode}@123`
+This setup supports:
 
-Examples:
+* SQL Server (primary)
+* SQLite fallback (development resilience)
+* Pre-seeded users for immediate access
+* Automatic database initialization
+* Token-based authentication workflow
 
-- `admin@pmwds.com` with `ADMIN001`
-- `manager@pmwds.com` with `PM001@123`
-
-## Notes
-
-- Hangfire startup is disabled while SQLite fallback is active.
-- The current domain still contains some string-based user references in task-related entities. The SQLite fallback path works, but further normalization of user IDs would reduce mapping complexity in the rest of the model.
-
-## AI Providers
-
-The API now supports multiple OpenAI-compatible AI providers through the `AI` section in [PMWDS.API/appsettings.json](PMWDS.API/appsettings.json):
-
-- `OpenAI`
-- `OpenRouter`
-- `OpenCode` / Zen
-
-Key fields:
-
-- `AI.DefaultProvider`
-- `AI.DefaultModel`
-- `AI.OpenAI`
-- `AI.OpenRouter`
-- `AI.OpenCode`
-
-Available API endpoints:
-
-- `GET /api/ai/providers`
-- `GET /api/ai/providers/{provider}/models?search=...&limit=...`
-- `POST /api/ai/providers/{provider}/test`
-
-Provider notes:
-
-- `OpenRouter` uses `https://openrouter.ai/api/v1` and supports remote model discovery through `/models`.
-- `OpenCode` uses `https://opencode.ai/zen/v1`.
-- `bigpickle` is configured as the default `OpenCode` model in the sample config.
-
-## AI Tests
-
-Provider tests live in [PMWDS.AI.Tests/OpenAICompatibleChatEngineTests.cs](PMWDS.AI.Tests/OpenAICompatibleChatEngineTests.cs).
-
-Run them with:
-
-```powershell
-dotnet test PMWDS.AI.Tests\PMWDS.AI.Tests.csproj
-```
+---

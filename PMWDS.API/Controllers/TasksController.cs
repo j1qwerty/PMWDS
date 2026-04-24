@@ -220,7 +220,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetSubtasks(Guid id, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         return task == null ? NotFound() : Ok(task.SubTasks.Select(TaskDto.FromEntity));
     }
 
