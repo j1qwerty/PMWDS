@@ -15,6 +15,12 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.DashboardWidget> DashboardWidgets { get; }
     IRepository<Domain.Entities.Report> Reports { get; }
     IRepository<Domain.Entities.ReportSchedule> ReportSchedules { get; }
+    IRepository<Domain.Entities.Integration> Integrations { get; }
+    IRepository<Domain.Entities.Webhook> Webhooks { get; }
+    IRepository<Domain.Entities.WebhookDelivery> WebhookDeliveries { get; }
+    IRepository<Domain.Entities.KnowledgeArticle> KnowledgeArticles { get; }
+    IRepository<Domain.Entities.LessonLearned> LessonsLearned { get; }
+    IRepository<Domain.Entities.ActivityLog> ActivityLogs { get; }
     IRepository<Domain.Entities.AuditLog> AuditLogs { get; }
     IRepository<Domain.Entities.Skill> Skills { get; }
     IRepository<Domain.Entities.Role> Roles { get; }

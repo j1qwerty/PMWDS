@@ -30,6 +30,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<DashboardWidget> DashboardWidgets { get; set; }
     public DbSet<Report> Reports { get; set; }
     public DbSet<ReportSchedule> ReportSchedules { get; set; }
+    public DbSet<Integration> Integrations { get; set; }
+    public DbSet<Webhook> Webhooks { get; set; }
+    public DbSet<WebhookDelivery> WebhookDeliveries { get; set; }
+    public DbSet<KnowledgeArticle> KnowledgeArticles { get; set; }
+    public DbSet<LessonLearned> LessonsLearned { get; set; }
+    public DbSet<ActivityLog> ActivityLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

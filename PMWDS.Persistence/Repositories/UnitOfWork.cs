@@ -24,6 +24,12 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<DashboardWidget> DashboardWidgets { get; }
     public IRepository<Report> Reports { get; }
     public IRepository<ReportSchedule> ReportSchedules { get; }
+    public IRepository<Integration> Integrations { get; }
+    public IRepository<Webhook> Webhooks { get; }
+    public IRepository<WebhookDelivery> WebhookDeliveries { get; }
+    public IRepository<KnowledgeArticle> KnowledgeArticles { get; }
+    public IRepository<LessonLearned> LessonsLearned { get; }
+    public IRepository<ActivityLog> ActivityLogs { get; }
     public IRepository<AuditLog> AuditLogs { get; }
     public IRepository<Skill> Skills { get; }
     public IRepository<Role> Roles { get; }
@@ -54,6 +60,12 @@ public class UnitOfWork : IUnitOfWork
         DashboardWidgets = new BaseRepository<DashboardWidget>(context);
         Reports = new BaseRepository<Report>(context);
         ReportSchedules = new BaseRepository<ReportSchedule>(context);
+        Integrations = new BaseRepository<Integration>(context);
+        Webhooks = new BaseRepository<Webhook>(context);
+        WebhookDeliveries = new BaseRepository<WebhookDelivery>(context);
+        KnowledgeArticles = new BaseRepository<KnowledgeArticle>(context);
+        LessonsLearned = new BaseRepository<LessonLearned>(context);
+        ActivityLogs = new BaseRepository<ActivityLog>(context);
         AuditLogs = new BaseRepository<AuditLog>(context);
         Skills = new BaseRepository<Skill>(context);
         Roles = new BaseRepository<Role>(context);

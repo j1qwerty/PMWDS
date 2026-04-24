@@ -1,0 +1,106 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Entities;
+
+namespace PMWDS.API.Controllers;
+
+public class IntegrationsController : BaseApiController
+{
+    private readonly IUnitOfWork _uow;
+    private readonly ICurrentUserService _currentUser;
+
+    public IntegrationsController(IUnitOfWork uow, ICurrentUserService currentUser)
+    {
+        _uow = uow;
+        _currentUser = currentUser;
+    }
+
+    [HttpGet]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GetAll(CancellationToken ct)
+        => Ok((await _uow.Integrations.GetAllAsync(ct)).Select(MapIntegration));
+
+    [HttpGet("{id:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var integration = await _uow.Integrations.GetByIdAsync(id, ct);
+        if (integration == null)
+        {
+            return NotFound();
+        }
+
+        var webhooks = (await _uow.Webhooks.FindAsync(w => w.IntegrationId == id, ct)).Select(WebhooksController.MapWebhook).ToList();
+        return Ok(new IntegrationDetailResponse(MapIntegration(integration), webhooks));
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> Create([FromBody] UpsertIntegrationRequest req, CancellationToken ct)
+    {
+        var integration = Integration.Create(req.IntegrationType, req.Name, req.Configuration, req.IsEnabled);
+        integration.SetCreatedBy(_currentUser.UserId ?? "system");
+        integration.MarkSynced(req.Status);
+        await _uow.Integrations.AddAsync(integration, ct);
+        await _uow.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(GetById), new { id = integration.Id }, MapIntegration(integration));
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertIntegrationRequest req, CancellationToken ct)
+    {
+        var integration = await _uow.Integrations.GetByIdAsync(id, ct);
+        if (integration == null)
+        {
+            return NotFound();
+        }
+
+        integration.Update(req.IntegrationType, req.Name, req.Configuration, req.IsEnabled, req.Status);
+        await _uow.Integrations.UpdateAsync(integration, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(MapIntegration(integration));
+    }
+
+    [HttpPatch("{id:guid}/sync")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> Sync(Guid id, [FromBody] SyncIntegrationRequest req, CancellationToken ct)
+    {
+        var integration = await _uow.Integrations.GetByIdAsync(id, ct);
+        if (integration == null)
+        {
+            return NotFound();
+        }
+
+        integration.MarkSynced(req.Status);
+        await _uow.Integrations.UpdateAsync(integration, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(MapIntegration(integration));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _uow.Integrations.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    private static IntegrationResponse MapIntegration(Integration integration)
+        => new(
+            integration.Id,
+            integration.IntegrationType,
+            integration.Name,
+            JsonSerializer.Deserialize<Dictionary<string, object>>(integration.ConfigurationJson) ?? new(),
+            integration.IsActive,
+            integration.LastSync,
+            integration.Status);
+}
+
+public record IntegrationResponse(Guid Id, string IntegrationType, string Name, Dictionary<string, object> Configuration, bool IsEnabled, DateTime? LastSync, string Status);
+public record IntegrationDetailResponse(IntegrationResponse Integration, List<WebhookResponse> Webhooks);
+public record UpsertIntegrationRequest(string IntegrationType, string Name, Dictionary<string, object> Configuration, bool IsEnabled, string Status);
+public record SyncIntegrationRequest(string Status);
