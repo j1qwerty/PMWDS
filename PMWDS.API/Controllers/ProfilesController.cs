@@ -1,0 +1,83 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Entities;
+
+namespace PMWDS.API.Controllers;
+
+public class ProfilesController : BaseApiController
+{
+    private readonly IUnitOfWork _uow;
+    private readonly ICurrentUserService _currentUser;
+
+    public ProfilesController(IUnitOfWork uow, ICurrentUserService currentUser)
+    {
+        _uow = uow;
+        _currentUser = currentUser;
+    }
+
+    [HttpGet("{userId:guid}")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> Get(Guid userId, CancellationToken ct)
+    {
+        var profile = (await _uow.UserProfiles.FindAsync(p => p.UserId == userId, ct)).FirstOrDefault();
+        return profile == null ? NotFound() : Ok(MapProfile(profile));
+    }
+
+    [HttpPut("{userId:guid}")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> Upsert(Guid userId, [FromBody] UpsertProfileRequest req, CancellationToken ct)
+    {
+        var user = await _uow.Users.GetByIdAsync(userId, ct);
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found." });
+        }
+
+        var profile = (await _uow.UserProfiles.FindAsync(p => p.UserId == userId, ct)).FirstOrDefault();
+        if (profile == null)
+        {
+            profile = UserProfile.Create(userId, req.Bio, req.JobTitle, req.DateOfBirth, req.Address, req.EmergencyContact, req.LinkedInUrl);
+            profile.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _uow.UserProfiles.AddAsync(profile, ct);
+        }
+        else
+        {
+            profile.UpdateProfileDetails(req.Bio, req.JobTitle, req.DateOfBirth, req.Address, req.EmergencyContact, req.LinkedInUrl);
+            profile.SetModified(_currentUser.UserId ?? "system");
+            await _uow.UserProfiles.UpdateAsync(profile, ct);
+        }
+
+        await _uow.SaveChangesAsync(ct);
+        return Ok(MapProfile(profile));
+    }
+
+    private static UserProfileResponse MapProfile(UserProfile profile)
+        => new(
+            profile.Id,
+            profile.UserId,
+            profile.Bio,
+            profile.JobTitle,
+            profile.DateOfBirth,
+            profile.Address,
+            profile.EmergencyContact,
+            profile.LinkedInUrl);
+}
+
+public record UserProfileResponse(
+    Guid Id,
+    Guid UserId,
+    string? Bio,
+    string? JobTitle,
+    DateTime? DateOfBirth,
+    string? Address,
+    string? EmergencyContact,
+    string? LinkedInUrl);
+
+public record UpsertProfileRequest(
+    string? Bio,
+    string? JobTitle,
+    DateTime? DateOfBirth,
+    string? Address,
+    string? EmergencyContact,
+    string? LinkedInUrl);

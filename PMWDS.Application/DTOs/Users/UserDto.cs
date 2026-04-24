@@ -1,4 +1,5 @@
 using PMWDS.Domain.Entities;
+
 namespace PMWDS.Application.DTOs.Users;
 
 public record UserDto(
@@ -10,6 +11,8 @@ public record UserDto(
  string? JobTitle,
  string? Department,
  Guid? DepartmentId,
+ Guid? ProfileId,
+ string? Bio,
  string AvailabilityStatus,
  double AvailabilityPercentage,
  double AIWorkloadScore,
@@ -30,9 +33,11 @@ public record UserDto(
     LastName: u.LastName,
     FullName: u.FullName,
     Email: u.Email,
-    JobTitle: u.JobTitle,
+    JobTitle: u.Profile?.JobTitle ?? u.JobTitle,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
+    ProfileId: u.Profile?.Id,
+    Bio: u.Profile?.Bio,
     AvailabilityStatus: u.AvailabilityStatus
     .ToString(),
     AvailabilityPercentage: u.AvailabilityPercentage,
@@ -55,9 +60,11 @@ public record UserDto(
     LastName: u.LastName,
     FullName: u.FullName,
     Email: u.Email,
-    JobTitle: u.JobTitle,
+    JobTitle: u.Profile?.JobTitle ?? u.JobTitle,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
+    ProfileId: u.Profile?.Id,
+    Bio: u.Profile?.Bio,
     AvailabilityStatus: u.AvailabilityStatus
     .ToString(),
     AvailabilityPercentage: u.AvailabilityPercentage,
@@ -90,7 +97,7 @@ public record UserSummaryDto(
 {
     public static UserSummaryDto FromEntity(
     ApplicationUser u)
-    => new(u.Id.ToString(), u.FullName, u.JobTitle,
+    => new(u.Id.ToString(), u.FullName, u.Profile?.JobTitle ?? u.JobTitle,
     u.AvailabilityPercentage,
     u.AIWorkloadScore);
 }

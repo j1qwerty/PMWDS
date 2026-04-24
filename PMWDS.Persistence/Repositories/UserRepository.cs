@@ -2,89 +2,88 @@ using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.Interfaces.Repositories;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
+
 namespace PMWDS.Persistence.Repositories;
 
-public class UserRepository
- : BaseRepository<ApplicationUser>, IUserRepository
+public class UserRepository : BaseRepository<ApplicationUser>, IUserRepository
 {
     public UserRepository(ApplicationDbContext ctx)
-    : base(ctx) { }
-    public async Task<ApplicationUser?> GetByEmailAsync(
-    string email, CancellationToken ct = default)
-    => await _dbSet.FirstOrDefaultAsync(
-    u => u.Email == email.ToLower(), ct);
-    public async Task<ApplicationUser?> GetByIdWithSkillsAsync(
-    Guid userId, CancellationToken ct = default)
-    => await _dbSet
-    .Include(u => u.Skills)
-    .ThenInclude(s => s.Skill)
-    .FirstOrDefaultAsync(u => u.Id == userId, ct);
-    public async Task<IEnumerable<ApplicationUser>>
-    GetByDepartmentAsync(
-    Guid departmentId,
-    CancellationToken ct = default)
-    => await _dbSet
-    .Where(u => u.DepartmentId == departmentId
-    && u.IsActive)
-    .Include(u => u.Skills)
-    .ThenInclude(s => s.Skill)
-    .ToListAsync(ct);
-    public async Task<IEnumerable<ApplicationUser>>
-    GetAvailableUsersAsync(
-    CancellationToken ct = default)
-    => await _dbSet
-    .Where(u => u.IsActive
-    && u.AvailabilityStatus ==
-    Domain.Enums.AvailabilityStatus.Available)
-    .Include(u => u.Skills)
-    .ToListAsync(ct);
-    public async Task<IEnumerable<ApplicationUser>>
-    GetUsersBySkillAsync(
-    Guid skillId, int minProficiency = 1,
-    CancellationToken ct = default)
-    => await _dbSet
-    .Where(u => u.IsActive
-    && u.Skills.Any(s =>
-    s.SkillId == skillId
-    && s.ProficiencyLevel >= minProficiency))
-    .Include(u => u.Skills)
-    .ToListAsync(ct);
-    public async Task<IEnumerable<ApplicationUser>>
-    GetUsersByRoleAsync(
-    string roleName,
-    CancellationToken ct = default)
+        : base(ctx)
     {
-        return roleName switch
-        {
-            "SuperAdmin" => await _dbSet
-                .Where(u => u.Email == "admin@pmwds.com" || u.JobTitle == "SuperAdmin")
-                .ToListAsync(ct),
-            "ProjectManager" => await _dbSet
-                .Where(u => _context.Projects.Any(p => p.ProjectManagerId == u.Id.ToString()))
-                .ToListAsync(ct),
-            "DepartmentHead" => await _dbSet
-                .Where(u => _context.Departments.Any(d => d.DepartmentHeadUserId == u.Id.ToString()))
-                .ToListAsync(ct),
-            "TeamLead" => await _dbSet
-                .Where(u => u.JobTitle.Contains("Lead"))
-                .ToListAsync(ct),
-            "TeamMember" => await _dbSet
-                .Where(u => u.IsActive)
-                .ToListAsync(ct),
-            _ => Enumerable.Empty<ApplicationUser>()
-        };
     }
+
+    public override async Task<ApplicationUser?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
+
+    public override async Task<IEnumerable<ApplicationUser>> GetAllAsync(CancellationToken ct = default)
+        => await IncludeIdentityGraph().ToListAsync(ct);
+
+    public async Task<ApplicationUser?> GetByEmailAsync(
+        string email,
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .FirstOrDefaultAsync(u => u.Email == email.ToLower(), ct);
+
+    public async Task<ApplicationUser?> GetByIdWithSkillsAsync(
+        Guid userId,
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Include(u => u.Skills)
+            .ThenInclude(s => s.Skill)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+    public async Task<IEnumerable<ApplicationUser>> GetByDepartmentAsync(
+        Guid departmentId,
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Where(u => u.DepartmentId == departmentId && u.IsActive)
+            .Include(u => u.Skills)
+            .ThenInclude(s => s.Skill)
+            .ToListAsync(ct);
+
+    public async Task<IEnumerable<ApplicationUser>> GetAvailableUsersAsync(
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Where(u => u.IsActive &&
+                        u.AvailabilityStatus == Domain.Enums.AvailabilityStatus.Available)
+            .Include(u => u.Skills)
+            .ThenInclude(s => s.Skill)
+            .ToListAsync(ct);
+
+    public async Task<IEnumerable<ApplicationUser>> GetUsersBySkillAsync(
+        Guid skillId,
+        int minProficiency = 1,
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Where(u => u.IsActive &&
+                        u.Skills.Any(s => s.SkillId == skillId && s.ProficiencyLevel >= minProficiency))
+            .Include(u => u.Skills)
+            .ToListAsync(ct);
+
+    public async Task<IEnumerable<ApplicationUser>> GetUsersByRoleAsync(
+        string roleName,
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Where(u => u.Roles.Any(r => r.Name == roleName))
+            .ToListAsync(ct);
+
     public async Task<double> GetUserWorkloadScoreAsync(
-    string userId,
-    CancellationToken ct = default)
+        string userId,
+        CancellationToken ct = default)
     {
         if (!Guid.TryParse(userId, out var parsedUserId))
         {
             return 0;
         }
 
-        var user = await _dbSet
-        .FirstOrDefaultAsync(u => u.Id == parsedUserId, ct);
+        var user = await _dbSet.FirstOrDefaultAsync(u => u.Id == parsedUserId, ct);
         return user?.AIWorkloadScore ?? 0;
     }
+
+    private IQueryable<ApplicationUser> IncludeIdentityGraph()
+        => _dbSet
+            .Include(u => u.Department)
+            .Include(u => u.Profile)
+            .Include(u => u.Roles);
 }

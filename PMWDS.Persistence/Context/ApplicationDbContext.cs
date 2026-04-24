@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Entities;
+
 namespace PMWDS.Persistence.Context;
 
-public class ApplicationDbContext
- : DbContext
+public class ApplicationDbContext : DbContext
 {
-    // ── Core ─────────────────────────────────────────────
     public DbSet<Department> Departments { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<Milestone> Milestones { get; set; }
@@ -17,59 +16,58 @@ public class ApplicationDbContext
     public DbSet<TaskAttachment> TaskAttachments { get; set; }
     public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<ProjectDocument> ProjectDocuments { get; set; }
-    // ── People & Skills ───────────────────────────────────
+    public DbSet<ApplicationUser> Users { get; set; }
     public DbSet<Skill> Skills { get; set; }
     public DbSet<UserSkill> UserSkills { get; set; }
-    // ── Notifications ─────────────────────────────────────
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<Organization> Organizations { get; set; }
     public DbSet<Notification> Notifications { get; set; }
-    // ── Audit ─────────────────────────────────────────────
     public DbSet<AuditLog> AuditLogs { get; set; }
-    public ApplicationDbContext(
-    DbContextOptions<ApplicationDbContext> options)
-    : base(options) { }
-    protected override void OnModelCreating(
-    ModelBuilder builder)
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+
+    protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-        // Apply all IEntityTypeConfiguration<T> in assembly
-        builder.ApplyConfigurationsFromAssembly(
-        typeof(ApplicationDbContext).Assembly);
-        // Global soft-delete query filter
+
+        builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(BaseEntity).IsAssignableFrom(
-            entityType.ClrType))
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
             {
                 builder.Entity(entityType.ClrType)
-                .HasQueryFilter(
-                GetSoftDeleteFilter(entityType.ClrType));
+                    .HasQueryFilter(GetSoftDeleteFilter(entityType.ClrType));
             }
         }
     }
-    private static System.Linq.Expressions.LambdaExpression
-    GetSoftDeleteFilter(Type type)
+
+    private static System.Linq.Expressions.LambdaExpression GetSoftDeleteFilter(Type type)
     {
-        var param = System.Linq.Expressions
-        .Expression.Parameter(type, "e");
-        var prop = System.Linq.Expressions
-        .Expression.Property(param, "IsDeleted");
-        var cond = System.Linq.Expressions
-        .Expression.Equal(prop,
-        System.Linq.Expressions
-        .Expression.Constant(false));
-        return System.Linq.Expressions
-        .Expression.Lambda(cond, param);
+        var param = System.Linq.Expressions.Expression.Parameter(type, "e");
+        var prop = System.Linq.Expressions.Expression.Property(param, "IsDeleted");
+        var cond = System.Linq.Expressions.Expression.Equal(
+            prop,
+            System.Linq.Expressions.Expression.Constant(false));
+
+        return System.Linq.Expressions.Expression.Lambda(cond, param);
     }
-    public override async Task<int> SaveChangesAsync(
-    CancellationToken ct = default)
+
+    public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        // Auto-set ModifiedDate on changed entities
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             if (entry.State == EntityState.Modified)
-                entry.Entity.SetModified(
-                entry.Entity.ModifiedBy ?? "system");
+            {
+                entry.Entity.SetModified(entry.Entity.ModifiedBy ?? "system");
+            }
         }
+
         return await base.SaveChangesAsync(ct);
     }
 }

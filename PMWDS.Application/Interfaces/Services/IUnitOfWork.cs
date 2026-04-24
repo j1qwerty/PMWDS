@@ -11,6 +11,10 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.Notification> Notifications { get; }
     IRepository<Domain.Entities.AuditLog> AuditLogs { get; }
     IRepository<Domain.Entities.Skill> Skills { get; }
+    IRepository<Domain.Entities.Role> Roles { get; }
+    IRepository<Domain.Entities.Permission> Permissions { get; }
+    IRepository<Domain.Entities.UserProfile> UserProfiles { get; }
+    IRepository<Domain.Entities.Organization> Organizations { get; }
     IRepository<Domain.Entities.ProjectDocument> ProjectDocuments { get; }
     IRepository<Domain.Entities.UserSkill> UserSkills { get; }
     IRepository<Domain.Entities.TaskAssignment> TaskAssignments { get; }

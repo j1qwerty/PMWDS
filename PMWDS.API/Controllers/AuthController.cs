@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using PMWDS.API.Services;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Settings;
@@ -36,7 +37,7 @@ public class AuthController : BaseApiController
             return Unauthorized(new { Message = "Invalid credentials." });
         }
 
-        var roles = ResolveRoles(user);
+        var roles = UserRoleResolver.Resolve(user);
         var token = GenerateToken(user, roles);
 
         return Ok(new
@@ -68,22 +69,19 @@ public class AuthController : BaseApiController
             return NotFound();
         }
 
-        // Validate old password
         if (!IsPasswordValid(user, req.OldPassword))
         {
             return BadRequest(new { message = "Current password is incorrect." });
         }
 
-        // Validate new password requirements
         if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
         {
             return BadRequest(new { message = "New password must be at least 6 characters." });
         }
 
-        // Simple hash (in production, use proper password hashing library)
         var newHash = Convert.ToBase64String(
             System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(req.NewPassword + parsedUserId.ToString())));
+                System.Text.Encoding.UTF8.GetBytes(req.NewPassword + parsedUserId)));
         user.SetPassword(newHash);
 
         await _uow.SaveChangesAsync(ct);
@@ -93,8 +91,7 @@ public class AuthController : BaseApiController
 
     [HttpPost("refresh")]
     [Authorize]
-    public async Task<IActionResult> RefreshToken(
-        CancellationToken ct)
+    public async Task<IActionResult> RefreshToken(CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userId, out var parsedUserId))
@@ -108,7 +105,7 @@ public class AuthController : BaseApiController
             return Unauthorized();
         }
 
-        var token = GenerateToken(user, ResolveRoles(user));
+        var token = GenerateToken(user, UserRoleResolver.Resolve(user));
         return Ok(new
         {
             Token = token,
@@ -124,55 +121,18 @@ public class AuthController : BaseApiController
             return false;
         }
 
-        // Check if user has a custom password set
         if (!string.IsNullOrEmpty(user.PasswordHash))
         {
             var hash = Convert.ToBase64String(
                 System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(normalized + user.Id.ToString())));
+                    System.Text.Encoding.UTF8.GetBytes(normalized + user.Id)));
             return hash == user.PasswordHash;
         }
 
-        // Fallback to legacy hardcoded passwords
         return normalized == "Pmwds@123"
             || normalized == "Admin@12345!"
             || normalized == user.EmployeeCode
             || normalized == $"{user.EmployeeCode}@123";
-    }
-
-    private static IList<string> ResolveRoles(ApplicationUser user)
-    {
-        var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        if (user.Email.Equals("admin@pmwds.com", StringComparison.OrdinalIgnoreCase) ||
-            user.JobTitle.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
-        {
-            roles.Add("SuperAdmin");
-        }
-
-        if (user.JobTitle.Contains("ProjectManager", StringComparison.OrdinalIgnoreCase) ||
-            user.JobTitle.Contains("Manager", StringComparison.OrdinalIgnoreCase))
-        {
-            roles.Add("ProjectManager");
-        }
-
-        if (user.JobTitle.Contains("DepartmentHead", StringComparison.OrdinalIgnoreCase) ||
-            user.JobTitle.Contains("Head", StringComparison.OrdinalIgnoreCase))
-        {
-            roles.Add("DepartmentHead");
-        }
-
-        if (user.JobTitle.Contains("Lead", StringComparison.OrdinalIgnoreCase))
-        {
-            roles.Add("TeamLead");
-        }
-
-        if (roles.Count == 0)
-        {
-            roles.Add("TeamMember");
-        }
-
-        return roles.ToList();
     }
 
     private string GenerateToken(

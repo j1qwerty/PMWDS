@@ -6,10 +6,12 @@ public class Department : AuditableEntity
     public string Name { get; private set; } = string.Empty;
     public string Code { get; private set; } = string.Empty;
     public string? Description { get; private set; }
+    public Guid? OrganizationId { get; private set; }
     public Guid? ParentDepartmentId { get; private set; }
     public string? DepartmentHeadUserId { get; private set; }
     public int MaxCapacity { get; private set; }
     // Navigation
+    public Organization? Organization { get; private set; }
     public Department? ParentDepartment { get; private set; }
     public IReadOnlyCollection<Department> SubDepartments =>
     _subDepartments.AsReadOnly();
@@ -39,6 +41,8 @@ public class Department : AuditableEntity
     }
     public void AssignHead(string userId)
     => DepartmentHeadUserId = userId;
+    public void AssignToOrganization(Guid? organizationId)
+    => OrganizationId = organizationId;
     public void Update(
     string name,
     string code,

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Features.Users.Queries;
 using PMWDS.Application.Interfaces.Services;
@@ -30,7 +31,7 @@ public class UsersController : BaseApiController
             ? await _uow.Users.GetByDepartmentAsync(departmentId.Value, ct)
             : await _uow.Users.GetAllAsync(ct);
 
-        return Ok(users.Select(u => UserDto.FromEntity(u, ResolveRoles(u))));
+        return Ok(users.Select(u => UserDto.FromEntity(u, UserRoleResolver.Resolve(u))));
     }
 
     [HttpGet("{id}")]
@@ -43,7 +44,7 @@ public class UsersController : BaseApiController
         }
 
         var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
-        return user == null ? NotFound() : Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
+        return user == null ? NotFound() : Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     [HttpGet("me")]
@@ -57,7 +58,7 @@ public class UsersController : BaseApiController
         }
 
         var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
-        return user == null ? NotFound() : Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
+        return user == null ? NotFound() : Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     [HttpPut("{id}")]
@@ -89,12 +90,28 @@ public class UsersController : BaseApiController
             user.AssignToDepartment(dto.DepartmentId.Value);
         }
 
+        var profile = user.Profile ?? UserProfile.Create(user.Id, null, dto.JobTitle, null, null, null, null);
+        profile.UpdateProfileDetails(
+            user.Profile?.Bio,
+            dto.JobTitle ?? user.JobTitle,
+            user.Profile?.DateOfBirth,
+            user.Profile?.Address,
+            user.Profile?.EmergencyContact,
+            user.Profile?.LinkedInUrl);
+
+        if (user.Profile == null)
+        {
+            profile.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _uow.UserProfiles.AddAsync(profile, ct);
+            user.SetProfile(profile);
+        }
+
         user.UpdateAvailability(user.AvailabilityStatus, dto.AvailabilityPercentage);
         user.SetModified(_currentUser.UserId ?? "system");
 
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
+        return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     [HttpPost("register")]
@@ -111,6 +128,12 @@ public class UsersController : BaseApiController
             return Conflict(new { message = $"A user with email '{dto.Email}' already exists." });
         }
 
+        var role = (await _uow.Roles.FindAsync(r => r.Name == dto.Role, ct)).FirstOrDefault();
+        if (role == null)
+        {
+            return BadRequest(new { message = $"Role '{dto.Role}' was not found." });
+        }
+
         var user = ApplicationUser.Create(
             dto.Email,
             dto.FirstName,
@@ -119,11 +142,30 @@ public class UsersController : BaseApiController
             dto.JobTitle ?? dto.Role,
             dto.DepartmentId);
         user.SetCreatedBy(_currentUser.UserId ?? "system");
+        user.Roles.Add(role);
+
+        var passwordHash = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(dto.Password + user.Id)));
+        user.SetPassword(passwordHash);
 
         await _uow.Users.AddAsync(user, ct);
+
+        var profile = UserProfile.Create(
+            user.Id,
+            null,
+            dto.JobTitle ?? dto.Role,
+            null,
+            null,
+            null,
+            null);
+        profile.SetCreatedBy(_currentUser.UserId ?? "system");
+        await _uow.UserProfiles.AddAsync(profile, ct);
+
         await _uow.SaveChangesAsync(ct);
 
-        return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
+        var created = await _uow.Users.GetByIdWithSkillsAsync(user.Id, ct);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(created!, UserRoleResolver.Resolve(created!)));
     }
 
     [HttpPatch("{id}/availability")]
@@ -147,7 +189,7 @@ public class UsersController : BaseApiController
         user.UpdateAvailability(req.Status, req.AvailabilityPercentage);
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(UserDto.FromEntityWithSkills(user, ResolveRoles(user)));
+        return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     [HttpPost("{id}/skills")]
@@ -168,8 +210,7 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
-        var existing = user.Skills
-            .FirstOrDefault(s => s.SkillId == req.SkillId);
+        var existing = user.Skills.FirstOrDefault(s => s.SkillId == req.SkillId);
 
         if (existing != null)
         {
@@ -199,7 +240,7 @@ public class UsersController : BaseApiController
             .ToList();
         return Ok(new
         {
-            User = UserDto.FromEntityWithSkills(refreshed, ResolveRoles(refreshed)),
+            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
@@ -223,8 +264,7 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
-        var existing = user.Skills
-            .FirstOrDefault(s => s.SkillId == skillId);
+        var existing = user.Skills.FirstOrDefault(s => s.SkillId == skillId);
         if (existing == null)
         {
             return NotFound(new { message = "User does not have this skill." });
@@ -245,7 +285,7 @@ public class UsersController : BaseApiController
             .ToList();
         return Ok(new
         {
-            User = UserDto.FromEntityWithSkills(refreshed, ResolveRoles(refreshed)),
+            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
@@ -268,8 +308,7 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
-        var existing = user.Skills
-            .FirstOrDefault(s => s.SkillId == skillId);
+        var existing = user.Skills.FirstOrDefault(s => s.SkillId == skillId);
         if (existing == null)
         {
             return NotFound(new { message = "User does not have this skill." });
@@ -289,7 +328,7 @@ public class UsersController : BaseApiController
             .ToList();
         return Ok(new
         {
-            User = UserDto.FromEntityWithSkills(refreshed, ResolveRoles(refreshed)),
+            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
@@ -299,7 +338,7 @@ public class UsersController : BaseApiController
     public async Task<IActionResult> GetAvailable(CancellationToken ct)
     {
         var users = await _uow.Users.GetAvailableUsersAsync(ct);
-        return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, ResolveRoles(u))));
+        return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))));
     }
 
     [HttpGet("workload")]
@@ -328,20 +367,6 @@ public class UsersController : BaseApiController
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok();
-    }
-
-    private static IList<string> ResolveRoles(ApplicationUser user)
-    {
-        var roles = new List<string>();
-        if (user.Email.Equals("admin@pmwds.com", StringComparison.OrdinalIgnoreCase) || user.JobTitle == "SuperAdmin")
-            roles.Add("SuperAdmin");
-        if (user.JobTitle.Contains("ProjectManager", StringComparison.OrdinalIgnoreCase) || user.JobTitle.Contains("Manager", StringComparison.OrdinalIgnoreCase))
-            roles.Add("ProjectManager");
-        if (user.JobTitle.Contains("Lead", StringComparison.OrdinalIgnoreCase))
-            roles.Add("TeamLead");
-        if (roles.Count == 0)
-            roles.Add("TeamMember");
-        return roles;
     }
 }
 

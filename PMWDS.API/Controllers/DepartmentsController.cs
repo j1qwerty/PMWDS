@@ -19,15 +19,7 @@ public class DepartmentsController : BaseApiController
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var departments = await _uow.Departments.GetAllAsync(ct);
-        return Ok(departments.Select(d => new DepartmentDto(
-            d.Id,
-            d.Name,
-            d.Code,
-            d.Description,
-            d.ParentDepartmentId,
-            d.DepartmentHeadUserId,
-            d.MaxCapacity,
-            d.CalculateCapacityUtilization())));
+        return Ok(departments.Select(MapDepartment));
     }
 
     [HttpGet("{id:guid}")]
@@ -40,15 +32,7 @@ public class DepartmentsController : BaseApiController
             return NotFound();
         }
 
-        return Ok(new DepartmentDto(
-            department.Id,
-            department.Name,
-            department.Code,
-            department.Description,
-            department.ParentDepartmentId,
-            department.DepartmentHeadUserId,
-            department.MaxCapacity,
-            department.CalculateCapacityUtilization()));
+        return Ok(MapDepartment(department));
     }
 
     [HttpGet("{id:guid}/dashboard")]
@@ -70,10 +54,11 @@ public class DepartmentsController : BaseApiController
             department.Name,
             department.Code,
             department.Description,
+            department.OrganizationId,
             TeamMembers = users.Count,
             ActiveProjects = projects.Count(p => p.Status == PMWDS.Domain.Enums.ProjectStatus.InProgress),
             CompletedProjects = projects.Count(p => p.Status == PMWDS.Domain.Enums.ProjectStatus.Completed),
-            AverageWorkload = users.Any() ? users.Average(u => u.AIWorkloadScore) : 0
+            AverageWorkload = users.Any() ? users.Average(u => u.AIWorkloadScore) : 0d
         });
     }
 
@@ -106,6 +91,11 @@ public class DepartmentsController : BaseApiController
             department.AssignHead(dto.DepartmentHeadUserId);
         }
 
+        if (dto.OrganizationId.HasValue)
+        {
+            department.AssignToOrganization(dto.OrganizationId.Value);
+        }
+
         if (dto.MaxCapacity.HasValue)
         {
             department.SetMaxCapacity(dto.MaxCapacity.Value);
@@ -114,15 +104,7 @@ public class DepartmentsController : BaseApiController
         await _uow.Departments.AddAsync(department, ct);
         await _uow.SaveChangesAsync(ct);
 
-        return CreatedAtAction(nameof(GetById), new { id = department.Id }, new DepartmentDto(
-            department.Id,
-            department.Name,
-            department.Code,
-            department.Description,
-            department.ParentDepartmentId,
-            department.DepartmentHeadUserId,
-            department.MaxCapacity,
-            department.CalculateCapacityUtilization()));
+        return CreatedAtAction(nameof(GetById), new { id = department.Id }, MapDepartment(department));
     }
 
     [HttpPut("{id:guid}")]
@@ -141,9 +123,7 @@ public class DepartmentsController : BaseApiController
         var newCode = dto.Code.ToUpper();
         if (newCode != department.Code)
         {
-            var existingByCode = await _uow.Departments.FindAsync(
-                d => d.Code == newCode,
-                ct);
+            var existingByCode = await _uow.Departments.FindAsync(d => d.Code == newCode, ct);
             if (existingByCode.Any())
             {
                 return Conflict(new { message = $"Department with code '{dto.Code}' already exists." });
@@ -153,9 +133,7 @@ public class DepartmentsController : BaseApiController
         var newName = dto.Name.ToLower().Trim();
         if (newName != department.Name.ToLower())
         {
-            var existingByName = await _uow.Departments.FindAsync(
-                d => d.Name.ToLower() == newName,
-                ct);
+            var existingByName = await _uow.Departments.FindAsync(d => d.Name.ToLower() == newName, ct);
             if (existingByName.Any())
             {
                 return Conflict(new { message = $"Department with name '{dto.Name}' already exists." });
@@ -168,6 +146,8 @@ public class DepartmentsController : BaseApiController
             department.AssignHead(dto.DepartmentHeadUserId);
         }
 
+        department.AssignToOrganization(dto.OrganizationId);
+
         if (dto.MaxCapacity.HasValue)
         {
             department.SetMaxCapacity(dto.MaxCapacity.Value);
@@ -175,7 +155,7 @@ public class DepartmentsController : BaseApiController
 
         await _uow.Departments.UpdateAsync(department, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(MapDepartment(department));
     }
 
     [HttpDelete("{id:guid}")]
@@ -186,6 +166,18 @@ public class DepartmentsController : BaseApiController
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
+
+    private static DepartmentDto MapDepartment(Department department)
+        => new(
+            department.Id,
+            department.Name,
+            department.Code,
+            department.Description,
+            department.OrganizationId,
+            department.ParentDepartmentId,
+            department.DepartmentHeadUserId,
+            department.MaxCapacity,
+            department.CalculateCapacityUtilization());
 }
 
 public record DepartmentDto(
@@ -193,6 +185,7 @@ public record DepartmentDto(
     string Name,
     string Code,
     string? Description,
+    Guid? OrganizationId,
     Guid? ParentDepartmentId,
     string? DepartmentHeadUserId,
     int MaxCapacity,
@@ -203,6 +196,7 @@ public record CreateDepartmentDto(
     string Code,
     string? Description,
     Guid? ParentDepartmentId = null,
+    Guid? OrganizationId = null,
     string? DepartmentHeadUserId = null,
     int? MaxCapacity = null);
 
@@ -210,5 +204,6 @@ public record UpdateDepartmentDto(
     string Name,
     string Code,
     string? Description,
+    Guid? OrganizationId = null,
     string? DepartmentHeadUserId = null,
     int? MaxCapacity = null);

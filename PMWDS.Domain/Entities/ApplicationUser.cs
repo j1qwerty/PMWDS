@@ -26,6 +26,8 @@ public class ApplicationUser : AuditableEntity
     public DateTime? LastAIScoreUpdate { get; private set; }
     // Navigation
     public Department? Department { get; private set; }
+    public UserProfile? Profile { get; private set; }
+    public ICollection<Role> Roles { get; private set; } = new List<Role>();
     public IReadOnlyCollection<UserSkill> Skills =>
     _skills.AsReadOnly();
     public IReadOnlyCollection<TaskAssignment> TaskAssignments =>
@@ -91,5 +93,9 @@ public class ApplicationUser : AuditableEntity
     public void SetPassword(string passwordHash)
     {
         PasswordHash = passwordHash;
+    }
+    public void SetProfile(UserProfile profile)
+    {
+        Profile = profile;
     }
 }
