@@ -310,6 +310,11 @@ static async Task<bool> HasExpectedSqliteSchemaAsync(ApplicationDbContext db)
     {
         "Organizations",
         "Roles",
+        "AIModels",
+        "PredictionResults",
+        "TrainingDataPoints",
+        "AllocationRecommendations",
+        "DelayPredictions",
         "NotificationTemplates",
         "Dashboards",
         "Reports",

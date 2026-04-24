@@ -77,6 +77,22 @@
     {
       "key": "activityLogId",
       "value": ""
+    },
+    {
+      "key": "aiModelId",
+      "value": ""
+    },
+    {
+      "key": "aiTrainingDataId",
+      "value": ""
+    },
+    {
+      "key": "aiRecommendationId",
+      "value": ""
+    },
+    {
+      "key": "aiDelayPredictionId",
+      "value": ""
     }
   ],
   "auth": {
@@ -4754,6 +4770,480 @@
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/ai/train"
+          }
+        },
+        {
+          "name": "Get AI Models",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get AI Models ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const models = Array.isArray(res) ? res : [];",
+                  "    console.log('AI models returned:', models.length);",
+                  "    if (models.length && models[0].id) {",
+                  "        pm.collectionVariables.set('aiModelId', models[0].id);",
+                  "        console.log('aiModelId set from first model:', models[0].id);",
+                  "    }",
+                  "}",
+                  "pm.test('Get AI models successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ai/models?modelType=TaskAllocation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "models"
+              ],
+              "query": [
+                {
+                  "key": "modelType",
+                  "value": "TaskAllocation",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create AI Model",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Create AI Model ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const value = res.id || res.modelId;",
+                  "    if (value) {",
+                  "        pm.collectionVariables.set('aiModelId', value);",
+                  "        console.log('aiModelId saved:', value);",
+                  "    }",
+                  "}",
+                  "pm.test('Create AI model successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Operations Allocation Model\",\n  \"version\": \"1.1.0\",\n  \"modelType\": \"TaskAllocation\",\n  \"modelPath\": \"Models/operations-allocation.zip\",\n  \"accuracyScore\": 0.81,\n  \"precisionScore\": 0.79,\n  \"recallScore\": 0.78,\n  \"hyperparameters\": {\n    \"riskThreshold\": 0.7,\n    \"availabilityWeight\": 0.3\n  },\n  \"features\": [\"Availability\", \"Performance\", \"Workload\", \"BurnoutRisk\"]\n}"
+            },
+            "url": "{{baseUrl}}/ai/models"
+          }
+        },
+        {
+          "name": "Get AI Model By Id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get AI Model By Id ===');",
+                  "console.log('aiModelId:', pm.collectionVariables.get('aiModelId'));",
+                  "pm.test('Get AI model by id successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ai/models/{{aiModelId}}"
+          }
+        },
+        {
+          "name": "Update AI Model",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Update AI Model ===');",
+                  "console.log('aiModelId:', pm.collectionVariables.get('aiModelId'));",
+                  "pm.test('Update AI model successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Operations Allocation Model Updated\",\n  \"version\": \"1.1.1\",\n  \"modelType\": \"TaskAllocation\",\n  \"modelPath\": \"Models/operations-allocation-v2.zip\",\n  \"accuracyScore\": 0.83,\n  \"precisionScore\": 0.8,\n  \"recallScore\": 0.79,\n  \"hyperparameters\": {\n    \"riskThreshold\": 0.72,\n    \"availabilityWeight\": 0.32\n  },\n  \"features\": [\"Availability\", \"Performance\", \"Workload\", \"BurnoutRisk\"]\n}"
+            },
+            "url": "{{baseUrl}}/ai/models/{{aiModelId}}"
+          }
+        },
+        {
+          "name": "Get AI Training Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get AI Training Data ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const records = Array.isArray(res) ? res : [];",
+                  "    console.log('Training data records:', records.length);",
+                  "    if (records.length && records[0].id) pm.collectionVariables.set('aiTrainingDataId', records[0].id);",
+                  "}",
+                  "pm.test('Get AI training data successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ai/training-data?dataType=TaskAllocation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "training-data"
+              ],
+              "query": [
+                {
+                  "key": "dataType",
+                  "value": "TaskAllocation",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add AI Training Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Add AI Training Data ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const value = res.id || res.dataPointId;",
+                  "    if (value) {",
+                  "        pm.collectionVariables.set('aiTrainingDataId', value);",
+                  "        console.log('aiTrainingDataId saved:', value);",
+                  "    }",
+                  "}",
+                  "pm.test('Add AI training data successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataType\": \"TaskAllocation\",\n  \"features\": {\n    \"priority\": \"High\",\n    \"estimatedHours\": 12,\n    \"dependencyCount\": 2,\n    \"candidateCount\": 4\n  },\n  \"labels\": {\n    \"recommendedUserId\": \"{{userId}}\",\n    \"outcome\": \"Accepted\"\n  },\n  \"source\": \"manual-postman-seed\"\n}"
+            },
+            "url": "{{baseUrl}}/ai/training-data"
+          }
+        },
+        {
+          "name": "Generate Recommendation Record",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Generate Recommendation Record ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const value = res.id || res.recommendationId;",
+                  "    if (value) {",
+                  "        pm.collectionVariables.set('aiRecommendationId', value);",
+                  "        console.log('aiRecommendationId saved:', value);",
+                  "    }",
+                  "    if (res.recommendedUserId) console.log('Recommended user:', res.recommendedUserId);",
+                  "}",
+                  "pm.test('Generate recommendation record successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/ai/recommendations/{{taskId}}"
+          }
+        },
+        {
+          "name": "Get Recommendation History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get Recommendation History ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const records = Array.isArray(res) ? res : [];",
+                  "    console.log('Recommendation history count:', records.length);",
+                  "    if (records.length && records[0].id) pm.collectionVariables.set('aiRecommendationId', records[0].id);",
+                  "}",
+                  "pm.test('Get recommendation history successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ai/recommendations/{{taskId}}/history"
+          }
+        },
+        {
+          "name": "Explain Recommendation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Explain Recommendation ===');",
+                  "if (pm.response.code === 200) console.log('Explanation:', pm.response.json().explanation);",
+                  "pm.test('Explain recommendation successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ai/recommendations/{{aiRecommendationId}}/explanation"
+          }
+        },
+        {
+          "name": "Accept Recommendation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Accept Recommendation ===');",
+                  "pm.test('Accept recommendation successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/ai/recommendations/{{aiRecommendationId}}/accept"
+          }
+        },
+        {
+          "name": "Reject Recommendation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Reject Recommendation ===');",
+                  "pm.test('Reject recommendation successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Manager selected a different assignee based on new business constraints.\"\n}"
+            },
+            "url": "{{baseUrl}}/ai/recommendations/{{aiRecommendationId}}/reject"
+          }
+        },
+        {
+          "name": "Analyze Task For Allocation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Analyze Task For Allocation ===');",
+                  "pm.test('Analyze task for allocation successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ai/tasks/{{taskId}}/analysis"
+          }
+        },
+        {
+          "name": "Generate Delay Prediction Record",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Generate Delay Prediction Record ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const value = res.id || res.predictionId;",
+                  "    if (value) {",
+                  "        pm.collectionVariables.set('aiDelayPredictionId', value);",
+                  "        console.log('aiDelayPredictionId saved:', value);",
+                  "    }",
+                  "    if (res.delayProbability !== undefined) console.log('Delay probability:', res.delayProbability);",
+                  "}",
+                  "pm.test('Generate delay prediction record successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/ai/predictions/{{taskId}}"
+          }
+        },
+        {
+          "name": "Get Prediction History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get Prediction History ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const records = Array.isArray(res) ? res : [];",
+                  "    console.log('Prediction history count:', records.length);",
+                  "    if (records.length && records[0].id) pm.collectionVariables.set('aiDelayPredictionId', records[0].id);",
+                  "}",
+                  "pm.test('Get prediction history successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ai/predictions/{{taskId}}/history"
+          }
+        },
+        {
+          "name": "Predict Project Delays",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Predict Project Delays ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const records = Array.isArray(res) ? res : [];",
+                  "    console.log('Project delay predictions generated:', records.length);",
+                  "}",
+                  "pm.test('Predict project delays successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/ai/projects/{{projectId}}/predictions"
+          }
+        },
+        {
+          "name": "Get Prediction Results",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get Prediction Results ===');",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    const records = Array.isArray(res) ? res : [];",
+                  "    console.log('Prediction result count:', records.length);",
+                  "}",
+                  "pm.test('Get prediction results successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ai/prediction-results?taskId={{taskId}}&modelId={{aiModelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ai",
+                "prediction-results"
+              ],
+              "query": [
+                {
+                  "key": "taskId",
+                  "value": "{{taskId}}",
+                  "disabled": false
+                },
+                {
+                  "key": "modelId",
+                  "value": "{{aiModelId}}",
+                  "disabled": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Model Performance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Get Model Performance ===');",
+                  "if (pm.response.code === 200) console.log('Performance payload:', pm.response.json());",
+                  "pm.test('Get model performance successful', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ai/performance"
           }
         }
       ]

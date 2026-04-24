@@ -23,6 +23,13 @@ public class ApplicationDbContext : DbContext
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<UserProfile> UserProfiles { get; set; }
     public DbSet<Organization> Organizations { get; set; }
+    public DbSet<AIModel> AIModels { get; set; }
+    public DbSet<TaskAllocationModel> TaskAllocationModels { get; set; }
+    public DbSet<DelayPredictionModel> DelayPredictionModels { get; set; }
+    public DbSet<PredictionResult> PredictionResults { get; set; }
+    public DbSet<TrainingDataPoint> TrainingDataPoints { get; set; }
+    public DbSet<AllocationRecommendation> AllocationRecommendations { get; set; }
+    public DbSet<DelayPrediction> DelayPredictions { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
     public DbSet<AlertRule> AlertRules { get; set; }
@@ -51,7 +58,8 @@ public class ApplicationDbContext : DbContext
 
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType) &&
+                entityType.BaseType == null)
             {
                 builder.Entity(entityType.ClrType)
                     .HasQueryFilter(GetSoftDeleteFilter(entityType.ClrType));

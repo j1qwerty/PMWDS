@@ -27,6 +27,11 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.Permission> Permissions { get; }
     IRepository<Domain.Entities.UserProfile> UserProfiles { get; }
     IRepository<Domain.Entities.Organization> Organizations { get; }
+    IRepository<Domain.Entities.AIModel> AIModels { get; }
+    IRepository<Domain.Entities.PredictionResult> PredictionResults { get; }
+    IRepository<Domain.Entities.TrainingDataPoint> TrainingDataPoints { get; }
+    IRepository<Domain.Entities.AllocationRecommendation> AllocationRecommendations { get; }
+    IRepository<Domain.Entities.DelayPrediction> DelayPredictions { get; }
     IRepository<Domain.Entities.ProjectDocument> ProjectDocuments { get; }
     IRepository<Domain.Entities.UserSkill> UserSkills { get; }
     IRepository<Domain.Entities.TaskAssignment> TaskAssignments { get; }

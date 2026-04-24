@@ -180,5 +180,30 @@ public static class SeedData
 
             await context.SaveChangesAsync(ct);
         }
+
+        if (!context.AIModels.Any())
+        {
+            var allocationModel = TaskAllocationModel.Create(
+                "Default Task Allocation Model",
+                "1.0.0",
+                "Models/task-allocation.zip",
+                new Dictionary<string, double> { ["riskThreshold"] = 0.7 },
+                new[] { "Availability", "Performance", "Workload", "BurnoutRisk" });
+            allocationModel.SetCreatedBy("system");
+            allocationModel.UpdateMetrics(0.75, 0.72, 0.70);
+
+            var delayModel = DelayPredictionModel.Create(
+                "Default Delay Prediction Model",
+                "1.0.0",
+                "Models/delay-prediction.zip",
+                new Dictionary<string, double> { ["riskThreshold"] = 0.7 },
+                new[] { "EstimatedHours", "ActualHours", "ProgressPercentage", "DaysUntilDue", "EscalationLevel", "DependencyCount" });
+            delayModel.SetCreatedBy("system");
+            delayModel.UpdateMetrics(0.72, 0.69, 0.68);
+
+            await context.AIModels.AddAsync(allocationModel, ct);
+            await context.AIModels.AddAsync(delayModel, ct);
+            await context.SaveChangesAsync(ct);
+        }
     }
 }

@@ -36,6 +36,11 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Permission> Permissions { get; }
     public IRepository<UserProfile> UserProfiles { get; }
     public IRepository<Organization> Organizations { get; }
+    public IRepository<AIModel> AIModels { get; }
+    public IRepository<PredictionResult> PredictionResults { get; }
+    public IRepository<TrainingDataPoint> TrainingDataPoints { get; }
+    public IRepository<AllocationRecommendation> AllocationRecommendations { get; }
+    public IRepository<DelayPrediction> DelayPredictions { get; }
     public IRepository<ProjectDocument> ProjectDocuments { get; }
     public IRepository<UserSkill> UserSkills { get; }
     public IRepository<TaskAssignment> TaskAssignments { get; }
@@ -72,6 +77,11 @@ public class UnitOfWork : IUnitOfWork
         Permissions = new BaseRepository<Permission>(context);
         UserProfiles = new BaseRepository<UserProfile>(context);
         Organizations = new BaseRepository<Organization>(context);
+        AIModels = new BaseRepository<AIModel>(context);
+        PredictionResults = new BaseRepository<PredictionResult>(context);
+        TrainingDataPoints = new BaseRepository<TrainingDataPoint>(context);
+        AllocationRecommendations = new BaseRepository<AllocationRecommendation>(context);
+        DelayPredictions = new BaseRepository<DelayPrediction>(context);
         ProjectDocuments = new BaseRepository<ProjectDocument>(context);
         UserSkills = new BaseRepository<UserSkill>(context);
         TaskAssignments = new BaseRepository<TaskAssignment>(context);

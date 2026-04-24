@@ -55,6 +55,8 @@ public class ProjectTask : AuditableEntity
     _assignments.AsReadOnly();
     public IReadOnlyCollection<TimeEntry> TimeEntries =>
     _timeEntries.AsReadOnly();
+    public ICollection<AllocationRecommendation> AllocationRecommendations { get; private set; } = new List<AllocationRecommendation>();
+    public ICollection<DelayPrediction> DelayPredictions { get; private set; } = new List<DelayPrediction>();
     private readonly List<ProjectTask> _subTasks = new();
     private readonly List<TaskDependency> _dependencies = new();
     private readonly List<TaskComment> _comments = new();
@@ -194,6 +196,13 @@ public void AssignTo(string userId, string assignedBy)
         AIDelayProbability = delayProbability;
         AIPredictedCompletionDate = predictedCompletion;
         AIRiskFactors = riskFactors;
+        AIRecommendedAssigneeId = recommendedAssigneeId;
+    }
+    public void UpdateAIRecommendation(
+    double optimalAssigneeScore,
+    string? recommendedAssigneeId)
+    {
+        AIOptimalAssigneeScore = optimalAssigneeScore;
         AIRecommendedAssigneeId = recommendedAssigneeId;
     }
     public bool IsOverdue()

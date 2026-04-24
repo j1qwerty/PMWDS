@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Features.AI.Commands;
 using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Projects.Queries;
@@ -108,10 +109,66 @@ public class AIController : BaseApiController
     public async Task<IActionResult> RecommendAssignee(Guid taskId, CancellationToken ct)
         => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(taskId), ct));
 
+    [HttpPost("recommendations/{taskId:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GenerateRecommendation(Guid taskId, CancellationToken ct)
+        => Ok(await _ai.GenerateRecommendationAsync(taskId, ct));
+
+    [HttpGet("recommendations/{taskId:guid}/history")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GetRecommendationHistory(Guid taskId, CancellationToken ct)
+        => Ok(await _ai.GetRecommendationHistoryAsync(taskId, ct));
+
+    [HttpPost("recommendations/{recommendationId:guid}/accept")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> AcceptRecommendation(Guid recommendationId, CancellationToken ct)
+        => Ok(await _ai.AcceptRecommendationAsync(recommendationId, ct));
+
+    [HttpPost("recommendations/{recommendationId:guid}/reject")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> RejectRecommendation(
+        Guid recommendationId,
+        [FromBody] RejectRecommendationRequest request,
+        CancellationToken ct)
+        => Ok(await _ai.RejectRecommendationAsync(recommendationId, request.Reason, ct));
+
+    [HttpGet("recommendations/{recommendationId:guid}/explanation")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> ExplainRecommendation(Guid recommendationId, CancellationToken ct)
+        => Ok(new { explanation = await _ai.ExplainRecommendationAsync(recommendationId, ct) });
+
+    [HttpGet("tasks/{taskId:guid}/analysis")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> AnalyzeTask(Guid taskId, CancellationToken ct)
+        => Ok(await _ai.AnalyzeTaskForAllocationAsync(taskId, ct));
+
     [HttpGet("predict-delay/{taskId:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> PredictDelay(Guid taskId, CancellationToken ct)
         => Ok(await Mediator.Send(new GetTaskDelayPredictionQuery(taskId), ct));
+
+    [HttpPost("predictions/{taskId:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GenerateDelayPrediction(Guid taskId, CancellationToken ct)
+        => Ok(await _ai.GenerateDelayPredictionAsync(taskId, ct));
+
+    [HttpGet("predictions/{taskId:guid}/history")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetPredictionHistory(Guid taskId, CancellationToken ct)
+        => Ok(await _ai.GetPredictionHistoryAsync(taskId, ct));
+
+    [HttpPost("projects/{projectId:guid}/predictions")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> PredictProjectDelays(Guid projectId, CancellationToken ct)
+        => Ok(await _ai.PredictProjectDelaysAsync(projectId, ct));
+
+    [HttpGet("prediction-results")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GetPredictionResults(
+        [FromQuery] Guid? taskId,
+        [FromQuery] Guid? modelId,
+        CancellationToken ct)
+        => Ok(await _ai.GetPredictionResultsAsync(taskId, modelId, ct));
 
     [HttpGet("project-health/{projectId:guid}")]
     [Authorize(Policy = "Manager")]
@@ -172,6 +229,52 @@ public class AIController : BaseApiController
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> TriggerTraining(CancellationToken ct)
         => Ok(await Mediator.Send(new TriggerAITrainingCommand(), ct));
+
+    [HttpGet("models")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> GetModels([FromQuery] string? modelType, CancellationToken ct)
+        => Ok(await _ai.GetModelsAsync(modelType, ct));
+
+    [HttpGet("models/{modelId:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> GetModel(Guid modelId, CancellationToken ct)
+    {
+        var model = await _ai.GetModelByIdAsync(modelId, ct);
+        return model == null ? NotFound() : Ok(model);
+    }
+
+    [HttpPost("models")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> CreateModel([FromBody] UpsertAIModelDto dto, CancellationToken ct)
+        => Ok(await _ai.UpsertModelAsync(null, dto, ct));
+
+    [HttpPut("models/{modelId:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> UpdateModel(Guid modelId, [FromBody] UpsertAIModelDto dto, CancellationToken ct)
+        => Ok(await _ai.UpsertModelAsync(modelId, dto, ct));
+
+    [HttpDelete("models/{modelId:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> DeleteModel(Guid modelId, CancellationToken ct)
+    {
+        await _ai.DeleteModelAsync(modelId, ct);
+        return NoContent();
+    }
+
+    [HttpGet("training-data")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> GetTrainingData([FromQuery] string? dataType, CancellationToken ct)
+        => Ok(await _ai.GetTrainingDataAsync(dataType, ct));
+
+    [HttpPost("training-data")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> AddTrainingData([FromBody] CreateTrainingDataPointDto dto, CancellationToken ct)
+        => Ok(await _ai.AddTrainingDataPointAsync(dto, ct));
+
+    [HttpGet("performance")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> GetModelPerformance(CancellationToken ct)
+        => Ok(await _ai.GetModelPerformanceAsync(ct));
 }
 
 public record ChatRequest(
@@ -182,6 +285,9 @@ public record ChatRequest(
 public record ProviderTestRequest(
     string? Model = null,
     string? Prompt = null);
+
+public record RejectRecommendationRequest(
+    string Reason);
 
 public record AISettingsDto
 {
