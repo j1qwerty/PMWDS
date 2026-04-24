@@ -10,6 +10,8 @@ import type {
   DashboardRecord,
   DelayPrediction,
   Department,
+  IntegrationDetailRecord,
+  IntegrationRecord,
   Milestone,
   NotificationItem,
   NotificationTemplateRecord,
@@ -18,10 +20,15 @@ import type {
   PermissionRecord,
   Project,
   ProjectHealth,
+  ReportScheduleRecord,
   RoleRecord,
+  StoredReportDetailRecord,
+  StoredReportRecord,
   Task,
   UserProfileRecord,
   User,
+  WebhookDetailRecord,
+  WebhookRecord,
   WorkloadReport,
 } from "./types";
 
@@ -553,6 +560,91 @@ export const api = {
       body: options?.body ?? null,
       query: { format: options?.format ?? "pdf" },
     });
+  },
+  getStoredReports(token: string) {
+    return request<StoredReportRecord[]>("reports/stored", { token });
+  },
+  getStoredReport(token: string, id: string) {
+    return request<StoredReportDetailRecord>(`reports/stored/${id}`, { token });
+  },
+  createStoredReport(token: string, payload: Record<string, unknown>) {
+    return request<StoredReportRecord>("reports/stored", { token, method: "POST", body: payload });
+  },
+  updateStoredReport(token: string, id: string, payload: Record<string, unknown>) {
+    return request<StoredReportRecord>(`reports/stored/${id}`, { token, method: "PUT", body: payload });
+  },
+  deleteStoredReport(token: string, id: string) {
+    return request<void>(`reports/stored/${id}`, { token, method: "DELETE" });
+  },
+  downloadStoredReport(token: string, id: string) {
+    return request<Blob>(`reports/stored/${id}/download`, { token });
+  },
+  getReportSchedules(token: string) {
+    return request<ReportScheduleRecord[]>("reports/schedules", { token });
+  },
+  createReportSchedule(token: string, payload: Record<string, unknown>) {
+    return request<ReportScheduleRecord>("reports/schedules", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  updateReportSchedule(token: string, id: string, payload: Record<string, unknown>) {
+    return request<ReportScheduleRecord>(`reports/schedules/${id}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteReportSchedule(token: string, id: string) {
+    return request<void>(`reports/schedules/${id}`, { token, method: "DELETE" });
+  },
+  getIntegrations(token: string) {
+    return request<IntegrationRecord[]>("integrations", { token });
+  },
+  getIntegration(token: string, id: string) {
+    return request<IntegrationDetailRecord>(`integrations/${id}`, { token });
+  },
+  createIntegration(token: string, payload: Record<string, unknown>) {
+    return request<IntegrationRecord>("integrations", { token, method: "POST", body: payload });
+  },
+  updateIntegration(token: string, id: string, payload: Record<string, unknown>) {
+    return request<IntegrationRecord>(`integrations/${id}`, { token, method: "PUT", body: payload });
+  },
+  syncIntegration(token: string, id: string, status: string) {
+    return request<IntegrationRecord>(`integrations/${id}/sync`, {
+      token,
+      method: "PATCH",
+      body: { status },
+    });
+  },
+  deleteIntegration(token: string, id: string) {
+    return request<void>(`integrations/${id}`, { token, method: "DELETE" });
+  },
+  getWebhooks(token: string, integrationId?: string) {
+    return request<WebhookRecord[]>("webhooks", {
+      token,
+      query: { integrationId },
+    });
+  },
+  getWebhook(token: string, id: string) {
+    return request<WebhookDetailRecord>(`webhooks/${id}`, { token });
+  },
+  createWebhook(token: string, payload: Record<string, unknown>) {
+    return request<WebhookRecord>("webhooks", { token, method: "POST", body: payload });
+  },
+  updateWebhook(token: string, id: string, payload: Record<string, unknown>) {
+    return request<WebhookRecord>(`webhooks/${id}`, { token, method: "PUT", body: payload });
+  },
+  logWebhookDelivery(token: string, id: string, payload: Record<string, unknown>) {
+    return request<WebhookDetailRecord["deliveries"][number]>(`webhooks/${id}/deliveries`, {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  deleteWebhook(token: string, id: string) {
+    return request<void>(`webhooks/${id}`, { token, method: "DELETE" });
   },
   getAISettings(token: string) {
     return request<AISettingsResponse>("ai/settings", { token });

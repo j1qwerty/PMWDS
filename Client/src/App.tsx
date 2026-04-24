@@ -3,9 +3,12 @@ import { AuthProvider, useAuth } from "./auth";
 import { PermissionsPage } from "./features/access-control/pages/PermissionsPage";
 import { RolesPage } from "./features/access-control/pages/RolesPage";
 import { DashboardsPage } from "./features/dashboards/pages/DashboardsPage";
+import { IntegrationsPage } from "./features/integrations/pages/IntegrationsPage";
+import { WebhooksPage } from "./features/integrations/pages/WebhooksPage";
 import { NotificationsPage } from "./features/notifications/pages/NotificationsPage";
 import { OrganizationsPage } from "./features/organizations/pages/OrganizationsPage";
 import { ProfilesPage } from "./features/profiles/pages/ProfilesPage";
+import { ReportsPage } from "./features/reports/pages/ReportsPage";
 import { Layout } from "./layout";
 import { MilestonesWorkspacePage } from "./features/work-management/pages/MilestonesWorkspacePage";
 import { ProjectsWorkspacePage } from "./features/work-management/pages/ProjectsWorkspacePage";
@@ -17,7 +20,6 @@ import {
   SettingsPage,
   LoginPage,
   AIPage,
-  ReportsPage,
 } from "./pages";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -46,6 +48,8 @@ function AppRoutes() {
                 <Route path="/profiles" element={<ProfilesPage />} />
                 <Route path="/organizations" element={<OrganizationsPage />} />
                 <Route path="/dashboards" element={<DashboardsPage />} />
+                <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/webhooks" element={<WebhooksPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />

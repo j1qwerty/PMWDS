@@ -230,6 +230,72 @@ export interface DashboardRecord {
   widgets: DashboardWidgetRecord[];
 }
 
+export interface StoredReportRecord {
+  id: string;
+  name: string;
+  reportType: string;
+  parameters: Record<string, unknown>;
+  generatedDate: string;
+  format: string;
+  generatedByUserId: string;
+  sizeBytes: number;
+}
+
+export interface ReportScheduleRecord {
+  id: string;
+  reportId: string;
+  frequency: string;
+  nextRun: string;
+  lastRun?: string | null;
+  recipients: string[];
+  deliveryOptions: Record<string, unknown>;
+  isActive: boolean;
+}
+
+export interface StoredReportDetailRecord {
+  report: StoredReportRecord;
+  schedules: ReportScheduleRecord[];
+}
+
+export interface IntegrationRecord {
+  id: string;
+  integrationType: string;
+  name: string;
+  configuration: Record<string, unknown>;
+  isEnabled: boolean;
+  lastSync?: string | null;
+  status: string;
+}
+
+export interface WebhookRecord {
+  id: string;
+  integrationId?: string | null;
+  eventType: string;
+  callbackUrl: string;
+  headers: string[];
+  isActive: boolean;
+}
+
+export interface WebhookDeliveryRecord {
+  id: string;
+  webhookId: string;
+  attemptedAt: string;
+  statusCode: number;
+  responseBody: string;
+  success: boolean;
+  errorMessage?: string | null;
+}
+
+export interface WebhookDetailRecord {
+  webhook: WebhookRecord;
+  deliveries: WebhookDeliveryRecord[];
+}
+
+export interface IntegrationDetailRecord {
+  integration: IntegrationRecord;
+  webhooks: WebhookRecord[];
+}
+
 export interface WorkloadMember {
   userId: string;
   fullName: string;
