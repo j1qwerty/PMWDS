@@ -24,6 +24,8 @@ export interface User {
   jobTitle?: string | null;
   department?: string | null;
   departmentId?: string | null;
+  profileId?: string | null;
+  bio?: string | null;
   availabilityStatus: string;
   availabilityPercentage: number;
   aiWorkloadScore: number;
@@ -34,6 +36,34 @@ export interface User {
   lastLoginDate?: string | null;
   roles: string[];
   skills: string[];
+}
+
+export interface PermissionRecord {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  module: string;
+  isGlobal: boolean;
+}
+
+export interface RoleRecord {
+  id: string;
+  name: string;
+  description: string;
+  permissionLevel: number;
+  permissions: PermissionRecord[];
+}
+
+export interface UserProfileRecord {
+  id: string;
+  userId: string;
+  bio?: string | null;
+  jobTitle?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+  linkedInUrl?: string | null;
 }
 
 export interface Department {

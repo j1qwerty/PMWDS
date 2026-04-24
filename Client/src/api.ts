@@ -11,9 +11,12 @@ import type {
   Department,
   Milestone,
   NotificationItem,
+  PermissionRecord,
   Project,
   ProjectHealth,
+  RoleRecord,
   Task,
+  UserProfileRecord,
   User,
   WorkloadReport,
 } from "./types";
@@ -314,6 +317,36 @@ export const api = {
   },
   getDepartments(token: string) {
     return request<Department[]>("departments", { token });
+  },
+  getRoles(token: string) {
+    return request<RoleRecord[]>("roles", { token });
+  },
+  createRole(token: string, payload: Record<string, unknown>) {
+    return request<RoleRecord>("roles", { token, method: "POST", body: payload });
+  },
+  updateRole(token: string, id: string, payload: Record<string, unknown>) {
+    return request<RoleRecord>(`roles/${id}`, { token, method: "PUT", body: payload });
+  },
+  deleteRole(token: string, id: string) {
+    return request<void>(`roles/${id}`, { token, method: "DELETE" });
+  },
+  getPermissions(token: string) {
+    return request<PermissionRecord[]>("roles/permissions", { token });
+  },
+  createPermission(token: string, payload: Record<string, unknown>) {
+    return request<PermissionRecord>("roles/permissions", { token, method: "POST", body: payload });
+  },
+  updatePermission(token: string, id: string, payload: Record<string, unknown>) {
+    return request<PermissionRecord>(`roles/permissions/${id}`, { token, method: "PUT", body: payload });
+  },
+  deletePermission(token: string, id: string) {
+    return request<void>(`roles/permissions/${id}`, { token, method: "DELETE" });
+  },
+  getProfile(token: string, userId: string) {
+    return request<UserProfileRecord>(`profiles/${userId}`, { token });
+  },
+  upsertProfile(token: string, userId: string, payload: Record<string, unknown>) {
+    return request<UserProfileRecord>(`profiles/${userId}`, { token, method: "PUT", body: payload });
   },
   getDepartmentDashboard(token: string, id: string) {
     return request<Record<string, unknown>>(`departments/${id}/dashboard`, { token });

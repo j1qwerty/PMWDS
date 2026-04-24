@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
+import { PermissionsPage } from "./features/access-control/pages/PermissionsPage";
+import { RolesPage } from "./features/access-control/pages/RolesPage";
+import { ProfilesPage } from "./features/profiles/pages/ProfilesPage";
 import { Layout } from "./layout";
 import { MilestonesWorkspacePage } from "./features/work-management/pages/MilestonesWorkspacePage";
 import { ProjectsWorkspacePage } from "./features/work-management/pages/ProjectsWorkspacePage";
@@ -36,6 +39,9 @@ function AppRoutes() {
                 <Route path="/projects" element={<ProjectsWorkspacePage />} />
                 <Route path="/milestones" element={<MilestonesWorkspacePage />} />
                 <Route path="/tasks" element={<TasksWorkspacePage />} />
+                <Route path="/roles" element={<RolesPage />} />
+                <Route path="/permissions" element={<PermissionsPage />} />
+                <Route path="/profiles" element={<ProfilesPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
