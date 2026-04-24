@@ -296,6 +296,48 @@ export interface IntegrationDetailRecord {
   webhooks: WebhookRecord[];
 }
 
+export interface SkillRecord {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  userCount: number;
+}
+
+export interface KnowledgeArticleRecord {
+  id: string;
+  projectId?: string | null;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  authorId: string;
+  createdDate: string;
+  lastUpdated: string;
+  viewCount: number;
+  relevanceScore: number;
+}
+
+export interface LessonLearnedRecord {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  category: string;
+  impact: string;
+  keywords: string[];
+  recordedDate: string;
+}
+
+export interface ActivityLogRecord {
+  id: string;
+  userId: string;
+  activityType: string;
+  description: string;
+  timestamp: string;
+  metadata: Record<string, unknown>;
+}
+
 export interface WorkloadMember {
   userId: string;
   fullName: string;

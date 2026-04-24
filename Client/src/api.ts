@@ -12,6 +12,8 @@ import type {
   Department,
   IntegrationDetailRecord,
   IntegrationRecord,
+  KnowledgeArticleRecord,
+  LessonLearnedRecord,
   Milestone,
   NotificationItem,
   NotificationTemplateRecord,
@@ -22,9 +24,11 @@ import type {
   ProjectHealth,
   ReportScheduleRecord,
   RoleRecord,
+  SkillRecord,
   StoredReportDetailRecord,
   StoredReportRecord,
   Task,
+  ActivityLogRecord,
   UserProfileRecord,
   User,
   WebhookDetailRecord,
@@ -645,6 +649,79 @@ export const api = {
   },
   deleteWebhook(token: string, id: string) {
     return request<void>(`webhooks/${id}`, { token, method: "DELETE" });
+  },
+  getSkills(token: string) {
+    return request<SkillRecord[]>("skills", { token });
+  },
+  createSkill(token: string, payload: Record<string, unknown>) {
+    return request<SkillRecord>("skills", { token, method: "POST", body: payload });
+  },
+  updateSkill(token: string, id: string, payload: Record<string, unknown>) {
+    return request<SkillRecord>(`skills/${id}`, { token, method: "PUT", body: payload });
+  },
+  deleteSkill(token: string, id: string) {
+    return request<void>(`skills/${id}`, { token, method: "DELETE" });
+  },
+  getKnowledgeArticles(token: string, projectId?: string) {
+    return request<KnowledgeArticleRecord[]>("knowledge/articles", {
+      token,
+      query: { projectId },
+    });
+  },
+  createKnowledgeArticle(token: string, payload: Record<string, unknown>) {
+    return request<KnowledgeArticleRecord>("knowledge/articles", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  updateKnowledgeArticle(token: string, id: string, payload: Record<string, unknown>) {
+    return request<KnowledgeArticleRecord>(`knowledge/articles/${id}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteKnowledgeArticle(token: string, id: string) {
+    return request<void>(`knowledge/articles/${id}`, { token, method: "DELETE" });
+  },
+  getLessons(token: string, projectId?: string) {
+    return request<LessonLearnedRecord[]>("knowledge/lessons", {
+      token,
+      query: { projectId },
+    });
+  },
+  createLesson(token: string, payload: Record<string, unknown>) {
+    return request<LessonLearnedRecord>("knowledge/lessons", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  updateLesson(token: string, id: string, payload: Record<string, unknown>) {
+    return request<LessonLearnedRecord>(`knowledge/lessons/${id}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteLesson(token: string, id: string) {
+    return request<void>(`knowledge/lessons/${id}`, { token, method: "DELETE" });
+  },
+  getMyActivityLogs(token: string, count = 50) {
+    return request<ActivityLogRecord[]>("activitylogs", {
+      token,
+      query: { count },
+    });
+  },
+  getUserActivityLogs(token: string, userId: string, count = 50) {
+    return request<ActivityLogRecord[]>(`activitylogs/user/${userId}`, {
+      token,
+      query: { count },
+    });
+  },
+  createActivityLog(token: string, payload: Record<string, unknown>) {
+    return request<ActivityLogRecord>("activitylogs", { token, method: "POST", body: payload });
   },
   getAISettings(token: string) {
     return request<AISettingsResponse>("ai/settings", { token });
