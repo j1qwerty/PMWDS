@@ -1,0 +1,451 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Resources | PMWDS Kinetic Archive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#d97721",
+                        "on-secondary-container": "#b2b3f2",
+                        "error-container": "#93000a",
+                        "outline-variant": "#464554",
+                        "on-primary": "#1000a9",
+                        "on-error": "#690005",
+                        "inverse-primary": "#494bd6",
+                        "tertiary-fixed": "#ffdcc5",
+                        "surface-container-low": "#1b1b20",
+                        "on-secondary": "#292a60",
+                        "on-secondary-fixed": "#13144a",
+                        "tertiary": "#ffb783",
+                        "primary": "#c0c1ff",
+                        "inverse-on-surface": "#303035",
+                        "secondary-container": "#42447b",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "surface-variant": "#35343a",
+                        "on-tertiary": "#4f2500",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "surface-tint": "#c0c1ff",
+                        "surface-bright": "#39393e",
+                        "surface": "#131318",
+                        "on-background": "#e4e1e9",
+                        "surface-container-high": "#2a292f",
+                        "on-secondary-fixed-variant": "#404178",
+                        "on-surface-variant": "#c7c4d7",
+                        "on-primary-fixed": "#07006c",
+                        "on-primary-container": "#0d0096",
+                        "background": "#131318",
+                        "secondary-fixed": "#e1e0ff",
+                        "outline": "#908fa0",
+                        "on-tertiary-container": "#452000",
+                        "inverse-surface": "#e4e1e9",
+                        "surface-dim": "#131318",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "surface-container": "#1f1f24",
+                        "secondary": "#c0c1ff",
+                        "on-tertiary-fixed-variant": "#703700",
+                        "surface-container-highest": "#35343a",
+                        "on-tertiary-fixed": "#301400",
+                        "surface-container-lowest": "#0e0e13",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e4e1e9",
+                        "primary-container": "#8083ff",
+                        "primary-fixed": "#e1e0ff",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#c0c1ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(53, 52, 58, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #c0c1ff 0%, #8083ff 100%);
+        }
+        .status-beacon {
+            position: relative;
+        }
+        .status-beacon::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .beacon-success::after { background-color: #4ade80; box-shadow: 0 0 8px #4ade804d; }
+        .beacon-warning::after { background-color: #fbbf24; box-shadow: 0 0 8px #fbbf244d; }
+        .beacon-error::after { background-color: #f87171; box-shadow: 0 0 8px #f871714d; }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}[type='text'],input:where(:not([type])),[type='email'],[type='url'],[type='password'],[type='number'],[type='date'],[type='datetime-local'],[type='month'],[type='search'],[type='tel'],[type='time'],[type='week'],[multiple],textarea,select{-webkit-appearance:none;appearance:none;background-color:#fff;border-color:#6b7280;border-width:1px;border-radius:0px;padding-top:0.5rem;padding-right:0.75rem;padding-bottom:0.5rem;padding-left:0.75rem;font-size:1rem;line-height:1.5rem;--tw-shadow:0 0 #0000;}[type='text']:focus, input:where(:not([type])):focus, [type='email']:focus, [type='url']:focus, [type='password']:focus, [type='number']:focus, [type='date']:focus, [type='datetime-local']:focus, [type='month']:focus, [type='search']:focus, [type='tel']:focus, [type='time']:focus, [type='week']:focus, [multiple]:focus, textarea:focus, select:focus{outline:2px solid transparent;outline-offset:2px;--tw-ring-inset:var(--tw-empty,/*!*/ /*!*/);--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:#2563eb;--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);border-color:#2563eb}input::placeholder,textarea::placeholder{color:#6b7280;opacity:1}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-date-and-time-value{min-height:1.5em;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit,::-webkit-datetime-edit-year-field,::-webkit-datetime-edit-month-field,::-webkit-datetime-edit-day-field,::-webkit-datetime-edit-hour-field,::-webkit-datetime-edit-minute-field,::-webkit-datetime-edit-second-field,::-webkit-datetime-edit-millisecond-field,::-webkit-datetime-edit-meridiem-field{padding-top:0;padding-bottom:0}select{background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right 0.5rem center;background-repeat:no-repeat;background-size:1.5em 1.5em;padding-right:2.5rem;print-color-adjust:exact}[multiple],[size]:where(select:not([size="1"])){background-image:initial;background-position:initial;background-repeat:unset;background-size:initial;padding-right:0.75rem;print-color-adjust:unset}[type='checkbox'],[type='radio']{-webkit-appearance:none;appearance:none;padding:0;print-color-adjust:exact;display:inline-block;vertical-align:middle;background-origin:border-box;-webkit-user-select:none;user-select:none;flex-shrink:0;height:1rem;width:1rem;color:#2563eb;background-color:#fff;border-color:#6b7280;border-width:1px;--tw-shadow:0 0 #0000}[type='checkbox']{border-radius:0px}[type='radio']{border-radius:100%}[type='checkbox']:focus,[type='radio']:focus{outline:2px solid transparent;outline-offset:2px;--tw-ring-inset:var(--tw-empty,/*!*/ /*!*/);--tw-ring-offset-width:2px;--tw-ring-offset-color:#fff;--tw-ring-color:#2563eb;--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)}[type='checkbox']:checked,[type='radio']:checked{border-color:transparent;background-color:currentColor;background-size:100% 100%;background-position:center;background-repeat:no-repeat}[type='checkbox']:checked{background-image:url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");}@media (forced-colors: active) {[type='checkbox']:checked{-webkit-appearance:auto;appearance:auto}}[type='radio']:checked{background-image:url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");}@media (forced-colors: active) {[type='radio']:checked{-webkit-appearance:auto;appearance:auto}}[type='checkbox']:checked:hover,[type='checkbox']:checked:focus,[type='radio']:checked:hover,[type='radio']:checked:focus{border-color:transparent;background-color:currentColor}[type='checkbox']:indeterminate{background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3e%3c/svg%3e");border-color:transparent;background-color:currentColor;background-size:100% 100%;background-position:center;background-repeat:no-repeat;}@media (forced-colors: active) {[type='checkbox']:indeterminate{-webkit-appearance:auto;appearance:auto}}[type='checkbox']:indeterminate:hover,[type='checkbox']:indeterminate:focus{border-color:transparent;background-color:currentColor}[type='file']{background:unset;border-color:inherit;border-width:0;border-radius:0;padding:0;font-size:unset;line-height:inherit}[type='file']:focus{outline:1px solid ButtonText;outline:1px auto -webkit-focus-ring-color}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.-right-4{right:-1rem}.-top-4{top:-1rem}.bottom-0{bottom:0px}.left-0{left:0px}.left-3{left:0.75rem}.right-0{right:0px}.top-0{top:0px}.top-1\/2{top:50%}.z-40{z-index:40}.z-50{z-index:50}.mx-2{margin-left:0.5rem;margin-right:0.5rem}.mx-auto{margin-left:auto;margin-right:auto}.-mt-10{margin-top:-2.5rem}.mb-1{margin-bottom:0.25rem}.mb-12{margin-bottom:3rem}.mb-2{margin-bottom:0.5rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-64{margin-left:16rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.mt-auto{margin-top:auto}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-1{height:0.25rem}.h-1\.5{height:0.375rem}.h-10{height:2.5rem}.h-16{height:4rem}.h-2{height:0.5rem}.h-20{height:5rem}.h-64{height:16rem}.h-8{height:2rem}.h-\[1024px\]{height:1024px}.h-full{height:100%}.min-h-\[1024px\]{min-height:1024px}.w-1{width:0.25rem}.w-10{width:2.5rem}.w-16{width:4rem}.w-2{width:0.5rem}.w-20{width:5rem}.w-24{width:6rem}.w-64{width:16rem}.w-8{width:2rem}.w-\[42\%\]{width:42%}.w-\[64\%\]{width:64%}.w-\[82\%\]{width:82%}.w-\[92\%\]{width:92%}.w-full{width:100%}.max-w-2xl{max-width:42rem}.max-w-\[1600px\]{max-width:1600px}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.border-collapse{border-collapse:collapse}.-translate-y-1\/2{--tw-translate-y:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-x-1{--tw-translate-x:0.25rem;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.flex-col{flex-direction:column}.items-center{align-items:center}.items-baseline{align-items:baseline}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.gap-8{gap:2rem}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.space-y-8 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(2rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(2rem * var(--tw-space-y-reverse))}.divide-y > :not([hidden]) ~ :not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px * var(--tw-divide-y-reverse))}.divide-white\/5 > :not([hidden]) ~ :not([hidden]){border-color:rgb(255 255 255 / 0.05)}.overflow-hidden{overflow:hidden}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:0.125rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:0.75rem}.rounded-lg{border-radius:0.25rem}.rounded-md{border-radius:0.375rem}.rounded-xl{border-radius:0.5rem}.border{border-width:1px}.border-l-4{border-left-width:4px}.border-r{border-right-width:1px}.border-r-2{border-right-width:2px}.border-t{border-top-width:1px}.border-none{border-style:none}.border-error\/20{border-color:rgb(255 180 171 / 0.2)}.border-indigo-500{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.border-indigo-500\/20{border-color:rgb(99 102 241 / 0.2)}.border-primary{--tw-border-opacity:1;border-color:rgb(192 193 255 / var(--tw-border-opacity, 1))}.border-white\/5{border-color:rgb(255 255 255 / 0.05)}.bg-\[\#131318\]\/80{background-color:rgb(19 19 24 / 0.8)}.bg-\[\#1b1b20\]{--tw-bg-opacity:1;background-color:rgb(27 27 32 / var(--tw-bg-opacity, 1))}.bg-error-container\/10{background-color:rgb(147 0 10 / 0.1)}.bg-error\/10{background-color:rgb(255 180 171 / 0.1)}.bg-indigo-500\/10{background-color:rgb(99 102 241 / 0.1)}.bg-primary{--tw-bg-opacity:1;background-color:rgb(192 193 255 / var(--tw-bg-opacity, 1))}.bg-primary-container{--tw-bg-opacity:1;background-color:rgb(128 131 255 / var(--tw-bg-opacity, 1))}.bg-primary\/40{background-color:rgb(192 193 255 / 0.4)}.bg-surface{--tw-bg-opacity:1;background-color:rgb(19 19 24 / var(--tw-bg-opacity, 1))}.bg-surface-container{--tw-bg-opacity:1;background-color:rgb(31 31 36 / var(--tw-bg-opacity, 1))}.bg-surface-container-high{--tw-bg-opacity:1;background-color:rgb(42 41 47 / var(--tw-bg-opacity, 1))}.bg-surface-container-highest{--tw-bg-opacity:1;background-color:rgb(53 52 58 / var(--tw-bg-opacity, 1))}.bg-surface-container-highest\/20{background-color:rgb(53 52 58 / 0.2)}.bg-surface-container-low{--tw-bg-opacity:1;background-color:rgb(27 27 32 / var(--tw-bg-opacity, 1))}.bg-surface-variant{--tw-bg-opacity:1;background-color:rgb(53 52 58 / var(--tw-bg-opacity, 1))}.bg-surface\/40{background-color:rgb(19 19 24 / 0.4)}.bg-gradient-to-t{background-image:linear-gradient(to top, var(--tw-gradient-stops))}.from-surface{--tw-gradient-from:#131318 var(--tw-gradient-from-position);--tw-gradient-to:rgb(19 19 24 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.to-transparent{--tw-gradient-to:transparent var(--tw-gradient-to-position)}.object-cover{object-fit:cover}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.px-8{padding-left:2rem;padding-right:2rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.py-8{padding-top:2rem;padding-bottom:2rem}.pl-10{padding-left:2.5rem}.pr-4{padding-right:1rem}.pt-6{padding-top:1.5rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-\[\'Inter\'\]{font-family:'Inter'}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-6xl{font-size:3.75rem;line-height:1}.text-9xl{font-size:8rem;line-height:1}.text-\[10px\]{font-size:10px}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.italic{font-style:italic}.leading-relaxed{line-height:1.625}.tracking-\[0\.1em\]{letter-spacing:0.1em}.tracking-\[0\.2em\]{letter-spacing:0.2em}.tracking-tight{letter-spacing:-0.025em}.tracking-tighter{letter-spacing:-0.05em}.tracking-widest{letter-spacing:0.1em}.text-error{--tw-text-opacity:1;color:rgb(255 180 171 / var(--tw-text-opacity, 1))}.text-indigo-400{--tw-text-opacity:1;color:rgb(129 140 248 / var(--tw-text-opacity, 1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241 / var(--tw-text-opacity, 1))}.text-on-primary{--tw-text-opacity:1;color:rgb(16 0 169 / var(--tw-text-opacity, 1))}.text-on-surface{--tw-text-opacity:1;color:rgb(228 225 233 / var(--tw-text-opacity, 1))}.text-on-surface-variant{--tw-text-opacity:1;color:rgb(199 196 215 / var(--tw-text-opacity, 1))}.text-on-tertiary-container{--tw-text-opacity:1;color:rgb(69 32 0 / var(--tw-text-opacity, 1))}.text-primary{--tw-text-opacity:1;color:rgb(192 193 255 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.opacity-10{opacity:0.1}.opacity-40{opacity:0.4}.opacity-5{opacity:0.05}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-\[0_0_8px_\#c0c1ff\]{--tw-shadow:0 0 8px #c0c1ff;--tw-shadow-colored:0 0 8px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-black\/40{--tw-shadow-color:rgb(0 0 0 / 0.4);--tw-shadow:var(--tw-shadow-colored)}.grayscale{--tw-grayscale:grayscale(100%);filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-xl{--tw-backdrop-blur:blur(24px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-200{transition-duration:200ms}.duration-300{transition-duration:300ms}.selection\:bg-primary\/30 *::selection{background-color:rgb(192 193 255 / 0.3)}.selection\:bg-primary\/30::selection{background-color:rgb(192 193 255 / 0.3)}.placeholder\:text-slate-600::placeholder{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.hover\:border-primary\/20:hover{border-color:rgb(192 193 255 / 0.2)}.hover\:bg-\[\#2a292f\]:hover{--tw-bg-opacity:1;background-color:rgb(42 41 47 / var(--tw-bg-opacity, 1))}.hover\:bg-error\/20:hover{background-color:rgb(255 180 171 / 0.2)}.hover\:bg-surface-container-high\/50:hover{background-color:rgb(42 41 47 / 0.5)}.hover\:bg-white\/10:hover{background-color:rgb(255 255 255 / 0.1)}.hover\:text-indigo-200:hover{--tw-text-opacity:1;color:rgb(199 210 254 / var(--tw-text-opacity, 1))}.hover\:text-indigo-300:hover{--tw-text-opacity:1;color:rgb(165 180 252 / var(--tw-text-opacity, 1))}.hover\:text-on-surface:hover{--tw-text-opacity:1;color:rgb(228 225 233 / var(--tw-text-opacity, 1))}.hover\:text-primary:hover{--tw-text-opacity:1;color:rgb(192 193 255 / var(--tw-text-opacity, 1))}.hover\:underline:hover{-webkit-text-decoration-line:underline;text-decoration-line:underline}.hover\:opacity-90:hover{opacity:0.9}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.focus\:ring-primary\/40:focus{--tw-ring-color:rgb(192 193 255 / 0.4)}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.active\:opacity-80:active{opacity:0.8}.group:hover .group-hover\:opacity-20{opacity:0.2}.group:hover .group-hover\:opacity-60{opacity:0.6}@media (min-width: 768px){.md\:col-span-1{grid-column:span 1 / span 1}.md\:flex{display:flex}.md\:w-auto{width:auto}.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:flex-row{flex-direction:row}.md\:items-end{align-items:flex-end}.md\:text-left{text-align:left}.md\:text-5xl{font-size:3rem;line-height:1}}@media (min-width: 1024px){.lg\:col-span-4{grid-column:span 4 / span 4}.lg\:col-span-8{grid-column:span 8 / span 8}.lg\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}.lg\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}}</style></head>
+<body class="bg-surface text-on-surface selection:bg-primary/30" data-mode="connect">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-[1024px] w-64 flex flex-col bg-[#1b1b20] py-8 px-4 h-full border-r border-white/5 z-50" data-stitch-vh="h-[1024px]===h-screen">
+<div class="mb-12 px-2">
+<h1 class="text-indigo-500 font-black text-xl tracking-tighter">PMWDS</h1>
+<p class="font-['Inter'] text-[10px] font-medium uppercase tracking-widest text-slate-500 mt-1">SuperAdmin Console</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-slate-500 hover:bg-[#2a292f] hover:text-indigo-200 transition-all duration-300 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-indigo-400">grid_view</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-slate-500 hover:bg-[#2a292f] hover:text-indigo-200 transition-all duration-300 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-indigo-400">flag</span>
+<span>Milestones</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 rounded-lg bg-indigo-500/10 text-indigo-400 border-r-2 border-indigo-500 translate-x-1 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-indigo-400">inventory_2</span>
+<span>Resources</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-slate-500 hover:bg-[#2a292f] hover:text-indigo-200 transition-all duration-300 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-indigo-400">query_stats</span>
+<span>Analytics</span>
+</a>
+</nav>
+<button class="mt-auto mb-8 mx-2 py-3 px-4 primary-gradient text-on-primary rounded-md font-bold text-sm tracking-tight flex items-center justify-center gap-2 active:opacity-80 transition-all">
+<span class="material-symbols-outlined text-lg">add</span>
+            New Project
+        </button>
+<div class="px-2 pt-6 border-t border-white/5">
+<div class="flex items-center gap-3 py-3 px-2">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="portrait of a professional male architect in a studio setting with soft bokeh background and warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC03sn4PMJoaG69pbyyYO99LSiUXrfrDs7W65si8vlZJmq5VBx6FFnuYLcqQrwcTH2oRkZB6hZSWd850ZDrcmPQxwSLzfVAedcHYo5K9AWIMCnviIaqyzjmMUd08LepykAX44YeKIFCuvfbSBxZie3Wg_oNoHCPJAp73nifGW3V2jR-b34PFuzDpVDpJqTn2O48IJ_7-1IhyTeerrGteiJObYXqaY6asrRznE9yKqOh1HvmzFA5czWnOW1kv_VX1APmHVdDsW-aELo">
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-bold text-on-surface truncate">Alex Rivera</p>
+<p class="text-[10px] text-slate-500">System Architect</p>
+</div>
+<span class="material-symbols-outlined text-slate-500 text-sm">account_circle</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-[1024px]" data-stitch-vh="min-h-[1024px]===min-h-screen">
+<!-- TopNavBar -->
+<header class="bg-[#131318]/80 backdrop-blur-xl sticky top-0 z-40 flex justify-between items-center w-full px-8 h-16 shadow-2xl shadow-black/40">
+<div class="flex items-center gap-8">
+<h2 class="text-xl font-bold tracking-tighter text-indigo-500">Projects</h2>
+<nav class="hidden md:flex gap-6">
+<a class="text-slate-500 hover:text-indigo-300 transition-colors duration-200 font-['Inter'] tracking-tight text-sm font-semibold" href="#">Archive</a>
+<a class="text-slate-500 hover:text-indigo-300 transition-colors duration-200 font-['Inter'] tracking-tight text-sm" href="#">Milestones</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+<input class="bg-surface-container-highest border-none rounded-md pl-10 pr-4 py-1.5 text-xs w-64 focus:ring-2 focus:ring-primary/40 transition-all text-on-surface-variant placeholder:text-slate-600" placeholder="Search resources..." type="text">
+</div>
+<button class="p-2 text-slate-500 hover:text-indigo-300 transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:text-indigo-300 transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="p-8 max-w-[1600px] mx-auto space-y-8">
+<!-- Page Header Area -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<p class="text-primary font-['Inter'] text-sm font-medium uppercase tracking-[0.2em] mb-2">Resource Management</p>
+<h3 class="text-4xl md:text-5xl font-black text-on-surface tracking-tighter">Resource Allocation</h3>
+</div>
+<button class="primary-gradient text-on-primary px-6 py-3 rounded-md font-bold flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">person_add</span>
+                    Provision User
+                </button>
+</div>
+<!-- Global Metrics: Bento Grid Style -->
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+<div class="bg-surface-container p-6 rounded-xl border-l-4 border-primary relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl">groups</span>
+</div>
+<p class="text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-4">Total Workforce</p>
+<div class="flex items-baseline gap-2">
+<h4 class="text-4xl font-black text-on-surface">1,284</h4>
+<span class="text-success text-xs font-bold">+12%</span>
+</div>
+<p class="text-[10px] text-slate-500 mt-2 italic">Active instances across all nodes</p>
+</div>
+<div class="bg-surface-container p-6 rounded-xl relative overflow-hidden group">
+<p class="text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-4">Peak Utilization</p>
+<div class="flex items-baseline gap-2">
+<h4 class="text-4xl font-black text-on-surface">82.4%</h4>
+<div class="w-16 h-1.5 bg-surface-variant rounded-full overflow-hidden">
+<div class="w-[82%] h-full bg-primary-container"></div>
+</div>
+</div>
+<p class="text-[10px] text-slate-500 mt-2 italic">Optimized for high-concurrency</p>
+</div>
+<div class="bg-surface-container p-6 rounded-xl relative overflow-hidden group flex flex-col justify-between">
+<div>
+<p class="text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-2">AI Optimization Status</p>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#c0c1ff]"></div>
+<span class="text-primary font-bold text-lg">Active</span>
+</div>
+</div>
+<p class="text-[10px] text-slate-500 italic">Neural balancing enabled</p>
+</div>
+<div class="bg-surface-container-high p-6 rounded-xl md:col-span-1 flex items-center justify-center border border-white/5 group hover:border-primary/20 transition-colors">
+<div class="text-center">
+<span class="material-symbols-outlined text-primary mb-2 block">autorenew</span>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase">Run Recalibration</p>
+</div>
+</div>
+</div>
+<!-- Main Interactive Content: Asymmetric Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Table Section (Left Side) -->
+<div class="lg:col-span-8 space-y-6">
+<div class="flex items-center justify-between">
+<h5 class="text-xl font-bold tracking-tight">Kinetic Workforce Matrix</h5>
+<div class="flex gap-2">
+<button class="bg-surface-container-high p-2 rounded text-slate-400 hover:text-on-surface"><span class="material-symbols-outlined text-sm">filter_list</span></button>
+<button class="bg-surface-container-high p-2 rounded text-slate-400 hover:text-on-surface"><span class="material-symbols-outlined text-sm">download</span></button>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-xl overflow-hidden border border-white/5">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high">
+<th class="px-6 py-4 font-['Inter'] text-[10px] uppercase tracking-[0.1em] text-slate-500">Resource Profile</th>
+<th class="px-6 py-4 font-['Inter'] text-[10px] uppercase tracking-[0.1em] text-slate-500">Role</th>
+<th class="px-6 py-4 font-['Inter'] text-[10px] uppercase tracking-[0.1em] text-slate-500">Workload Score</th>
+<th class="px-6 py-4 font-['Inter'] text-[10px] uppercase tracking-[0.1em] text-slate-500">Status</th>
+<th class="px-6 py-4 font-['Inter'] text-[10px] uppercase tracking-[0.1em] text-slate-500 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<img alt="Elena Vance" class="w-10 h-10 rounded bg-surface-variant" data-alt="professional headshot of a woman with sharp features, modern glasses, in a minimalist studio with cool blue tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtbtFcgVS_CXf8DPSYDZBje7y_U5RLaFU2ZPx_RIZfGDT4xQpuodOMtKnEMRHrs8IA0yozHzWfr-xdknbOTiiNCIEJSbsXgPUASdV4xeDNo7bO1nMhT8tovJqgEH6CXwB-UM8BxA-1u_5JuvEnPQgJWAIL0WBVqGe3u4yY7iOQR2fCsxR8qJvuigRR2OeQxNfe2FlVYJKqdUUji8LvZDiKIQY5guTCZVCInrSD79KZJ_K621EObR0ikrH8ElC_suLeD6cQQsqvOzA">
+<div>
+<p class="font-bold text-on-surface">Elena Vance</p>
+<p class="text-[10px] text-slate-500">elena.v@pmwds.com</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs text-on-surface-variant">Design Director</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-mono font-bold text-primary">92</span>
+<div class="w-24 h-1.5 bg-surface-variant rounded-full">
+<div class="w-[92%] h-full bg-primary"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full status-beacon beacon-error"></div>
+<span class="text-[10px] font-bold text-error uppercase tracking-tighter">Overloaded</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">more_vert</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<img alt="Marcus Thorne" class="w-10 h-10 rounded bg-surface-variant" data-alt="portrait of a focused man in his 40s with a short beard, wearing a charcoal turtleneck in a high-tech office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8XjbkUewjzqrYIS9o7BGs6DWSPen3TK1CfKisyCkiH4O78qavjp79iKpd3dtrpWzQdZfQAF0ZyjGVTtamb5hykQa_vLnxfCA67yiMAQnTV1EVV5Fp-s1ZQLnR0YnKNXnpixY4MLTdTixECSdYSirDseo9HtZfXoi1AXXgVTH_HVYB8isuOobqh7Pyyeymp84IUFkdC0CNgLTomRbMfeZcVkAYaoYurbkfPNJmnBsJH7gTH14AisDlspkOnVT5Zg26xZyUn5qPUmQ">
+</div>
+<div class="flex flex-col ml-13 -mt-10 pl-13"> <!-- Fixed alignment for subsequent rows -->
+<p class="font-bold text-on-surface">Marcus Thorne</p>
+<p class="text-[10px] text-slate-500">m.thorne@pmwds.com</p>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs text-on-surface-variant">Chief Architect</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-mono font-bold text-on-surface-variant">64</span>
+<div class="w-24 h-1.5 bg-surface-variant rounded-full">
+<div class="w-[64%] h-full bg-primary/40"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full status-beacon beacon-success"></div>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">Available</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">more_vert</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<img alt="Sarah Chen" class="w-10 h-10 rounded bg-surface-variant" data-alt="professional portrait of an asian woman engineer with a kind smile, bright neutral lighting, professional corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR0RZUGaO2GBVNnEFfm_Ub8_QMYeIEu-F8DRhnu81HCnYLoiwutd_1Tg6AMwmCcUCOM4ZVX4L0mAod-bVET66LQD-EhtG8uGBfvf38ocl-bMM6Z8hiYkQ7gms4VZycsR4vq85atSJHEAWm8Cln5j2HDMHYNXYioh0oqE8Nd4-POWm3137WSnNSM7AWvA9XR9AVvXrDvJ86TOJml96lcSjwtwiCsvuZrdzkmTyhic6KIhrhjeYu5p-A9czoQYIoYRgkzr8VNZjJEi4">
+<div>
+<p class="font-bold text-on-surface">Sarah Chen</p>
+<p class="text-[10px] text-slate-500">s.chen@pmwds.com</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs text-on-surface-variant">Lead ML Engineer</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-mono font-bold text-on-surface-variant">42</span>
+<div class="w-24 h-1.5 bg-surface-variant rounded-full">
+<div class="w-[42%] h-full bg-primary/40"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full status-beacon beacon-warning"></div>
+<span class="text-[10px] font-bold text-on-tertiary-container uppercase tracking-tighter">In Meeting</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">more_vert</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="p-4 bg-surface-container-highest/20 flex items-center justify-center border-t border-white/5">
+<button class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">Load Complete Workforce Matrix</button>
+</div>
+</div>
+</div>
+<!-- Right Side Widgets -->
+<div class="lg:col-span-4 space-y-8">
+<!-- Departmental Utilization -->
+<div class="glass-panel p-6 rounded-xl border border-white/5">
+<h5 class="text-sm font-bold tracking-tight mb-6 flex items-center justify-between">
+                            Departmental Utilization
+                            <span class="material-symbols-outlined text-primary text-sm">monitoring</span>
+</h5>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span class="text-slate-400">Engineering</span>
+<span class="text-on-surface">88%</span>
+</div>
+<div class="w-full h-1 bg-surface-variant">
+<div class="h-full bg-primary" style="width: 88%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span class="text-slate-400">Design</span>
+<span class="text-on-surface">92%</span>
+</div>
+<div class="w-full h-1 bg-primary-container">
+<div class="h-full bg-primary" style="width: 92%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span class="text-slate-400">Quality Assurance</span>
+<span class="text-on-surface">45%</span>
+</div>
+<div class="w-full h-1 bg-surface-variant">
+<div class="h-full bg-primary-container" style="width: 45%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span class="text-slate-400">Project Management</span>
+<span class="text-on-surface">71%</span>
+</div>
+<div class="w-full h-1 bg-surface-variant">
+<div class="h-full bg-primary" style="width: 71%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Burnout Risk Analysis -->
+<div class="bg-error-container/10 p-6 rounded-xl border border-error/20 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-5">
+<span class="material-symbols-outlined text-9xl">warning</span>
+</div>
+<h5 class="text-sm font-bold tracking-tight mb-4 flex items-center gap-2 text-error">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">psychology</span>
+                            Burnout Risk Analysis
+                        </h5>
+<p class="text-xs text-on-surface-variant leading-relaxed mb-4">
+                            AI engine has detected high stress markers in <span class="text-error font-bold">14%</span> of the Engineering cohort. Immediate offloading recommended for high-priority sprint cycles.
+                        </p>
+<div class="space-y-3">
+<div class="bg-surface/40 p-3 rounded flex items-center justify-between border border-white/5">
+<span class="text-[10px] font-bold uppercase">Critical Units</span>
+<span class="text-xs text-error font-mono">08 Nodes</span>
+</div>
+<button class="w-full py-2 bg-error/10 hover:bg-error/20 text-error text-[10px] font-bold uppercase tracking-widest rounded transition-all">
+                                Generate Intervention Plan
+                            </button>
+</div>
+</div>
+<!-- Resource Map Visualization Placeholder -->
+<div class="relative h-64 rounded-xl overflow-hidden group">
+<img class="w-full h-full object-cover grayscale opacity-40 group-hover:opacity-60 transition-opacity" data-alt="a dark futuristic world map with neon indigo data connection lines glowing against a deep black background" data-location="Global" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFWsW7-HhgAqfQT_RY0NWONU3mhNy8iYsfErbdSDaHU3Tz4zdCODioFIQ-ngA6eiDJc_snfflggAsZ0MFlPZjV9-oAWvv52e51STNHx_YGmULRYlhyIPZ9clQULHcHxF7mw145UicPNhnMjkj4bI2WaK2qZbytZy8yQfIMutMzRT9hiPfw5jLw9gjwZRz-WP0FKr5D5oqoP44jC2TKwFr5LKEpcLNhe6fSbTE_768imjmfRRXbl5WuhccFdqxo9lC_8OveDpy-7nA">
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-6">
+<h6 class="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-1">Global Load Map</h6>
+<p class="text-[10px] text-slate-400">Real-time geographical distribution</p>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Insight Banner -->
+<div class="bg-surface-container-highest p-8 rounded-2xl border border-indigo-500/20 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+<div class="absolute left-0 top-0 h-full w-1 primary-gradient"></div>
+<div class="w-20 h-20 shrink-0 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="flex-1 text-center md:text-left">
+<h4 class="text-xl font-bold text-on-surface mb-2">Automated Resource Balancing</h4>
+<p class="text-on-surface-variant text-sm max-w-2xl leading-relaxed">
+                        The PMWDS Neural Network suggests redistributing 4 current Design Director tasks to Sarah Chen to optimize the Milestone 4 delivery timeline. This shift would reduce Elena Vance's burnout score by <span class="text-primary font-bold">22%</span>.
+                    </p>
+</div>
+<div class="flex flex-col gap-2 shrink-0 w-full md:w-auto">
+<button class="primary-gradient text-on-primary px-8 py-3 rounded-md font-bold text-sm">Approve Logic</button>
+<button class="bg-surface-variant text-on-surface-variant px-8 py-3 rounded-md font-bold text-sm hover:bg-white/10 transition-colors">Review Detailed Impact</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Hidden as per focus rules but logic kept for reference) -->
+<!-- Suppressed: Task-Focused Screen -->
+</body></html>

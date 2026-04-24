@@ -1,0 +1,405 @@
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "tertiary-container": "#d97721",
+                  "on-secondary-container": "#b2b3f2",
+                  "error-container": "#93000a",
+                  "outline-variant": "#464554",
+                  "on-primary": "#1000a9",
+                  "on-error": "#690005",
+                  "inverse-primary": "#494bd6",
+                  "tertiary-fixed": "#ffdcc5",
+                  "surface-container-low": "#1b1b20",
+                  "on-secondary": "#292a60",
+                  "on-secondary-fixed": "#13144a",
+                  "tertiary": "#ffb783",
+                  "primary": "#c0c1ff",
+                  "inverse-on-surface": "#303035",
+                  "secondary-container": "#42447b",
+                  "on-primary-fixed-variant": "#2f2ebe",
+                  "surface-variant": "#35343a",
+                  "on-tertiary": "#4f2500",
+                  "primary-fixed-dim": "#c0c1ff",
+                  "surface-tint": "#c0c1ff",
+                  "surface-bright": "#39393e",
+                  "surface": "#131318",
+                  "on-background": "#e4e1e9",
+                  "surface-container-high": "#2a292f",
+                  "on-secondary-fixed-variant": "#404178",
+                  "on-surface-variant": "#c7c4d7",
+                  "on-primary-fixed": "#07006c",
+                  "on-primary-container": "#0d0096",
+                  "background": "#131318",
+                  "secondary-fixed": "#e1e0ff",
+                  "outline": "#908fa0",
+                  "on-tertiary-container": "#452000",
+                  "inverse-surface": "#e4e1e9",
+                  "surface-dim": "#131318",
+                  "tertiary-fixed-dim": "#ffb783",
+                  "surface-container": "#1f1f24",
+                  "secondary": "#c0c1ff",
+                  "on-tertiary-fixed-variant": "#703700",
+                  "surface-container-highest": "#35343a",
+                  "on-tertiary-fixed": "#301400",
+                  "surface-container-lowest": "#0e0e13",
+                  "on-error-container": "#ffdad6",
+                  "on-surface": "#e4e1e9",
+                  "primary-container": "#8083ff",
+                  "primary-fixed": "#e1e0ff",
+                  "error": "#ffb4ab",
+                  "secondary-fixed-dim": "#c0c1ff"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.125rem",
+                  "lg": "0.25rem",
+                  "xl": "0.5rem",
+                  "full": "0.75rem"
+          },
+          "fontFamily": {
+                  "headline": ["Inter"],
+                  "body": ["Inter"],
+                  "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .glass-card {
+      background: rgba(53, 52, 58, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .kinetic-gradient {
+      background: linear-gradient(135deg, #c0c1ff 0%, #8083ff 100%);
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary selection:text-on-primary">
+<div class="flex min-h-screen">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-screen w-64 flex flex-col bg-[#1b1b20] py-8 px-4 border-r border-white/5 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-indigo-500 font-black text-2xl tracking-tighter">PMWDS</h1>
+<p class="font-['Inter'] text-[10px] font-medium uppercase tracking-widest text-slate-500 mt-1">SuperAdmin Console</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-[#2a292f] hover:text-indigo-200 transition-all duration-300 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+          Dashboard
+        </a>
+<!-- Milestones (Active) -->
+<a class="flex items-center gap-3 px-4 py-3 bg-indigo-500/10 text-indigo-400 border-r-2 border-indigo-500 font-['Inter'] text-sm font-medium uppercase tracking-widest translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="flag" style="font-variation-settings: 'FILL' 1;">flag</span>
+          Milestones
+        </a>
+<!-- Resources -->
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-[#2a292f] hover:text-indigo-200 transition-all duration-300 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+          Resources
+        </a>
+<!-- Analytics -->
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-[#2a292f] hover:text-indigo-200 transition-all duration-300 font-['Inter'] text-sm font-medium uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+          Analytics
+        </a>
+</nav>
+<div class="mt-auto pt-6 border-t border-white/5">
+<button class="w-full flex items-center justify-center gap-2 kinetic-gradient text-on-primary py-3 rounded-md font-bold mb-6 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">add</span>
+          New Project
+        </button>
+<div class="flex items-center gap-3 px-4">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="professional portrait of a project manager with friendly expression in office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJN4BqBs44XUsLoy_9YbbQeqTQdnxsQ1jFQY7uJoPN__Lzlou0eJiX-C493Vg5MSAODfDq_ROzWQTtiUwUzOy5lrmn-HGp8_4FgSGgMoGXtqrmXXg1zVyHfO2WvM3ehYLlxEmOkBiyOzvSfJnyepMcS6rubNTqQu66LXDCaJnYtlV8IVbxBuI1hAZfeiTjqNmzqz7072-4XqWZTZcba-PxvZt1PaxVi9BONWnBLTToJ73lLAJWo2-8F8_6jY4nuQWCWIAFjjitmOc"/>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">Alex Rivera</span>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Senior Architect</span>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 ml-64 min-h-screen">
+<!-- TopAppBar (Shared Component Style) -->
+<header class="bg-[#131318]/80 backdrop-blur-xl sticky top-0 z-40 h-16 flex justify-between items-center w-full px-8 shadow-2xl shadow-black/40">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 text-xs font-['Inter'] tracking-tight text-on-surface-variant">
+<span>Dashboard</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span>Projects</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-indigo-400 font-semibold">Milestones</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<select class="bg-surface-container-high border-none text-on-surface text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-1 focus:ring-primary/40 appearance-none min-w-[200px]">
+<option>Project Phoenix II</option>
+<option>Neural Core v4</option>
+<option>Genesis Node</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-slate-500 hover:text-indigo-300 transition-colors duration-200">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-indigo-300 transition-colors duration-200">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-8 space-y-8">
+<!-- Hero Section & Stats -->
+<div class="flex flex-col md:flex-row gap-6 items-end justify-between">
+<div class="space-y-1">
+<h2 class="text-4xl font-bold tracking-tighter text-on-surface">Milestones</h2>
+<p class="text-on-surface-variant text-lg">Managing critical path delivery for Project Phoenix II.</p>
+</div>
+<button class="kinetic-gradient text-on-primary px-6 py-3 rounded-md font-bold flex items-center gap-2 transition-transform active:scale-95 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">rocket_launch</span>
+            Initialize Milestone
+          </button>
+</div>
+<!-- Predictive Metrics (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="glass-card p-6 rounded-xl border border-white/5 space-y-4">
+<div class="flex justify-between items-start">
+<span class="text-label-sm text-on-surface-variant font-bold uppercase tracking-widest text-[10px]">Timeline Feasibility</span>
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold">94%</span>
+<span class="text-success text-xs font-bold flex items-center text-[#4ade80]">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                +2.1%
+              </span>
+</div>
+<div class="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[94%] shadow-[0_0_8px_rgba(192,193,255,0.4)]"></div>
+</div>
+<p class="text-[11px] text-on-surface-variant italic">Optimization of CI/CD pipeline improved lead times.</p>
+</div>
+<div class="glass-card p-6 rounded-xl border border-white/5 space-y-4">
+<div class="flex justify-between items-start">
+<span class="text-label-sm text-on-surface-variant font-bold uppercase tracking-widest text-[10px]">AI Delay Prediction</span>
+<span class="material-symbols-outlined text-error">warning</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold text-error">4.2d</span>
+<span class="text-on-surface-variant text-xs font-medium">Est. Variance</span>
+</div>
+<p class="text-sm text-on-surface">Probability of delay in 'Neural Engine' is <span class="text-error font-bold">Medium</span>.</p>
+<div class="flex gap-1">
+<div class="h-1 flex-1 bg-error/20 rounded-full"></div>
+<div class="h-1 flex-1 bg-error/40 rounded-full"></div>
+<div class="h-1 flex-1 bg-error/60 rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-container rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-container rounded-full"></div>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl border border-white/5 bg-indigo-500/5 relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="relative z-10 space-y-4">
+<span class="text-label-sm text-on-surface-variant font-bold uppercase tracking-widest text-[10px]">Active PM</span>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border-2 border-primary/30 p-0.5">
+<img class="w-full h-full rounded-full object-cover" data-alt="portrait of Rohan Gupta, a modern technology project manager in a minimalist studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAauqPayVF1qNCfAXCWon2shuHYK1YDsebEUzLJruVoQUEgooGMD2De1fM-aRAqLYedZDN9Sp49WzHajGHZ-Do5iQr4LJUgWwvF6hDPoMcNbhxnt3vXbr-2gdEwH2eJ0BKzOpyrlzUIhoJOeXA43Kbs55nx17m1rO4ABg6DkHc90DZgF3elZ7iQSynfWIXPAqhdETFvbsDWs2iQUXOvSi69Oj8Vx4ytwhA5cmPsvdGtNFs_bkIB_Qq87qDrnUI33wOub1Ew3laYgSI"/>
+</div>
+<div>
+<h4 class="font-bold text-lg leading-none">Rohan Gupta</h4>
+<p class="text-indigo-400 text-xs mt-1">Lead Strategy Director</p>
+</div>
+</div>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-[10px] font-bold text-on-surface-variant">12 Active Goals</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-[10px] font-bold text-on-surface-variant">98% Success</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Milestones Timeline Grid -->
+<div class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="text-xl font-bold tracking-tight">Project Timeline</h3>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">view_stream</span>
+</button>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Milestone Card 1 -->
+<div class="glass-card hover:bg-surface-container-high transition-all duration-300 rounded-xl p-6 border border-white/5 group relative overflow-hidden">
+<div class="absolute left-0 top-0 w-1 h-full bg-success bg-[#4ade80]"></div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex-1 space-y-2">
+<div class="flex items-center gap-3">
+<h4 class="text-xl font-bold text-on-surface">API Gateway Migration</h4>
+<span class="px-2 py-0.5 rounded bg-success/10 text-[#4ade80] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#4ade80] shadow-[0_0_6px_#4ade80]"></span>
+                      Completed
+                    </span>
+</div>
+<p class="text-sm text-on-surface-variant max-w-2xl">Refactoring legacy endpoints into the high-performance Rust-based gateway. Successfully handled 2M requests/min in stress test.</p>
+</div>
+<div class="flex flex-wrap items-center gap-8 md:text-right">
+<div class="space-y-1">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Due Date</p>
+<p class="text-sm font-semibold">Oct 12, 2023</p>
+</div>
+<div class="w-32 space-y-2">
+<div class="flex justify-between text-[10px] uppercase font-bold text-on-surface-variant">
+<span>Progress</span>
+<span>100%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-[#4ade80] w-full"></div>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">more_vert</button>
+</div>
+</div>
+</div>
+<!-- Milestone Card 2 -->
+<div class="glass-card hover:bg-surface-container-high transition-all duration-300 rounded-xl p-6 border border-white/5 group relative overflow-hidden">
+<div class="absolute left-0 top-0 w-1 h-full bg-primary shadow-[0_0_12px_rgba(192,193,255,0.5)]"></div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex-1 space-y-2">
+<div class="flex items-center gap-3">
+<h4 class="text-xl font-bold text-on-surface">Neural Engine Optimization</h4>
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(192,193,255,1)] animate-pulse"></span>
+                      In Progress
+                    </span>
+<span class="px-2 py-0.5 rounded bg-error/10 text-error text-[10px] font-bold uppercase tracking-wider">Critical</span>
+</div>
+<p class="text-sm text-on-surface-variant max-w-2xl">Optimizing inference latency for mobile edge devices. Targeting &lt;45ms response time on Snapdragon 8 Gen 2.</p>
+</div>
+<div class="flex flex-wrap items-center gap-8 md:text-right">
+<div class="space-y-1">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Due Date</p>
+<p class="text-sm font-semibold">Dec 20, 2023</p>
+</div>
+<div class="w-32 space-y-2">
+<div class="flex justify-between text-[10px] uppercase font-bold text-on-surface-variant">
+<span>Progress</span>
+<span>68%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[68%]"></div>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">more_vert</button>
+</div>
+</div>
+</div>
+<!-- Milestone Card 3 -->
+<div class="glass-card opacity-60 hover:opacity-100 transition-all duration-300 rounded-xl p-6 border border-white/5 group relative overflow-hidden">
+<div class="absolute left-0 top-0 w-1 h-full bg-surface-variant"></div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex-1 space-y-2">
+<div class="flex items-center gap-3">
+<h4 class="text-xl font-bold text-on-surface">Multi-Region Redundancy</h4>
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-on-surface-variant/40"></span>
+                      Not Started
+                    </span>
+</div>
+<p class="text-sm text-on-surface-variant max-w-2xl">Implementing cross-region database replication and failover mechanisms for global availability.</p>
+</div>
+<div class="flex flex-wrap items-center gap-8 md:text-right">
+<div class="space-y-1">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Due Date</p>
+<p class="text-sm font-semibold">Jan 15, 2024</p>
+</div>
+<div class="w-32 space-y-2">
+<div class="flex justify-between text-[10px] uppercase font-bold text-on-surface-variant">
+<span>Progress</span>
+<span>0%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[0%]"></div>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">more_vert</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Modal Overlay (Mock) -->
+<div class="fixed inset-0 bg-surface/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 invisible opacity-0">
+<!-- To show modal, add class: visible opacity-100 -->
+<div class="w-full max-w-2xl glass-card border border-white/10 rounded-2xl p-8 shadow-[0_20px_40px_rgba(0,0,0,0.6)]">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-2xl font-bold tracking-tight">Initialize Milestone</h3>
+<p class="text-on-surface-variant text-sm mt-1">Configure project core deliverables.</p>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">close</button>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-2 gap-6">
+<div class="space-y-2 col-span-2">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Milestone Name</label>
+<input class="w-full bg-surface-container-highest border-none rounded-md px-4 py-3 text-on-surface focus:ring-1 focus:ring-primary/40 placeholder:text-on-surface-variant/40" placeholder="e.g. Infrastructure Hardening" type="text"/>
+</div>
+<div class="space-y-2 col-span-2">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Description</label>
+<textarea class="w-full bg-surface-container-highest border-none rounded-md px-4 py-3 text-on-surface focus:ring-1 focus:ring-primary/40 placeholder:text-on-surface-variant/40" placeholder="Scope of work and success metrics..." rows="3"></textarea>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Due Date</label>
+<input class="w-full bg-surface-container-highest border-none rounded-md px-4 py-3 text-on-surface focus:ring-1 focus:ring-primary/40" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Execution Order</label>
+<input class="w-full bg-surface-container-highest border-none rounded-md px-4 py-3 text-on-surface focus:ring-1 focus:ring-primary/40" placeholder="1" type="number"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container rounded-md">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">priority_high</span>
+<div>
+<p class="text-sm font-bold">Critical Path Milestone</p>
+<p class="text-[11px] text-on-surface-variant italic">Failure here will delay entire project schedule.</p>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<div class="flex gap-4 justify-end pt-4">
+<button class="px-6 py-2.5 text-on-surface-variant font-bold hover:text-on-surface transition-colors" type="button">Cancel</button>
+<button class="px-8 py-2.5 kinetic-gradient text-on-primary font-bold rounded-md shadow-lg shadow-primary/20" type="submit">Commit Milestone</button>
+</div>
+</form>
+</div>
+</div>
+</body></html>

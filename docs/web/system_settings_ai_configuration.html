@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - PMWDS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#ffb783",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#ffdcc5",
+                        "on-secondary": "#292a60",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "on-surface-variant": "#c7c4d7",
+                        "on-secondary-fixed-variant": "#404178",
+                        "on-tertiary": "#4f2500",
+                        "on-primary-fixed": "#07006c",
+                        "secondary": "#c0c1ff",
+                        "background": "#131318",
+                        "secondary-fixed": "#e1e0ff",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "outline": "#908fa0",
+                        "inverse-surface": "#e4e1e9",
+                        "surface-container-low": "#1b1b20",
+                        "secondary-container": "#42447b",
+                        "on-tertiary-fixed": "#301400",
+                        "surface-container-high": "#2a292f",
+                        "surface-container-lowest": "#0e0e13",
+                        "on-tertiary-fixed-variant": "#703700",
+                        "on-primary": "#1000a9",
+                        "surface-container-highest": "#35343a",
+                        "surface-bright": "#39393e",
+                        "outline-variant": "#464554",
+                        "inverse-primary": "#494bd6",
+                        "surface-variant": "#35343a",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#13144a",
+                        "on-background": "#e4e1e9",
+                        "on-primary-container": "#0d0096",
+                        "on-error": "#690005",
+                        "on-tertiary-container": "#452000",
+                        "primary-fixed": "#e1e0ff",
+                        "primary-container": "#8083ff",
+                        "on-secondary-container": "#b2b3f2",
+                        "tertiary-container": "#d97721",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "primary": "#c0c1ff",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "surface-dim": "#131318",
+                        "surface-tint": "#c0c1ff",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e4e1e9",
+                        "inverse-on-surface": "#303035",
+                        "surface": "#131318",
+                        "surface-container": "#1f1f24"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar -->
+<nav class="h-screen w-64 fixed left-0 top-0 flex flex-col justify-between bg-[#1b1b20] border-none shadow-none z-50">
+<div class="flex flex-col h-full py-8 px-4 font-['Inter'] antialiased text-sm font-medium tracking-tight">
+<!-- Header -->
+<div class="flex items-center gap-3 mb-10 px-2">
+<img alt="SuperAdmin User Profile" class="w-10 h-10 rounded-full border-2 border-surface-container-highest" data-alt="Abstract superadmin avatar with geometric dark matrix styling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkRF7FaAs8UYPaSzT3mTY7ic-vtM32tmXQ3Tt1Dw6wau5iK6VkX6lS42OlBw5mtZkIVxIwotrif_JIaJSWsjpl4LuzVDxvr9zDcm_8CqnT_YOghZxwlCw-O7afrpBGZPlSJ1f_lA3f5lm-LIM8SqLhKsMEYtIHOXnx1NN2b6aFMf_ZPCqRs5-kvgm1pQvby7UEyleVTApKahVU3dRRh1LgzaNKNrBybi7M7dTOgBzcsgJ313c62nL-lJNDCQmNZvl6XohR38po_As"/>
+<div>
+<div class="text-xl font-black tracking-tighter text-[#c0c1ff]">PMWDS</div>
+<div class="text-xs text-on-surface-variant">The Kinetic Archive</div>
+</div>
+</div>
+<!-- Primary Action -->
+<button class="mb-8 w-full py-3 px-4 rounded-md bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold flex justify-center items-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Project
+            </button>
+<!-- Navigation Links -->
+<ul class="flex flex-col gap-2 flex-grow">
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#c7c4d7] hover:bg-[#1f1f24] transition-all duration-200 hover:text-white rounded-lg scale-95 active:opacity-80 transition-transform" href="#">
+<span class="material-symbols-outlined text-lg">dashboard</span>
+                        Dashboard
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#c7c4d7] hover:bg-[#1f1f24] transition-all duration-200 hover:text-white rounded-lg scale-95 active:opacity-80 transition-transform" href="#">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+                        Projects
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#c7c4d7] hover:bg-[#1f1f24] transition-all duration-200 hover:text-white rounded-lg scale-95 active:opacity-80 transition-transform" href="#">
+<span class="material-symbols-outlined text-lg">psychology</span>
+                        AI Engine
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#c7c4d7] hover:bg-[#1f1f24] transition-all duration-200 hover:text-white rounded-lg scale-95 active:opacity-80 transition-transform" href="#">
+<span class="material-symbols-outlined text-lg">inventory_2</span>
+                        Archive
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#c0c1ff] bg-[#2a292f] rounded-lg scale-95 active:opacity-80 transition-transform" href="#">
+<span class="material-symbols-outlined text-lg">settings</span>
+                        Settings
+                    </a>
+</li>
+</ul>
+<!-- Footer Links -->
+<ul class="flex flex-col gap-2 mt-auto pt-6">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] hover:bg-[#1f1f24] transition-all duration-200 hover:text-white rounded-lg" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+                        Support
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-error hover:bg-error-container/20 transition-all duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined text-lg">logout</span>
+                        Logout
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-64 h-16 bg-[#131318]/80 backdrop-blur-xl border-none flat no shadows z-40">
+<div class="flex items-center justify-between px-8 w-full h-full font-['Inter'] text-sm tracking-wide uppercase font-semibold">
+<!-- Brand / Nav -->
+<div class="flex items-center gap-8 text-[#c0c1ff]">
+<div class="hidden md:block text-lg font-black bg-clip-text text-transparent bg-gradient-to-br from-[#c0c1ff] to-[#8083ff]">PMWDS</div>
+<nav class="flex gap-6">
+<a class="text-[#c7c4d7] hover:text-white transition-colors hover:opacity-90 py-1" href="#">Global View</a>
+<a class="text-[#c7c4d7] hover:text-white transition-colors hover:opacity-90 py-1" href="#">System Health</a>
+</nav>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-6">
+<div class="flex gap-4 text-[#c7c4d7]">
+<button class="hover:text-white transition-colors hover:opacity-90"><span class="material-symbols-outlined">notifications</span></button>
+<button class="hover:text-white transition-colors hover:opacity-90"><span class="material-symbols-outlined">search</span></button>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-1.5 rounded-md border border-outline/20 text-[#c7c4d7] hover:bg-surface-container-highest transition-colors hover:opacity-90">Backup</button>
+<button class="px-4 py-1.5 rounded-md bg-gradient-to-br from-[#c0c1ff] to-[#8083ff] text-on-primary hover:opacity-90 transition-opacity">Deploy AI</button>
+</div>
+<img alt="SuperAdmin Avatar" class="w-8 h-8 rounded-full ml-2 cursor-pointer border border-outline/30" data-alt="Abstract superadmin avatar with geometric dark matrix styling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDw7t1bF6TbXS3kDIsKlLjgh_jqmbRsbKNm-ADJ9b5RS1W9ZapQgPrpZ8lQMZQPlNPFVrCr4zanS3SXuUY9RE7o6F7fyh3Y2nLQz_Xpd991l4BCcYXA7KXje0ptnnZkvE61Yi1iJTwHEfAS7P_WvLivV5D33cHGslsGjg17LjkW29jgenBZH4kvS4RUWYspDzjbGVUNCorLK2qyU3CtJspDeWvn1NnQRj2paZ6ay3iFfgo9j3l4gdZKU0mxdkQsLfiLrgUOuqgQA1k"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 pb-32 px-8 max-w-[1600px] mx-auto">
+<div class="mb-10">
+<h1 class="text-3xl font-extrabold tracking-tight text-on-surface mb-2">System Settings</h1>
+<p class="text-on-surface-variant font-medium">Manage user identity and core artificial intelligence configurations.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: User Profile -->
+<div class="lg:col-span-4 flex flex-col gap-8">
+<!-- User Profile Card -->
+<div class="bg-surface-container rounded-xl p-6 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-surface-container to-surface-container-low opacity-50 pointer-events-none"></div>
+<div class="relative z-10">
+<h2 class="text-lg font-bold text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">person</span>
+                            SuperAdmin Identity
+                        </h2>
+<div class="flex items-center gap-5 mb-8">
+<img class="w-20 h-20 rounded-full border-2 border-surface-container-highest shadow-[0_0_20px_rgba(192,193,255,0.1)]" data-alt="Abstract superadmin avatar with geometric dark matrix styling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAr2_D6W1d1JDfJzdASgX54ki5qmN6QIPCISYV2NBScAsGE7SlIuu-JmOT4wD8vGUTAhkoKcqlDZvr6muckvEa1Lopen_1lw0M1r10iLsu8-7By5SpN-A_MtnqimY4bkj9ATdFQu-iLAK4dCZm28EHSUnDJxzQYQn4nQN2sZgoj53Q2f78Hxwweqmv_gdURcoAMsz84ECqjp-tXztycM_ZYqhGRV5NmacLl8jjJL5PAcL8UnA2lwjiAdSg8ES9CsmRlBIBeMRp4_7U"/>
+<div>
+<div class="text-xs uppercase tracking-wider text-primary font-semibold mb-1">Active Role</div>
+<div class="text-xl font-bold text-on-surface">Alex Rivera</div>
+</div>
+</div>
+<div class="space-y-5">
+<div>
+<label class="block text-xs uppercase tracking-wider text-on-surface-variant mb-2">Full Name</label>
+<input class="w-full bg-surface-container-highest border-none rounded-md text-on-surface py-2.5 px-4 cursor-not-allowed opacity-80 focus:ring-0" readonly="" type="text" value="Alex Rivera"/>
+</div>
+<div>
+<label class="block text-xs uppercase tracking-wider text-on-surface-variant mb-2">System Email</label>
+<input class="w-full bg-surface-container-highest border-none rounded-md text-on-surface py-2.5 px-4 cursor-not-allowed opacity-80 focus:ring-0" readonly="" type="email" value="alex.rivera@pmwds.ai"/>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/15">
+<button class="w-full py-3 px-4 rounded-md bg-error-container/10 text-error font-semibold flex justify-center items-center gap-2 hover:bg-error-container/20 transition-colors border border-error/20">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">logout</span>
+                                Terminate Session
+                            </button>
+</div>
+</div>
+</div>
+<!-- Diagnostics & Testing Card -->
+</div>
+<!-- Right Column: AI Configuration -->
+<div class="lg:col-span-8 flex flex-col gap-8">
+<!-- Global Settings Bento -->
+<div class="bg-surface-container-low rounded-xl p-1 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none"></div>
+<div class="bg-surface-container rounded-lg p-6 relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+<div class="flex-1 space-y-2">
+<h2 class="text-xl font-bold text-on-surface">Global AI Parameters</h2>
+<p class="text-sm text-on-surface-variant">Core routing and execution thresholds.</p>
+</div>
+<div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label class="block text-xs uppercase tracking-wider text-on-surface-variant mb-2">Default Provider</label>
+<select class="w-full bg-surface-container-highest border-none rounded-md text-on-surface py-2.5 px-4 focus:ring-2 focus:ring-primary/40 focus:outline-none appearance-none cursor-pointer">
+<option>OpenAI</option>
+<option>OpenRouter</option>
+<option>OpenCode</option>
+</select>
+</div>
+<div>
+<label class="block text-xs uppercase tracking-wider text-on-surface-variant mb-2">Risk Threshold</label>
+<div class="flex items-center gap-3 bg-surface-container-highest rounded-md px-4 py-2.5">
+<input class="w-full h-1 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" max="1" min="0" step="0.1" type="range" value="0.7"/>
+<span class="text-sm font-mono text-primary">0.7</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Provider Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- OpenAI Card -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col gap-5 border border-outline-variant/15 hover:bg-surface-container-highest transition-colors duration-300">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">memory</span>
+</div>
+<h3 class="font-bold text-on-surface">OpenAI</h3>
+</div>
+<!-- Toggle -->
+<div class="w-10 h-5 bg-primary/20 rounded-full flex items-center px-1 cursor-pointer">
+<div class="w-3.5 h-3.5 bg-primary rounded-full transform translate-x-4.5 transition-transform shadow-[0_0_8px_rgba(192,193,255,0.6)]"></div>
+</div>
+</div>
+<div class="space-y-4 flex-grow">
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Base URL</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none" type="text" value="https://api.openai.com/v1"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">API Key</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none font-mono" type="password" value="sk-xxxxxxxxxxxxxxxx"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Default Model</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none" type="text" value="gpt-4-turbo"/>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-2 border-t border-outline-variant/15">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#a8c7fa] shadow-[0_0_8px_rgba(168,199,250,0.4)]"></div>
+<span class="text-xs text-on-surface-variant">Connected</span>
+</div>
+<button class="text-xs font-semibold text-primary hover:text-primary-container transition-colors">Test</button>
+</div>
+</div>
+<!-- OpenRouter Card -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col gap-5 border border-outline-variant/15 hover:bg-surface-container-highest transition-colors duration-300">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">route</span>
+</div>
+<h3 class="font-bold text-on-surface">OpenRouter</h3>
+</div>
+<!-- Toggle -->
+<div class="w-10 h-5 bg-surface-container rounded-full flex items-center px-1 cursor-pointer">
+<div class="w-3.5 h-3.5 bg-outline rounded-full transition-transform"></div>
+</div>
+</div>
+<div class="space-y-4 flex-grow">
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Base URL</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none opacity-60" type="text" value="https://openrouter.ai/api/v1"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">API Key</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none opacity-60 font-mono" placeholder="sk-or-v1-..." type="password"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Default Model</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none opacity-60" type="text" value="anthropic/claude-3-opus"/>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-2 border-t border-outline-variant/15">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-outline shadow-[0_0_8px_rgba(144,143,160,0.2)]"></div>
+<span class="text-xs text-on-surface-variant">Disabled</span>
+</div>
+<button class="text-xs font-semibold text-primary hover:text-primary-container transition-colors opacity-60 cursor-not-allowed">Test</button>
+</div>
+</div>
+<!-- OpenCode Card -->
+<div class="bg-surface-container-high rounded-xl p-6 flex flex-col gap-5 border border-outline-variant/15 hover:bg-surface-container-highest transition-colors duration-300">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">code</span>
+</div>
+<h3 class="font-bold text-on-surface">OpenCode</h3>
+</div>
+<!-- Toggle -->
+<div class="w-10 h-5 bg-primary/20 rounded-full flex items-center px-1 cursor-pointer">
+<div class="w-3.5 h-3.5 bg-primary rounded-full transform translate-x-4.5 transition-transform shadow-[0_0_8px_rgba(192,193,255,0.6)]"></div>
+</div>
+</div>
+<div class="space-y-4 flex-grow">
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Base URL</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none" type="text" value="http://localhost:11434/v1"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">API Key</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none font-mono" type="password" value="local-dev-key"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Default Model</label>
+<input class="w-full bg-surface-container border-none rounded-md text-on-surface py-2 px-3 text-sm focus:ring-2 focus:ring-primary/40 focus:outline-none" type="text" value="codellama"/>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 mt-2 border-t border-outline-variant/15">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-error shadow-[0_0_8px_rgba(255,180,171,0.4)]"></div>
+<span class="text-xs text-error">Connection Failed</span>
+</div>
+<button class="text-xs font-semibold text-primary hover:text-primary-container transition-colors">Test</button>
+</div>
+</div>
+</div>
+</div>
+</div><!-- Full Width Diagnostics Section -->
+<div class="mt-8 w-full">
+<div class="bg-surface-container rounded-xl p-6 relative overflow-hidden">
+<h2 class="text-lg font-bold text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">terminal</span>
+            Engine Diagnostics
+        </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-5">
+<div>
+<label class="block text-xs uppercase tracking-wider text-on-surface-variant mb-2">Custom Test Prompt</label>
+<textarea class="w-full bg-surface-container-highest border-none rounded-md text-on-surface py-3 px-4 focus:ring-2 focus:ring-primary/40 focus:outline-none transition-shadow resize-none font-mono text-sm" placeholder="Enter diagnostic query..." rows="4"></textarea>
+</div>
+<button class="w-full py-2.5 px-4 rounded-md bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold flex justify-center items-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">play_arrow</span>
+                    Run Diagnostic Prompt
+                </button>
+</div>
+<div class="pt-0">
+<label class="block text-xs uppercase tracking-wider text-on-surface-variant mb-2">Model Response</label>
+<div class="w-full h-full min-h-[160px] bg-[#0a0a0d] border border-outline-variant/20 rounded-md p-4 overflow-y-auto font-mono text-xs text-primary/80">
+                    &gt; Awaiting execution...
+                </div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Action Bar -->
+<div class="fixed bottom-0 left-64 right-0 bg-surface-container-highest/80 backdrop-blur-xl border-t border-outline-variant/15 p-4 z-40">
+<div class="max-w-[1600px] mx-auto flex items-center justify-between px-8">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-sm">info</span>
+<span class="text-sm text-on-surface-variant">Unsaved changes in Global AI Parameters.</span>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2.5 rounded-md border border-outline/20 text-primary hover:bg-surface-container transition-colors font-medium text-sm">Discard</button>
+<button class="px-6 py-2.5 rounded-md bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold shadow-[0_8px_16px_rgba(192,193,255,0.15)] hover:opacity-90 transition-all text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">save</span>
+                    Save AI Configuration
+                </button>
+</div>
+</div>
+</div>
+</body></html>

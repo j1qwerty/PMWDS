@@ -216,6 +216,102 @@ public class TasksController : BaseApiController
     public async Task<IActionResult> GetUnassigned(CancellationToken ct)
         => Ok((await _uow.Tasks.GetUnassignedTasksAsync(ct)).Select(TaskDto.FromEntity));
 
+    [HttpGet("{id:guid}/subtasks")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetSubtasks(Guid id, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        return task == null ? NotFound() : Ok(task.SubTasks.Select(TaskDto.FromEntity));
+    }
+
+    [HttpPost("{id:guid}/subtasks")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> CreateSubtask(Guid id, [FromBody] CreateSubtaskDto dto, CancellationToken ct)
+    {
+        var createDto = new CreateTaskDto(
+            dto.Title,
+            dto.Description ?? string.Empty,
+            dto.StartDate,
+            dto.DueDate,
+            dto.EstimatedHours,
+            dto.ProjectId,
+            dto.MilestoneId,
+            id,
+            dto.AssignedToUserId,
+            dto.Priority);
+        var result = await Mediator.Send(new CreateTaskCommand(createDto), ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpGet("subtasks/{id:guid}")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetSubtaskById(Guid id, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null || task.ParentTaskId == null)
+            return NotFound();
+        return Ok(TaskDto.FromEntity(task));
+    }
+
+    [HttpPut("subtasks/{id:guid}")]
+    [Authorize(Policy = "TeamLead")]
+    public async Task<IActionResult> UpdateSubtask(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null || task.ParentTaskId == null)
+            return NotFound();
+
+        task.UpdateDetails(
+            dto.Title,
+            dto.Description ?? string.Empty,
+            dto.Priority,
+            dto.StartDate,
+            dto.DueDate,
+            (int)dto.EstimatedHours,
+            dto.MilestoneId);
+        task.SetModified(_currentUser.UserId ?? "system");
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
+    [HttpPatch("subtasks/{id:guid}/progress")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
+        => Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+
+    [HttpPatch("subtasks/{id:guid}/status")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> UpdateSubtaskStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null || task.ParentTaskId == null)
+            return NotFound();
+
+        task.UpdateStatus(req.NewStatus);
+        task.SetModified(_currentUser.UserId ?? "system");
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDto.FromEntity(task));
+    }
+
+    [HttpPost("subtasks/{id:guid}/assign")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> AssignSubtask(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
+        => Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+
+    [HttpDelete("subtasks/{id:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> DeleteSubtask(Guid id, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null || task.ParentTaskId == null)
+            return NotFound();
+
+        await _uow.Tasks.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

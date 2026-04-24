@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Departments | The Kinetic Archive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-dim": "#131318",
+                "surface-container-highest": "#35343a",
+                "inverse-on-surface": "#303035",
+                "on-surface-variant": "#c7c4d7",
+                "on-primary-fixed": "#07006c",
+                "error-container": "#93000a",
+                "on-secondary-container": "#b2b3f2",
+                "surface-container-low": "#1b1b20",
+                "on-secondary-fixed": "#13144a",
+                "surface-bright": "#39393e",
+                "secondary": "#c0c1ff",
+                "on-error": "#690005",
+                "surface-container": "#1f1f24",
+                "secondary-fixed-dim": "#c0c1ff",
+                "on-tertiary-fixed-variant": "#703700",
+                "on-primary-fixed-variant": "#2f2ebe",
+                "tertiary-fixed-dim": "#ffb783",
+                "outline-variant": "#464554",
+                "on-secondary-fixed-variant": "#404178",
+                "on-tertiary-container": "#452000",
+                "on-tertiary-fixed": "#301400",
+                "on-background": "#e4e1e9",
+                "surface": "#131318",
+                "secondary-fixed": "#e1e0ff",
+                "surface-container-high": "#2a292f",
+                "on-secondary": "#292a60",
+                "secondary-container": "#42447b",
+                "on-tertiary": "#4f2500",
+                "tertiary-container": "#d97721",
+                "primary": "#c0c1ff",
+                "on-primary-container": "#0d0096",
+                "error": "#ffb4ab",
+                "tertiary": "#ffb783",
+                "on-error-container": "#ffdad6",
+                "background": "#131318",
+                "primary-container": "#8083ff",
+                "tertiary-fixed": "#ffdcc5",
+                "outline": "#908fa0",
+                "on-surface": "#e4e1e9",
+                "inverse-primary": "#494bd6",
+                "primary-fixed-dim": "#c0c1ff",
+                "surface-variant": "#35343a",
+                "surface-tint": "#c0c1ff",
+                "primary-fixed": "#e1e0ff",
+                "on-primary": "#1000a9",
+                "inverse-surface": "#e4e1e9",
+                "surface-container-lowest": "#0e0e13"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(53, 52, 58, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-[#1b1b20] flex flex-col p-4 space-y-2 shadow-[20px_0_40px_rgba(0,0,0,0.4)] z-50">
+<div class="flex items-center space-x-3 px-2 py-4 mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<img alt="Alex Rivera" data-alt="close-up portrait of a professional male in his 30s with short hair, neutral studio lighting, high resolution photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDy8w5mo5UbO10nnXFg2E5ZYULGx4cmPpZqiSdVYeT8z1voQE5BR3s8OlNcj_4egllJJI9z-sRE9secPAAgPdF_oz2o2dYfv2_zez5aIaMJDuJMmVCTEc_KS3Z3LLlerlhRnl4M5bYgujAKAL9fOqAzeTPhVAv5l2gnTImpXcFWYwgRSAEu-BuqOoXevA5ElhgrFtbY9TBMz3orE6hmVjGOAqMd46dznMAFXD_zO_Qa3e6Efx3zUiUl8DkJSts2vftTmW4D6Zx-L4M"/>
+</div>
+<div>
+<p class="font-headline text-sm font-bold text-on-surface">Alex Rivera</p>
+<p class="font-headline text-[10px] text-on-surface-variant tracking-wider uppercase">SuperAdmin</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-sm font-medium">Dashboard</span>
+</div>
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+<span class="font-['Inter'] text-sm font-medium">Projects</span>
+</div>
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+<span class="font-['Inter'] text-sm font-medium">Tasks</span>
+</div>
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-['Inter'] text-sm font-medium">Users</span>
+</div>
+<!-- Active Tab: Departments -->
+<div class="px-2 py-2 text-indigo-300 border-r-2 border-indigo-500 bg-[#2a292f]/50 transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="font-['Inter'] text-sm font-medium">Departments</span>
+</div>
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-['Inter'] text-sm font-medium">Reports</span>
+</div>
+</nav>
+<div class="pt-4 border-t border-outline-variant/10 space-y-1">
+<div class="px-4 py-3 rounded-xl bg-gradient-to-br from-primary to-primary-container text-on-primary flex items-center justify-between cursor-pointer mb-4">
+<span class="text-xs font-bold">AI Insights</span>
+<span class="material-symbols-outlined text-sm" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] text-sm font-medium">Settings</span>
+</div>
+<div class="px-2 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer flex items-center space-x-3 rounded-lg">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-['Inter'] text-sm font-medium">Help</span>
+</div>
+</div>
+</aside>
+<main class="flex-1 ml-64 min-h-screen bg-surface flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-8 w-full sticky top-0 z-40 bg-[#131318] h-16">
+<div class="flex items-center space-x-8">
+<span class="text-xl font-bold bg-gradient-to-r from-[#c0c1ff] to-[#8083ff] bg-clip-text text-transparent font-['Inter'] tracking-tight">The Kinetic Archive</span>
+<div class="hidden md:flex bg-surface-container-low px-4 py-1.5 rounded-full items-center space-x-2 w-96">
+<span class="material-symbols-outlined text-outline text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface-variant w-full" placeholder="Search departments, resources..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<span class="material-symbols-outlined text-[#c7c4d7] cursor-pointer hover:text-indigo-400 transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-[#c7c4d7] cursor-pointer hover:text-indigo-400 transition-colors" data-icon="auto_awesome">auto_awesome</span>
+<span class="material-symbols-outlined text-indigo-400 cursor-pointer" data-icon="account_circle">account_circle</span>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="px-8 py-8 flex-1">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-10">
+<div class="space-y-1">
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface">Departmental Overview</h1>
+<p class="text-on-surface-variant text-sm tracking-wide">Organizational health and resource allocation across core units.</p>
+</div>
+<div class="flex space-x-3">
+<button class="px-6 py-2 bg-surface-container-high text-on-surface text-sm font-medium rounded-lg hover:bg-surface-container-highest transition-colors">Export Report</button>
+<button class="px-6 py-2 bg-gradient-to-br from-primary to-primary-container text-on-primary text-sm font-bold rounded-lg shadow-lg hover:opacity-90 transition-opacity">Add Department</button>
+</div>
+</div>
+<!-- Bento Grid - Departments -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Large Featured Card: Engineering -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-2xl p-8 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-primary/10 transition-colors duration-500"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-12">
+<div class="space-y-4">
+<div class="flex items-center space-x-3">
+<div class="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
+<span class="material-symbols-outlined text-3xl" data-icon="terminal">terminal</span>
+</div>
+<h2 class="text-2xl font-bold">Engineering</h2>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant">Active Headcount</span>
+<span class="text-xl font-bold">142</span>
+</div>
+<div class="w-px h-8 bg-outline-variant/20"></div>
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant">Current Projects</span>
+<span class="text-xl font-bold text-primary">28</span>
+</div>
+</div>
+</div>
+<div class="flex items-center space-x-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
+<div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+<span class="text-xs font-bold text-green-500 uppercase tracking-tighter">Healthy</span>
+</div>
+</div>
+<!-- Metric Visualization -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<span class="text-xs font-medium text-on-surface-variant">Capacity Utilization</span>
+<span class="text-lg font-bold">84%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 84%"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant italic">Peak utilization projected for Q3 launch cycles.</p>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<span class="text-xs font-medium text-on-surface-variant">Sprints on Track</span>
+<span class="text-lg font-bold">24 / 28</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 85.7%"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant italic">4 sprints currently flagged for dependency review.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side: KPI Summary -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-high rounded-2xl p-8 flex flex-col justify-between">
+<div>
+<h3 class="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-6">Aggregate Velocity</h3>
+<div class="space-y-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-secondary" data-icon="speed">speed</span>
+<span class="text-sm font-medium">Avg. Health Score</span>
+</div>
+<span class="text-xl font-bold">92.4</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-tertiary" data-icon="groups">groups</span>
+<span class="text-sm font-medium">Total Resources</span>
+</div>
+<span class="text-xl font-bold">482</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-error" data-icon="warning">warning</span>
+<span class="text-sm font-medium">Risk Factors</span>
+</div>
+<span class="text-xl font-bold text-error">3 High</span>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-8 border-t border-outline-variant/10">
+<div class="glass-panel p-4 rounded-xl flex items-center space-x-4">
+<span class="material-symbols-outlined text-3xl text-primary" data-icon="auto_awesome">auto_awesome</span>
+<div>
+<p class="text-[10px] font-bold text-primary uppercase">AI Projection</p>
+<p class="text-xs text-on-surface-variant">Marketing capacity likely to saturate in 14 days based on current hiring velocity.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Secondary Departments Grid -->
+<!-- Design -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-low rounded-2xl p-6 border-l-4 border-indigo-400 group hover:bg-surface-container transition-all">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+</div>
+<div class="flex items-center space-x-1.5 px-2 py-0.5 bg-green-500/10 rounded-full">
+<div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+<span class="text-[9px] font-bold text-green-500 uppercase">94%</span>
+</div>
+</div>
+<h3 class="text-lg font-bold mb-1">Design &amp; UX</h3>
+<p class="text-xs text-on-surface-variant mb-6">Strategic brand and product experience alignment.</p>
+<div class="space-y-4">
+<div class="flex justify-between text-[10px] uppercase tracking-wider text-on-surface-variant">
+<span>Utilization</span>
+<span>62%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-indigo-400" style="width: 62%"></div>
+</div>
+</div>
+</div>
+<!-- Marketing -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-low rounded-2xl p-6 border-l-4 border-tertiary group hover:bg-surface-container transition-all">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 bg-tertiary/10 rounded-lg flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="campaign">campaign</span>
+</div>
+<div class="flex items-center space-x-1.5 px-2 py-0.5 bg-yellow-500/10 rounded-full">
+<div class="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]"></div>
+<span class="text-[9px] font-bold text-yellow-500 uppercase">78%</span>
+</div>
+</div>
+<h3 class="text-lg font-bold mb-1">Marketing</h3>
+<p class="text-xs text-on-surface-variant mb-6">Omni-channel presence and growth acceleration.</p>
+<div class="space-y-4">
+<div class="flex justify-between text-[10px] uppercase tracking-wider text-on-surface-variant">
+<span>Utilization</span>
+<span>91%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary" style="width: 91%"></div>
+</div>
+</div>
+</div>
+<!-- Sales -->
+<div class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-low rounded-2xl p-6 border-l-4 border-primary-container group hover:bg-surface-container transition-all">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 bg-primary-container/10 rounded-lg flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+</div>
+<div class="flex items-center space-x-1.5 px-2 py-0.5 bg-green-500/10 rounded-full">
+<div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+<span class="text-[9px] font-bold text-green-500 uppercase">98%</span>
+</div>
+</div>
+<h3 class="text-lg font-bold mb-1">Global Sales</h3>
+<p class="text-xs text-on-surface-variant mb-6">Enterprise expansion and revenue operations.</p>
+<div class="space-y-4">
+<div class="flex justify-between text-[10px] uppercase tracking-wider text-on-surface-variant">
+<span>Utilization</span>
+<span>45%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 45%"></div>
+</div>
+</div>
+</div>
+<!-- Resource Matrix Section -->
+<div class="col-span-12 bg-surface-container-low rounded-2xl p-0 overflow-hidden">
+<div class="px-8 py-6 flex justify-between items-center bg-surface-container-highest/20">
+<h3 class="text-sm font-bold uppercase tracking-widest">Inter-Departmental Resource Matrix</h3>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="fullscreen">fullscreen</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container/50">
+<th class="px-8 py-4 font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant">Department Unit</th>
+<th class="px-8 py-4 font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant text-right">Headcount</th>
+<th class="px-8 py-4 font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant text-right">Cross-Functional Load</th>
+<th class="px-8 py-4 font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant text-right">Efficiency Delta</th>
+<th class="px-8 py-4 font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant text-center">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" data-icon="storage">storage</span>
+</div>
+<span class="text-sm font-medium">Cloud Infrastructure</span>
+</div>
+</td>
+<td class="px-8 py-5 text-right text-sm">42</td>
+<td class="px-8 py-5 text-right text-sm">18.4%</td>
+<td class="px-8 py-5 text-right text-sm text-green-500">+4.2%</td>
+<td class="px-8 py-5 flex justify-center">
+<div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.3)]"></div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" data-icon="lock">lock</span>
+</div>
+<span class="text-sm font-medium">Cyber Security</span>
+</div>
+</td>
+<td class="px-8 py-5 text-right text-sm">28</td>
+<td class="px-8 py-5 text-right text-sm">34.1%</td>
+<td class="px-8 py-5 text-right text-sm text-green-500">+1.5%</td>
+<td class="px-8 py-5 flex justify-center">
+<div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.3)]"></div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" data-icon="psychology">psychology</span>
+</div>
+<span class="text-sm font-medium">Data Science</span>
+</div>
+</td>
+<td class="px-8 py-5 text-right text-sm">19</td>
+<td class="px-8 py-5 text-right text-sm">82.0%</td>
+<td class="px-8 py-5 text-right text-sm text-error">-12.8%</td>
+<td class="px-8 py-5 flex justify-center">
+<div class="w-2 h-2 rounded-full bg-error shadow-[0_0_8px_rgba(255,180,171,0.3)]"></div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

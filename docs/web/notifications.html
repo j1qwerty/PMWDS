@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dim": "#131318",
+                        "surface-container-highest": "#35343a",
+                        "inverse-on-surface": "#303035",
+                        "on-surface-variant": "#c7c4d7",
+                        "on-primary-fixed": "#07006c",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#b2b3f2",
+                        "surface-container-low": "#1b1b20",
+                        "on-secondary-fixed": "#13144a",
+                        "surface-bright": "#39393e",
+                        "secondary": "#c0c1ff",
+                        "on-error": "#690005",
+                        "surface-container": "#1f1f24",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-tertiary-fixed-variant": "#703700",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "tertiary-fixed-dim": "#ffb783",
+                        "outline-variant": "#464554",
+                        "on-secondary-fixed-variant": "#404178",
+                        "on-tertiary-container": "#452000",
+                        "on-tertiary-fixed": "#301400",
+                        "on-background": "#e4e1e9",
+                        "surface": "#131318",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-high": "#2a292f",
+                        "on-secondary": "#292a60",
+                        "secondary-container": "#42447b",
+                        "on-tertiary": "#4f2500",
+                        "tertiary-container": "#d97721",
+                        "primary": "#c0c1ff",
+                        "on-primary-container": "#0d0096",
+                        "error": "#ffb4ab",
+                        "tertiary": "#ffb783",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131318",
+                        "primary-container": "#8083ff",
+                        "tertiary-fixed": "#ffdcc5",
+                        "outline": "#908fa0",
+                        "on-surface": "#e4e1e9",
+                        "inverse-primary": "#494bd6",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "surface-variant": "#35343a",
+                        "surface-tint": "#c0c1ff",
+                        "primary-fixed": "#e1e0ff",
+                        "on-primary": "#1000a9",
+                        "inverse-surface": "#e4e1e9",
+                        "surface-container-lowest": "#0e0e13"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(53, 52, 58, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .status-beacon {
+            box-shadow: 0 0 8px currentColor;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30">
+<!-- TopAppBar Shell -->
+<header class="bg-[#131318] text-indigo-400 font-['Inter'] tracking-tight w-full h-16 flex items-center bg-[#1b1b20] flex justify-between items-center px-6 w-full sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold bg-gradient-to-r from-[#c0c1ff] to-[#8083ff] bg-clip-text text-transparent">The Kinetic Archive</span>
+<div class="hidden md:flex items-center gap-6">
+<span class="text-[#c7c4d7] hover:bg-[#2a292f] transition-colors duration-200 cursor-pointer active:scale-95 px-3 py-1 rounded">Archive</span>
+<span class="text-[#c7c4d7] hover:bg-[#2a292f] transition-colors duration-200 cursor-pointer active:scale-95 px-3 py-1 rounded">Workflows</span>
+<span class="text-indigo-400 font-bold hover:bg-[#2a292f] transition-colors duration-200 cursor-pointer active:scale-95 px-3 py-1 rounded">Notifications</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#2a292f] p-2 rounded-full transition-colors duration-200">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#2a292f] p-2 rounded-full transition-colors duration-200">auto_awesome</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#2a292f] p-2 rounded-full transition-colors duration-200">account_circle</span>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar Shell -->
+<aside class="bg-[#1b1b20] text-indigo-400 font-['Inter'] text-sm font-medium h-screen w-64 flex flex-col bg-[#131318] shadow-[20px_0_40px_rgba(0,0,0,0.4)] fixed left-0 top-0 h-full flex flex-col p-4 space-y-2 hidden md:flex z-40 pt-20">
+<div class="flex items-center gap-3 px-3 py-4 mb-4">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="professional headshot of a middle-aged man with sharp features and thoughtful expression in corporate setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC90VUsoKY5UaEuO3qjKUjtvOB3t_UL-gYzurTs5g0-BNJ5IsgCEp9l-xW1393mxvJOjBR40teh7XYkuhxB_U1YZnGHqCgyqhCxaQHrhYWiQeb6xsfgQSYLLHs8HcN_YkMTIGNiRg3gW2bBP4zdQm4V3x0gStK5wZW_MLGARmBQLPYg-qlM8l9NZT_S00mKom-7dS-TKSrSraPfkANPIVZzGZS9sBcFQuqFXwntuhj_yiHDhF_ttd5qc6gIRPzpTC8FoikAKnWdyUg"/>
+<div class="flex flex-col">
+<span class="text-on-surface font-bold">Alex Rivera</span>
+<span class="text-on-surface-variant text-xs opacity-60">SuperAdmin</span>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">folder_open</span>
+<span>Projects</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">assignment</span>
+<span>Tasks</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">group</span>
+<span>Users</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">domain</span>
+<span>Departments</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">analytics</span>
+<span>Reports</span>
+</div>
+</nav>
+<button class="mt-4 mx-2 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-2 rounded-md shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-xs uppercase tracking-widest">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+                AI Insights
+            </button>
+<div class="pt-4 mt-4 border-t border-outline-variant/10">
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-[#c7c4d7] opacity-80 hover:text-indigo-200 hover:bg-[#2a292f] transition-all duration-300 ease-in-out cursor-pointer rounded">
+<span class="material-symbols-outlined">help_outline</span>
+<span>Help</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 p-6 lg:p-10 bg-surface min-h-screen">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div>
+<span class="text-primary font-label text-xs tracking-widest uppercase mb-2 block">System Pulse</span>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface">Notifications Archive</h1>
+<p class="text-on-surface-variant mt-2 max-w-lg">Manage real-time alerts across the PMWDS ecosystem. Use the broadcast function to synchronize updates.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-5 py-2.5 rounded-md border border-outline-variant/20 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">done_all</span>
+                        Mark all as read
+                    </button>
+<button class="px-5 py-2.5 rounded-md bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold shadow-lg shadow-primary/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">broadcast_on_home</span>
+                        Broadcast Alert
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left: Category Filter & Stats -->
+<div class="lg:col-span-3 space-y-6">
+<div class="bg-surface-container-low p-6 rounded-xl space-y-4">
+<h3 class="text-on-surface font-bold text-sm tracking-tight border-b border-outline-variant/10 pb-3">CATEGORIES</h3>
+<div class="space-y-2">
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-md bg-surface-container-highest text-primary transition-all">
+<span class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">all_inbox</span> All</span>
+<span class="text-xs font-bold bg-primary/20 px-2 py-0.5 rounded-full">42</span>
+</button>
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-surface-container-high text-on-surface-variant transition-all">
+<span class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px] text-error">warning</span> Risk</span>
+<span class="text-xs font-bold opacity-40">12</span>
+</button>
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-surface-container-high text-on-surface-variant transition-all">
+<span class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px] text-tertiary">emergency_home</span> Escalation</span>
+<span class="text-xs font-bold opacity-40">05</span>
+</button>
+<button class="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-surface-container-high text-on-surface-variant transition-all">
+<span class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px] text-secondary">info</span> Info</span>
+<span class="text-xs font-bold opacity-40">25</span>
+</button>
+</div>
+</div>
+<div class="bg-gradient-to-br from-surface-container-low to-surface-dim p-6 rounded-xl border border-outline-variant/10 relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="text-xs font-label tracking-widest uppercase opacity-60 mb-1">Response Time</h3>
+<div class="text-3xl font-bold text-on-surface">1.2<span class="text-lg opacity-40 ml-1">min</span></div>
+<div class="mt-4 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full w-[85%] bg-primary"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant mt-2 leading-tight">Average time to acknowledge critical escalations is within SLA.</p>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10">
+<span class="material-symbols-outlined text-8xl">bolt</span>
+</div>
+</div>
+</div>
+<!-- Middle: Main Inbox Feed -->
+<div class="lg:col-span-6 space-y-4">
+<!-- Notification Item: Risk -->
+<div class="group relative bg-surface-container p-5 rounded-xl border-l-4 border-error/50 hover:bg-surface-container-high transition-all cursor-pointer">
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-error-container/20 flex items-center justify-center text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-on-surface font-bold text-sm truncate">Critical Resource Conflict: Alpha-9</h4>
+<span class="text-[10px] font-label text-on-surface-variant opacity-40 shrink-0 uppercase tracking-tighter">2m ago</span>
+</div>
+<p class="text-on-surface-variant text-xs leading-relaxed">System detected overlapping schedules for Project Alpha-9 and Beta-4. Immediate manual override required to prevent 48h downtime.</p>
+<div class="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-[11px] font-bold text-primary hover:underline">VIEW LOGS</button>
+<button class="text-[11px] font-bold text-error hover:underline">ESCALATE</button>
+<button class="text-[11px] font-bold text-on-surface-variant/50 hover:text-on-surface transition-colors">MARK READ</button>
+</div>
+</div>
+<div class="flex-shrink-0 flex flex-col items-end">
+<div class="status-beacon w-2 h-2 rounded-full bg-error"></div>
+</div>
+</div>
+</div>
+<!-- Notification Item: Escalation -->
+<div class="group relative bg-surface-container p-5 rounded-xl border-l-4 border-tertiary/50 hover:bg-surface-container-high transition-all cursor-pointer">
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-tertiary-container/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">priority_high</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-on-surface font-bold text-sm truncate">L3 Escalation: Customer #8821</h4>
+<span class="text-[10px] font-label text-on-surface-variant opacity-40 shrink-0 uppercase tracking-tighter">45m ago</span>
+</div>
+<p class="text-on-surface-variant text-xs leading-relaxed">Ticket #8821 has been escalated to SuperAdmin level due to unresolved security clearance parameters. Assigned to Alex Rivera.</p>
+<div class="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-[11px] font-bold text-primary hover:underline">OPEN TICKET</button>
+<button class="text-[11px] font-bold text-on-surface-variant/50 hover:text-on-surface transition-colors">MARK READ</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Notification Item: Info -->
+<div class="group relative bg-surface-container-low p-5 rounded-xl border-l-4 border-secondary/20 hover:bg-surface-container-high transition-all cursor-pointer">
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-on-surface-variant font-medium text-sm truncate">Weekly Archive Report Ready</h4>
+<span class="text-[10px] font-label text-on-surface-variant opacity-40 shrink-0 uppercase tracking-tighter">2h ago</span>
+</div>
+<p class="text-on-surface-variant/60 text-xs leading-relaxed">Your summary of the past 7 days of archive kinetics is now available in the Reports section.</p>
+<div class="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-[11px] font-bold text-primary hover:underline">DOWNLOAD PDF</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Notification Item: Info -->
+<div class="group relative bg-surface-container-low p-5 rounded-xl border-l-4 border-secondary/20 hover:bg-surface-container-high transition-all cursor-pointer">
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">update</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-on-surface-variant font-medium text-sm truncate">System Core Maintenance</h4>
+<span class="text-[10px] font-label text-on-surface-variant opacity-40 shrink-0 uppercase tracking-tighter">5h ago</span>
+</div>
+<p class="text-on-surface-variant/60 text-xs leading-relaxed">Scheduled maintenance for node G-14 is complete. All systems nominal with 0% data drift reported.</p>
+</div>
+</div>
+</div>
+<div class="text-center py-6">
+<button class="text-xs font-label uppercase tracking-widest text-on-surface-variant/40 hover:text-primary transition-colors">Load Older Notifications</button>
+</div>
+</div>
+<!-- Right: Activity & Visual context -->
+<div class="lg:col-span-3 space-y-6">
+<div class="glass-panel rounded-xl p-6 border border-outline-variant/10 overflow-hidden relative">
+<h3 class="text-sm font-bold text-on-surface mb-4">Pulse Visualization</h3>
+<div class="h-32 flex items-end gap-1 mb-4">
+<div class="w-full bg-primary/20 h-[30%] rounded-t-sm"></div>
+<div class="w-full bg-primary/20 h-[45%] rounded-t-sm"></div>
+<div class="w-full bg-primary/40 h-[60%] rounded-t-sm"></div>
+<div class="w-full bg-error/40 h-[90%] rounded-t-sm animate-pulse"></div>
+<div class="w-full bg-primary/40 h-[50%] rounded-t-sm"></div>
+<div class="w-full bg-primary/20 h-[40%] rounded-t-sm"></div>
+<div class="w-full bg-primary/30 h-[55%] rounded-t-sm"></div>
+<div class="w-full bg-primary/50 h-[70%] rounded-t-sm"></div>
+</div>
+<div class="flex justify-between items-center text-[10px] text-on-surface-variant uppercase tracking-tighter opacity-50">
+<span>00:00</span>
+<span>Critical peak</span>
+<span>12:00</span>
+</div>
+</div>
+<div class="bg-surface-container-high p-6 rounded-xl space-y-4">
+<h3 class="text-on-surface font-bold text-sm">Recent Actions</h3>
+<div class="space-y-4">
+<div class="flex gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5"></div>
+<div class="text-[11px] leading-tight">
+<span class="text-on-surface font-semibold">Alex Rivera</span> marked <span class="text-primary italic">Security Breach</span> as resolved.
+                                    <span class="block opacity-40 mt-1">14:22 PM</span>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5"></div>
+<div class="text-[11px] leading-tight">
+<span class="text-on-surface font-semibold">System</span> broadcasted <span class="text-primary italic">Nightly Sync</span> to all users.
+                                    <span class="block opacity-40 mt-1">12:05 PM</span>
+</div>
+</div>
+</div>
+</div>
+<div class="rounded-xl overflow-hidden grayscale contrast-125 opacity-40 hover:opacity-100 transition-all duration-700 aspect-video">
+<img class="w-full h-full object-cover" data-alt="abstract cyber security visualization with glowing server nodes and binary data streams in a dark technical environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1OKKkAMy59iVQ2PSJOc8hfMrr9_Ug8GnAXqAo4z-NhBQ3F-86sTE5uWaERcGI2qMJZ156HBWa0QC3Y9seQVtRDevm3HTnLf4XasGvgfz3Ful90AifliGCuET4B2EzdaU3waJI_5J7oOV5-r1UF--vEXbwEf6fkm_GAw5RcIsOr2iVidPWCe0Tu_qckOM89qWKSr2Mx-vfMgFoy7uLD4NOb_UxDQMawZEmKhoj85rrJeOWQ_CGjjA8qhLK2n--GMT2Sl7w5ND8Pps"/>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Floating Action: Broadcast -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="w-14 h-14 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+</div>
+</body></html>

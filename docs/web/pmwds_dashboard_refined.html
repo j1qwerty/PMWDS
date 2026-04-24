@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - PMWDS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#6366f1", // indigo-500
+                      "primary-light": "#818cf8", // indigo-400
+                      "surface": "#09090b", // zinc-950
+                      "surface-container": "#18181b", // zinc-900
+                      "surface-container-low": "#111113",
+                      "surface-container-high": "#27272a", // zinc-800
+                      "on-surface": "#f4f4f5", // zinc-100
+                      "on-surface-variant": "#a1a1aa", // zinc-400
+                      "outline": "#3f3f46", // zinc-700
+                      "outline-variant": "#27272a", // zinc-800
+                      "error": "#ef4444",
+                      "error-bg": "rgba(239, 68, 68, 0.1)",
+                      "warning": "#f59e0b",
+                      "warning-bg": "rgba(245, 158, 11, 0.1)",
+                      "success": "#10b981",
+              },
+              "fontFamily": {
+                      "headline": ["Inter", "sans-serif"],
+                      "body": ["Inter", "sans-serif"],
+                      "label": ["Inter", "sans-serif"]
+              },
+              "boxShadow": {
+                      "glass": "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+                      "neon-primary": "0 0 15px rgba(99, 102, 241, 0.3)",
+                      "neon-error": "0 0 15px rgba(239, 68, 68, 0.3)",
+                      "neon-warning": "0 0 15px rgba(245, 158, 11, 0.3)",
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+        background: radial-gradient(circle at top left, #1a1a24, #09090b 40%);
+        background-attachment: fixed;
+    }
+    .glass-card {
+        background: rgba(24, 24, 27, 0.4);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+    .glass-card-hover:hover {
+        background: rgba(39, 39, 42, 0.5);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+</style>
+</head>
+<body class="text-on-surface font-body antialiased min-h-screen selection:bg-primary/30 selection:text-white">
+<!-- SideNavBar -->
+<nav class="w-[260px] h-screen fixed left-0 top-0 overflow-y-auto bg-black/40 backdrop-blur-xl border-r border-white/5 z-50 flex flex-col font-['Inter'] antialiased tracking-tight">
+<div class="px-5 py-8 flex flex-col gap-8 h-full">
+<!-- Brand -->
+<div class="flex items-center gap-4 px-2">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-light to-primary flex items-center justify-center flex-shrink-0 shadow-neon-primary">
+<span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings: 'FILL' 1;">dataset</span>
+</div>
+<div class="flex flex-col">
+<span class="text-2xl font-black tracking-tight text-white">PMWDS</span>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-[0.2em] font-bold">Kinetic Archive</span>
+</div>
+</div>
+<!-- Nav Links -->
+<div class="flex flex-col gap-2 flex-grow mt-4">
+<a class="bg-primary/15 text-primary-light border border-primary/30 rounded-lg font-semibold px-4 py-3 flex items-center gap-4 transition-all shadow-[inset_0_0_12px_rgba(99,102,241,0.1)]" href="#">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="text-sm tracking-wide">Dashboard</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">assignment</span>
+<span class="text-sm font-medium tracking-wide">Projects</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">checklist</span>
+<span class="text-sm font-medium tracking-wide">Tasks</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">group</span>
+<span class="text-sm font-medium tracking-wide">Users</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">domain</span>
+<span class="text-sm font-medium tracking-wide">Departments</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">notifications</span>
+<span class="text-sm font-medium tracking-wide">Notifications</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform text-primary-light">psychology</span>
+<span class="text-sm font-medium tracking-wide text-primary-light/90">AI</span>
+</a>
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">bar_chart</span>
+<span class="text-sm font-medium tracking-wide">Reports</span>
+</a>
+</div>
+<!-- Bottom Section -->
+<div class="mt-auto flex flex-col gap-2 border-t border-white/5 pt-6">
+<!-- User Profile -->
+<div class="flex items-center gap-4 px-3 py-3 rounded-xl bg-white/[0.02] border border-white/5 mb-2 hover:bg-white/[0.04] transition-colors cursor-pointer">
+<img alt="Alex Rivera" class="w-10 h-10 rounded-full border border-white/10 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMWdC1diycl8VKqtNqIxyjdv47traY6w8PLsVLjUG9dNzJ99qf0paGHwyyr8wtuyaRHqwbHP44_LBfuBe0HbHIjpAMiwY9xLXGygnxsBeVOFviZ80QY-2o_8l4kQbnEuCI0OuJMkzg0_DNTVhvtZySXrfkgJm1PFzADWA56zTBDzChOxcnA5LI3F85mwCYVludT-CiFTnP3qq2oOEhcz9i0BJFQa2oU8_8EDofwovXm1Ti71I5p5mKaL3iJriObODlBLPQG64njp4"/>
+<div class="flex flex-col min-w-0">
+<span class="text-sm font-bold text-white truncate tracking-wide">Alex Rivera</span>
+<span class="text-[10px] text-primary-light font-bold uppercase tracking-widest">SuperAdmin</span>
+</div>
+</div>
+<!-- Settings Link -->
+<a class="text-on-surface-variant hover:text-white hover:bg-white/5 transition-all rounded-lg px-4 py-3 flex items-center gap-4 group" href="#">
+<span class="material-symbols-outlined text-[22px] group-hover:rotate-45 transition-transform">settings</span>
+<span class="text-sm font-medium tracking-wide">Settings</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- TopAppBar -->
+<header class="h-16 fixed top-0 right-0 left-[260px] z-40 bg-black/20 backdrop-blur-2xl border-b border-white/5 flex items-center justify-between px-10 w-[calc(100%-260px)] font-['Inter']">
+<div class="flex items-center gap-6 flex-1">
+<div class="flex items-center gap-2 text-xs font-medium text-on-surface-variant tracking-wider uppercase">
+<span class="hover:text-white cursor-pointer transition-colors">Workspace</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary-light font-bold">Dashboard</span>
+</div>
+<div class="h-4 w-px bg-white/10 mx-2"></div>
+<div class="relative w-80 group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] group-focus-within:text-primary-light transition-colors">search</span>
+<input class="w-full bg-white/5 text-white text-sm rounded-full pl-10 pr-4 py-2 border border-white/10 focus:ring-1 focus:ring-primary-light/50 focus:border-primary-light/50 focus:outline-none placeholder:text-on-surface-variant/40 transition-all focus:bg-white/10" placeholder="Search resources, projects, or users..." type="text"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-on-surface-variant bg-white/10 px-1.5 py-0.5 rounded">⌘K</span>
+</div>
+</div>
+<div class="flex items-center gap-5">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-white hover:bg-white/10 transition-all relative border border-transparent hover:border-white/10">
+<span class="material-symbols-outlined text-[22px]">notifications</span>
+<span class="absolute top-2 right-2 w-2.5 h-2.5 bg-error rounded-full border-2 border-[#09090b] shadow-neon-error"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
+<span class="material-symbols-outlined text-[22px]">help</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-[260px] mt-16 p-10 min-h-[calc(100vh-4rem)] flex flex-col gap-10 relative">
+<!-- Hero Panel -->
+<section class="glass-card rounded-2xl p-10 relative overflow-hidden flex flex-col justify-end min-h-[220px]">
+<div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/10 via-primary/5 to-transparent pointer-events-none"></div>
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none"></div>
+<div class="relative z-10 flex flex-col md:flex-row justify-between items-end gap-8">
+<div class="text-left">
+<h1 class="font-headline text-4xl font-black tracking-tight text-white mb-3">System Overview</h1>
+<p class="font-body text-on-surface-variant text-base max-w-xl leading-relaxed">Project 'Nexus' engineering phase is currently active. Artificial intelligence indicates a <span class="text-warning font-bold">14% risk</span> of schedule deviation.</p>
+</div>
+<div class="flex gap-4">
+<button class="glass-card text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 group">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">summarize</span>
+                    Report Center
+                </button>
+<button class="bg-primary text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-primary-light transition-all flex items-center gap-2 shadow-neon-primary group">
+<span class="material-symbols-outlined text-[20px] group-hover:rotate-90 transition-transform">add</span>
+                    New Objective
+                </button>
+</div>
+</div>
+</section>
+<!-- KPI Grid (Refined & Minimal) -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+<!-- Card 1 -->
+<div class="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300">
+<div class="flex justify-between items-start">
+<span class="font-label text-xs uppercase tracking-[0.15em] font-bold text-on-surface-variant">Active Projects</span>
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-light text-[18px]">layers</span>
+</div>
+</div>
+<div class="flex items-baseline gap-3 mt-2">
+<span class="font-headline text-4xl font-black text-white tracking-tight">24</span>
+<span class="text-xs font-bold text-success flex items-center bg-success/10 px-2 py-1 rounded-md border border-success/20">
+<span class="material-symbols-outlined text-[14px] mr-1">arrow_upward</span> 12%
+                </span>
+</div>
+<div class="text-xs text-on-surface-variant/80 font-medium">112 successfully archived</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:border-error/30">
+<div class="flex justify-between items-start">
+<span class="font-label text-xs uppercase tracking-[0.15em] font-bold text-on-surface-variant">Pending Tasks</span>
+<div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">checklist</span>
+</div>
+</div>
+<div class="flex items-baseline gap-3 mt-2">
+<span class="font-headline text-4xl font-black text-white tracking-tight">186</span>
+<span class="text-xs font-bold text-error flex items-center bg-error-bg px-2 py-1 rounded-md border border-error/20">
+                    14 Critical
+                </span>
+</div>
+<div class="text-xs text-on-surface-variant/80 font-medium">450 completed this month</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:border-warning/30">
+<div class="flex justify-between items-start">
+<span class="font-label text-xs uppercase tracking-[0.15em] font-bold text-on-surface-variant">AI Health Score</span>
+<div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center shadow-neon-warning">
+<span class="material-symbols-outlined text-warning text-[18px]">auto_awesome</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 mt-2">
+<span class="font-headline text-4xl font-black text-white tracking-tight">88.4%</span>
+<div class="w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
+<div class="h-full bg-warning rounded-full shadow-neon-warning relative" style="width: 88.4%;">
+<div class="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite]"></div>
+</div>
+</div>
+</div>
+<div class="text-xs text-on-surface-variant/80 font-medium">Stable system state</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300">
+<div class="flex justify-between items-start">
+<span class="font-label text-xs uppercase tracking-[0.15em] font-bold text-on-surface-variant">Annual Budget</span>
+<div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">account_balance_wallet</span>
+</div>
+</div>
+<div class="flex items-baseline gap-3 mt-2">
+<span class="font-headline text-4xl font-black text-white tracking-tight">$4.2M</span>
+</div>
+<div class="text-xs text-primary-light font-bold uppercase tracking-wider flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-light shadow-[0_0_8px_rgba(129,140,248,0.8)]"></span> 2.4% Under budget
+            </div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-10">
+<!-- Left Column (Objectives) -->
+<div class="xl:col-span-2 flex flex-col gap-10">
+<section class="glass-card rounded-2xl flex flex-col overflow-hidden">
+<div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+<h2 class="font-headline text-lg font-black text-white tracking-wide">Active Objectives</h2>
+<button class="text-primary-light hover:text-white text-xs font-bold uppercase tracking-widest transition-all hover:underline underline-offset-4">View Full Ledger</button>
+</div>
+<div class="divide-y divide-white/5">
+<!-- Task Item 1 -->
+<div class="flex items-center gap-6 p-8 hover:bg-white/[0.03] transition-colors group">
+<div class="w-14 h-14 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-primary/50 group-hover:shadow-neon-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-[24px] group-hover:text-primary-light transition-colors">code</span>
+</div>
+<div class="flex flex-col flex-grow min-w-0">
+<span class="text-base font-bold text-white mb-1 tracking-wide">Finalize API Gateway Migration</span>
+<span class="text-xs text-on-surface-variant font-medium tracking-wide">Project Nexus • Infrastructure</span>
+</div>
+<div class="flex flex-col items-end gap-3 flex-shrink-0 w-48">
+<div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
+<div class="h-full bg-primary rounded-full shadow-neon-primary" style="width: 75%;"></div>
+</div>
+<div class="flex justify-between w-full items-center">
+<span class="text-[11px] font-bold text-on-surface-variant tracking-wider">75% COMPLETE</span>
+<span class="px-2 py-1 bg-error-bg text-error text-[10px] font-black rounded border border-error/20 uppercase tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">Due Today</span>
+</div>
+</div>
+</div>
+<!-- Task Item 2 -->
+<div class="flex items-center gap-6 p-8 hover:bg-white/[0.03] transition-colors group">
+<div class="w-14 h-14 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-primary/50 group-hover:shadow-neon-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-[24px] group-hover:text-primary-light transition-colors">design_services</span>
+</div>
+<div class="flex flex-col flex-grow min-w-0">
+<span class="text-base font-bold text-white mb-1 tracking-wide">UX Review: Authentication Flow</span>
+<span class="text-xs text-on-surface-variant font-medium tracking-wide">Project Horizon • Creative</span>
+</div>
+<div class="flex flex-col items-end gap-3 flex-shrink-0 w-48">
+<div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
+<div class="h-full bg-primary rounded-full" style="width: 40%;"></div>
+</div>
+<div class="flex justify-between w-full items-center">
+<span class="text-[11px] font-bold text-on-surface-variant tracking-wider">40% COMPLETE</span>
+<span class="text-[11px] text-on-surface-variant font-bold tracking-wider">OCT 24</span>
+</div>
+</div>
+</div>
+<!-- Task Item 3 -->
+<div class="flex items-center gap-6 p-8 hover:bg-white/[0.03] transition-colors group">
+<div class="w-14 h-14 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-primary/50 group-hover:shadow-neon-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-[24px] group-hover:text-primary-light transition-colors">database</span>
+</div>
+<div class="flex flex-col flex-grow min-w-0">
+<span class="text-base font-bold text-white mb-1 tracking-wide">Optimize Read Queries for Archive</span>
+<span class="text-xs text-on-surface-variant font-medium tracking-wide">Core Infrastructure • Data</span>
+</div>
+<div class="flex flex-col items-end gap-3 flex-shrink-0 w-48">
+<div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
+<div class="h-full bg-primary rounded-full" style="width: 10%;"></div>
+</div>
+<div class="flex justify-between w-full items-center">
+<span class="text-[11px] font-bold text-on-surface-variant tracking-wider">10% COMPLETE</span>
+<span class="text-[11px] text-on-surface-variant font-bold tracking-wider">NOV 02</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- High Risk Interventions -->
+<section class="flex flex-col gap-6">
+<h2 class="font-headline text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-error animate-pulse shadow-neon-error"></span>
+                    High-Risk Interventions Required
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="glass-card p-8 rounded-2xl flex flex-col gap-5 relative overflow-hidden group border-error/30 hover:border-error/60 transition-all hover:shadow-[0_8px_32px_rgba(239,68,68,0.15)]">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-error shadow-[0_0_15px_rgba(239,68,68,0.8)]"></div>
+<div class="flex justify-between items-start">
+<h3 class="text-lg font-black text-white tracking-wide">Project Vanguard</h3>
+<span class="px-2.5 py-1 bg-error-bg text-error text-[10px] font-black uppercase rounded border border-error/30 tracking-widest">CRITICAL</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">QA Phase resource deficit. 85% delay probability predicted for Q3 deliverables.</p>
+<div class="flex items-center justify-between mt-4 pt-6 border-t border-white/10">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Delay Est.</span>
+<span class="text-lg font-black text-error">14 Days</span>
+</div>
+<button class="bg-error/10 hover:bg-error/20 text-error text-xs font-black px-4 py-2 rounded-lg uppercase tracking-widest flex items-center gap-2 transition-all border border-error/20">
+                                ACTION PLAN <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="glass-card p-8 rounded-2xl flex flex-col gap-5 relative overflow-hidden group border-warning/30 hover:border-warning/60 transition-all hover:shadow-[0_8px_32px_rgba(245,158,11,0.15)]">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-warning shadow-[0_0_15px_rgba(245,158,11,0.8)]"></div>
+<div class="flex justify-between items-start">
+<h3 class="text-lg font-black text-white tracking-wide">Operation Centauri</h3>
+<span class="px-2.5 py-1 bg-warning-bg text-warning text-[10px] font-black uppercase rounded border border-warning/30 tracking-widest">WARNING</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Budget run-rate exceeds projection. Margin compression imminent without vendor audit.</p>
+<div class="flex items-center justify-between mt-4 pt-6 border-t border-white/10">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Variance</span>
+<span class="text-lg font-black text-white">+$120k</span>
+</div>
+<button class="bg-warning/10 hover:bg-warning/20 text-warning text-xs font-black px-4 py-2 rounded-lg uppercase tracking-widest flex items-center gap-2 transition-all border border-warning/20">
+                                AUDIT FINANCES <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column (Insights & Escalations) -->
+<div class="flex flex-col gap-10">
+<!-- Nexus AI Insights -->
+<section class="glass-card border-primary/30 rounded-2xl p-8 relative overflow-hidden hover:shadow-neon-primary transition-shadow duration-500">
+<div class="absolute -right-20 -top-20 w-48 h-48 bg-primary/20 rounded-full blur-[80px] pointer-events-none"></div>
+<h2 class="font-headline text-xs font-black text-primary-light uppercase tracking-[0.25em] flex items-center gap-3 mb-8">
+<span class="material-symbols-outlined text-[20px] text-primary-light drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]">auto_awesome</span>
+                    Nexus AI Intelligence
+                </h2>
+<div class="flex flex-col gap-6">
+<div class="flex gap-5 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group">
+<div class="mt-1 w-2.5 h-2.5 rounded-full bg-error flex-shrink-0 shadow-neon-error"></div>
+<div class="flex flex-col gap-1.5">
+<span class="text-sm font-bold text-white tracking-wide group-hover:text-error transition-colors">Burnout Alert</span>
+<p class="text-xs text-on-surface-variant leading-relaxed">Design Squad Alpha is over capacity (110%) for 3 consecutive weeks.</p>
+</div>
+</div>
+<div class="flex gap-5 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group">
+<div class="mt-1 w-2.5 h-2.5 rounded-full bg-warning flex-shrink-0 shadow-neon-warning"></div>
+<div class="flex flex-col gap-1.5">
+<span class="text-sm font-bold text-white tracking-wide group-hover:text-warning transition-colors">Velocity Deviation</span>
+<p class="text-xs text-on-surface-variant leading-relaxed">Frontend deployment speed dropped 18% following infra update.</p>
+</div>
+</div>
+<div class="flex gap-5 p-4 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/15 transition-all group shadow-[inset_0_0_20px_rgba(99,102,241,0.05)]">
+<div class="mt-1 w-2.5 h-2.5 rounded-full bg-primary-light flex-shrink-0 shadow-[0_0_12px_rgba(129,140,248,0.8)]"></div>
+<div class="flex flex-col gap-1.5">
+<span class="text-sm font-bold text-white tracking-wide group-hover:text-primary-light transition-colors">Optimization Node</span>
+<p class="text-xs text-primary-light/80 leading-relaxed">Redistributing 2 QA engineers could offset Vanguard delay risk by 40%.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Escalations -->
+<section class="glass-card rounded-2xl p-8">
+<div class="flex justify-between items-center mb-8">
+<h2 class="font-headline text-xs font-black text-white uppercase tracking-[0.2em]">Escalations</h2>
+<span class="bg-error-bg text-error text-[10px] font-black px-2.5 py-1 rounded border border-error/30 tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">2 PENDING</span>
+</div>
+<div class="flex flex-col gap-5">
+<div class="p-5 bg-black/40 border border-white/5 rounded-xl flex flex-col gap-4 group hover:border-white/20 transition-all">
+<div class="flex justify-between items-start">
+<span class="text-sm font-bold text-white tracking-wide">Client Scope Change</span>
+<span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">2h ago</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Requires immediate architectural impact assessment.</p>
+<div class="flex justify-end gap-4 pt-3 border-t border-white/5">
+<button class="text-xs font-bold text-on-surface-variant hover:text-white transition-colors tracking-widest">DISMISS</button>
+<button class="text-xs font-black text-white bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors tracking-widest">REVIEW</button>
+</div>
+</div>
+<div class="p-5 bg-black/40 border border-white/5 rounded-xl flex flex-col gap-4 group hover:border-white/20 transition-all">
+<div class="flex justify-between items-start">
+<span class="text-sm font-bold text-white tracking-wide">Database Outage Follow-up</span>
+<span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">5h ago</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">RCA report requires executive sign-off for governance compliance.</p>
+<div class="flex justify-end pt-3 border-t border-white/5">
+<button class="text-xs font-black text-white bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors tracking-widest">VIEW POST-MORTEM</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>

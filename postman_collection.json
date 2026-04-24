@@ -929,7 +929,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n \"message\": \"Which tasks are at highest risk of delay this week?\"\n}"
+                            "raw": "{\n  \"message\": \"Which tasks are at highest risk of delay this week?\"\n}"
                         },
                         "url": "{{baseUrl}}/ai/chat"
                     }
