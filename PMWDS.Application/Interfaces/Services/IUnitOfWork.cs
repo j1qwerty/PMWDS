@@ -9,6 +9,12 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.Department> Departments { get; }
     IRepository<Domain.Entities.Milestone> Milestones { get; }
     IRepository<Domain.Entities.Notification> Notifications { get; }
+    IRepository<Domain.Entities.NotificationTemplate> NotificationTemplates { get; }
+    IRepository<Domain.Entities.AlertRule> AlertRules { get; }
+    IRepository<Domain.Entities.Dashboard> Dashboards { get; }
+    IRepository<Domain.Entities.DashboardWidget> DashboardWidgets { get; }
+    IRepository<Domain.Entities.Report> Reports { get; }
+    IRepository<Domain.Entities.ReportSchedule> ReportSchedules { get; }
     IRepository<Domain.Entities.AuditLog> AuditLogs { get; }
     IRepository<Domain.Entities.Skill> Skills { get; }
     IRepository<Domain.Entities.Role> Roles { get; }

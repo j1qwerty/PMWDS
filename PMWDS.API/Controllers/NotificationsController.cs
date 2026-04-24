@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using PMWDS.Application.DTOs.Notifications;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Entities;
 
 namespace PMWDS.API.Controllers;
 
@@ -136,6 +138,108 @@ public class NotificationsController : BaseApiController
         await _notifications.SendBulkAsync(dtos, ct);
         return Ok();
     }
+
+    [HttpGet("templates")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GetTemplates(CancellationToken ct)
+        => Ok((await _uow.NotificationTemplates.GetAllAsync(ct)).Select(MapTemplate));
+
+    [HttpPost("templates")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> CreateTemplate([FromBody] UpsertNotificationTemplateRequest req, CancellationToken ct)
+    {
+        var template = NotificationTemplate.Create(req.TemplateType, req.SubjectTemplate, req.BodyTemplate, req.Variables, req.SupportedChannels);
+        template.SetCreatedBy(_currentUser.UserId ?? "system");
+        await _uow.NotificationTemplates.AddAsync(template, ct);
+        await _uow.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(GetTemplates), new { id = template.Id }, MapTemplate(template));
+    }
+
+    [HttpPut("templates/{id:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> UpdateTemplate(Guid id, [FromBody] UpsertNotificationTemplateRequest req, CancellationToken ct)
+    {
+        var template = await _uow.NotificationTemplates.GetByIdAsync(id, ct);
+        if (template == null)
+        {
+            return NotFound();
+        }
+
+        template.Update(req.TemplateType, req.SubjectTemplate, req.BodyTemplate, req.Variables, req.SupportedChannels);
+        await _uow.NotificationTemplates.UpdateAsync(template, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(MapTemplate(template));
+    }
+
+    [HttpDelete("templates/{id:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> DeleteTemplate(Guid id, CancellationToken ct)
+    {
+        await _uow.NotificationTemplates.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpGet("rules")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> GetRules(CancellationToken ct)
+        => Ok((await _uow.AlertRules.GetAllAsync(ct)).Select(MapRule));
+
+    [HttpPost("rules")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> CreateRule([FromBody] UpsertAlertRuleRequest req, CancellationToken ct)
+    {
+        var rule = AlertRule.Create(req.Name, req.ConditionType, req.ConditionExpression, req.ActionType, req.ActionParameters, req.IsEnabled);
+        rule.SetCreatedBy(_currentUser.UserId ?? "system");
+        await _uow.AlertRules.AddAsync(rule, ct);
+        await _uow.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(GetRules), new { id = rule.Id }, MapRule(rule));
+    }
+
+    [HttpPut("rules/{id:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> UpdateRule(Guid id, [FromBody] UpsertAlertRuleRequest req, CancellationToken ct)
+    {
+        var rule = await _uow.AlertRules.GetByIdAsync(id, ct);
+        if (rule == null)
+        {
+            return NotFound();
+        }
+
+        rule.Update(req.Name, req.ConditionType, req.ConditionExpression, req.ActionType, req.ActionParameters, req.IsEnabled);
+        await _uow.AlertRules.UpdateAsync(rule, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(MapRule(rule));
+    }
+
+    [HttpDelete("rules/{id:guid}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> DeleteRule(Guid id, CancellationToken ct)
+    {
+        await _uow.AlertRules.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    private static NotificationTemplateResponse MapTemplate(NotificationTemplate template)
+        => new(
+            template.Id,
+            template.TemplateType,
+            template.SubjectTemplate,
+            template.BodyTemplate,
+            template.GetVariables().ToList(),
+            template.GetSupportedChannels().ToList());
+
+    private static AlertRuleResponse MapRule(AlertRule rule)
+        => new(
+            rule.Id,
+            rule.Name,
+            rule.ConditionType,
+            rule.ConditionExpression,
+            rule.ActionType,
+            JsonSerializer.Deserialize<Dictionary<string, object>>(rule.ActionParametersJson) ?? new(),
+            rule.IsEnabled,
+            rule.LastTriggered);
 }
 
 public record BroadcastNotificationRequest(
@@ -143,3 +247,36 @@ public record BroadcastNotificationRequest(
     string Message,
     Guid? DepartmentId = null,
     string? ActionUrl = null);
+
+public record NotificationTemplateResponse(
+    Guid Id,
+    string TemplateType,
+    string SubjectTemplate,
+    string BodyTemplate,
+    List<string> Variables,
+    List<string> SupportedChannels);
+
+public record UpsertNotificationTemplateRequest(
+    string TemplateType,
+    string SubjectTemplate,
+    string BodyTemplate,
+    List<string> Variables,
+    List<string> SupportedChannels);
+
+public record AlertRuleResponse(
+    Guid Id,
+    string Name,
+    string ConditionType,
+    string ConditionExpression,
+    string ActionType,
+    Dictionary<string, object> ActionParameters,
+    bool IsEnabled,
+    DateTime? LastTriggered);
+
+public record UpsertAlertRuleRequest(
+    string Name,
+    string ConditionType,
+    string ConditionExpression,
+    string ActionType,
+    Dictionary<string, object> ActionParameters,
+    bool IsEnabled);

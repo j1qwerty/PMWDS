@@ -24,6 +24,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserProfile> UserProfiles { get; set; }
     public DbSet<Organization> Organizations { get; set; }
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
+    public DbSet<AlertRule> AlertRules { get; set; }
+    public DbSet<Dashboard> Dashboards { get; set; }
+    public DbSet<DashboardWidget> DashboardWidgets { get; set; }
+    public DbSet<Report> Reports { get; set; }
+    public DbSet<ReportSchedule> ReportSchedules { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

@@ -18,6 +18,12 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Department> Departments { get; }
     public IRepository<Milestone> Milestones { get; }
     public IRepository<Notification> Notifications { get; }
+    public IRepository<NotificationTemplate> NotificationTemplates { get; }
+    public IRepository<AlertRule> AlertRules { get; }
+    public IRepository<Dashboard> Dashboards { get; }
+    public IRepository<DashboardWidget> DashboardWidgets { get; }
+    public IRepository<Report> Reports { get; }
+    public IRepository<ReportSchedule> ReportSchedules { get; }
     public IRepository<AuditLog> AuditLogs { get; }
     public IRepository<Skill> Skills { get; }
     public IRepository<Role> Roles { get; }
@@ -42,6 +48,12 @@ public class UnitOfWork : IUnitOfWork
         Departments = new BaseRepository<Department>(context);
         Milestones = new BaseRepository<Milestone>(context);
         Notifications = new BaseRepository<Notification>(context);
+        NotificationTemplates = new BaseRepository<NotificationTemplate>(context);
+        AlertRules = new BaseRepository<AlertRule>(context);
+        Dashboards = new BaseRepository<Dashboard>(context);
+        DashboardWidgets = new BaseRepository<DashboardWidget>(context);
+        Reports = new BaseRepository<Report>(context);
+        ReportSchedules = new BaseRepository<ReportSchedule>(context);
         AuditLogs = new BaseRepository<AuditLog>(context);
         Skills = new BaseRepository<Skill>(context);
         Roles = new BaseRepository<Role>(context);
