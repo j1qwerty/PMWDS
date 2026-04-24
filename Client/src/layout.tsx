@@ -47,6 +47,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const navItems: Array<{ path: string; label: string; icon: string; roles: Role[] }> = [
     { path: "/", label: "Dashboard", icon: "dashboard", roles: [] },
     { path: "/projects", label: "Projects", icon: "projects", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead", "TeamMember", "Viewer"] },
+    { path: "/milestones", label: "Milestones", icon: "projects", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead", "TeamMember", "Viewer"] },
     { path: "/tasks", label: "Tasks", icon: "tasks", roles: [] },
     { path: "/users", label: "People", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
     { path: "/departments", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },

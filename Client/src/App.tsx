@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { Layout } from "./layout";
+import { MilestonesWorkspacePage } from "./features/work-management/pages/MilestonesWorkspacePage";
+import { ProjectsWorkspacePage } from "./features/work-management/pages/ProjectsWorkspacePage";
+import { TasksWorkspacePage } from "./features/work-management/pages/TasksWorkspacePage";
 import {
   DashboardPage,
-  ProjectsPage,
-  TasksPage,
   UsersPage,
   DepartmentsPage,
   SettingsPage,
@@ -32,8 +33,9 @@ function AppRoutes() {
             <Layout>
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/tasks" element={<TasksPage />} />
+                <Route path="/projects" element={<ProjectsWorkspacePage />} />
+                <Route path="/milestones" element={<MilestonesWorkspacePage />} />
+                <Route path="/tasks" element={<TasksWorkspacePage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />

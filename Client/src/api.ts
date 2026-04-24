@@ -1,6 +1,8 @@
 import type {
   AIModel,
   AIProvider,
+  AISettingsRequest,
+  AISettingsResponse,
   AIProviderTestResult,
   AuthResponse,
   ChatResponse,
@@ -149,6 +151,9 @@ export const api = {
   createMilestone(token: string, payload: Record<string, unknown>) {
     return request<Milestone>("milestones", { token, method: "POST", body: payload });
   },
+  getMilestone(token: string, id: string) {
+    return request<Milestone>(`milestones/${id}`, { token });
+  },
   updateMilestone(token: string, id: string, payload: Record<string, unknown>) {
     return request<Milestone>(`milestones/${id}`, { token, method: "PUT", body: payload });
   },
@@ -232,6 +237,42 @@ export const api = {
   },
   deleteTask(token: string, id: string) {
     return request<void>(`tasks/${id}`, { token, method: "DELETE" });
+  },
+  getSubtasks(token: string, parentTaskId: string) {
+    return request<Task[]>(`tasks/${parentTaskId}/subtasks`, { token });
+  },
+  createSubtask(token: string, parentTaskId: string, payload: Record<string, unknown>) {
+    return request<Task>(`tasks/${parentTaskId}/subtasks`, { token, method: "POST", body: payload });
+  },
+  getSubtask(token: string, id: string) {
+    return request<Task>(`tasks/subtasks/${id}`, { token });
+  },
+  updateSubtask(token: string, id: string, payload: Record<string, unknown>) {
+    return request<Task>(`tasks/subtasks/${id}`, { token, method: "PUT", body: payload });
+  },
+  updateSubtaskProgress(token: string, id: string, progressPercentage: number, notes?: string) {
+    return request<Task>(`tasks/subtasks/${id}/progress`, {
+      token,
+      method: "PATCH",
+      body: { progressPercentage, notes },
+    });
+  },
+  updateSubtaskStatus(token: string, id: string, newStatus: string) {
+    return request<Task>(`tasks/subtasks/${id}/status`, {
+      token,
+      method: "PATCH",
+      body: { newStatus },
+    });
+  },
+  assignSubtask(token: string, id: string, assigneeId: string, useAIRecommendation = false) {
+    return request<Task>(`tasks/subtasks/${id}/assign`, {
+      token,
+      method: "POST",
+      body: { assigneeId, useAIRecommendation },
+    });
+  },
+  deleteSubtask(token: string, id: string) {
+    return request<void>(`tasks/subtasks/${id}`, { token, method: "DELETE" });
   },
   getUsers(token: string, departmentId?: string | null) {
     return request<User[]>("users", {

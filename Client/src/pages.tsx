@@ -955,7 +955,7 @@ export function SettingsPage() {
   const [customPrompt, setCustomPrompt] = useState<{ [key: string]: string }>({});
   const [customResponse, setCustomResponse] = useState<{ [key: string]: string }>({});
   const [testingCustom, setTestingCustom] = useState<string | null>(null);
-  const [openRouterModels, setOpenRouterModels] = useState<{ id: string; name: string }[]>([]);
+  const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name: string; free: boolean }>>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   useEffect(() => {
@@ -1023,7 +1023,7 @@ export function SettingsPage() {
     }
   };
 
-  const testCustomPrompt = async (provider: string, apiKey: string, selectedModel?: string) => {
+  const testCustomPrompt = async (provider: string, _apiKey: string, selectedModel?: string) => {
     const prompt = customPrompt[provider]?.trim();
     if (!prompt) {
       setCustomResponse(prev => ({ ...prev, [provider]: "Please enter a test prompt" }));
@@ -1056,8 +1056,8 @@ export function SettingsPage() {
           name: m.id, 
           free: m.id.toLowerCase().includes("free") || m.id.toLowerCase().includes("mini")
         }));
-      const freeModels = allModels.filter(m => m.free).slice(0, 15);
-      const otherModels = allModels.filter(m => !m.free).slice(0, 15);
+      const freeModels = allModels.filter((m: { free: boolean }) => m.free).slice(0, 15);
+      const otherModels = allModels.filter((m: { free: boolean }) => !m.free).slice(0, 15);
       setOpenRouterModels([...freeModels, ...otherModels]);
     } catch (e) {
       console.error("Failed to fetch OpenRouter models:", e);
@@ -1067,7 +1067,7 @@ export function SettingsPage() {
     }
   };
 
-  const updateProvider = (provider: string, field: keyof typeof aiSettings.providers[0], value: unknown) => {
+  const updateProvider = (provider: string, field: string, value: unknown) => {
     if (!aiSettings) return;
     setAiSettings({
       ...aiSettings,

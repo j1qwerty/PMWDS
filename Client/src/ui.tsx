@@ -25,13 +25,15 @@ export function Panel({
   title,
   subtitle,
   children,
+  style,
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" style={style}>
       <div className="panel-head">
         <div>
           <h3>{title}</h3>

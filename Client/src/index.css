@@ -876,3 +876,148 @@ input:focus, select:focus, textarea:focus {
 .page {
   min-height: 100vh;
 }
+
+.toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.badge-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.status-badge {
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+
+.status-neutral {
+  background: rgba(100, 116, 139, 0.16);
+  color: #cbd5e1;
+}
+
+.status-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+}
+
+.status-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+}
+
+.status-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.status-info {
+  background: rgba(20, 184, 166, 0.15);
+  color: #5eead4;
+}
+
+.task-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.task-column {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.task-column h4 {
+  color: var(--text-h);
+  font-size: 0.85rem;
+}
+
+.subtask-block {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.subtask-block h5 {
+  color: var(--text-h);
+  margin-bottom: 0.5rem;
+}
+
+.subtask-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subtask-row span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 20, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 300;
+}
+
+.dialog {
+  width: min(100%, 720px);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dialog-sm {
+  max-width: 420px;
+}
+
+.dialog-lg {
+  max-width: 880px;
+}
+
+.dialog-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dialog-head h3 {
+  color: var(--text-h);
+}
+
+.dialog-body {
+  padding: 1.25rem;
+}
+
+.dialog-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.dialog-copy {
+  color: var(--text-muted);
+}
