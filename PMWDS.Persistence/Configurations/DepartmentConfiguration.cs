@@ -16,7 +16,7 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
         b.Property(e => e.DepartmentHeadUserId).HasMaxLength(100);
         b.HasIndex(e => e.Code).IsUnique();
         b.HasOne(e => e.Organization)
-            .WithMany()
+            .WithMany(e => e.Departments)
             .HasForeignKey(e => e.OrganizationId)
             .OnDelete(DeleteBehavior.SetNull);
         b.HasOne(e => e.ParentDepartment)

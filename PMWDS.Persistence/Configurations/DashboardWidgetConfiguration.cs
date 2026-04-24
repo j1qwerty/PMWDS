@@ -13,7 +13,7 @@ public class DashboardWidgetConfiguration : IEntityTypeConfiguration<DashboardWi
         b.Property(e => e.WidgetType).HasMaxLength(100).IsRequired();
         b.Property(e => e.Title).HasMaxLength(200).IsRequired();
         b.HasOne(e => e.Dashboard)
-            .WithMany()
+            .WithMany(e => e.Widgets)
             .HasForeignKey(e => e.DashboardId)
             .OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(e => e.DashboardId);

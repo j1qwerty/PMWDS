@@ -20,6 +20,7 @@ using PMWDS.Persistence.Repositories;
 using Serilog;
 using Microsoft.Data.SqlClient;
 using System.Text;
+using System.Data.Common;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -227,15 +228,7 @@ using (var scope = app.Services.CreateScope())
         {
             Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, sqliteDirectory));
         }
-
-        try
-        {
-            await db.Database.MigrateAsync();
-        }
-        catch
-        {
-            await db.Database.EnsureCreatedAsync();
-        }
+        await EnsureSqliteDevelopmentDatabaseAsync(db);
     }
     else
     {
@@ -286,5 +279,72 @@ static bool CanConnectToSqlServer(string? connectionString)
     catch
     {
         return false;
+    }
+}
+
+static async Task EnsureSqliteDevelopmentDatabaseAsync(ApplicationDbContext db)
+{
+    try
+    {
+        if (!await HasExpectedSqliteSchemaAsync(db))
+        {
+            await db.Database.EnsureDeletedAsync();
+            await db.Database.EnsureCreatedAsync();
+        }
+    }
+    catch
+    {
+        await db.Database.EnsureDeletedAsync();
+        await db.Database.EnsureCreatedAsync();
+    }
+}
+
+static async Task<bool> HasExpectedSqliteSchemaAsync(ApplicationDbContext db)
+{
+    if (!await db.Database.CanConnectAsync())
+    {
+        return false;
+    }
+
+    var expectedTables = new[]
+    {
+        "Organizations",
+        "Roles",
+        "NotificationTemplates",
+        "Dashboards",
+        "Reports",
+        "Integrations",
+        "KnowledgeArticles",
+        "ActivityLogs"
+    };
+
+    var connection = db.Database.GetDbConnection();
+    var shouldClose = connection.State != System.Data.ConnectionState.Open;
+    if (shouldClose)
+    {
+        await connection.OpenAsync();
+    }
+
+    try
+    {
+        foreach (var table in expectedTables)
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'";
+            var result = await command.ExecuteScalarAsync();
+            if (result == null || result == DBNull.Value)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    finally
+    {
+        if (shouldClose)
+        {
+            await connection.CloseAsync();
+        }
     }
 }

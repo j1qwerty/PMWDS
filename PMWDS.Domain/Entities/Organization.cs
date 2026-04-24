@@ -10,9 +10,7 @@ public class Organization : AuditableEntity
     public string ContactEmail { get; private set; } = string.Empty;
     public string ContactPhone { get; private set; } = string.Empty;
     public DateTime FoundedDate { get; private set; }
-    public IReadOnlyCollection<Department> Departments => _departments.AsReadOnly();
-
-    private readonly List<Department> _departments = new();
+    public ICollection<Department> Departments { get; private set; } = new List<Department>();
 
     protected Organization() { }
 
@@ -53,28 +51,28 @@ public class Organization : AuditableEntity
 
     public void AddDepartment(Department department)
     {
-        if (_departments.All(d => d.Id != department.Id))
+        if (Departments.All(d => d.Id != department.Id))
         {
-            _departments.Add(department);
+            Departments.Add(department);
             department.AssignToOrganization(Id);
         }
     }
 
     public bool RemoveDepartment(Guid departmentId)
     {
-        var department = _departments.FirstOrDefault(d => d.Id == departmentId);
+        var department = Departments.FirstOrDefault(d => d.Id == departmentId);
         if (department == null)
         {
             return false;
         }
 
-        _departments.Remove(department);
+        Departments.Remove(department);
         department.AssignToOrganization(null);
         return true;
     }
 
     public IReadOnlyCollection<Department> GetOrganizationHierarchy()
-        => Departments;
+        => Departments.ToList().AsReadOnly();
 
     public int GetTotalEmployees()
         => Departments.Sum(d => d.Members.Count);
