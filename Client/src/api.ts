@@ -7,10 +7,14 @@ import type {
   AuthResponse,
   ChatResponse,
   DashboardData,
+  DashboardRecord,
   DelayPrediction,
   Department,
   Milestone,
   NotificationItem,
+  NotificationTemplateRecord,
+  AlertRuleRecord,
+  OrganizationRecord,
   PermissionRecord,
   Project,
   ProjectHealth,
@@ -380,6 +384,119 @@ export const api = {
   },
   broadcastNotification(token: string, payload: Record<string, unknown>) {
     return request<void>("notifications/broadcast", { token, method: "POST", body: payload });
+  },
+  getNotificationTemplates(token: string) {
+    return request<NotificationTemplateRecord[]>("notifications/templates", { token });
+  },
+  createNotificationTemplate(token: string, payload: Record<string, unknown>) {
+    return request<NotificationTemplateRecord>("notifications/templates", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  updateNotificationTemplate(token: string, id: string, payload: Record<string, unknown>) {
+    return request<NotificationTemplateRecord>(`notifications/templates/${id}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteNotificationTemplate(token: string, id: string) {
+    return request<void>(`notifications/templates/${id}`, { token, method: "DELETE" });
+  },
+  getAlertRules(token: string) {
+    return request<AlertRuleRecord[]>("notifications/rules", { token });
+  },
+  createAlertRule(token: string, payload: Record<string, unknown>) {
+    return request<AlertRuleRecord>("notifications/rules", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  updateAlertRule(token: string, id: string, payload: Record<string, unknown>) {
+    return request<AlertRuleRecord>(`notifications/rules/${id}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteAlertRule(token: string, id: string) {
+    return request<void>(`notifications/rules/${id}`, { token, method: "DELETE" });
+  },
+  getOrganizations(token: string) {
+    return request<OrganizationRecord[]>("organizations", { token });
+  },
+  getOrganization(token: string, id: string) {
+    return request<OrganizationRecord>(`organizations/${id}`, { token });
+  },
+  createOrganization(token: string, payload: Record<string, unknown>) {
+    return request<OrganizationRecord>("organizations", { token, method: "POST", body: payload });
+  },
+  updateOrganization(token: string, id: string, payload: Record<string, unknown>) {
+    return request<OrganizationRecord>(`organizations/${id}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  assignDepartmentToOrganization(token: string, id: string, departmentId: string) {
+    return request<void>(`organizations/${id}/departments/${departmentId}`, {
+      token,
+      method: "PUT",
+    });
+  },
+  removeDepartmentFromOrganization(token: string, id: string, departmentId: string) {
+    return request<void>(`organizations/${id}/departments/${departmentId}`, {
+      token,
+      method: "DELETE",
+    });
+  },
+  deleteOrganization(token: string, id: string) {
+    return request<void>(`organizations/${id}`, { token, method: "DELETE" });
+  },
+  getDashboards(token: string) {
+    return request<DashboardRecord[]>("dashboards", { token });
+  },
+  getDashboardById(token: string, id: string) {
+    return request<DashboardRecord>(`dashboards/${id}`, { token });
+  },
+  createDashboard(token: string, payload: Record<string, unknown>) {
+    return request<DashboardRecord>("dashboards", { token, method: "POST", body: payload });
+  },
+  updateDashboard(token: string, id: string, payload: Record<string, unknown>) {
+    return request<DashboardRecord>(`dashboards/${id}`, { token, method: "PUT", body: payload });
+  },
+  addDashboardWidget(token: string, dashboardId: string, payload: Record<string, unknown>) {
+    return request<DashboardRecord["widgets"][number]>(`dashboards/${dashboardId}/widgets`, {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  updateDashboardWidget(token: string, widgetId: string, payload: Record<string, unknown>) {
+    return request<DashboardRecord["widgets"][number]>(`dashboards/widgets/${widgetId}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  reorderDashboardWidgets(token: string, dashboardId: string, widgetIds: string[]) {
+    return request<void>(`dashboards/${dashboardId}/widgets/reorder`, {
+      token,
+      method: "PATCH",
+      body: { widgetIds },
+    });
+  },
+  deleteDashboardWidget(token: string, widgetId: string) {
+    return request<void>(`dashboards/widgets/${widgetId}`, {
+      token,
+      method: "DELETE",
+    });
+  },
+  deleteDashboard(token: string, id: string) {
+    return request<void>(`dashboards/${id}`, { token, method: "DELETE" });
   },
   getAiProviders(token: string) {
     return request<AIProvider[]>("ai/providers", { token });

@@ -170,6 +170,66 @@ export interface NotificationItem {
   actionUrl?: string | null;
 }
 
+export interface NotificationTemplateRecord {
+  id: string;
+  templateType: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  variables: string[];
+  supportedChannels: string[];
+}
+
+export interface AlertRuleRecord {
+  id: string;
+  name: string;
+  conditionType: string;
+  conditionExpression: string;
+  actionType: string;
+  actionParameters: Record<string, unknown>;
+  isEnabled: boolean;
+  lastTriggered?: string | null;
+}
+
+export interface OrganizationDepartmentSummary {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface OrganizationRecord {
+  id: string;
+  name: string;
+  taxId: string;
+  address: string;
+  contactEmail: string;
+  contactPhone: string;
+  foundedDate: string;
+  departments: OrganizationDepartmentSummary[];
+  departmentCount: number;
+}
+
+export interface DashboardWidgetRecord {
+  id: string;
+  dashboardId: string;
+  widgetType: string;
+  title: string;
+  configuration: Record<string, unknown>;
+  refreshInterval: number;
+  lastRefreshed: string;
+  requiredPermissions: string[];
+  displayOrder: number;
+}
+
+export interface DashboardRecord {
+  id: string;
+  userId: string;
+  name: string;
+  layoutType: string;
+  isDefault: boolean;
+  lastAccessed: string;
+  widgets: DashboardWidgetRecord[];
+}
+
 export interface WorkloadMember {
   userId: string;
   fullName: string;
