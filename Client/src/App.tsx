@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./auth";
 import { PermissionsPage } from "./features/access-control/pages/PermissionsPage";
 import { RolesPage } from "./features/access-control/pages/RolesPage";
 import { ActivityLogsPage } from "./features/activity-logs/pages/ActivityLogsPage";
+import { AIPage } from "./features/ai/pages/AIPage";
 import { DashboardsPage } from "./features/dashboards/pages/DashboardsPage";
 import { IntegrationsPage } from "./features/integrations/pages/IntegrationsPage";
 import { WebhooksPage } from "./features/integrations/pages/WebhooksPage";
@@ -22,7 +23,6 @@ import {
   DepartmentsPage,
   SettingsPage,
   LoginPage,
-  AIPage,
 } from "./pages";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {

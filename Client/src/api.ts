@@ -1,14 +1,19 @@
 import type {
   AIModel,
+  AIModelRecord,
   AIProvider,
   AISettingsRequest,
   AISettingsResponse,
   AIProviderTestResult,
+  AllocationRecommendationRecord,
+  AssigneeRecommendation,
   AuthResponse,
+  BurnoutRiskRecord,
   ChatResponse,
   DashboardData,
   DashboardRecord,
   DelayPrediction,
+  DelayPredictionRecord,
   Department,
   IntegrationDetailRecord,
   IntegrationRecord,
@@ -22,12 +27,16 @@ import type {
   PermissionRecord,
   Project,
   ProjectHealth,
+  PredictionResultRecord,
   ReportScheduleRecord,
+  ResourceOptimizationRecord,
   RoleRecord,
+  TaskAnalysisRecord,
   SkillRecord,
   StoredReportDetailRecord,
   StoredReportRecord,
   Task,
+  TrainingDataPointRecord,
   ActivityLogRecord,
   UserProfileRecord,
   User,
@@ -533,7 +542,7 @@ export const api = {
     });
   },
   getAiBurnoutRisk(token: string, departmentId?: string | null) {
-    return request<Array<Record<string, unknown>>>("ai/burnout-risk", {
+    return request<BurnoutRiskRecord[]>("ai/burnout-risk", {
       token,
       query: { departmentId: departmentId ?? undefined },
     });
@@ -545,13 +554,107 @@ export const api = {
     return request<ProjectHealth>(`ai/project-health/${projectId}`, { token });
   },
   optimizeResources(token: string, projectId: string) {
-    return request<Record<string, unknown>>(`ai/optimize-resources/${projectId}`, {
+    return request<ResourceOptimizationRecord>(`ai/optimize-resources/${projectId}`, {
       token,
       method: "POST",
     });
   },
   getTaskDelay(token: string, taskId: string) {
     return request<DelayPrediction>(`ai/predict-delay/${taskId}`, { token });
+  },
+  recommendAssignee(token: string, taskId: string) {
+    return request<AssigneeRecommendation>(`ai/recommend-assignee/${taskId}`, { token });
+  },
+  generateRecommendation(token: string, taskId: string) {
+    return request<AllocationRecommendationRecord>(`ai/recommendations/${taskId}`, {
+      token,
+      method: "POST",
+    });
+  },
+  getRecommendationHistory(token: string, taskId: string) {
+    return request<AllocationRecommendationRecord[]>(`ai/recommendations/${taskId}/history`, {
+      token,
+    });
+  },
+  acceptRecommendation(token: string, recommendationId: string) {
+    return request<AllocationRecommendationRecord>(`ai/recommendations/${recommendationId}/accept`, {
+      token,
+      method: "POST",
+    });
+  },
+  rejectRecommendation(token: string, recommendationId: string, reason: string) {
+    return request<AllocationRecommendationRecord>(`ai/recommendations/${recommendationId}/reject`, {
+      token,
+      method: "POST",
+      body: { reason },
+    });
+  },
+  explainRecommendation(token: string, recommendationId: string) {
+    return request<{ explanation: string }>(`ai/recommendations/${recommendationId}/explanation`, {
+      token,
+    });
+  },
+  analyzeTask(token: string, taskId: string) {
+    return request<TaskAnalysisRecord>(`ai/tasks/${taskId}/analysis`, { token });
+  },
+  generateDelayPrediction(token: string, taskId: string) {
+    return request<DelayPredictionRecord>(`ai/predictions/${taskId}`, {
+      token,
+      method: "POST",
+    });
+  },
+  getPredictionHistory(token: string, taskId: string) {
+    return request<DelayPredictionRecord[]>(`ai/predictions/${taskId}/history`, { token });
+  },
+  predictProjectDelays(token: string, projectId: string) {
+    return request<DelayPredictionRecord[]>(`ai/projects/${projectId}/predictions`, {
+      token,
+      method: "POST",
+    });
+  },
+  getPredictionResults(token: string, filters?: { taskId?: string; modelId?: string }) {
+    return request<PredictionResultRecord[]>("ai/prediction-results", {
+      token,
+      query: filters,
+    });
+  },
+  trainModels(token: string) {
+    return request<Record<string, unknown>>("ai/train", { token, method: "POST" });
+  },
+  getAiModels(token: string, modelType?: string) {
+    return request<AIModelRecord[]>("ai/models", { token, query: { modelType } });
+  },
+  getAiModel(token: string, modelId: string) {
+    return request<AIModelRecord>(`ai/models/${modelId}`, { token });
+  },
+  createAiModel(token: string, payload: Record<string, unknown>) {
+    return request<AIModelRecord>("ai/models", { token, method: "POST", body: payload });
+  },
+  updateAiModel(token: string, modelId: string, payload: Record<string, unknown>) {
+    return request<AIModelRecord>(`ai/models/${modelId}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteAiModel(token: string, modelId: string) {
+    return request<void>(`ai/models/${modelId}`, { token, method: "DELETE" });
+  },
+  getTrainingData(token: string, dataType?: string) {
+    return request<TrainingDataPointRecord[]>("ai/training-data", {
+      token,
+      query: { dataType },
+    });
+  },
+  createTrainingData(token: string, payload: Record<string, unknown>) {
+    return request<TrainingDataPointRecord>("ai/training-data", {
+      token,
+      method: "POST",
+      body: payload,
+    });
+  },
+  getModelPerformance(token: string) {
+    return request<Record<string, number>>("ai/performance", { token });
   },
   downloadReport(
     token: string,

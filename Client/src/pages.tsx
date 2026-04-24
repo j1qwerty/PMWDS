@@ -5,6 +5,7 @@ import type {
   AIModel,
   AIProvider,
   AISettingsResponse,
+  BurnoutRiskRecord,
   Department,
   Milestone,
   NotificationItem,
@@ -725,7 +726,7 @@ export function AIPage() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");
   const [chatResult, setChatResult] = useState<any>(null);
-  const [burnout, setBurnout] = useState<Array<Record<string, unknown>>>([]);
+  const [burnout, setBurnout] = useState<BurnoutRiskRecord[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [delay, setDelay] = useState<any>(null);
 

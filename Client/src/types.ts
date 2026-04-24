@@ -445,6 +445,13 @@ export interface ChatResponse {
   requiresConfirmation: boolean;
 }
 
+export interface AlternativeAssignee {
+  userId: string;
+  userName: string;
+  score: number;
+  reason: string;
+}
+
 export interface DelayPrediction {
   taskId: string;
   delayProbability: number;
@@ -454,6 +461,122 @@ export interface DelayPrediction {
   contributingFactors: string[];
   mitigationStrategies: string[];
   shouldEscalate: boolean;
+}
+
+export interface AssigneeRecommendation {
+  taskId: string;
+  recommendedUserId: string;
+  recommendedUserName: string;
+  confidenceScore: number;
+  rationale: string[];
+  alternatives: AlternativeAssignee[];
+  featureScores: Record<string, number>;
+  generatedAt: string;
+}
+
+export interface AllocationRecommendationRecord {
+  id: string;
+  taskId: string;
+  modelId: string;
+  recommendedUserId: string;
+  matchScore: number;
+  rationale: string[];
+  featureScores: Record<string, number>;
+  alternatives: AlternativeAssignee[];
+  status: string;
+  decisionReason?: string | null;
+  createdDate: string;
+}
+
+export interface DelayPredictionRecord {
+  id: string;
+  taskId: string;
+  modelId: string;
+  delayProbability: number;
+  expectedDelayDays: number;
+  predictedCompletionDate: string;
+  riskLevel: string;
+  contributingFactors: string[];
+  factorWeights: Record<string, number>;
+  mitigationStrategies: string[];
+  shouldEscalate: boolean;
+  createdDate: string;
+}
+
+export interface PredictionResultRecord {
+  id: string;
+  modelId: string;
+  taskId?: string | null;
+  predictionDate: string;
+  inputFeatures: Record<string, unknown>;
+  outputPredictions: Record<string, unknown>;
+  confidenceScore: number;
+  recommendation: string;
+}
+
+export interface TaskAnalysisRecord {
+  taskId: string;
+  taskTitle: string;
+  candidateCount: number;
+  summary: string;
+  inputFeatures: Record<string, unknown>;
+  keyFactors: string[];
+  generatedAt: string;
+}
+
+export interface BurnoutRiskRecord {
+  userId: string;
+  fullName: string;
+  burnoutRisk: number;
+  workloadScore: number;
+  activeTasks: number;
+  riskLevel: string;
+  recommendations: string[];
+}
+
+export interface ReallocationSuggestion {
+  taskId: string;
+  taskTitle: string;
+  currentAssigneeId: string;
+  currentAssigneeName: string;
+  suggestedAssigneeId: string;
+  suggestedAssigneeName: string;
+  reason: string;
+  improvementScore: number;
+}
+
+export interface ResourceOptimizationRecord {
+  projectId: string;
+  suggestions: ReallocationSuggestion[];
+  expectedEfficiencyGain: number;
+  tasksAtRisk: number;
+  actionPlan: string[];
+  generatedAt: string;
+}
+
+export interface AIModelRecord {
+  id: string;
+  name: string;
+  version: string;
+  modelType: string;
+  createdDate: string;
+  lastTrainedDate?: string | null;
+  accuracyScore: number;
+  precisionScore: number;
+  recallScore: number;
+  modelPath?: string | null;
+  hyperparameters: Record<string, number>;
+  features: string[];
+  predictionCount: number;
+}
+
+export interface TrainingDataPointRecord {
+  id: string;
+  dataType: string;
+  features: Record<string, unknown>;
+  labels: Record<string, unknown>;
+  createdDate: string;
+  source: string;
 }
 
 export interface ProjectHealth {
