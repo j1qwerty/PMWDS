@@ -76,33 +76,34 @@ export function DashboardPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
-      <section className="hero-panel">
-        <div>
-          {/* <p className="eyebrow">Mission Snapshot</p> */}
-          <h3>{dashboard?.activeProjects ?? 0} active projects under watch</h3>
-          <p>
-            The dashboard blends project health, delay exposure, and operational load into one view so teams can move
-            from signal to action without context switching.
-          </p>
-        </div>
-        <div className="hero-band">
+    <div className="grid grid-cols-12 gap-5 content-start">
+      <section className="col-span-12 overflow-hidden rounded-2xl border border-white/8 bg-[var(--pmwds-surface)]/70 p-8 shadow-[var(--pmwds-shadow)] backdrop-blur">
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <span>Overall Health</span>
-            <strong>{formatPercent(dashboard?.overallHealthScore ?? 0)}</strong>
+            <p className="mb-3 text-xs font-bold tracking-[0.22em] text-sky-300 uppercase">Workspace Dashboard</p>
+            <h1 className="text-4xl font-black tracking-tight text-white">{dashboard?.activeProjects ?? 0} active projects under watch</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+              Project health, delay exposure, workload pressure, and notifications are consolidated into one command view.
+            </p>
           </div>
-          <div>
-            <span>Delay Risk</span>
-            <strong>{formatPercent((dashboard?.overallDelayRisk ?? 0) * 100)}</strong>
-          </div>
-          <div>
-            <span>Budget Variance</span>
-            <strong>{formatMoney(dashboard?.budgetVariance ?? 0)}</strong>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-white/8 bg-white/[0.035] p-4 text-center">
+              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-slate-500 uppercase">Health</span>
+              <strong className="mt-1 block text-2xl font-black text-white">{formatPercent(dashboard?.overallHealthScore ?? 0)}</strong>
+            </div>
+            <div className="rounded-xl border border-amber-300/15 bg-amber-300/10 p-4 text-center">
+              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-amber-200/70 uppercase">Delay</span>
+              <strong className="mt-1 block text-2xl font-black text-amber-100">{formatPercent((dashboard?.overallDelayRisk ?? 0) * 100)}</strong>
+            </div>
+            <div className="rounded-xl border border-teal-300/15 bg-teal-300/10 p-4 text-center">
+              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-teal-200/70 uppercase">Variance</span>
+              <strong className="mt-1 block text-2xl font-black text-teal-100">{formatMoney(dashboard?.budgetVariance ?? 0)}</strong>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="stat-grid">
+      <section className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Projects" value={dashboard?.totalProjects ?? 0} detail="Full portfolio volume" tone="teal" />
         <StatCard label="Tasks" value={dashboard?.totalTasks ?? 0} detail="Tracked work items" tone="rust" />
         <StatCard label="Overdue" value={dashboard?.overdueTasks ?? 0} detail="Tasks past target date" tone="ink" />
