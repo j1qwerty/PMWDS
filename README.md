@@ -10,10 +10,6 @@ The API entry point is `PMWDS.API`. The frontend lives in `Client`.
 |------|---------|
 | [CONFIG.md](CONFIG.md) | Full setup, configuration, build, deployment, and operations guide |
 | [sqlite.md](sqlite.md) | SQLite fallback notes, reason, flow, and troubleshooting |
-| [docs/issue-sqlite.md](docs/issue-sqlite.md) | Detailed SQLite migration caveat and production-ready fix options |
-| [docs/api-new2.md](docs/api-new2.md) | Non-AI API curl examples |
-| [docs/api-ai.md](docs/api-ai.md) | AI/ML API curl examples and AI feature flow |
-| [docs/TechnicalClassDiagram.mmd](docs/TechnicalClassDiagram.mmd) | Target technical class diagram |
 
 ## Tech Stack
 
@@ -36,7 +32,6 @@ PMWDS.Infrastructure/  Email, cache, audit, file storage, reports, background jo
 PMWDS.AI/              AI services, chat engine, recommendation and prediction logic
 PMWDS.AI.Tests/        AI service tests
 Client/                React client application
-docs/                  API, UI, architecture, and issue documentation
 ```
 
 ## Local Development
