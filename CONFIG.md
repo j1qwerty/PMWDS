@@ -1,23 +1,75 @@
 # PMWDS Configuration Guide
 
-This document covers all configuration files and settings required by the PMWDS project.
+This guide describes the configuration required to build, run, and deploy PMWDS. The API entry point is `PMWDS.API`; the React client is in `Client`.
 
----
-
-## Configuration Files Overview
+## Related Docs
 
 | File | Purpose |
 |------|---------|
-| `PMWDS.API/appsettings.json` | Primary configuration (database, JWT, email, AI, etc.) |
-| `PMWDS.API/appsettings.Development.json` | Development environment overrides |
-| `PMWDS.API/appsettings.Development.Sqlite.json` | SQLite fallback configuration |
-| `PMWDS.API/Properties/launchSettings.json` | Launch URLs and environment |
+| [README.md](README.md) | Project overview, local setup, credentials, and operational notes |
+| [sqlite.md](sqlite.md) | SQLite fallback behavior and development database notes |
+| [docs/issue-sqlite.md](docs/issue-sqlite.md) | Detailed SQLite migration issue and production-ready remediation options |
 
----
+## Configuration File Order
 
-## 1. Database Configuration
+ASP.NET Core configuration is loaded from standard sources. Use this priority when diagnosing values:
 
-### Primary: SQL Server
+1. Environment variables and command-line arguments.
+2. `PMWDS.API/appsettings.{Environment}.json`.
+3. `PMWDS.API/appsettings.json`.
+4. Code defaults in settings classes such as `DatabaseSettings` and `AISettings`.
+
+## Required Local Tooling
+
+- .NET SDK compatible with `net10.0`.
+- Node.js and npm for the React client.
+- SQL Server for production-style local runs, optional for development because SQLite fallback is enabled.
+- Redis if testing distributed cache behavior.
+- Azure Storage Emulator or real Azure Blob Storage if testing file storage.
+
+## Build Commands
+
+```powershell
+dotnet restore PMWDS.slnx
+dotnet build PMWDS.slnx
+```
+
+```powershell
+cd Client
+npm install
+npm run build
+```
+
+## Run Commands
+
+API:
+
+```powershell
+dotnet run --project PMWDS.API --urls http://localhost:5177
+```
+
+Client:
+
+```powershell
+cd Client
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+## Core Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `PMWDS.API/appsettings.json` | Base configuration for connection strings, JWT, email, storage, AI, CORS, Hangfire, and logging |
+| `PMWDS.API/appsettings.Development.json` | Development override; currently forces SQLite |
+| `PMWDS.API/Properties/launchSettings.json` | Local launch profiles and development URLs |
+| `Client/.env` or shell env | Optional Vite client overrides such as `VITE_API_BASE_URL` |
+
+## Database Configuration
+
+### SQL Server
+
+SQL Server is the production target.
+
 File: `PMWDS.API/appsettings.json`
 
 ```json
@@ -28,27 +80,73 @@ File: `PMWDS.API/appsettings.json`
 }
 ```
 
-### Fallback: SQLite
-File: `PMWDS.API/appsettings.Development.Sqlite.json`
+Production changes:
+
+- Replace `Default` with the production SQL Server connection string.
+- Replace `Hangfire` with a dedicated production Hangfire database connection.
+- Avoid `Trusted_Connection=True` unless the deployment identity is intentionally used.
+- Keep `TrustServerCertificate=True` only when the deployment model requires it.
+
+### SQLite Development Fallback
+
+The current local development setup uses SQLite because SQL Server is not working on the development laptop.
+
+File: `PMWDS.API/appsettings.Development.json`
 
 ```json
-{
-  "Database": {
-    "EnableSqliteFallback": true,
-    "ForceSqlite": false,
-    "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
-  }
+"Database": {
+  "ForceSqlite": true,
+  "EnableSqliteFallback": true,
+  "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
 }
 ```
 
-**Behavior:**
-- SQL Server is used by default if available
-- Falls back to SQLite if SQL Server is unreachable and `EnableSqliteFallback` is true
-- Forces SQLite if `ForceSqlite` is true
+Behavior:
 
----
+- `ForceSqlite: true` makes Development use SQLite without trying SQL Server.
+- `EnableSqliteFallback: true` allows fallback if `ForceSqlite` is false and SQL Server cannot be reached.
+- The database file is `PMWDS.API/App_Data/pmwds-dev.sqlite`.
+- The API startup path creates the directory, validates the expected SQLite schema, rebuilds stale development schema when needed, and runs seed data.
+- Hangfire is disabled while SQLite is active.
 
-## 2. JWT Authentication
+See [sqlite.md](sqlite.md) and [docs/issue-sqlite.md](docs/issue-sqlite.md) before changing this flow.
+
+### Database Settings Class
+
+File: `PMWDS.Infrastructure/Settings/AppSettings.cs`
+
+```csharp
+public class DatabaseSettings
+{
+    public bool EnableSqliteFallback { get; set; } = true;
+    public bool ForceSqlite { get; set; } = false;
+    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+}
+```
+
+### EF Core Commands
+
+Add a migration:
+
+```powershell
+dotnet ef migrations add MigrationName --project PMWDS.Persistence --startup-project PMWDS.API --context ApplicationDbContext
+```
+
+Apply migrations to SQL Server:
+
+```powershell
+dotnet ef database update --project PMWDS.Persistence --startup-project PMWDS.API --context ApplicationDbContext
+```
+
+SQLite note:
+
+```powershell
+# Do not rely on direct database update against the existing dev SQLite file.
+# Use the API startup path for local SQLite schema bootstrap and seed data.
+dotnet run --project PMWDS.API --urls http://localhost:5177
+```
+
+## JWT Authentication
 
 File: `PMWDS.API/appsettings.json`
 
@@ -61,11 +159,41 @@ File: `PMWDS.API/appsettings.json`
 }
 ```
 
-**Required Change:** Replace `Secret` with a strong random value in production.
+Production changes:
 
----
+- Replace `Secret` with a long random value stored outside source control.
+- Keep issuer and audience stable across API and clients.
+- Review expiry duration for production security requirements.
 
-## 3. Email Configuration
+## Seeded Credentials
+
+Default seeded password:
+
+```text
+Pmwds@123
+```
+
+Seeded users include:
+
+```text
+admin@pmwds.com
+manager@pmwds.com
+head@pmwds.com
+lead@pmwds.com
+member@pmwds.com
+viewer@pmwds.com
+ava.patel@pmwds.com
+noah.chen@northwind-labs.example
+mia.roberts@contoso-transform.example
+```
+
+Production changes:
+
+- Remove or rotate seeded accounts.
+- Replace the current development hash strategy with a production-grade password hasher.
+- Require password reset or credential rotation after first deployment.
+
+## Email Configuration
 
 File: `PMWDS.API/appsettings.json`
 
@@ -81,11 +209,13 @@ File: `PMWDS.API/appsettings.json`
 }
 ```
 
-**Required Change:** Replace `Password` with your actual SMTP password or app-specific password for Gmail.
+Production changes:
 
----
+- Store SMTP credentials in a secret manager.
+- Use an approved sender domain.
+- Configure SPF, DKIM, and DMARC for deliverability.
 
-## 4. Azure Storage
+## File Storage
 
 File: `PMWDS.API/appsettings.json`
 
@@ -96,58 +226,60 @@ File: `PMWDS.API/appsettings.json`
 }
 ```
 
-`UseDevelopmentStorage=true` uses Azure Emulator. Replace with actual storage connection string for production.
+Production changes:
 
----
+- Replace `UseDevelopmentStorage=true` with an Azure Storage connection string or managed identity flow.
+- Use private containers unless public access is intentionally required.
+- Add lifecycle and retention policies for uploaded project/task files.
 
-## 5. AI Services Configuration
+## AI Configuration
+
+PMWDS currently exposes only OpenAI and OpenRouter provider configuration in the API and client.
 
 File: `PMWDS.API/appsettings.json`
 
-### OpenAI
 ```json
-"OpenAI": {
-  "Enabled": true,
-  "BaseUrl": "https://api.openai.com/v1",
-  "ApiKey": "your-openai-api-key",
+"AI": {
+  "OpenAIApiKey": "your-openai-api-key",
+  "OpenAIModel": "gpt-4o",
+  "DefaultProvider": "OpenAI",
   "DefaultModel": "gpt-4o",
-  "ModelsPath": "/models"
+  "AppName": "PMWDS",
+  "AppUrl": "http://localhost:5177",
+  "OpenAI": {
+    "Enabled": true,
+    "BaseUrl": "https://api.openai.com/v1",
+    "ApiKey": "your-openai-api-key",
+    "DefaultModel": "gpt-4o",
+    "ModelsPath": "/models"
+  },
+  "OpenRouter": {
+    "Enabled": false,
+    "BaseUrl": "https://openrouter.ai/api/v1",
+    "ApiKey": "your-openrouter-api-key",
+    "DefaultModel": "openai/gpt-4o-mini",
+    "ModelsPath": "/models",
+    "Headers": {
+      "HTTP-Referer": "http://localhost:5177",
+      "X-OpenRouter-Title": "PMWDS"
+    }
+  },
+  "MLModelPath": "Models/delay-prediction.zip",
+  "UseLocalModel": false,
+  "RiskThreshold": 0.7,
+  "TrainingCronHour": 2
 }
 ```
 
-### OpenRouter
-```json
-"OpenRouter": {
-  "Enabled": false,
-  "BaseUrl": "https://openrouter.ai/api/v1",
-  "ApiKey": "sk-or-v1-...",
-  "DefaultModel": "openai/gpt-oss-120b:free"
-}
-```
+Production changes:
 
-### OpenCode
-```json
-"OpenCode": {
-  "Enabled": false,
-  "BaseUrl": "https://opencode.ai/zen/v1",
-  "ApiKey": "your-opencode-zen-api-key",
-  "DefaultModel": "bigpickle"
-}
-```
+- Remove API keys from committed JSON.
+- Store OpenAI/OpenRouter keys in environment variables or a secret manager.
+- Set `AppUrl` and OpenRouter headers to production URLs.
+- Review `RiskThreshold` with real delivery data.
+- Persist and monitor model-training artifacts before relying on automated decisions.
 
-### Local ML Model
-```json
-"MLModelPath": "Models/delay-prediction.zip",
-"UseLocalModel": false,
-"RiskThreshold": 0.7,
-"TrainingCronHour": 2
-```
-
-**Required Change:** Replace `ApiKey` values with actual API keys for enabled providers.
-
----
-
-## 6. Hangfire
+## Hangfire
 
 File: `PMWDS.API/appsettings.json`
 
@@ -157,11 +289,41 @@ File: `PMWDS.API/appsettings.json`
 }
 ```
 
-**Note:** Automatically disabled when SQLite fallback is active.
+Runtime behavior:
 
----
+- Hangfire is enabled only when SQL Server is active.
+- Hangfire is disabled when SQLite fallback is active.
 
-## 7. CORS / Allowed Origins
+Recurring jobs:
+
+- Deadline checker.
+- Escalation checker.
+- AI model training.
+- Scheduled reports.
+
+Production changes:
+
+- Use a SQL Server-backed Hangfire database.
+- Restrict dashboard access to administrators.
+- Monitor failed jobs and retry queues.
+
+## Redis Cache
+
+Connection string:
+
+```json
+"ConnectionStrings": {
+  "Redis": "localhost:6379"
+}
+```
+
+Production changes:
+
+- Use a managed Redis instance where possible.
+- Require TLS/authentication when supported.
+- Size cache memory for dashboard, notification, and session workloads.
+
+## CORS
 
 File: `PMWDS.API/appsettings.json`
 
@@ -175,9 +337,13 @@ File: `PMWDS.API/appsettings.json`
 ]
 ```
 
----
+Production changes:
 
-## 8. Logging (Serilog)
+- Remove unused localhost origins.
+- Add only the deployed client origins.
+- Keep credentials enabled only for trusted origins.
+
+## Logging
 
 File: `PMWDS.API/appsettings.json`
 
@@ -194,29 +360,7 @@ File: `PMWDS.API/appsettings.json`
 }
 ```
 
----
-
-## 9. Launch Settings
-
-File: `PMWDS.API/Properties/launchSettings.json`
-
-```json
-{
-  "profiles": {
-    "http": {
-      "commandName": "Project",
-      "applicationUrl": "http://localhost:5177",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    }
-  }
-}
-```
-
----
-
-## 10. Seq (Logging Server)
+Optional Seq endpoint:
 
 ```json
 "Seq": {
@@ -224,14 +368,76 @@ File: `PMWDS.API/Properties/launchSettings.json`
 }
 ```
 
----
+Production changes:
 
-## Quick Reference: Required Changes for Production
+- Send structured logs to a central sink.
+- Avoid logging secrets, tokens, passwords, or full AI prompts if they can contain sensitive data.
+- Add request correlation IDs.
 
-| Setting | File | Action |
-|---------|------|--------|
-| JWT Secret | `appsettings.json` | Replace with strong random key |
-| SMTP Password | `appsettings.json` | Set actual password |
-| OpenAI ApiKey | `appsettings.json` | Set API key |
-| Allowed Origins | `appsettings.json` | Restrict to production domains |
-| Connection Strings | `appsettings.json` | Use production database |
+## Client Configuration
+
+The React client defaults to:
+
+```text
+http://localhost:5177/api/v1
+```
+
+Override with Vite environment variable:
+
+```powershell
+$env:VITE_API_BASE_URL = "https://api.yourdomain.com/api/v1"
+npm run build
+```
+
+Local development:
+
+```powershell
+cd Client
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Production build:
+
+```powershell
+cd Client
+npm run build
+```
+
+Deploy the generated `Client/dist` folder to a static web host or serve it behind the same reverse proxy as the API.
+
+## Deployment Checklist
+
+1. Build and test the API.
+2. Build and test the client.
+3. Configure production SQL Server connection strings.
+4. Configure Redis if distributed caching is required.
+5. Configure Azure Storage or equivalent file storage.
+6. Configure JWT secret, email credentials, AI keys, and all secrets outside source control.
+7. Configure CORS with production origins only.
+8. Apply EF migrations to SQL Server.
+9. Start the API and verify Swagger/health endpoints.
+10. Start Hangfire workers with SQL Server-backed storage.
+11. Deploy the React client with `VITE_API_BASE_URL` pointing to the production API.
+12. Rotate seeded credentials or disable seeded users.
+
+## Common Issues
+
+| Issue | Cause | Fix |
+|------|-------|-----|
+| API uses SQLite unexpectedly | Development config has `ForceSqlite: true` | Set `ForceSqlite` to `false` and verify SQL Server connectivity |
+| Hangfire dashboard missing | SQLite is active | Use SQL Server for Hangfire-enabled runs |
+| SQLite migration update fails | SQL Server-shaped migration history is not fully portable | Use API startup SQLite bootstrap or implement provider-specific migrations |
+| Client cannot call API | Wrong API base URL or CORS origin | Set `VITE_API_BASE_URL` and add the client origin to `AllowedOrigins` |
+| Login fails | Wrong seeded password or stale database | Use `Pmwds@123`; restart API to rebuild stale SQLite schema if needed |
+| AI provider test fails | Missing API key, disabled provider, or wrong model | Enable provider and configure key/model in settings |
+
+## Production Hardening
+
+- Move every secret out of committed JSON.
+- Replace development seeded credentials.
+- Replace development password hashing.
+- Split provider-specific migrations for SQL Server and SQLite if SQLite remains a supported runtime database.
+- Add API health checks and readiness probes.
+- Add automated smoke tests for seeded workflows.
+- Add Playwright coverage for critical client pages.
+- Add backup, restore, and retention policies for SQL Server and file storage.
