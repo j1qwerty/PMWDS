@@ -1,4 +1,5 @@
 import type { User } from "../../types";
+import { inputClass, labelClass } from "../../ui";
 
 type UserSelectProps = {
   users: User[];
@@ -10,9 +11,9 @@ type UserSelectProps = {
 
 export function UserSelect({ users, value, onChange, label = "Assignee", allowEmpty = true }: UserSelectProps) {
   return (
-    <label>
+    <label className={labelClass}>
       <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className={inputClass} value={value} onChange={(event) => onChange(event.target.value)}>
         {allowEmpty ? <option value="">Unassigned</option> : null}
         {users.map((user) => (
           <option key={user.id} value={user.id}>

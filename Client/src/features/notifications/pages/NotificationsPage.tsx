@@ -68,36 +68,36 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Inbox" subtitle="Read, clear, and monitor personal notifications">
-        <div className="inline-actions">
-          <button className="ghost-button" onClick={() => auth && api.markAllNotificationsRead(auth.token).then(() => { setMessage("Notifications marked as read."); void refresh(); })}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && api.markAllNotificationsRead(auth.token).then(() => { setMessage("Notifications marked as read."); void refresh(); })}>
             Mark All Read
           </button>
           {canWrite ? (
-            <button className="primary-button" onClick={() => setBroadcastOpen(true)}>
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setBroadcastOpen(true)}>
               Broadcast
             </button>
           ) : null}
         </div>
-        <div className="list-column">
+        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
           {items.map((item) => (
-            <div className={`list-card ${item.isRead ? "" : "selected-card"}`} key={item.id}>
+            <div className={`rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06] ${item.isRead ? "" : "selected-card"}`} key={item.id}>
               <strong>{item.title}</strong>
               <span>{item.type}</span>
               <small>{item.message}</small>
-              <div className="badge-row">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <StatusBadge label={item.priority} tone={item.priority === "High" ? "danger" : "info"} />
                 <StatusBadge label={item.isRead ? "Read" : "Unread"} tone={item.isRead ? "success" : "warning"} />
               </div>
-              <div className="inline-actions">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {!item.isRead ? (
-                  <button className="ghost-button" onClick={() => auth && api.markNotificationRead(auth.token, item.id).then(() => { setMessage("Notification marked as read."); void refresh(); })}>
+                  <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && api.markNotificationRead(auth.token, item.id).then(() => { setMessage("Notification marked as read."); void refresh(); })}>
                     Mark Read
                   </button>
                 ) : null}
-                <button className="danger-button" onClick={() => auth && api.deleteNotification(auth.token, item.id).then(() => { setMessage("Notification deleted."); void refresh(); })}>
+                <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => auth && api.deleteNotification(auth.token, item.id).then(() => { setMessage("Notification deleted."); void refresh(); })}>
                   Delete
                 </button>
               </div>
@@ -107,8 +107,8 @@ export function NotificationsPage() {
       </Panel>
       {canManage ? (
         <Panel title="Templates" subtitle="Maintain reusable notification layouts and supported channels">
-          <div className="table-wrap">
-            <table className="table">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
                   <th>Type</th>
@@ -122,14 +122,14 @@ export function NotificationsPage() {
                   <tr key={template.id}>
                     <td>
                       <strong>{template.templateType}</strong>
-                      <div className="table-sub">{template.subjectTemplate}</div>
+                      <div className="text-xs text-slate-500">{template.subjectTemplate}</div>
                     </td>
                     <td>{template.variables.join(", ") || "None"}</td>
                     <td>{template.supportedChannels.join(", ") || "None"}</td>
                     <td>
-                      <div className="inline-actions">
-                        <button className="ghost-button" onClick={() => setEditingTemplate(template)}>Edit</button>
-                        {canWrite ? <button className="danger-button" onClick={() => setDeletingTemplate(template)}>Delete</button> : null}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingTemplate(template)}>Edit</button>
+                        {canWrite ? <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingTemplate(template)}>Delete</button> : null}
                       </div>
                     </td>
                   </tr>
@@ -138,8 +138,8 @@ export function NotificationsPage() {
             </table>
           </div>
           {canWrite ? (
-            <div className="inline-actions">
-              <button className="primary-button" onClick={() => setEditingTemplate({} as NotificationTemplateRecord)}>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingTemplate({} as NotificationTemplateRecord)}>
                 Create Template
               </button>
             </div>
@@ -148,8 +148,8 @@ export function NotificationsPage() {
       ) : null}
       {canManage ? (
         <Panel title="Alert Rules" subtitle="Define automated notification conditions and downstream actions">
-          <div className="table-wrap">
-            <table className="table">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -163,14 +163,14 @@ export function NotificationsPage() {
                   <tr key={rule.id}>
                     <td>
                       <strong>{rule.name}</strong>
-                      <div className="table-sub">{rule.lastTriggered ? `Last triggered ${new Date(rule.lastTriggered).toLocaleString()}` : "Never triggered"}</div>
+                      <div className="text-xs text-slate-500">{rule.lastTriggered ? `Last triggered ${new Date(rule.lastTriggered).toLocaleString()}` : "Never triggered"}</div>
                     </td>
                     <td>{rule.conditionType}</td>
                     <td>{rule.actionType}</td>
                     <td>
-                      <div className="inline-actions">
-                        <button className="ghost-button" onClick={() => setEditingRule(rule)}>Edit</button>
-                        {canWrite ? <button className="danger-button" onClick={() => setDeletingRule(rule)}>Delete</button> : null}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingRule(rule)}>Edit</button>
+                        {canWrite ? <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingRule(rule)}>Delete</button> : null}
                       </div>
                     </td>
                   </tr>
@@ -179,8 +179,8 @@ export function NotificationsPage() {
             </table>
           </div>
           {canWrite ? (
-            <div className="inline-actions">
-              <button className="primary-button" onClick={() => setEditingRule({} as AlertRuleRecord)}>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingRule({} as AlertRuleRecord)}>
                 Create Rule
               </button>
             </div>

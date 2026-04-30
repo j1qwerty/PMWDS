@@ -12,7 +12,7 @@ const priorities = ["", "Low", "Medium", "High", "Critical"];
 
 export function TaskFilters({ filters, milestones, users, onChange }: TaskFiltersProps) {
   return (
-    <div className="toolbar-grid">
+    <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
       <label><span>Search</span><input value={filters.search} onChange={(event) => onChange({ ...filters, search: event.target.value })} /></label>
       <label>
         <span>Status</span>

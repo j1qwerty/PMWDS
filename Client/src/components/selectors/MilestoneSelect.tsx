@@ -1,4 +1,5 @@
 import type { Milestone } from "../../types";
+import { inputClass, labelClass } from "../../ui";
 
 type MilestoneSelectProps = {
   milestones: Milestone[];
@@ -18,9 +19,9 @@ export function MilestoneSelect({
   emptyLabel = "Standalone",
 }: MilestoneSelectProps) {
   return (
-    <label>
+    <label className={labelClass}>
       <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className={inputClass} value={value} onChange={(event) => onChange(event.target.value)}>
         {allowEmpty ? <option value="">{emptyLabel}</option> : null}
         {milestones.map((milestone) => (
           <option key={milestone.id} value={milestone.id}>

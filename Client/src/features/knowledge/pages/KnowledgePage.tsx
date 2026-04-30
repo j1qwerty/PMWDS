@@ -54,11 +54,11 @@ export function KnowledgePage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Knowledge Articles" subtitle="Capture reusable process knowledge, notes, and project-specific guidance">
-        <div className="table-wrap">
-          <table className="table">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th>Title</th>
@@ -72,14 +72,14 @@ export function KnowledgePage() {
                 <tr key={article.id}>
                   <td>
                     <strong>{article.title}</strong>
-                    <div className="table-sub">{article.tags.join(", ")}</div>
+                    <div className="text-xs text-slate-500">{article.tags.join(", ")}</div>
                   </td>
                   <td>{article.category}</td>
                   <td>{projects.find((project) => project.id === article.projectId)?.name ?? "General"}</td>
                   <td>
-                    <div className="inline-actions">
-                      <button className="ghost-button" onClick={() => setEditingArticle(article)}>Edit</button>
-                      <button className="danger-button" onClick={() => setDeletingArticle(article)}>Delete</button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingArticle(article)}>Edit</button>
+                      <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingArticle(article)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -87,15 +87,15 @@ export function KnowledgePage() {
             </tbody>
           </table>
         </div>
-        <div className="inline-actions">
-          <button className="primary-button" onClick={() => setEditingArticle({} as KnowledgeArticleRecord)}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingArticle({} as KnowledgeArticleRecord)}>
             Create Article
           </button>
         </div>
       </Panel>
       <Panel title="Lessons Learned" subtitle="Track reusable delivery lessons and project retrospectives">
-        <div className="table-wrap">
-          <table className="table">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th>Title</th>
@@ -109,14 +109,14 @@ export function KnowledgePage() {
                 <tr key={lesson.id}>
                   <td>
                     <strong>{lesson.title}</strong>
-                    <div className="table-sub">{lesson.keywords.join(", ")}</div>
+                    <div className="text-xs text-slate-500">{lesson.keywords.join(", ")}</div>
                   </td>
                   <td>{projects.find((project) => project.id === lesson.projectId)?.name ?? lesson.projectId}</td>
                   <td>{lesson.impact}</td>
                   <td>
-                    <div className="inline-actions">
-                      <button className="ghost-button" onClick={() => setEditingLesson(lesson)}>Edit</button>
-                      <button className="danger-button" onClick={() => setDeletingLesson(lesson)}>Delete</button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingLesson(lesson)}>Edit</button>
+                      <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingLesson(lesson)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -124,8 +124,8 @@ export function KnowledgePage() {
             </tbody>
           </table>
         </div>
-        <div className="inline-actions">
-          <button className="primary-button" onClick={() => setEditingLesson({} as LessonLearnedRecord)}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingLesson({} as LessonLearnedRecord)}>
             Create Lesson
           </button>
         </div>

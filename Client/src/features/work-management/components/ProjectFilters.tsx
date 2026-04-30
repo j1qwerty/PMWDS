@@ -12,7 +12,7 @@ const statuses = ["", "NotStarted", "InProgress", "OnHold", "Completed", "Cancel
 
 export function ProjectFilters({ search, status, departmentId, departments, onChange }: ProjectFiltersProps) {
   return (
-    <div className="toolbar-grid">
+    <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
       <label><span>Search</span><input value={search} onChange={(event) => onChange({ search: event.target.value, status, departmentId })} /></label>
       <label>
         <span>Status</span>

@@ -49,15 +49,15 @@ export function TasksWorkspacePage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Task Workspace" subtitle="Standalone tasks, milestone groups, assignees, and subtasks">
-        <div className="toolbar-grid"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /><TaskFilters filters={filters} milestones={milestones} users={users} onChange={(next) => setFilters({ ...filters, ...next })} /></div>
-        <div className="split">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /><TaskFilters filters={filters} milestones={milestones} users={users} onChange={(next) => setFilters({ ...filters, ...next })} /></div>
+        <div className="grid gap-5 lg:grid-cols-2">
           <TaskGroupBoard milestones={groupedTasks} standaloneTasks={standaloneTasks} allTasks={tasks} selectedTaskId={selectedTask?.id ?? ""} onSelect={setSelectedTaskId} />
           <TaskDetail task={selectedTask} subtasks={subtasks} onEdit={() => setEditingTask(selectedTask)} onDelete={() => setConfirmTask(selectedTask)} onCreateSubtask={() => setSubtaskParent(selectedTask)} onUpdateStatus={(status) => auth && selectedTask ? void api.updateTaskStatus(auth.token, selectedTask.id, status).then(() => { setMessage("Task status updated."); refresh(); }) : undefined} />
         </div>
-        <div className="inline-actions"><button className="primary-button" onClick={() => setEditingTask({} as Task)}>Create Task</button></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingTask({} as Task)}>Create Task</button></div>
       </Panel>
       <TaskFormDialog open={editingTask !== null} task={editingTask?.id ? editingTask : undefined} projects={projects} milestones={milestones} users={users} selectedProjectId={selectedProjectId || projects[0]?.id || ""} onClose={() => setEditingTask(null)} onSubmit={handleTaskSubmit} />
       <TaskFormDialog open={subtaskParent !== null} parentTaskId={subtaskParent?.id} projects={projects} milestones={milestones} users={users} selectedProjectId={selectedProjectId || projects[0]?.id || ""} onClose={() => setSubtaskParent(null)} onSubmit={handleSubtaskSubmit} />

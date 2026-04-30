@@ -74,15 +74,15 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Stored Reports" subtitle="Manage generated report files and their reusable metadata">
-        <div className="split">
-          <div className="list-column">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
             {reports.map((report) => (
               <button
                 key={report.id}
-                className={`list-card ${selectedReport?.id === report.id ? "selected-card" : ""}`}
+                className={`rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06] ${selectedReport?.id === report.id ? "selected-card" : ""}`}
                 onClick={() => setSelectedId(report.id)}
               >
                 <strong>{report.name}</strong>
@@ -91,15 +91,15 @@ export function ReportsPage() {
               </button>
             ))}
           </div>
-          <div className="detail-card">
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
             {selectedReport ? (
               <>
-                <div className="section-row">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h4>{selectedReport.name}</h4>
-                  <div className="inline-actions">
-                    <button className="ghost-button" onClick={() => setEditingReport(selectedReport)}>Edit</button>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingReport(selectedReport)}>Edit</button>
                     <button
-                      className="ghost-button"
+                      className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() =>
                         auth &&
                         api.downloadStoredReport(auth.token, selectedReport.id).then((blob) => {
@@ -109,7 +109,7 @@ export function ReportsPage() {
                     >
                       Download
                     </button>
-                    <button className="danger-button" onClick={() => setDeletingReport(selectedReport)}>Delete</button>
+                    <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingReport(selectedReport)}>Delete</button>
                   </div>
                 </div>
                 <p>{JSON.stringify(detail?.report.parameters ?? selectedReport.parameters, null, 2)}</p>
@@ -117,19 +117,19 @@ export function ReportsPage() {
                 <div className="metric-row"><span>Schedules</span><strong>{detail?.schedules.length ?? 0}</strong></div>
               </>
             ) : (
-              <div className="empty-state"><strong>No stored reports</strong><span>Create one to start scheduling exports.</span></div>
+              <div className="rounded-lg border border-dashed border-[var(--pmwds-border)] bg-white/[0.025] p-8 text-center text-slate-400"><strong>No stored reports</strong><span>Create one to start scheduling exports.</span></div>
             )}
           </div>
         </div>
-        <div className="inline-actions">
-          <button className="primary-button" onClick={() => setEditingReport({} as StoredReportRecord)}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingReport({} as StoredReportRecord)}>
             Create Stored Report
           </button>
         </div>
       </Panel>
       <Panel title="Schedules" subtitle="Automate report delivery and recurring exports">
-        <div className="table-wrap">
-          <table className="table">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th>Report</th>
@@ -145,9 +145,9 @@ export function ReportsPage() {
                   <td>{schedule.frequency}</td>
                   <td>{new Date(schedule.nextRun).toLocaleString()}</td>
                   <td>
-                    <div className="inline-actions">
-                      <button className="ghost-button" onClick={() => setEditingSchedule(schedule)}>Edit</button>
-                      <button className="danger-button" onClick={() => setDeletingSchedule(schedule)}>Delete</button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingSchedule(schedule)}>Edit</button>
+                      <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingSchedule(schedule)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -155,8 +155,8 @@ export function ReportsPage() {
             </tbody>
           </table>
         </div>
-        <div className="inline-actions">
-          <button className="primary-button" onClick={() => setEditingSchedule({} as ReportScheduleRecord)}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingSchedule({} as ReportScheduleRecord)}>
             Create Schedule
           </button>
         </div>

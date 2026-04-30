@@ -38,8 +38,8 @@ export function AIModelFormDialog({
 
   return (
     <Dialog open={open} title={model ? "Edit AI Model" : "Create AI Model"} onClose={onClose}>
-      <div className="dialog-stack">
-        <div className="form-grid wide">
+      <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <label>
             <span>Name</span>
             <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
@@ -77,10 +77,10 @@ export function AIModelFormDialog({
             <input type="number" step="0.01" value={form.recallScore} onChange={(event) => setForm({ ...form, recallScore: Number(event.target.value) })} />
           </label>
         </div>
-        <div className="inline-actions">
-          <button className="ghost-button" onClick={onClose}>Cancel</button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={onClose}>Cancel</button>
           <button
-            className="primary-button"
+            className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() =>
               onSubmit({
                 name: form.name,

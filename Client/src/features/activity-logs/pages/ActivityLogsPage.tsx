@@ -56,11 +56,11 @@ export function ActivityLogsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Activity Logs" subtitle="Inspect personal and team activity history, then record manual entries when needed">
         {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
-          <div className="inline-actions wide">
+          <div className="mt-4 flex w-full flex-wrap gap-2">
             <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)}>
               <option value="">My activity</option>
               {users.map((user) => (
@@ -71,9 +71,9 @@ export function ActivityLogsPage() {
             </select>
           </div>
         ) : null}
-        <div className="list-column">
+        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
           {logs.map((log) => (
-            <div className="list-card" key={log.id}>
+            <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={log.id}>
               <strong>{log.activityType}</strong>
               <span>{new Date(log.timestamp).toLocaleString()}</span>
               <small>{log.description}</small>
@@ -83,7 +83,7 @@ export function ActivityLogsPage() {
         </div>
       </Panel>
       <Panel title="Log Activity" subtitle="Create a manual activity entry for the current signed-in user">
-        <div className="form-grid wide">
+        <div className="grid grid-cols-1 gap-4">
           <label>
             <span>Activity Type</span>
             <input value={form.activityType} onChange={(event) => setForm({ ...form, activityType: event.target.value })} />
@@ -97,9 +97,9 @@ export function ActivityLogsPage() {
             <textarea rows={6} value={form.metadata} onChange={(event) => setForm({ ...form, metadata: event.target.value })} />
           </label>
         </div>
-        <div className="inline-actions">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
-            className="primary-button"
+            className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => {
               if (!auth) {
                 return;

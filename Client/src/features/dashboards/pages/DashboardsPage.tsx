@@ -53,15 +53,15 @@ export function DashboardsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Dashboards" subtitle="Manage dashboard layouts, default views, and operational widgets">
-        <div className="split">
-          <div className="list-column">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
             {dashboards.map((dashboard) => (
               <button
                 key={dashboard.id}
-                className={`list-card ${selectedDashboard?.id === dashboard.id ? "selected-card" : ""}`}
+                className={`rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06] ${selectedDashboard?.id === dashboard.id ? "selected-card" : ""}`}
                 onClick={() => setSelectedId(dashboard.id)}
               >
                 <strong>{dashboard.name}</strong>
@@ -70,35 +70,35 @@ export function DashboardsPage() {
               </button>
             ))}
           </div>
-          <div className="detail-card">
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
             {selectedDashboard ? (
               <>
-                <div className="section-row">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h4>{selectedDashboard.name}</h4>
-                  <div className="inline-actions">
-                    <button className="ghost-button" onClick={() => setEditingDashboard(selectedDashboard)}>Edit</button>
-                    <button className="danger-button" onClick={() => setDeletingDashboard(selectedDashboard)}>Delete</button>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingDashboard(selectedDashboard)}>Edit</button>
+                    <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingDashboard(selectedDashboard)}>Delete</button>
                   </div>
                 </div>
                 <p>{selectedDashboard.isDefault ? "Default dashboard for the current user." : "Custom dashboard layout."}</p>
                 <div className="metric-row"><span>Layout</span><strong>{selectedDashboard.layoutType}</strong></div>
                 <div className="metric-row"><span>Last Accessed</span><strong>{new Date(selectedDashboard.lastAccessed).toLocaleString()}</strong></div>
-                <div className="section-row" style={{ marginTop: "1rem" }}>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3" style={{ marginTop: "1rem" }}>
                   <h4>Widgets</h4>
-                  <button className="primary-button" onClick={() => setEditingWidget({} as DashboardWidgetRecord)}>
+                  <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingWidget({} as DashboardWidgetRecord)}>
                     Add Widget
                   </button>
                 </div>
-                <div className="list-column">
+                <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
                   {selectedDashboard.widgets.map((widget) => (
-                    <div className="list-card" key={widget.id}>
+                    <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={widget.id}>
                       <strong>{widget.title}</strong>
                       <span>{widget.widgetType}</span>
                       <small>Order {widget.displayOrder} · refresh {widget.refreshInterval} min</small>
-                      <div className="inline-actions">
-                        <button className="ghost-button" onClick={() => setEditingWidget(widget)}>Edit</button>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingWidget(widget)}>Edit</button>
                         <button
-                          className="ghost-button"
+                          className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                           onClick={() =>
                             auth &&
                             api.reorderDashboardWidgets(
@@ -116,22 +116,22 @@ export function DashboardsPage() {
                         >
                           Move Last
                         </button>
-                        <button className="danger-button" onClick={() => setDeletingWidget(widget)}>Delete</button>
+                        <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeletingWidget(widget)}>Delete</button>
                       </div>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="empty-state">
+              <div className="rounded-lg border border-dashed border-[var(--pmwds-border)] bg-white/[0.025] p-8 text-center text-slate-400">
                 <strong>No dashboards</strong>
                 <span>Create a dashboard to start configuring widgets.</span>
               </div>
             )}
           </div>
         </div>
-        <div className="inline-actions">
-          <button className="primary-button" onClick={() => setEditingDashboard({} as DashboardRecord)}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingDashboard({} as DashboardRecord)}>
             Create Dashboard
           </button>
         </div>

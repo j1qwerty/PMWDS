@@ -39,11 +39,11 @@ export function SkillsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Skills" subtitle="Maintain reusable skill taxonomy and the expertise catalogue">
-        <div className="table-wrap">
-          <table className="table">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th>Name</th>
@@ -57,14 +57,14 @@ export function SkillsPage() {
                 <tr key={skill.id}>
                   <td>
                     <strong>{skill.name}</strong>
-                    <div className="table-sub">{skill.description}</div>
+                    <div className="text-xs text-slate-500">{skill.description}</div>
                   </td>
                   <td>{skill.category}</td>
                   <td>{skill.userCount}</td>
                   <td>
-                    <div className="inline-actions">
-                      <button className="ghost-button" onClick={() => setEditing(skill)}>Edit</button>
-                      <button className="danger-button" onClick={() => setDeleting(skill)}>Delete</button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditing(skill)}>Edit</button>
+                      <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setDeleting(skill)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -72,8 +72,8 @@ export function SkillsPage() {
             </tbody>
           </table>
         </div>
-        <div className="inline-actions">
-          <button className="primary-button" onClick={() => setEditing({} as SkillRecord)}>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditing({} as SkillRecord)}>
             Create Skill
           </button>
         </div>

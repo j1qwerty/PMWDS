@@ -52,19 +52,19 @@ export function ProjectsWorkspacePage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Projects" subtitle="Portfolio overview, project controls, and milestone management">
         <ProjectFilters search={filters.search} status={filters.status} departmentId={filters.departmentId} departments={departments} onChange={setFilters} />
-        <div className="split">
+        <div className="grid gap-5 lg:grid-cols-2">
           <ProjectList projects={visibleProjects} selectedId={selectedProject?.id ?? ""} onSelect={setSelectedProjectId} />
           <ProjectDetail project={selectedProject} onStatusChange={handleProjectStatus} onEdit={() => setEditingProject(selectedProject)} onDelete={() => setConfirmProject(selectedProject)} />
         </div>
-        <div className="inline-actions"><button className="primary-button" onClick={() => setEditingProject({} as Project)}>Create Project</button></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingProject({} as Project)}>Create Project</button></div>
       </Panel>
       <Panel title="Milestones" subtitle="Manage milestones for the selected project">
         <MilestoneList milestones={milestones} onEdit={setEditingMilestone} onComplete={(milestoneId) => auth && void api.completeMilestone(auth.token, milestoneId).then(() => { setMessage("Milestone marked complete."); refresh(); })} onDelete={setConfirmMilestone} />
-        <div className="inline-actions"><button className="primary-button" onClick={() => setEditingMilestone({ ...createMilestoneForm(selectedProject?.id ?? ""), id: "" } as unknown as Milestone)}>Create Milestone</button></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingMilestone({ ...createMilestoneForm(selectedProject?.id ?? ""), id: "" } as unknown as Milestone)}>Create Milestone</button></div>
       </Panel>
       <ProjectFormDialog open={editingProject !== null} project={editingProject?.id ? editingProject : undefined} departments={departments} users={users} onClose={() => setEditingProject(null)} onSubmit={handleProjectSubmit} />
       <MilestoneFormDialog open={editingMilestone !== null} projects={projects} selectedProjectId={selectedProject?.id ?? ""} milestone={editingMilestone?.id ? editingMilestone : undefined} onClose={() => setEditingMilestone(null)} onSubmit={handleMilestoneSubmit} />

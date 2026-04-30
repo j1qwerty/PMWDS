@@ -76,7 +76,7 @@ export function DashboardPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <section className="hero-panel">
         <div>
           {/* <p className="eyebrow">Mission Snapshot</p> */}
@@ -208,11 +208,11 @@ export function ProjectsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <Panel title="Portfolio Board" subtitle="Projects, milestones, AI summaries, and budget posture">
-        <div className="split">
+        <div className="grid gap-5 lg:grid-cols-2">
           <div>
-            <div className="section-row">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h4>Active Projects</h4>
               <select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>
                 {projects.map((project) => (
@@ -226,7 +226,7 @@ export function ProjectsPage() {
           </div>
           <div>
             {selectedProject ? (
-              <div className="detail-card">
+              <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
                 <h4>{selectedProject.name}</h4>
                 <p>{selectedProject.description || "No description provided."}</p>
                 <MetricRow label="Budget" value={formatMoney(selectedProject.plannedBudget)} />
@@ -237,7 +237,7 @@ export function ProjectsPage() {
                 <MetricRow label="Status" value={selectedProject.status} />
                 <MetricRow label="Department" value={selectedProject.departmentName || "Unknown"} />
                 {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
-                  <div className="inline-actions">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     {projectStatuses.map((status) => (
                       <button
                         key={status}
@@ -253,25 +253,25 @@ export function ProjectsPage() {
                     ))}
                   </div>
                 ) : null}
-                <div className="chip-wrap">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {insights.map((insight) => (
-                    <span className="signal-chip" key={insight}>
+                    <span className="inline-flex rounded-full bg-sky-300/10 px-2.5 py-1 text-xs font-medium text-sky-200 ring-1 ring-sky-300/15" key={insight}>
                       {insight}
                     </span>
                   ))}
                 </div>
                 {health ? (
-                  <div className="health-grid">
+                  <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
                     <MetricTile label="Schedule" value={formatPercent(health.scheduleHealth)} />
                     <MetricTile label="Budget" value={formatPercent(health.budgetHealth)} />
                     <MetricTile label="Team" value={formatPercent(health.teamHealth)} />
                     <MetricTile label="Quality" value={formatPercent(health.qualityHealth)} />
                   </div>
                 ) : null}
-                <div className="file-row">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <input type="file" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} />
                   <button
-                    className="primary-button"
+                    className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={async () => {
                       if (!auth || !uploadFile) return;
                       await api.uploadProjectDocument(auth.token, selectedProject.id, uploadFile);
@@ -282,7 +282,7 @@ export function ProjectsPage() {
                   </button>
                   {hasRole("SuperAdmin") ? (
                     <button
-                      className="danger-button"
+                      className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20"
                       onClick={async () => {
                         if (!auth) return;
                         await api.deleteProject(auth.token, selectedProject.id);
@@ -304,10 +304,10 @@ export function ProjectsPage() {
 
       {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
         <Panel title="Create Project" subtitle="Manager-only project intake">
-          <form className="form-grid" onSubmit={(event) => void handleCreateProject(event)}>
+          <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(event) => void handleCreateProject(event)}>
             <label><span>Project Code</span><input value={form.projectCode} onChange={(event) => setForm({ ...form, projectCode: event.target.value })} /></label>
             <label><span>Name</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-            <label className="wide"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+            <label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
             <label><span>Category</span><input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} /></label>
             <label><span>Start Date</span><input type="date" value={form.plannedStartDate} onChange={(event) => setForm({ ...form, plannedStartDate: event.target.value })} /></label>
             <label><span>End Date</span><input type="date" value={form.plannedEndDate} onChange={(event) => setForm({ ...form, plannedEndDate: event.target.value })} /></label>
@@ -332,7 +332,7 @@ export function ProjectsPage() {
                 {users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}
               </select>
             </label>
-            <button className="primary-button wide" type="submit">Create Project</button>
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Create Project</button>
           </form>
         </Panel>
       ) : null}
@@ -340,7 +340,7 @@ export function ProjectsPage() {
       {selectedProjectId && hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
         <Panel title="Create Milestone" subtitle="Add milestone to selected project">
           <form
-            className="form-grid"
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
               if (!auth || !selectedProjectId) return;
@@ -351,13 +351,13 @@ export function ProjectsPage() {
           >
             <label><span>Name</span><input value={milestoneForm.name} onChange={(event) => setMilestoneForm({ ...milestoneForm, name: event.target.value })} /></label>
             <label><span>Due Date</span><input type="date" value={milestoneForm.dueDate} onChange={(event) => setMilestoneForm({ ...milestoneForm, dueDate: event.target.value })} /></label>
-            <label className="wide"><span>Description</span><textarea value={milestoneForm.description} onChange={(event) => setMilestoneForm({ ...milestoneForm, description: event.target.value })} /></label>
+            <label className="md:col-span-2"><span>Description</span><textarea value={milestoneForm.description} onChange={(event) => setMilestoneForm({ ...milestoneForm, description: event.target.value })} /></label>
             <label><span>Order</span><input type="number" value={milestoneForm.order} onChange={(event) => setMilestoneForm({ ...milestoneForm, order: Number(event.target.value) })} /></label>
             <label>
               <span>Critical</span>
               <input type="checkbox" checked={milestoneForm.isCritical} onChange={(event) => setMilestoneForm({ ...milestoneForm, isCritical: event.target.checked })} />
             </label>
-            <button className="primary-button wide" type="submit">Create Milestone</button>
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Create Milestone</button>
           </form>
         </Panel>
       ) : null}
@@ -413,7 +413,7 @@ export function TasksPage() {
     });
   }, [auth, selectedTaskId]);
 
-  return <div className="page-grid"><Panel title="Task Command Center" subtitle="Assignments, progress, comments, timers, and escalation"><div className="split"><div><div className="section-row"><h4>Project Queue</h4><select value={selectedProjectId} onChange={(event) => void loadTasks(event.target.value)}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></div><TaskList tasks={tasks} onPick={setSelectedTaskId} selectedId={selectedTaskId} /></div><div>{selectedTask ? <div className="detail-card"><h4>{selectedTask.title}</h4><p>{selectedTask.description || "No task description yet."}</p><MetricRow label="Project" value={selectedTask.projectName || "Unlinked"} /><MetricRow label="Assignee" value={selectedTask.assignedToUserName || selectedTask.assignedToUserId || "Unassigned"} /><MetricRow label="Progress" value={formatPercent(selectedTask.progressPercentage)} /><MetricRow label="Priority" value={selectedTask.priority} /><MetricRow label="Due" value={formatDate(selectedTask.dueDate)} /><MetricRow label="Delay Risk" value={formatPercent(selectedTask.aiDelayProbability * 100)} /><div className="inline-actions">{taskStatuses.map((status) => (<button key={status} className={classNames("ghost-button", selectedTask.status === status && "selected")} onClick={async () => { if (!auth) return; await api.updateTaskStatus(auth.token, selectedTask.id, status); await loadTasks(selectedProjectId); }}>{status}</button>))}</div><form className="form-grid compact-form" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.updateTaskProgress(auth.token, selectedTask.id, progressForm.progressPercentage, progressForm.notes).then(() => loadTasks(selectedProjectId)); }}><label><span>Progress</span><input type="range" min={0} max={100} value={progressForm.progressPercentage} onChange={(event) => setProgressForm({ ...progressForm, progressPercentage: Number(event.target.value) })} /></label><label className="wide"><span>Notes</span><textarea value={progressForm.notes} onChange={(event) => setProgressForm({ ...progressForm, notes: event.target.value })} /></label><button className="primary-button wide" type="submit">Update Progress</button></form><div className="inline-actions">{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead") ? <><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Assign to...</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select><button className="primary-button" onClick={async () => { if (!auth || !selectedTask || !form.assignedToUserId) return; await api.assignTask(auth.token, selectedTask.id, form.assignedToUserId); await loadTasks(selectedProjectId); }}>Assign</button><button className="ghost-button" onClick={async () => { if (!auth || !selectedTask) return; await api.escalateTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Escalate</button></> : null}</div><div className="split narrow-gap"><form className="form-grid compact-form" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.addTaskComment(auth.token, selectedTask.id, comment).then(() => setComment("")); }}><label className="wide"><span>Comment</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} /></label><button className="ghost-button wide" type="submit">Add Comment</button></form><form className="form-grid compact-form" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.startTaskTimer(auth.token, selectedTask.id, timerDescription).then(() => setMessage("Timer started.")); }}><label className="wide"><span>Timer Description</span><input value={timerDescription} onChange={(event) => setTimerDescription(event.target.value)} /></label><div className="inline-actions wide"><button className="ghost-button" type="submit">Start Timer</button><button className="ghost-button" type="button" onClick={async () => { if (!auth || !selectedTask) return; await api.stopTaskTimer(auth.token, selectedTask.id); setMessage("Timer stopped."); }}>Stop Timer</button></div></form></div><div className="file-row"><input type="file" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} /><button className="ghost-button" onClick={async () => { if (!auth || !selectedTask || !attachment) return; await api.uploadTaskAttachment(auth.token, selectedTask.id, attachment); setMessage("Attachment uploaded."); }}>Upload Attachment</button>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <button className="danger-button" onClick={async () => { if (!auth || !selectedTask) return; await api.deleteTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Delete</button> : null}</div>{recommendation || delay ? <div className="health-grid"><MetricTile label="Suggested Assignee" value={String(recommendation?.recommendedUserName ?? "Unknown")} /><MetricTile label="Confidence" value={String(recommendation ? formatPercent(recommendation.confidenceScore) : "N/A")} /><MetricTile label="Delay Risk" value={String(delay ? formatPercent(delay.delayProbability * 100) : "N/A")} /><MetricTile label="Risk Level" value={String(delay?.riskLevel ?? "N/A")} /></div> : null}</div> : <EmptyState title="No task selected" description="Pick a task to manage assignment, progress, and AI guidance." />}</div></div></Panel>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <Panel title="Create Task" subtitle="Scope new work into the active project"><form className="form-grid" onSubmit={(event) => { event.preventDefault(); if (!auth) return; void api.createTask(auth.token, { ...form, projectId: selectedProjectId || form.projectId }).then(() => loadTasks(selectedProjectId || form.projectId)); }}><label><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label><label className="wide"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label><span>Start Date</span><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label><label><span>Due Date</span><input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /></label><label><span>Estimate</span><input type="number" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: Number(event.target.value) })} /></label><label><span>Priority</span><select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>{priorities.map((priority) => (<option key={priority}>{priority}</option>))}</select></label><label><span>Project</span><select value={selectedProjectId || form.projectId} onChange={(event) => setSelectedProjectId(event.target.value)}><option value="">Choose</option>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label><label><span>Assignee</span><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select></label><button className="primary-button wide" type="submit">Create Task</button></form></Panel> : null}{message ? <Notice>{message}</Notice> : null}</div>;
+  return <div className="grid grid-cols-12 gap-4 content-start"><Panel title="Task Command Center" subtitle="Assignments, progress, comments, timers, and escalation"><div className="grid gap-5 lg:grid-cols-2"><div><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h4>Project Queue</h4><select value={selectedProjectId} onChange={(event) => void loadTasks(event.target.value)}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></div><TaskList tasks={tasks} onPick={setSelectedTaskId} selectedId={selectedTaskId} /></div><div>{selectedTask ? <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15"><h4>{selectedTask.title}</h4><p>{selectedTask.description || "No task description yet."}</p><MetricRow label="Project" value={selectedTask.projectName || "Unlinked"} /><MetricRow label="Assignee" value={selectedTask.assignedToUserName || selectedTask.assignedToUserId || "Unassigned"} /><MetricRow label="Progress" value={formatPercent(selectedTask.progressPercentage)} /><MetricRow label="Priority" value={selectedTask.priority} /><MetricRow label="Due" value={formatDate(selectedTask.dueDate)} /><MetricRow label="Delay Risk" value={formatPercent(selectedTask.aiDelayProbability * 100)} /><div className="mt-4 flex flex-wrap gap-2">{taskStatuses.map((status) => (<button key={status} className={classNames("ghost-button", selectedTask.status === status && "selected")} onClick={async () => { if (!auth) return; await api.updateTaskStatus(auth.token, selectedTask.id, status); await loadTasks(selectedProjectId); }}>{status}</button>))}</div><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.updateTaskProgress(auth.token, selectedTask.id, progressForm.progressPercentage, progressForm.notes).then(() => loadTasks(selectedProjectId)); }}><label><span>Progress</span><input type="range" min={0} max={100} value={progressForm.progressPercentage} onChange={(event) => setProgressForm({ ...progressForm, progressPercentage: Number(event.target.value) })} /></label><label className="md:col-span-2"><span>Notes</span><textarea value={progressForm.notes} onChange={(event) => setProgressForm({ ...progressForm, notes: event.target.value })} /></label><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Update Progress</button></form><div className="mt-4 flex flex-wrap gap-2">{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead") ? <><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Assign to...</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask || !form.assignedToUserId) return; await api.assignTask(auth.token, selectedTask.id, form.assignedToUserId); await loadTasks(selectedProjectId); }}>Assign</button><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask) return; await api.escalateTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Escalate</button></> : null}</div><div className="grid gap-3 lg:grid-cols-2"><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.addTaskComment(auth.token, selectedTask.id, comment).then(() => setComment("")); }}><label className="md:col-span-2"><span>Comment</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} /></label><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Add Comment</button></form><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.startTaskTimer(auth.token, selectedTask.id, timerDescription).then(() => setMessage("Timer started.")); }}><label className="md:col-span-2"><span>Timer Description</span><input value={timerDescription} onChange={(event) => setTimerDescription(event.target.value)} /></label><div className="mt-4 flex w-full flex-wrap gap-2"><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="submit">Start Timer</button><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={async () => { if (!auth || !selectedTask) return; await api.stopTaskTimer(auth.token, selectedTask.id); setMessage("Timer stopped."); }}>Stop Timer</button></div></form></div><div className="mt-4 flex flex-wrap items-center gap-3"><input type="file" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} /><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask || !attachment) return; await api.uploadTaskAttachment(auth.token, selectedTask.id, attachment); setMessage("Attachment uploaded."); }}>Upload Attachment</button>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={async () => { if (!auth || !selectedTask) return; await api.deleteTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Delete</button> : null}</div>{recommendation || delay ? <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><MetricTile label="Suggested Assignee" value={String(recommendation?.recommendedUserName ?? "Unknown")} /><MetricTile label="Confidence" value={String(recommendation ? formatPercent(recommendation.confidenceScore) : "N/A")} /><MetricTile label="Delay Risk" value={String(delay ? formatPercent(delay.delayProbability * 100) : "N/A")} /><MetricTile label="Risk Level" value={String(delay?.riskLevel ?? "N/A")} /></div> : null}</div> : <EmptyState title="No task selected" description="Pick a task to manage assignment, progress, and AI guidance." />}</div></div></Panel>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <Panel title="Create Task" subtitle="Scope new work into the active project"><form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth) return; void api.createTask(auth.token, { ...form, projectId: selectedProjectId || form.projectId }).then(() => loadTasks(selectedProjectId || form.projectId)); }}><label><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label><label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label><span>Start Date</span><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label><label><span>Due Date</span><input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /></label><label><span>Estimate</span><input type="number" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: Number(event.target.value) })} /></label><label><span>Priority</span><select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>{priorities.map((priority) => (<option key={priority}>{priority}</option>))}</select></label><label><span>Project</span><select value={selectedProjectId || form.projectId} onChange={(event) => setSelectedProjectId(event.target.value)}><option value="">Choose</option>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label><label><span>Assignee</span><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select></label><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Create Task</button></form></Panel> : null}{message ? <Notice>{message}</Notice> : null}</div>;
 }
 
 export function UsersPage() {
@@ -451,7 +451,7 @@ export function UsersPage() {
   }, [auth]);
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <Panel title="People Operations" subtitle="Capacity, activation state, workload shape, and profile controls">
         <UserTable users={users} />
       </Panel>
@@ -463,7 +463,7 @@ export function UsersPage() {
       {hasRole("SuperAdmin") ? (
         <Panel title="Register User" subtitle="Bootstrap new team members with role hints">
           <form
-            className="form-grid"
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
               if (!auth) return;
@@ -488,13 +488,13 @@ export function UsersPage() {
                 {departments.map((department) => (<option key={department.id} value={department.id}>{department.name}</option>))}
               </select>
             </label>
-            <button className="primary-button" type="submit">Register</button>
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" type="submit">Register</button>
           </form>
         </Panel>
       ) : null}
 
       <Panel title="Availability Controls" subtitle="Update readiness, add skills, or deactivate users">
-        <div className="form-grid">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label>
             <span>User</span>
             <select value={skillForm.userId} onChange={(event) => setSkillForm({ ...skillForm, userId: event.target.value })}>
@@ -517,9 +517,9 @@ export function UsersPage() {
           <label><span>Skill Id</span><input value={skillForm.skillId} onChange={(event) => setSkillForm({ ...skillForm, skillId: event.target.value })} /></label>
           <label><span>Proficiency</span><input type="number" min={1} max={5} value={skillForm.proficiencyLevel} onChange={(event) => setSkillForm({ ...skillForm, proficiencyLevel: Number(event.target.value) })} /></label>
           <label><span>Experience Months</span><input type="number" value={skillForm.experienceMonths} onChange={(event) => setSkillForm({ ...skillForm, experienceMonths: Number(event.target.value) })} /></label>
-          <div className="inline-actions wide">
+          <div className="mt-4 flex w-full flex-wrap gap-2">
             <button
-              className="ghost-button"
+              className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               onClick={async () => {
                 if (!auth || !skillForm.userId || !skillForm.skillId) return;
                 await api.addUserSkill(auth.token, skillForm.userId, skillForm.skillId, skillForm.proficiencyLevel, skillForm.experienceMonths);
@@ -530,7 +530,7 @@ export function UsersPage() {
             </button>
             {hasRole("SuperAdmin") ? (
               <button
-                className="danger-button"
+                className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20"
                 onClick={async () => {
                   if (!auth || !skillForm.userId) return;
                   await api.deactivateUser(auth.token, skillForm.userId);
@@ -623,10 +623,10 @@ export function DepartmentsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <Panel title="Department Grid" subtitle="Structure, capacity, and delivery ownership">
-        <div className="split">
-          <div className="list-column">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
             {departments.map((department) => (
               <button
                 key={department.id}
@@ -640,7 +640,7 @@ export function DepartmentsPage() {
               </button>
             ))}
           </div>
-          <div className="detail-card">
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
             <h4>{dashboard?.["name"] ? String(dashboard["name"]) : "Department view"}</h4>
             <MetricRow label="Organization" value={selectedOrganization?.name ?? "Unassigned"} />
             <MetricRow label="Members" value={String(dashboard?.["teamMembers"] ?? "0")} />
@@ -654,7 +654,7 @@ export function DepartmentsPage() {
       {hasRole("SuperAdmin") ? (
         <Panel title="Department Admin" subtitle="Create or remove organizational units">
           <form
-            className="form-grid"
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
               if (!auth) return;
@@ -675,7 +675,7 @@ export function DepartmentsPage() {
           >
             <label><span>Name</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
             <label><span>Code</span><input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></label>
-            <label className="wide"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+            <label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
             <label>
               <span>Organization</span>
               <select value={form.organizationId} onChange={(event) => setForm({ ...form, organizationId: event.target.value, parentDepartmentId: "" })}>
@@ -698,16 +698,16 @@ export function DepartmentsPage() {
               </select>
             </label>
             <label><span>Max Capacity</span><input type="number" value={form.maxCapacity} onChange={(event) => setForm({ ...form, maxCapacity: Number(event.target.value) })} /></label>
-            <div className="inline-actions wide">
-              <button className="primary-button" type="submit">{editingDepartmentId ? "Update Department" : "Create Department"}</button>
+            <div className="mt-4 flex w-full flex-wrap gap-2">
+              <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" type="submit">{editingDepartmentId ? "Update Department" : "Create Department"}</button>
               {editingDepartmentId ? (
-                <button className="ghost-button" type="button" onClick={resetDepartmentForm}>
+                <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={resetDepartmentForm}>
                   Cancel Edit
                 </button>
               ) : null}
               {selectedId ? (
                 <button
-                  className="ghost-button"
+                  className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                   type="button"
                   onClick={() => selectedDepartment && editDepartment(selectedDepartment)}
                 >
@@ -716,7 +716,7 @@ export function DepartmentsPage() {
               ) : null}
               {selectedId ? (
                 <button
-                  className="danger-button"
+                  className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20"
                   type="button"
                   onClick={async () => {
                     if (!auth) return;
@@ -751,14 +751,14 @@ export function NotificationsPage() {
   }, [auth, unreadOnly]);
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <Panel title="Inbox" subtitle="Alerts, AI observations, and operational signals">
-        <div className="section-row">
-          <label className="checkbox-row">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={unreadOnly} onChange={(event) => setUnreadOnly(event.target.checked)} />
             <span>Unread only</span>
           </label>
-          <button className="ghost-button" onClick={() => auth && void api.markAllNotificationsRead(auth.token).then(loadNotifications)}>
+          <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void api.markAllNotificationsRead(auth.token).then(loadNotifications)}>
             Mark All Read
           </button>
         </div>
@@ -772,7 +772,7 @@ export function NotificationsPage() {
       {hasRole("SuperAdmin") ? (
         <Panel title="Broadcast" subtitle="Push a system message to everyone or one department">
           <form
-            className="form-grid"
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
               if (!auth) return;
@@ -786,9 +786,9 @@ export function NotificationsPage() {
           >
             <label><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
             <label><span>Department Id</span><input value={form.departmentId} onChange={(event) => setForm({ ...form, departmentId: event.target.value })} /></label>
-            <label className="wide"><span>Message</span><textarea value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} /></label>
-            <label className="wide"><span>Action Url</span><input value={form.actionUrl} onChange={(event) => setForm({ ...form, actionUrl: event.target.value })} /></label>
-            <button className="primary-button wide" type="submit">Broadcast</button>
+            <label className="md:col-span-2"><span>Message</span><textarea value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} /></label>
+            <label className="md:col-span-2"><span>Action Url</span><input value={form.actionUrl} onChange={(event) => setForm({ ...form, actionUrl: event.target.value })} /></label>
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Broadcast</button>
           </form>
         </Panel>
       ) : null}
@@ -849,10 +849,10 @@ export function AIPage() {
   }, [auth, selectedTaskId]);
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <Panel title="Provider Matrix" subtitle="Discover models, test providers, and steer prompt traffic">
-        <div className="split">
-          <div className="list-column">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
             {providers.map((item) => (
               <button key={item.provider} className={classNames("list-card", provider === item.provider && "selected-card")} onClick={() => setProvider(item.provider)}>
                 <strong>{item.displayName}</strong>
@@ -861,9 +861,9 @@ export function AIPage() {
               </button>
             ))}
           </div>
-          <div className="detail-card">
-            <div className="section-row"><h4>Model Search</h4><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Search models" /></div>
-            <div className="list-column">
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h4>Model Search</h4><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Search models" /></div>
+            <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
               {models.map((item) => (
                 <button key={item.id} className={classNames("model-card", selectedModel === item.id && "selected-card")} onClick={() => setSelectedModel(item.id)}>
                   <strong>{item.name}</strong>
@@ -872,47 +872,47 @@ export function AIPage() {
                 </button>
               ))}
             </div>
-            <button className="primary-button" onClick={async () => { if (!auth) return; setTestResult(await api.testAiProvider(auth.token, provider, selectedModel)); }}>Test Provider</button>
-            {testResult ? <div className="detail-card nested"><MetricRow label="Provider" value={testResult.provider} /><MetricRow label="Model" value={testResult.model} /><MetricRow label="Result" value={testResult.success ? "Success" : "Failure"} /><p>{testResult.message}</p>{testResult.rawResponse ? <pre className="log-box">{testResult.rawResponse}</pre> : null}</div> : null}
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth) return; setTestResult(await api.testAiProvider(auth.token, provider, selectedModel)); }}>Test Provider</button>
+            {testResult ? <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15 nested"><MetricRow label="Provider" value={testResult.provider} /><MetricRow label="Model" value={testResult.model} /><MetricRow label="Result" value={testResult.success ? "Success" : "Failure"} /><p>{testResult.message}</p>{testResult.rawResponse ? <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-black/70 p-3 text-xs text-emerald-300">{testResult.rawResponse}</pre> : null}</div> : null}
           </div>
         </div>
       </Panel>
 
       <Panel title="AI Assistant" subtitle="Provider-aware chat against current PMWDS context">
-        <div className="form-grid">
-          <label className="wide"><span>Prompt</span><textarea value={chatPrompt} onChange={(event) => setChatPrompt(event.target.value)} /></label>
-          <button className="primary-button" onClick={async () => { if (!auth) return; setChatResult(await api.chat(auth.token, chatPrompt, provider, selectedModel)); }}>Run Prompt</button>
-          {chatResult ? <div className="wide detail-card"><MetricRow label="Intent" value={chatResult.intent} /><p>{chatResult.message}</p><div className="chip-wrap">{(chatResult.suggestedActions ?? []).map((item: string) => (<span className="signal-chip" key={item}>{item}</span>))}</div></div> : null}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="md:col-span-2"><span>Prompt</span><textarea value={chatPrompt} onChange={(event) => setChatPrompt(event.target.value)} /></label>
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth) return; setChatResult(await api.chat(auth.token, chatPrompt, provider, selectedModel)); }}>Run Prompt</button>
+          {chatResult ? <div className="md:col-span-2 rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15"><MetricRow label="Intent" value={chatResult.intent} /><p>{chatResult.message}</p><div className="mt-3 flex flex-wrap gap-2">{(chatResult.suggestedActions ?? []).map((item: string) => (<span className="inline-flex rounded-full bg-sky-300/10 px-2.5 py-1 text-xs font-medium text-sky-200 ring-1 ring-sky-300/15" key={item}>{item}</span>))}</div></div> : null}
         </div>
       </Panel>
 
       <Panel title="Predictive Signals" subtitle="Project health, burnout pressure, and task delay probability">
-        <div className="split">
-          <div className="detail-card">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
             <label>
               <span>Project</span>
               <select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>
                 {projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}
               </select>
             </label>
-            {health ? <div className="health-grid"><MetricTile label="Overall" value={formatPercent(health.overallHealthScore)} /><MetricTile label="Schedule" value={formatPercent(health.scheduleHealth)} /><MetricTile label="Budget" value={formatPercent(health.budgetHealth)} /><MetricTile label="Team" value={formatPercent(health.teamHealth)} /></div> : null}
+            {health ? <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><MetricTile label="Overall" value={formatPercent(health.overallHealthScore)} /><MetricTile label="Schedule" value={formatPercent(health.scheduleHealth)} /><MetricTile label="Budget" value={formatPercent(health.budgetHealth)} /><MetricTile label="Team" value={formatPercent(health.teamHealth)} /></div> : null}
           </div>
-          <div className="detail-card">
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
             <label>
               <span>Task</span>
               <select value={selectedTaskId} onChange={(event) => setSelectedTaskId(event.target.value)}>
                 {tasks.map((task) => (<option key={task.id} value={task.id}>{task.title}</option>))}
               </select>
             </label>
-            {delay ? <><MetricRow label="Delay Probability" value={formatPercent(delay.delayProbability * 100)} /><MetricRow label="Risk Level" value={delay.riskLevel} /><MetricRow label="Predicted Completion" value={formatDate(delay.predictedCompletionDate)} /><div className="chip-wrap">{(delay.contributingFactors ?? []).map((item: string) => (<span className="signal-chip" key={item}>{item}</span>))}</div></> : null}
+            {delay ? <><MetricRow label="Delay Probability" value={formatPercent(delay.delayProbability * 100)} /><MetricRow label="Risk Level" value={delay.riskLevel} /><MetricRow label="Predicted Completion" value={formatDate(delay.predictedCompletionDate)} /><div className="mt-3 flex flex-wrap gap-2">{(delay.contributingFactors ?? []).map((item: string) => (<span className="inline-flex rounded-full bg-sky-300/10 px-2.5 py-1 text-xs font-medium text-sky-200 ring-1 ring-sky-300/15" key={item}>{item}</span>))}</div></> : null}
           </div>
         </div>
       </Panel>
 
       <Panel title="Burnout Risk" subtitle="AI-flagged capacity pressure across the team">
-        <div className="list-column">
+        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
           {burnout.map((item, index) => (
-            <div className="list-card" key={`${item["userId"]}-${index}`}>
+            <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={`${item["userId"]}-${index}`}>
               <strong>{String(item["fullName"] ?? "Unknown")}</strong>
               <span>Risk {formatPercent(Number(item["burnoutRisk"] ?? 0) * 100)}</span>
               <small>Workload {formatPercent(Number(item["workloadScore"] ?? 0))}</small>
@@ -953,28 +953,28 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       <Panel title="Report Studio" subtitle="Generate portfolio, workload, delay, and budget outputs">
-        <div className="form-grid">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label><span>Project</span><select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label>
           <label><span>Department</span><select value={filters.departmentId} onChange={(event) => setFilters({ ...filters, departmentId: event.target.value })}>{departments.map((department) => (<option key={department.id} value={department.id}>{department.name}</option>))}</select></label>
           <label><span>Start Date</span><input type="date" value={filters.startDate} onChange={(event) => setFilters({ ...filters, startDate: event.target.value })} /></label>
           <label><span>End Date</span><input type="date" value={filters.endDate} onChange={(event) => setFilters({ ...filters, endDate: event.target.value })} /></label>
           <label><span>Status</span><input value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })} /></label>
         </div>
-        <div className="report-grid">
-          <button className="primary-button" onClick={() => auth && void download("project-status", () => api.downloadReport(auth.token, `reports/project-status/${filters.projectId}`))}>Project Status</button>
-          <button className="primary-button" onClick={() => auth && void download("budget-variance", () => api.downloadReport(auth.token, `reports/budget-variance/${filters.projectId}`))}>Budget Variance</button>
-          <button className="primary-button" onClick={() => auth && void download("task-completion", () => api.downloadReport(auth.token, "reports/task-completion", { method: "POST", body: filters }))}>Task Completion</button>
-          <button className="primary-button" onClick={() => auth && void download("department-workload", () => api.downloadReport(auth.token, "reports/department-workload", { method: "POST", body: { departmentId: filters.departmentId, startDate: filters.startDate || new Date().toISOString(), endDate: filters.endDate || new Date().toISOString() } }))}>Department Workload</button>
-          <button className="primary-button" onClick={() => auth && void download("delay-analysis", () => api.downloadReport(auth.token, "reports/delay-analysis", { method: "POST", body: filters }))}>Delay Analysis</button>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("project-status", () => api.downloadReport(auth.token, `reports/project-status/${filters.projectId}`))}>Project Status</button>
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("budget-variance", () => api.downloadReport(auth.token, `reports/budget-variance/${filters.projectId}`))}>Budget Variance</button>
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("task-completion", () => api.downloadReport(auth.token, "reports/task-completion", { method: "POST", body: filters }))}>Task Completion</button>
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("department-workload", () => api.downloadReport(auth.token, "reports/department-workload", { method: "POST", body: { departmentId: filters.departmentId, startDate: filters.startDate || new Date().toISOString(), endDate: filters.endDate || new Date().toISOString() } }))}>Department Workload</button>
+          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("delay-analysis", () => api.downloadReport(auth.token, "reports/delay-analysis", { method: "POST", body: filters }))}>Delay Analysis</button>
         </div>
       </Panel>
 
       <Panel title="Recent Exports" subtitle="The last report actions from this browser session">
-        <div className="list-column">
+        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
           {downloads.map((item) => (
-            <div className="list-card" key={item}>
+            <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={item}>
               <strong>{item}</strong>
               <span>Downloaded</span>
             </div>
@@ -1002,8 +1002,8 @@ export function LoginPage() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
+    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--pmwds-bg)] p-6">
+      <div className="w-full max-w-sm rounded-xl border border-[var(--pmwds-border)] bg-[var(--pmwds-surface)] p-8 shadow-[var(--pmwds-shadow)]">
         <h2>PMWDS Login</h2>
         {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
         <form onSubmit={handleSubmit}>
@@ -1177,10 +1177,10 @@ export function SettingsPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="page">
+      <div className="min-h-screen">
         <Panel title="Settings" subtitle="Manage your preferences">
           {saved && <div style={{ color: "green", marginBottom: "1rem" }}>{saved}</div>}
-          <div className="form-grid">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label><span>Email</span><input value={auth?.email ?? ""} disabled /></label>
             <label><span>Name</span><input value={auth?.fullName ?? ""} disabled /></label>
           </div>
@@ -1196,10 +1196,10 @@ export function SettingsPage() {
   if (aiLoading) return <LoadingPanel label="Loading settings..." />;
 
   return (
-    <div className="page">
+    <div className="min-h-screen">
       <Panel title="Settings" subtitle="Manage your preferences">
         {saved && <div style={{ color: "green", marginBottom: "1rem" }}>{saved}</div>}
-        <div className="form-grid">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label><span>Email</span><input value={auth?.email ?? ""} disabled /></label>
           <label><span>Name</span><input value={auth?.fullName ?? ""} disabled /></label>
         </div>
@@ -1214,7 +1214,7 @@ export function SettingsPage() {
         
         <div style={{ marginBottom: "1.5rem" }}>
           <h4 style={{ marginBottom: "0.5rem" }}>Default Provider</h4>
-          <div className="form-grid">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label><span>Provider</span>
               <select
                 value={aiSettings?.defaultProvider ?? "OpenAI"}
@@ -1281,7 +1281,7 @@ export function SettingsPage() {
                 {provider.displayName} ({provider.provider})
               </label>
             </div>
-            <div className="form-grid">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label><span>Base URL</span>
                 <input
                   value={provider.baseUrl}

@@ -25,12 +25,12 @@ export function RoleFormDialog({ open, role, permissions, onClose, onSubmit }: R
 
   return (
     <Dialog title={role ? "Edit Role" : "Create Role"} open={open} onClose={onClose} width="lg">
-      <form className="form-grid" onSubmit={(event) => { event.preventDefault(); onSubmit({ ...form, permissionIds: selectedIds }); }}>
+      <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); onSubmit({ ...form, permissionIds: selectedIds }); }}>
         <label><span>Name</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
         <label><span>Permission Level</span><input type="number" value={form.permissionLevel} onChange={(event) => setForm({ ...form, permissionLevel: Number(event.target.value) })} /></label>
-        <label className="wide"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-        <div className="wide permission-grid">{permissions.map((permission) => <label className="checkbox-row" key={permission.id}><input type="checkbox" checked={selectedIds.includes(permission.id)} onChange={() => togglePermission(permission.id)} /><span>{permission.module} · {permission.name}</span></label>)}</div>
-        <div className="wide inline-actions"><button className="ghost-button" type="button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit">{role ? "Save Role" : "Create Role"}</button></div>
+        <label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+        <div className="md:col-span-2 grid max-h-64 grid-cols-1 gap-2 overflow-y-auto md:grid-cols-2">{permissions.map((permission) => <label className="flex items-center gap-2 text-sm text-slate-300" key={permission.id}><input type="checkbox" checked={selectedIds.includes(permission.id)} onChange={() => togglePermission(permission.id)} /><span>{permission.module} · {permission.name}</span></label>)}</div>
+        <div className="md:col-span-2 mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={onClose}>Cancel</button><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" type="submit">{role ? "Save Role" : "Create Role"}</button></div>
       </form>
     </Dialog>
   );

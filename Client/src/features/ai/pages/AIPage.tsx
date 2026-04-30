@@ -142,7 +142,7 @@ export function AIPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="page-grid">
+    <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <AIProviderPanel
         providers={providers}

@@ -1,4 +1,5 @@
 import { Dialog } from "./Dialog";
+import { dangerButtonClass, ghostButtonClass } from "../../ui";
 
 type ConfirmDialogProps = {
   title: string;
@@ -19,13 +20,13 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog title={title} open={open} onClose={onClose} width="sm">
-      <div className="dialog-stack">
-        <p className="dialog-copy">{message}</p>
-        <div className="inline-actions">
-          <button className="ghost-button" onClick={onClose} type="button">
+      <div className="grid gap-4">
+        <p className="text-sm text-slate-300">{message}</p>
+        <div className="flex flex-wrap gap-2">
+          <button className={ghostButtonClass} onClick={onClose} type="button">
             Cancel
           </button>
-          <button className="danger-button" onClick={() => void onConfirm()} type="button">
+          <button className={dangerButtonClass} onClick={() => void onConfirm()} type="button">
             {confirmLabel}
           </button>
         </div>
