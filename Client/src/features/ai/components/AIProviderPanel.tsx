@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Panel } from "../../../ui";
 import type {
   AIModel,
@@ -36,8 +37,23 @@ type AIProviderPanelProps = {
 };
 
 export function AIProviderPanel(props: AIProviderPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+  const selectedProvider = props.providers.find((item) => item.provider === props.provider);
+
   return (
     <Panel title="Provider Workbench" subtitle="Search providers, test models, inspect health, and run AI chat prompts">
+      <div className="section-row">
+        <div>
+          <h4>{selectedProvider?.displayName ?? props.provider}</h4>
+          <p className="dialog-copy">
+            {selectedProvider?.isConfigured ? "Configured" : "Not configured"} / {props.selectedModel || selectedProvider?.defaultModel || "No model selected"}
+          </p>
+        </div>
+        <button className="ghost-button" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? "Collapse" : "Configure"}
+        </button>
+      </div>
+      {!expanded ? null : (
       <div className="split">
         <div className="list-column">
           {props.providers.map((item) => (
@@ -112,6 +128,7 @@ export function AIProviderPanel(props: AIProviderPanelProps) {
           </div>
         </div>
       </div>
+      )}
     </Panel>
   );
 }

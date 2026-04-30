@@ -9,6 +9,7 @@ import type {
   Department,
   Milestone,
   NotificationItem,
+  OrganizationRecord,
   Project,
   ProjectHealth,
   Task,
@@ -78,7 +79,7 @@ export function DashboardPage() {
     <div className="page-grid">
       <section className="hero-panel">
         <div>
-          <p className="eyebrow">Mission Snapshot</p>
+          {/* <p className="eyebrow">Mission Snapshot</p> */}
           <h3>{dashboard?.activeProjects ?? 0} active projects under watch</h3>
           <p>
             The dashboard blends project health, delay exposure, and operational load into one view so teams can move
@@ -551,12 +552,15 @@ export function UsersPage() {
 export function DepartmentsPage() {
   const { auth, hasRole } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState({
     name: "",
     code: "",
     description: "",
+    organizationId: "",
     parentDepartmentId: "",
     departmentHeadUserId: "",
     maxCapacity: 24,
@@ -564,9 +568,18 @@ export function DepartmentsPage() {
 
   async function loadDepartments() {
     if (!auth) return;
-    const data = await api.getDepartments(auth.token);
+    const [data, organizationData, userData] = await Promise.all([
+      api.getDepartments(auth.token),
+      api.getOrganizations(auth.token),
+      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getUsers(auth.token) : Promise.resolve([]),
+    ]);
     setDepartments(data);
+    setOrganizations(organizationData);
+    setUsers(userData as User[]);
     if (!selectedId && data[0]) setSelectedId(data[0].id);
+    if (!form.organizationId && organizationData[0]) {
+      setForm((current) => ({ ...current, organizationId: current.organizationId || organizationData[0].id }));
+    }
   }
 
   useEffect(() => {
@@ -577,6 +590,10 @@ export function DepartmentsPage() {
     if (!auth || !selectedId || !hasRole("SuperAdmin", "ProjectManager", "DepartmentHead")) return;
     api.getDepartmentDashboard(auth.token, selectedId).then(setDashboard);
   }, [auth, selectedId]);
+
+  const selectedDepartment = departments.find((department) => department.id === selectedId) ?? null;
+  const selectedOrganization = organizations.find((organization) => organization.id === selectedDepartment?.organizationId);
+  const departmentsInFormOrganization = departments.filter((department) => department.organizationId === form.organizationId);
 
   return (
     <div className="page-grid">
@@ -591,12 +608,14 @@ export function DepartmentsPage() {
               >
                 <strong>{department.name}</strong>
                 <span>{department.code}</span>
+                <small>{organizations.find((org) => org.id === department.organizationId)?.name ?? "No organization"}</small>
                 <small>Capacity {formatPercent(department.capacityUtilization)}</small>
               </button>
             ))}
           </div>
           <div className="detail-card">
             <h4>{dashboard?.["name"] ? String(dashboard["name"]) : "Department view"}</h4>
+            <MetricRow label="Organization" value={selectedOrganization?.name ?? "Unassigned"} />
             <MetricRow label="Members" value={String(dashboard?.["teamMembers"] ?? "0")} />
             <MetricRow label="Active Projects" value={String(dashboard?.["activeProjects"] ?? "0")} />
             <MetricRow label="Completed Projects" value={String(dashboard?.["completedProjects"] ?? "0")} />
@@ -612,20 +631,39 @@ export function DepartmentsPage() {
             onSubmit={(event) => {
               event.preventDefault();
               if (!auth) return;
-              void api.createDepartment(auth.token, form).then(() => loadDepartments());
+              const payload = {
+                ...form,
+                organizationId: form.organizationId || null,
+                parentDepartmentId: form.parentDepartmentId || null,
+                departmentHeadUserId: form.departmentHeadUserId || null,
+              };
+              void api.createDepartment(auth.token, payload).then(() => loadDepartments());
             }}
           >
             <label><span>Name</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
             <label><span>Code</span><input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></label>
             <label className="wide"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
             <label>
+              <span>Organization</span>
+              <select value={form.organizationId} onChange={(event) => setForm({ ...form, organizationId: event.target.value, parentDepartmentId: "" })}>
+                <option value="">Unassigned</option>
+                {organizations.map((organization) => (<option key={organization.id} value={organization.id}>{organization.name}</option>))}
+              </select>
+            </label>
+            <label>
               <span>Parent Department</span>
               <select value={form.parentDepartmentId} onChange={(event) => setForm({ ...form, parentDepartmentId: event.target.value })}>
                 <option value="">None</option>
-                {departments.map((department) => (<option key={department.id} value={department.id}>{department.name}</option>))}
+                {departmentsInFormOrganization.map((department) => (<option key={department.id} value={department.id}>{department.name}</option>))}
               </select>
             </label>
-            <label><span>Head User Id</span><input value={form.departmentHeadUserId} onChange={(event) => setForm({ ...form, departmentHeadUserId: event.target.value })} /></label>
+            <label>
+              <span>Department Head</span>
+              <select value={form.departmentHeadUserId} onChange={(event) => setForm({ ...form, departmentHeadUserId: event.target.value })}>
+                <option value="">Unassigned</option>
+                {users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}
+              </select>
+            </label>
             <label><span>Max Capacity</span><input type="number" value={form.maxCapacity} onChange={(event) => setForm({ ...form, maxCapacity: Number(event.target.value) })} /></label>
             <div className="inline-actions wide">
               <button className="primary-button" type="submit">Create Department</button>
@@ -902,7 +940,7 @@ export function ReportsPage() {
 
 export function LoginPage() {
   const [email, setEmail] = useState("admin@pmwds.com");
-  const [password, setPassword] = useState("ADMIN001");
+  const [password, setPassword] = useState("Pmwds@123");
   const [error, setError] = useState("");
   const { login } = useAuth();
 
@@ -964,7 +1002,11 @@ export function SettingsPage() {
     setAiLoading(true);
     api.getAISettings(auth.token)
       .then(settings => {
-        setAiSettings(settings);
+        const providers = settings.providers.filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter");
+        const defaultProvider = providers.some(p => p.provider === settings.defaultProvider)
+          ? settings.defaultProvider
+          : "OpenAI";
+        setAiSettings({ ...settings, providers, defaultProvider });
         if (settings.defaultProvider === "OpenRouter" && !openRouterModels.length) {
           fetchOpenRouterModels();
         }
@@ -990,7 +1032,9 @@ export function SettingsPage() {
         riskThreshold: aiSettings.riskThreshold,
         useLocalModel: aiSettings.useLocalModel,
         mlModelPath: aiSettings.mlModelPath,
-        providers: aiSettings.providers.map(p => ({
+        providers: aiSettings.providers
+          .filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter")
+          .map(p => ({
           provider: p.provider,
           displayName: p.displayName,
           enabled: p.enabled,
@@ -1131,7 +1175,6 @@ export function SettingsPage() {
               >
                 <option value="OpenAI">OpenAI</option>
                 <option value="OpenRouter">OpenRouter</option>
-                {/* <option value="OpenCode">OpenCode</option> */}
               </select>
             </label>
             <label><span>Model</span>
@@ -1178,7 +1221,7 @@ export function SettingsPage() {
         </div>
 
         <h4 style={{ marginBottom: "0.5rem", marginTop: "1.5rem" }}>AI Providers</h4>
-        {aiSettings?.providers.filter(p => p.provider !== "OpenCode").map(provider => (
+        {aiSettings?.providers.filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter").map(provider => (
           <div key={provider.provider} style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "1rem", marginBottom: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
               <input
@@ -1218,7 +1261,7 @@ export function SettingsPage() {
                     >
                       <option value="">Select model...</option>
                       {openRouterModels.map(m => (
-                        <option key={m.id} value={m.id}>{m.free ? "★ " : ""}{m.name}</option>
+                        <option key={m.id} value={m.id}>{m.free ? "[free] " : ""}{m.name}</option>
                       ))}
                     </select>
                     <button
@@ -1227,14 +1270,14 @@ export function SettingsPage() {
                       disabled={loadingModels}
                       style={{ background: "#6c757d", whiteSpace: "nowrap" }}
                     >
-                      {loadingModels ? "..." : "↻"}
+                      {loadingModels ? "..." : "Reload"}
                     </button>
                   </div>
                 ) : (
                   <input
                     value={provider.defaultModel}
                     onChange={e => updateProvider(provider.provider, "defaultModel", e.target.value)}
-                    placeholder={provider.provider === "OpenAI" ? "gpt-4o" : provider.provider === "OpenRouter" ? "openai/gpt-4o-mini" : "bigpickle"}
+                    placeholder={provider.provider === "OpenAI" ? "gpt-4o" : "openai/gpt-4o-mini"}
                     disabled={!provider.enabled}
                   />
                 )}

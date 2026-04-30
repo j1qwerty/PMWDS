@@ -51,12 +51,6 @@ public class AISettings
         BaseUrl = "https://openrouter.ai/api/v1",
         DefaultModel = "openai/gpt-4o-mini"
     };
-    public AIProviderOptions OpenCode { get; set; } = new()
-    {
-        Enabled = false,
-        BaseUrl = "https://opencode.ai/zen/v1",
-        DefaultModel = "bigpickle"
-    };
 }
 
 public class AIProviderOptions

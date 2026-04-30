@@ -71,6 +71,7 @@ export interface Department {
   name: string;
   code: string;
   description?: string | null;
+  organizationId?: string | null;
   parentDepartmentId?: string | null;
   departmentHeadUserId?: string | null;
   maxCapacity: number;

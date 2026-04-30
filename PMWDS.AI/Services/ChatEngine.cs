@@ -80,8 +80,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         IReadOnlyList<AIProviderInfoDto> providers =
         [
             BuildProviderInfo("OpenAI", "OpenAI", ResolveProvider("OpenAI")),
-            BuildProviderInfo("OpenRouter", "OpenRouter", ResolveProvider("OpenRouter")),
-            BuildProviderInfo("OpenCode", "OpenCode Zen", ResolveProvider("OpenCode"))
+            BuildProviderInfo("OpenRouter", "OpenRouter", ResolveProvider("OpenRouter"))
         ];
 
         return Task.FromResult(providers);
@@ -338,20 +337,6 @@ public class OpenAICompatibleChatEngine : IChatEngine
                 DefaultModel: options.DefaultModel,
                 ModelsPath: string.IsNullOrWhiteSpace(options.ModelsPath) ? "/models" : options.ModelsPath,
                 Headers: headers);
-        }
-
-        if (providerId.Equals("OpenCode", StringComparison.OrdinalIgnoreCase) ||
-            providerId.Equals("Zen", StringComparison.OrdinalIgnoreCase))
-        {
-            var options = _settings.OpenCode ?? new AIProviderOptions();
-            return new ResolvedProviderConfig(
-                ProviderId: "OpenCode",
-                Enabled: options.Enabled,
-                ApiKey: options.ApiKey,
-                BaseUrl: string.IsNullOrWhiteSpace(options.BaseUrl) ? "https://opencode.ai/zen/v1" : options.BaseUrl,
-                DefaultModel: options.DefaultModel,
-                ModelsPath: string.IsNullOrWhiteSpace(options.ModelsPath) ? "/models" : options.ModelsPath,
-                Headers: new Dictionary<string, string>(options.Headers, StringComparer.OrdinalIgnoreCase));
         }
 
         throw new InvalidOperationException($"Unsupported AI provider '{providerId}'.");
