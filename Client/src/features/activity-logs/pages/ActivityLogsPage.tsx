@@ -56,7 +56,7 @@ export function ActivityLogsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Activity Logs" subtitle="Inspect personal and team activity history, then record manual entries when needed">
         {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (

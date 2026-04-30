@@ -53,7 +53,7 @@ export function DashboardsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Dashboards" subtitle="Manage dashboard layouts, default views, and operational widgets">
         <div className="grid gap-5 lg:grid-cols-2">

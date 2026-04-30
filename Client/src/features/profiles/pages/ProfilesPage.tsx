@@ -38,7 +38,7 @@ export function ProfilesPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Profiles" subtitle="User profile detail and enrichment">
         <div className="grid gap-5 lg:grid-cols-2">

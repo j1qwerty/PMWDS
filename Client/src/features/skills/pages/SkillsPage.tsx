@@ -39,7 +39,7 @@ export function SkillsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Skills" subtitle="Maintain reusable skill taxonomy and the expertise catalogue">
         <div className="overflow-x-auto">

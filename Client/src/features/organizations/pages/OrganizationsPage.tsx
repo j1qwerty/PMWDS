@@ -58,7 +58,7 @@ export function OrganizationsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Organizations" subtitle="Create organizations and bind departments to the right parent entity">
         <div className="grid gap-5 lg:grid-cols-2">

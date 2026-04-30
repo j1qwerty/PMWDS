@@ -74,7 +74,7 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Stored Reports" subtitle="Manage generated report files and their reusable metadata">
         <div className="grid gap-5 lg:grid-cols-2">

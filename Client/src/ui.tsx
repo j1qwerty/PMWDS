@@ -1,9 +1,9 @@
 import type { NotificationItem, Project, Task, User } from "./types";
 
-export const pageGridClass = "grid grid-cols-12 gap-4 content-start";
-export const panelClass = "col-span-12 overflow-hidden rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface)]/92 shadow-[var(--pmwds-shadow)] backdrop-blur";
-export const panelHeadClass = "flex items-start justify-between border-b border-[var(--pmwds-border)] px-5 py-4";
-export const panelBodyClass = "p-5";
+export const pageGridClass = "grid  gap-4 content-start";
+export const panelClass = "glass-card col-span-12 overflow-hidden rounded-2xl border border-white/5 bg-black/40 p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all duration-300 hover:border-white/10";
+export const panelHeadClass = "flex items-start justify-between border-b border-white/5 pb-4 mb-6";
+export const panelBodyClass = "p-0";
 export const listColumnClass = "flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1";
 export const listCardClass = "rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]";
 export const selectedCardClass = "border-sky-300/60 bg-sky-300/10";
@@ -47,15 +47,14 @@ export function Panel({
   style?: React.CSSProperties;
 }) {
   return (
-    <section className={panelClass} style={style}>
-      <div className={panelHeadClass}>
+    <section className="glass-card rounded-2xl border border-white/5 bg-black/40 overflow-hidden" style={style}>
+      <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
         <div>
-          <p className="mb-1 text-[0.64rem] font-semibold tracking-[0.2em] text-sky-300/80 uppercase">PMWDS</p>
-          <h3 className="text-base font-semibold text-white">{title}</h3>
+          <h2 className="font-semibold text-lg text-white tracking-wide">{title}</h2>
           <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
         </div>
       </div>
-      <div className={panelBodyClass}>{children}</div>
+      <div className="p-6">{children}</div>
     </section>
   );
 }
@@ -68,11 +67,23 @@ export function StatCard({ label, value, detail, tone }: { label: string; value:
     ink: "text-slate-200",
   };
 
+  const iconMap: Record<string, string> = {
+    teal: "layers",
+    rust: "checklist",
+    gold: "group",
+    ink: "schedule",
+  };
+
   return (
-    <article className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface)]/88 p-5 shadow-xl shadow-black/15">
-      <span className="text-[0.68rem] font-semibold tracking-[0.16em] text-slate-500 uppercase">{label}</span>
-      <strong className={classNames("mt-2 block text-3xl font-semibold", toneClass[tone] ?? "text-white")}>{value}</strong>
-      <small className="mt-1 block text-xs text-slate-400">{detail}</small>
+    <article className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 group border border-white/5 hover:border-white/15">
+      <div className="flex justify-between items-start">
+        <span className="text-[0.68rem] font-bold uppercase tracking-[0.15em] text-slate-400">{label}</span>
+        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+          <span className="material-symbols-outlined text-lg text-slate-400" style={{fontVariationSettings: 'FILL 1'}}>{iconMap[tone] || 'analytics'}</span>
+        </div>
+      </div>
+      <strong className={classNames("text-4xl font-black text-white tracking-tight", toneClass[tone] ?? "text-white")}>{value}</strong>
+      <small className="text-xs text-slate-500 font-medium">{detail}</small>
     </article>
   );
 }
@@ -128,8 +139,59 @@ export function Notice({ children }: { children: React.ReactNode }) {
   return <div className="col-span-12 rounded-md border border-sky-300/30 bg-sky-300/10 px-4 py-3 text-sm text-sky-100">{children}</div>;
 }
 
-export function TaskList({ tasks, onPick, selectedId }: { tasks: Task[]; onPick?: (taskId: string) => void; selectedId?: string }) {
+export function TaskList({ tasks, onPick, selectedId, showProgress }: { tasks: Task[]; onPick?: (taskId: string) => void; selectedId?: string; showProgress?: boolean }) {
   if (!tasks.length) return <EmptyState title="No tasks found" description="This area will populate as project work is added." compact />;
+
+  if (showProgress) {
+    const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+      NotStarted: { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/20" },
+      Assigned: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
+      InProgress: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
+      Completed: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+      Delayed: { bg: "bg-rose-500/10", text: "text-rose-400", border: "border-rose-500/20" },
+      OnHold: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20" },
+      Cancelled: { bg: "bg-slate-500/10", text: "text-slate-500", border: "border-slate-500/20" },
+    };
+
+    return (
+      <div className="divide-y divide-white/5">
+        {tasks.map((task) => {
+          const taskColors = statusColors[task.status] || statusColors.NotStarted;
+          const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Completed";
+          
+          return (
+            <div key={task.id} className="flex items-center gap-6 p-8 hover:bg-white/[0.03] transition-colors group cursor-pointer" onClick={() => onPick?.(task.id)}>
+              <div className="w-14 h-14 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-primary/50 group-hover:shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all">
+                <span className="material-symbols-outlined text-slate-400 text-2xl group-hover:text-primary-light transition-colors" style={{fontVariationSettings: 'FILL 1'}}>
+                  {task.priority === "Critical" ? "priority_high" : task.priority === "High" ? "keyboard_double_arrow_up" : "task"}
+                </span>
+              </div>
+              <div className="flex flex-col flex-grow min-w-0">
+                <span className="text-base font-bold text-white mb-1 tracking-wide">{task.title}</span>
+                <span className="text-xs text-slate-400 font-medium tracking-wide">{task.projectName || "Standalone"} • due {formatDate(task.dueDate)}</span>
+              </div>
+              <div className="flex flex-col items-end gap-3 flex-shrink-0 w-48">
+                <div className="w-full h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
+                  <div className="h-full bg-primary rounded-full shadow-[0_0_15px_rgba(99,102,241,0.3)]" style={{ width: `${task.progressPercentage}%` }} />
+                </div>
+                <div className="flex justify-between w-full items-center">
+                  <span className="text-[11px] font-bold text-slate-500 tracking-wider">{task.progressPercentage}% COMPLETE</span>
+                  {isOverdue && (
+                    <span className="px-2 py-1 bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase rounded border border-rose-500/20 tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">Overdue</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={classNames("px-2.5 py-1 text-[10px] font-bold uppercase rounded border tracking-widest", taskColors.bg, taskColors.text, taskColors.border)}>
+                  {task.status}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className={listColumnClass}>

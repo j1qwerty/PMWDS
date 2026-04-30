@@ -54,7 +54,7 @@ export function KnowledgePage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Knowledge Articles" subtitle="Capture reusable process knowledge, notes, and project-specific guidance">
         <div className="overflow-x-auto">

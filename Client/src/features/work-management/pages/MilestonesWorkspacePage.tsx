@@ -34,7 +34,7 @@ export function MilestonesWorkspacePage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
       <section className="col-span-12 rounded-2xl border border-white/10 bg-gradient-to-br from-[#111827] via-slate-950 to-[#101827] p-6 shadow-2xl shadow-black/25">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">

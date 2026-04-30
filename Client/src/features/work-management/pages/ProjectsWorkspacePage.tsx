@@ -55,40 +55,170 @@ export function ProjectsWorkspacePage() {
   if (loading) return <LoadingPanel label="Loading project workspace..." />;
   if (error) return <ErrorPanel message={error} />;
 
+  // --- Styles matching the reference design (dark theme, glassmorphism, etc.) ---
+  const cardStyle = "overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-[#111827] to-[#0b1120] p-6 shadow-2xl shadow-black/25";
+  const statCardStyle = "rounded-xl border border-white/8 bg-white/[0.04] p-4";
+
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
-      {message ? <Notice>{message}</Notice> : null}
-      <section className="col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-[#111827] to-[#0b1120] p-6 shadow-2xl shadow-black/25">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.24em] text-sky-300 uppercase">Portfolio Command</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">Project Portfolio</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Track active initiatives, milestone checkpoints, delivery risk, and budget signals from one operational workspace.</p>
+    <div className="relative min-h-screen bg-[#131318] text-[#e4e1e9]">
+      {/* Ambient glow effect (from reference) */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-[20%] -right-[10%] h-[50%] w-[50%] rounded-full bg-primary/5 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[40%] w-[40%] rounded-full bg-tertiary/5 blur-[100px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-[1600px] space-y-6 p-6">
+        {/* Success/Error Notices */}
+        {message && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center text-sm text-primary backdrop-blur-sm">
+            {message}
+            <button onClick={() => setMessage("")} className="ml-4 text-primary/70 hover:text-primary">✕</button>
           </div>
-          <button className={primaryButtonClass} onClick={() => setEditingProject({} as Project)}>Create Project</button>
+        )}
+
+        {/* Hero Section with KPI Cards */}
+        <section className={cardStyle}>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.24em] text-sky-300 uppercase">manage</p>
+              <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">Projects</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+                Track active initiatives, milestone checkpoints, delivery risk, and budget signals from one operational workspace.
+              </p>
+            </div>
+            <button className={primaryButtonClass + " bg-gradient-to-r from-primary to-primary-container shadow-lg hover:shadow-primary/25 transition-all"} onClick={() => setEditingProject({} as Project)}>
+              + Create Project
+            </button>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className={statCardStyle}>
+              <span className="text-xs text-slate-400">Projects</span>
+              <strong className="mt-1 block text-2xl text-white">{projects.length}</strong>
+            </div>
+            <div className={statCardStyle}>
+              <span className="text-xs text-slate-400">In Progress</span>
+              <strong className="mt-1 block text-2xl text-sky-200">{activeProjects}</strong>
+            </div>
+            <div className={statCardStyle}>
+              <span className="text-xs text-slate-400">Delayed</span>
+              <strong className="mt-1 block text-2xl text-rose-200">{delayedProjects}</strong>
+            </div>
+            <div className={statCardStyle}>
+              <span className="text-xs text-slate-400">Budget / Health</span>
+              <strong className="mt-1 block text-lg text-white">{formatMoney(totalBudget)} / {formatPercent(averageHealth)}</strong>
+            </div>
+          </div>
+        </section>
+
+        {/* Main two-column layout: Left (Projects + Detail), Right (Milestones - wider) */}
+        <div className=" gap-6 xl:grid-cols-[1fr_1.2fr]">
+          {/* LEFT COLUMN: Projects section */}
+          <div className="space-y-6">
+            <Panel title="Projects" subtitle="Portfolio overview, project controls, and milestone management">
+              <ProjectFilters
+                search={filters.search}
+                status={filters.status}
+                departmentId={filters.departmentId}
+                departments={departments}
+                onChange={setFilters}
+              />
+              <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_320px]">
+                <ProjectList projects={visibleProjects} selectedId={selectedProject?.id ?? ""} onSelect={setSelectedProjectId} />
+                <ProjectDetail
+                  project={selectedProject}
+                  onStatusChange={handleProjectStatus}
+                  onEdit={() => setEditingProject(selectedProject)}
+                  onDelete={() => setConfirmProject(selectedProject)}
+                />
+              </div>
+            </Panel>
+          </div>
+
+          {/* RIGHT COLUMN: Milestones section - wider, takes remaining space */}
+          <div className="h-full">
+            <Panel title="Milestones" subtitle="Manage milestones for the selected project" className="flex h-full flex-col">
+              <div className="flex-1 overflow-y-auto">
+                <MilestoneList
+                  milestones={milestones}
+                  onEdit={setEditingMilestone}
+                  onComplete={(milestoneId) =>
+                    auth &&
+                    void api.completeMilestone(auth.token, milestoneId).then(() => {
+                      setMessage("Milestone marked complete.");
+                      refresh();
+                    })
+                  }
+                  onDelete={setConfirmMilestone}
+                />
+              </div>
+              <div className="mt-6 flex justify-end border-t border-white/10 pt-4">
+                <button
+                  className={primaryButtonClass + " flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary/20"}
+                  onClick={() =>
+                    setEditingMilestone({
+                      ...createMilestoneForm(selectedProject?.id ?? ""),
+                      id: "",
+                    } as unknown as Milestone)
+                  }
+                >
+                  <span className="material-symbols-outlined text-base">add</span>
+                  Create Milestone
+                </button>
+              </div>
+            </Panel>
+          </div>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Projects</span><strong className="mt-1 block text-2xl text-white">{projects.length}</strong></div>
-          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">In Progress</span><strong className="mt-1 block text-2xl text-sky-200">{activeProjects}</strong></div>
-          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Delayed</span><strong className="mt-1 block text-2xl text-rose-200">{delayedProjects}</strong></div>
-          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Budget / Health</span><strong className="mt-1 block text-lg text-white">{formatMoney(totalBudget)} / {formatPercent(averageHealth)}</strong></div>
-        </div>
-      </section>
-      <Panel title="Projects" subtitle="Portfolio overview, project controls, and milestone management">
-        <ProjectFilters search={filters.search} status={filters.status} departmentId={filters.departmentId} departments={departments} onChange={setFilters} />
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <ProjectList projects={visibleProjects} selectedId={selectedProject?.id ?? ""} onSelect={setSelectedProjectId} />
-          <ProjectDetail project={selectedProject} onStatusChange={handleProjectStatus} onEdit={() => setEditingProject(selectedProject)} onDelete={() => setConfirmProject(selectedProject)} />
-        </div>
-      </Panel>
-      <Panel title="Milestones" subtitle="Manage milestones for the selected project">
-        <MilestoneList milestones={milestones} onEdit={setEditingMilestone} onComplete={(milestoneId) => auth && void api.completeMilestone(auth.token, milestoneId).then(() => { setMessage("Milestone marked complete."); refresh(); })} onDelete={setConfirmMilestone} />
-        <div className="mt-4 flex flex-wrap gap-2"><button className={primaryButtonClass} onClick={() => setEditingMilestone({ ...createMilestoneForm(selectedProject?.id ?? ""), id: "" } as unknown as Milestone)}>Create Milestone</button></div>
-      </Panel>
-      <ProjectFormDialog open={editingProject !== null} project={editingProject?.id ? editingProject : undefined} departments={departments} users={users} onClose={() => setEditingProject(null)} onSubmit={handleProjectSubmit} />
-      <MilestoneFormDialog open={editingMilestone !== null} projects={projects} selectedProjectId={selectedProject?.id ?? ""} milestone={editingMilestone?.id ? editingMilestone : undefined} onClose={() => setEditingMilestone(null)} onSubmit={handleMilestoneSubmit} />
-      <ConfirmDialog title="Delete Project" message={`Delete ${confirmProject?.name}?`} open={confirmProject !== null} onClose={() => setConfirmProject(null)} onConfirm={() => auth && confirmProject ? api.deleteProject(auth.token, confirmProject.id).then(() => { setMessage("Project deleted."); setConfirmProject(null); refresh(); }) : undefined} confirmLabel="Delete" />
-      <ConfirmDialog title="Delete Milestone" message={`Delete ${confirmMilestone?.name}?`} open={confirmMilestone !== null} onClose={() => setConfirmMilestone(null)} onConfirm={() => auth && confirmMilestone ? api.deleteMilestone(auth.token, confirmMilestone.id).then(() => { setMessage("Milestone deleted."); setConfirmMilestone(null); refresh(); }) : undefined} confirmLabel="Delete" />
+
+        {/* Dialogs and Confirmations */}
+        <ProjectFormDialog
+          open={editingProject !== null}
+          project={editingProject?.id ? editingProject : undefined}
+          departments={departments}
+          users={users}
+          onClose={() => setEditingProject(null)}
+          onSubmit={handleProjectSubmit}
+        />
+        <MilestoneFormDialog
+          open={editingMilestone !== null}
+          projects={projects}
+          selectedProjectId={selectedProject?.id ?? ""}
+          milestone={editingMilestone?.id ? editingMilestone : undefined}
+          onClose={() => setEditingMilestone(null)}
+          onSubmit={handleMilestoneSubmit}
+        />
+        <ConfirmDialog
+          title="Delete Project"
+          message={`Delete ${confirmProject?.name}?`}
+          open={confirmProject !== null}
+          onClose={() => setConfirmProject(null)}
+          onConfirm={() =>
+            auth && confirmProject
+              ? api.deleteProject(auth.token, confirmProject.id).then(() => {
+                  setMessage("Project deleted.");
+                  setConfirmProject(null);
+                  refresh();
+                })
+              : undefined
+          }
+          confirmLabel="Delete"
+        />
+        <ConfirmDialog
+          title="Delete Milestone"
+          message={`Delete ${confirmMilestone?.name}?`}
+          open={confirmMilestone !== null}
+          onClose={() => setConfirmMilestone(null)}
+          onConfirm={() =>
+            auth && confirmMilestone
+              ? api.deleteMilestone(auth.token, confirmMilestone.id).then(() => {
+                  setMessage("Milestone deleted.");
+                  setConfirmMilestone(null);
+                  refresh();
+                })
+              : undefined
+          }
+          confirmLabel="Delete"
+        />
+      </div>
     </div>
   );
 }

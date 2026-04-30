@@ -27,7 +27,6 @@ import {
   Panel,
   SimpleProjectCards,
   SimpleProjectList,
-  StatCard,
   TaskList,
   UserTable,
   WorkloadBars,
@@ -79,61 +78,239 @@ export function DashboardPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="grid grid-cols-12 gap-5 content-start">
-      <section className="col-span-12 overflow-hidden rounded-2xl border border-white/8 bg-[var(--pmwds-surface)]/70 p-8 shadow-[var(--pmwds-shadow)] backdrop-blur">
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="mb-3 text-xs font-bold tracking-[0.22em] text-sky-300 uppercase">Workspace Dashboard</p>
-            <h1 className="text-4xl font-black tracking-tight text-white">{dashboard?.activeProjects ?? 0} active projects under watch</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-              Project health, delay exposure, workload pressure, and notifications are consolidated into one command view.
+    <div className="grid  gap-10 content-start">
+      <section className="glass-card col-span-12 rounded-2xl p-10 relative overflow-hidden flex flex-col justify-end min-h-[220px]">
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/10 via-primary/5 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-8">
+          <div className="text-left">
+            <h1 className="text-4xl font-black tracking-tight text-white mb-3">System Overview</h1>
+            <p className="text-slate-400 text-base max-w-xl leading-relaxed">
+              You have {dashboard?.activeProjects ?? 0} active projects under watch. Project health, delay exposure, workload pressure, and notifications are consolidated into one command view.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] p-4 text-center">
-              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-slate-500 uppercase">Health</span>
-              <strong className="mt-1 block text-2xl font-black text-white">{formatPercent(dashboard?.overallHealthScore ?? 0)}</strong>
-            </div>
-            <div className="rounded-xl border border-amber-300/15 bg-amber-300/10 p-4 text-center">
-              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-amber-200/70 uppercase">Delay</span>
-              <strong className="mt-1 block text-2xl font-black text-amber-100">{formatPercent((dashboard?.overallDelayRisk ?? 0) * 100)}</strong>
-            </div>
-            <div className="rounded-xl border border-teal-300/15 bg-teal-300/10 p-4 text-center">
-              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-teal-200/70 uppercase">Variance</span>
-              <strong className="mt-1 block text-2xl font-black text-teal-100">{formatMoney(dashboard?.budgetVariance ?? 0)}</strong>
-            </div>
+          <div className="flex gap-4">
+            <button className="glass-card text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 group border border-white/10">
+              <span className="material-symbols-outlined text-lg group-hover:scale-110 transition-transform" style={{fontVariationSettings: 'FILL 1'}}>summarize</span>
+              Report Center
+            </button>
+            <button className="bg-primary text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-primary-light transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.3)] group">
+              <span className="material-symbols-outlined text-lg group-hover:rotate-90 transition-transform" style={{fontVariationSettings: 'FILL 1'}}>add</span>
+              New Objective
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Projects" value={dashboard?.totalProjects ?? 0} detail="Full portfolio volume" tone="teal" />
-        <StatCard label="Tasks" value={dashboard?.totalTasks ?? 0} detail="Tracked work items" tone="rust" />
-        <StatCard label="Overdue" value={dashboard?.overdueTasks ?? 0} detail="Tasks past target date" tone="ink" />
-        <StatCard label="Available Members" value={dashboard?.availableMembers ?? 0} detail="Ready capacity" tone="gold" />
+      <section className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Active Projects</span>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary-light text-lg" style={{fontVariationSettings: 'FILL 1'}}>layers</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{dashboard?.activeProjects ?? 0}</span>
+            <span className="text-xs font-bold text-emerald-400 flex items-center bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+              <span className="material-symbols-outlined text-sm mr-1" style={{fontVariationSettings: 'FILL 1'}}>arrow_upward</span> 12%
+            </span>
+          </div>
+          <div className="text-xs text-slate-500 font-medium">{dashboard?.totalProjects ?? 0} total projects</div>
+        </div>
+
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:border-rose-500/30">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Pending Tasks</span>
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+              <span className="material-symbols-outlined text-slate-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>checklist</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{dashboard?.totalTasks ?? 0}</span>
+            {(dashboard?.overdueTasks ?? 0) > 0 && (
+              <span className="text-xs font-bold text-rose-400 flex items-center bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20">
+                {dashboard?.overdueTasks} Critical
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 font-medium">{dashboard?.completedTasks ?? 0} completed this month</div>
+        </div>
+
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:border-amber-500/30">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">AI Health Score</span>
+            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+              <span className="material-symbols-outlined text-amber-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>auto_awesome</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{formatPercent(dashboard?.overallHealthScore ?? 0)}</span>
+            <div className="w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-amber-500 rounded-full relative shadow-[0_0_15px_rgba(245,158,11,0.3)]" style={{ width: `${dashboard?.overallHealthScore ?? 0}%` }}>
+                <div className="absolute inset-0 bg-white/20 w-full h-full animate-shimmer" />
+              </div>
+            </div>
+          </div>
+          <div className="text-xs text-slate-500 font-medium">Stable system state</div>
+        </div>
+
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Budget Variance</span>
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+              <span className="material-symbols-outlined text-slate-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>account_balance_wallet</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{formatMoney(Math.abs(dashboard?.budgetVariance ?? 0))}</span>
+          </div>
+          <div className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+            {(dashboard?.budgetVariance ?? 0) <= 0 ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <span className="text-emerald-400">Under budget</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+                <span className="text-rose-400">Over budget</span>
+              </>
+            )}
+          </div>
+        </div>
       </section>
 
-      <Panel title="My Work Queue" subtitle="Priority view for the signed-in user">
-        <TaskList tasks={myTasks.slice(0, 6)} />
-      </Panel>
+      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <div className="xl:col-span-2 flex flex-col gap-10">
+          <section className="glass-card rounded-2xl flex flex-col overflow-hidden">
+            <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+              <h2 className="text-lg font-black text-white tracking-wide">Active Objectives</h2>
+              <button className="text-primary-light hover:text-white text-xs font-bold uppercase tracking-widest transition-all hover:underline underline-offset-4">View Full Ledger</button>
+            </div>
+            <TaskList tasks={myTasks.slice(0, 5)} showProgress />
+          </section>
 
-      <Panel title="Unread Notifications" subtitle="New alerts and system events">
-        <NotificationList items={unread.slice(0, 6)} compact />
-      </Panel>
+          {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") && (dashboard?.highRiskProjects ?? []).length > 0 && (
+            <section className="flex flex-col gap-6">
+              <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
+                High-Risk Interventions Required
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {(dashboard?.highRiskProjects ?? []).slice(0, 2).map((project: any, index: number) => (
+                  <div key={project.id} className={`glass-card p-8 rounded-2xl flex flex-col gap-5 relative overflow-hidden group border ${index === 0 ? 'border-rose-500/30 hover:border-rose-500/60' : 'border-amber-500/30 hover:border-amber-500/60'} transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.15)]`}>
+                    <div className={`absolute top-0 left-0 w-1.5 h-full rounded-l ${index === 0 ? 'bg-rose-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)]'}`} />
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-black text-white tracking-wide">{project.name}</h3>
+                      <span className={`px-2.5 py-1 text-[10px] font-black uppercase rounded border tracking-widest ${index === 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
+                        {index === 0 ? 'CRITICAL' : 'WARNING'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400 leading-relaxed">AI predicts significant delay risk based on current velocity and resource allocation.</p>
+                    <div className="flex items-center justify-between mt-4 pt-6 border-t border-white/10">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Delay Est.</span>
+                        <span className={`text-lg font-black ${index === 0 ? 'text-rose-400' : 'text-white'}`}>
+                          {project.delayRisk ? `${Math.round(project.delayRisk * 100)} Days` : 'Review needed'}
+                        </span>
+                      </div>
+                      <button className={`text-xs font-black px-4 py-2 rounded-lg uppercase tracking-widest flex items-center gap-2 transition-all border ${index === 0 ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'}`}>
+                        {index === 0 ? 'ACTION PLAN' : 'REVIEW'} 
+                        <span className="material-symbols-outlined text-base">arrow_forward</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-      <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
-        <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
-      </Panel>
+          <Panel title="Workload Distribution" subtitle="Team load and burnout exposure">
+            <WorkloadBars items={dashboard?.workloadDistribution ?? []} />
+          </Panel>
+        </div>
 
-      <Panel title="Workload Distribution" subtitle="Team load and burnout exposure">
-        <WorkloadBars items={dashboard?.workloadDistribution ?? []} />
-      </Panel>
+        <div className="flex flex-col gap-10">
+          <section className="glass-card border-primary/30 rounded-2xl p-8 relative overflow-hidden hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-shadow duration-500">
+            <div className="absolute -right-20 -top-20 w-48 h-48 bg-primary/20 rounded-full blur-[80px] pointer-events-none" />
+            <h2 className="text-xs font-black text-primary-light uppercase tracking-[0.25em] flex items-center gap-3 mb-8">
+              <span className="material-symbols-outlined text-lg text-primary-light drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" style={{fontVariationSettings: 'FILL 1'}}>auto_awesome</span>
+              AI Intelligence
+            </h2>
+            <div className="flex flex-col gap-6">
+              {unread.slice(0, 3).map((notification) => {
+                const type = notification.priority === "Critical" ? "critical" : notification.priority === "High" ? "warning" : "info";
+                const typeStyles = {
+                  critical: { dot: "bg-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]", hover: "group-hover:text-rose-400" },
+                  warning: { dot: "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]", hover: "group-hover:text-amber-400" },
+                  info: { dot: "bg-primary-light shadow-[0_0_12px_rgba(129,140,248,0.8)]", hover: "group-hover:text-primary-light" },
+                };
+                const styles = typeStyles[type];
+                return (
+                  <div key={notification.id} className="flex gap-5 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group cursor-pointer">
+                    <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${styles.dot}`} />
+                    <div className="flex flex-col gap-1.5">
+                      <span className={`text-sm font-bold text-white tracking-wide transition-colors ${styles.hover}`}>{notification.title}</span>
+                      <p className="text-xs text-slate-400 leading-relaxed">{notification.message.slice(0, 80)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {(dashboard?.workloadDistribution ?? []).some((w: any) => (w.aiBurnoutRiskScore ?? 0) > 0.6) && (
+                <div className="flex gap-5 p-4 rounded-xl bg-white/[0.02] border border-amber-500/20 hover:bg-white/[0.04] transition-all group cursor-pointer">
+                  <div className="mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-bold text-white tracking-wide group-hover:text-amber-400 transition-colors">Burnout Alert</span>
+                    <p className="text-xs text-slate-400 leading-relaxed">Some team members are approaching capacity limits.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
 
-      {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
-        <Panel title="Overdue Tasks" subtitle="Escalation candidates and blockers">
-          <TaskList tasks={overdue.slice(0, 8)} />
+          <section className="glass-card rounded-2xl p-8">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">Escalations</h2>
+              <span className="bg-rose-500/10 text-rose-400 text-[10px] font-black px-2.5 py-1 rounded border border-rose-500/20 tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                {overdue.length} PENDING
+              </span>
+            </div>
+            <div className="flex flex-col gap-5">
+              {overdue.slice(0, 2).map((task) => (
+                <div key={task.id} className="p-5 bg-black/40 border border-white/5 rounded-xl flex flex-col gap-4 group hover:border-white/20 transition-all">
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm font-bold text-white tracking-wide">{task.title}</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Overdue</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">Task is overdue. Current status: {task.status}.</p>
+                  <div className="flex justify-end gap-4 pt-3 border-t border-white/5">
+                    <button className="text-xs font-bold text-slate-400 hover:text-white transition-colors tracking-widest">DISMISS</button>
+                    <button className="text-xs font-black text-white bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors tracking-widest">REVIEW</button>
+                  </div>
+                </div>
+              ))}
+              {overdue.length === 0 && (
+                <div className="text-center py-8 text-slate-500 text-sm">No escalations pending</div>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <Panel title="My Work Queue" subtitle="Priority view for the signed-in user">
+          <TaskList tasks={myTasks.slice(0, 6)} />
         </Panel>
-      ) : null}
+
+        <Panel title="Unread Notifications" subtitle="New alerts and system events">
+          <NotificationList items={unread.slice(0, 6)} compact />
+        </Panel>
+
+        <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
+          <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -212,7 +389,7 @@ export function ProjectsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       <Panel title="Portfolio Board" subtitle="Projects, milestones, AI summaries, and budget posture">
         <div className="grid gap-5 lg:grid-cols-2">
           <div>
@@ -417,7 +594,7 @@ export function TasksPage() {
     });
   }, [auth, selectedTaskId]);
 
-  return <div className="grid grid-cols-12 gap-4 content-start"><Panel title="Task Command Center" subtitle="Assignments, progress, comments, timers, and escalation"><div className="grid gap-5 lg:grid-cols-2"><div><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h4>Project Queue</h4><select value={selectedProjectId} onChange={(event) => void loadTasks(event.target.value)}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></div><TaskList tasks={tasks} onPick={setSelectedTaskId} selectedId={selectedTaskId} /></div><div>{selectedTask ? <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15"><h4>{selectedTask.title}</h4><p>{selectedTask.description || "No task description yet."}</p><MetricRow label="Project" value={selectedTask.projectName || "Unlinked"} /><MetricRow label="Assignee" value={selectedTask.assignedToUserName || selectedTask.assignedToUserId || "Unassigned"} /><MetricRow label="Progress" value={formatPercent(selectedTask.progressPercentage)} /><MetricRow label="Priority" value={selectedTask.priority} /><MetricRow label="Due" value={formatDate(selectedTask.dueDate)} /><MetricRow label="Delay Risk" value={formatPercent(selectedTask.aiDelayProbability * 100)} /><div className="mt-4 flex flex-wrap gap-2">{taskStatuses.map((status) => (<button key={status} className={classNames(ghostButtonClass, selectedTask.status === status && "border-sky-300/60 bg-sky-300/10 text-sky-100")} onClick={async () => { if (!auth) return; await api.updateTaskStatus(auth.token, selectedTask.id, status); await loadTasks(selectedProjectId); }}>{status}</button>))}</div><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.updateTaskProgress(auth.token, selectedTask.id, progressForm.progressPercentage, progressForm.notes).then(() => loadTasks(selectedProjectId)); }}><label><span>Progress</span><input type="range" min={0} max={100} value={progressForm.progressPercentage} onChange={(event) => setProgressForm({ ...progressForm, progressPercentage: Number(event.target.value) })} /></label><label className="md:col-span-2"><span>Notes</span><textarea value={progressForm.notes} onChange={(event) => setProgressForm({ ...progressForm, notes: event.target.value })} /></label><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Update Progress</button></form><div className="mt-4 flex flex-wrap gap-2">{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead") ? <><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Assign to...</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask || !form.assignedToUserId) return; await api.assignTask(auth.token, selectedTask.id, form.assignedToUserId); await loadTasks(selectedProjectId); }}>Assign</button><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask) return; await api.escalateTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Escalate</button></> : null}</div><div className="grid gap-3 lg:grid-cols-2"><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.addTaskComment(auth.token, selectedTask.id, comment).then(() => setComment("")); }}><label className="md:col-span-2"><span>Comment</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} /></label><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Add Comment</button></form><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.startTaskTimer(auth.token, selectedTask.id, timerDescription).then(() => setMessage("Timer started.")); }}><label className="md:col-span-2"><span>Timer Description</span><input value={timerDescription} onChange={(event) => setTimerDescription(event.target.value)} /></label><div className="mt-4 flex w-full flex-wrap gap-2"><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="submit">Start Timer</button><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={async () => { if (!auth || !selectedTask) return; await api.stopTaskTimer(auth.token, selectedTask.id); setMessage("Timer stopped."); }}>Stop Timer</button></div></form></div><div className="mt-4 flex flex-wrap items-center gap-3"><input type="file" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} /><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask || !attachment) return; await api.uploadTaskAttachment(auth.token, selectedTask.id, attachment); setMessage("Attachment uploaded."); }}>Upload Attachment</button>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={async () => { if (!auth || !selectedTask) return; await api.deleteTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Delete</button> : null}</div>{recommendation || delay ? <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><MetricTile label="Suggested Assignee" value={String(recommendation?.recommendedUserName ?? "Unknown")} /><MetricTile label="Confidence" value={String(recommendation ? formatPercent(recommendation.confidenceScore) : "N/A")} /><MetricTile label="Delay Risk" value={String(delay ? formatPercent(delay.delayProbability * 100) : "N/A")} /><MetricTile label="Risk Level" value={String(delay?.riskLevel ?? "N/A")} /></div> : null}</div> : <EmptyState title="No task selected" description="Pick a task to manage assignment, progress, and AI guidance." />}</div></div></Panel>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <Panel title="Create Task" subtitle="Scope new work into the active project"><form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth) return; void api.createTask(auth.token, { ...form, projectId: selectedProjectId || form.projectId }).then(() => loadTasks(selectedProjectId || form.projectId)); }}><label><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label><label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label><span>Start Date</span><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label><label><span>Due Date</span><input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /></label><label><span>Estimate</span><input type="number" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: Number(event.target.value) })} /></label><label><span>Priority</span><select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>{priorities.map((priority) => (<option key={priority}>{priority}</option>))}</select></label><label><span>Project</span><select value={selectedProjectId || form.projectId} onChange={(event) => setSelectedProjectId(event.target.value)}><option value="">Choose</option>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label><label><span>Assignee</span><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select></label><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Create Task</button></form></Panel> : null}{message ? <Notice>{message}</Notice> : null}</div>;
+  return <div className="grid  gap-4 content-start"><Panel title="Task Command Center" subtitle="Assignments, progress, comments, timers, and escalation"><div className="grid gap-5 lg:grid-cols-2"><div><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h4>Project Queue</h4><select value={selectedProjectId} onChange={(event) => void loadTasks(event.target.value)}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></div><TaskList tasks={tasks} onPick={setSelectedTaskId} selectedId={selectedTaskId} /></div><div>{selectedTask ? <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15"><h4>{selectedTask.title}</h4><p>{selectedTask.description || "No task description yet."}</p><MetricRow label="Project" value={selectedTask.projectName || "Unlinked"} /><MetricRow label="Assignee" value={selectedTask.assignedToUserName || selectedTask.assignedToUserId || "Unassigned"} /><MetricRow label="Progress" value={formatPercent(selectedTask.progressPercentage)} /><MetricRow label="Priority" value={selectedTask.priority} /><MetricRow label="Due" value={formatDate(selectedTask.dueDate)} /><MetricRow label="Delay Risk" value={formatPercent(selectedTask.aiDelayProbability * 100)} /><div className="mt-4 flex flex-wrap gap-2">{taskStatuses.map((status) => (<button key={status} className={classNames(ghostButtonClass, selectedTask.status === status && "border-sky-300/60 bg-sky-300/10 text-sky-100")} onClick={async () => { if (!auth) return; await api.updateTaskStatus(auth.token, selectedTask.id, status); await loadTasks(selectedProjectId); }}>{status}</button>))}</div><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.updateTaskProgress(auth.token, selectedTask.id, progressForm.progressPercentage, progressForm.notes).then(() => loadTasks(selectedProjectId)); }}><label><span>Progress</span><input type="range" min={0} max={100} value={progressForm.progressPercentage} onChange={(event) => setProgressForm({ ...progressForm, progressPercentage: Number(event.target.value) })} /></label><label className="md:col-span-2"><span>Notes</span><textarea value={progressForm.notes} onChange={(event) => setProgressForm({ ...progressForm, notes: event.target.value })} /></label><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Update Progress</button></form><div className="mt-4 flex flex-wrap gap-2">{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead") ? <><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Assign to...</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask || !form.assignedToUserId) return; await api.assignTask(auth.token, selectedTask.id, form.assignedToUserId); await loadTasks(selectedProjectId); }}>Assign</button><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask) return; await api.escalateTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Escalate</button></> : null}</div><div className="grid gap-3 lg:grid-cols-2"><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.addTaskComment(auth.token, selectedTask.id, comment).then(() => setComment("")); }}><label className="md:col-span-2"><span>Comment</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} /></label><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Add Comment</button></form><form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth || !selectedTask) return; void api.startTaskTimer(auth.token, selectedTask.id, timerDescription).then(() => setMessage("Timer started.")); }}><label className="md:col-span-2"><span>Timer Description</span><input value={timerDescription} onChange={(event) => setTimerDescription(event.target.value)} /></label><div className="mt-4 flex w-full flex-wrap gap-2"><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="submit">Start Timer</button><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" type="button" onClick={async () => { if (!auth || !selectedTask) return; await api.stopTaskTimer(auth.token, selectedTask.id); setMessage("Timer stopped."); }}>Stop Timer</button></div></form></div><div className="mt-4 flex flex-wrap items-center gap-3"><input type="file" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} /><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth || !selectedTask || !attachment) return; await api.uploadTaskAttachment(auth.token, selectedTask.id, attachment); setMessage("Attachment uploaded."); }}>Upload Attachment</button>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={async () => { if (!auth || !selectedTask) return; await api.deleteTask(auth.token, selectedTask.id); await loadTasks(selectedProjectId); }}>Delete</button> : null}</div>{recommendation || delay ? <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><MetricTile label="Suggested Assignee" value={String(recommendation?.recommendedUserName ?? "Unknown")} /><MetricTile label="Confidence" value={String(recommendation ? formatPercent(recommendation.confidenceScore) : "N/A")} /><MetricTile label="Delay Risk" value={String(delay ? formatPercent(delay.delayProbability * 100) : "N/A")} /><MetricTile label="Risk Level" value={String(delay?.riskLevel ?? "N/A")} /></div> : null}</div> : <EmptyState title="No task selected" description="Pick a task to manage assignment, progress, and AI guidance." />}</div></div></Panel>{hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? <Panel title="Create Task" subtitle="Scope new work into the active project"><form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); if (!auth) return; void api.createTask(auth.token, { ...form, projectId: selectedProjectId || form.projectId }).then(() => loadTasks(selectedProjectId || form.projectId)); }}><label><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label><label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label><span>Start Date</span><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label><label><span>Due Date</span><input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /></label><label><span>Estimate</span><input type="number" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: Number(event.target.value) })} /></label><label><span>Priority</span><select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>{priorities.map((priority) => (<option key={priority}>{priority}</option>))}</select></label><label><span>Project</span><select value={selectedProjectId || form.projectId} onChange={(event) => setSelectedProjectId(event.target.value)}><option value="">Choose</option>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label><label><span>Assignee</span><select value={form.assignedToUserId} onChange={(event) => setForm({ ...form, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}</select></label><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2" type="submit">Create Task</button></form></Panel> : null}{message ? <Notice>{message}</Notice> : null}</div>;
 }
 
 export function UsersPage() {
@@ -455,7 +632,7 @@ export function UsersPage() {
   }, [auth]);
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       <Panel title="People Operations" subtitle="Capacity, activation state, workload shape, and profile controls">
         <UserTable users={users} />
       </Panel>
@@ -627,7 +804,7 @@ export function DepartmentsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       <Panel title="Department Grid" subtitle="Structure, capacity, and delivery ownership">
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
@@ -755,7 +932,7 @@ export function NotificationsPage() {
   }, [auth, unreadOnly]);
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       <Panel title="Inbox" subtitle="Alerts, AI observations, and operational signals">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <label className="flex items-center gap-2 text-sm text-slate-300">
@@ -853,7 +1030,7 @@ export function AIPage() {
   }, [auth, selectedTaskId]);
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       <Panel title="Provider Matrix" subtitle="Discover models, test providers, and steer prompt traffic">
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
@@ -957,7 +1134,7 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 content-start">
+    <div className="grid  gap-4 content-start">
       <Panel title="Report Studio" subtitle="Generate portfolio, workload, delay, and budget outputs">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label><span>Project</span><select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label>
