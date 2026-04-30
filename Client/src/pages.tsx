@@ -26,8 +26,6 @@ import {
   NotificationList,
   Panel,
   SimpleProjectCards,
-  SimpleProjectList,
-  StatCard,
   TaskList,
   UserTable,
   WorkloadBars,
@@ -38,6 +36,12 @@ import {
   ghostButtonClass,
   listCardClass,
   selectedCardClass,
+  HeroPanel,
+  InsightCard,
+  EscalationCard,
+  RiskCard,
+  PrimaryButton,
+  GhostButton,
 } from "./ui";
 
 const projectStatuses = ["NotStarted", "InProgress", "OnHold", "Completed", "Cancelled", "Delayed"];
@@ -78,62 +82,185 @@ export function DashboardPage() {
   if (loading) return <LoadingPanel label="Loading control room..." />;
   if (error) return <ErrorPanel message={error} />;
 
+  const healthScore = dashboard?.overallHealthScore ?? 0;
+  const delayRisk = (dashboard?.overallDelayRisk ?? 0) * 100;
+  const budgetVariance = dashboard?.budgetVariance ?? 0;
+
   return (
-    <div className="grid grid-cols-12 gap-5 content-start">
-      <section className="col-span-12 overflow-hidden rounded-2xl border border-white/8 bg-[var(--pmwds-surface)]/70 p-8 shadow-[var(--pmwds-shadow)] backdrop-blur">
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="mb-3 text-xs font-bold tracking-[0.22em] text-sky-300 uppercase">Workspace Dashboard</p>
-            <h1 className="text-4xl font-black tracking-tight text-white">{dashboard?.activeProjects ?? 0} active projects under watch</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-              Project health, delay exposure, workload pressure, and notifications are consolidated into one command view.
-            </p>
+    <div className="grid grid-cols-12 gap-10 content-start">
+      <HeroPanel
+        title="System Overview"
+        subtitle={`You have ${dashboard?.activeProjects ?? 0} active projects under watch. AI indicates a ${delayRisk > 10 ? '14% risk' : 'low risk'} of schedule deviation.`}
+        actions={
+          <>
+            <GhostButton icon="summarize">Report Center</GhostButton>
+            <PrimaryButton icon="add">New Objective</PrimaryButton>
+          </>
+        }
+      />
+
+      <section className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 animate-fade-in-up stagger-1">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Active Projects</span>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary-light text-lg" style={{fontVariationSettings: 'FILL 1'}}>layers</span>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] p-4 text-center">
-              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-slate-500 uppercase">Health</span>
-              <strong className="mt-1 block text-2xl font-black text-white">{formatPercent(dashboard?.overallHealthScore ?? 0)}</strong>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{dashboard?.activeProjects ?? 0}</span>
+            <span className="text-xs font-bold text-emerald-400 flex items-center bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+              <span className="material-symbols-outlined text-sm mr-1" style={{fontVariationSettings: 'FILL 1'}}>arrow_upward</span> 12%
+            </span>
+          </div>
+          <div className="text-xs text-slate-500 font-medium">{dashboard?.totalProjects ?? 0} total projects</div>
+        </div>
+
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 hover:border-rose-500/30 animate-fade-in-up stagger-2">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Pending Tasks</span>
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+              <span className="material-symbols-outlined text-slate-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>checklist</span>
             </div>
-            <div className="rounded-xl border border-amber-300/15 bg-amber-300/10 p-4 text-center">
-              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-amber-200/70 uppercase">Delay</span>
-              <strong className="mt-1 block text-2xl font-black text-amber-100">{formatPercent((dashboard?.overallDelayRisk ?? 0) * 100)}</strong>
+          </div>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{dashboard?.totalTasks ?? 0}</span>
+            {(dashboard?.overdueTasks ?? 0) > 0 && (
+              <span className="text-xs font-bold text-rose-400 flex items-center bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20">
+                {dashboard?.overdueTasks} Critical
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 font-medium">{dashboard?.completedTasks ?? 0} completed this month</div>
+        </div>
+
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 hover:border-amber-500/30 animate-fade-in-up stagger-3">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">AI Health Score</span>
+            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+              <span className="material-symbols-outlined text-amber-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>auto_awesome</span>
             </div>
-            <div className="rounded-xl border border-teal-300/15 bg-teal-300/10 p-4 text-center">
-              <span className="block text-[0.65rem] font-bold tracking-[0.16em] text-teal-200/70 uppercase">Variance</span>
-              <strong className="mt-1 block text-2xl font-black text-teal-100">{formatMoney(dashboard?.budgetVariance ?? 0)}</strong>
+          </div>
+          <div className="flex flex-col gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{formatPercent(healthScore)}</span>
+            <div className="w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-amber-500 rounded-full relative shadow-[0_0_15px_rgba(245,158,11,0.3)]" style={{ width: `${healthScore}%` }}>
+                <div className="absolute inset-0 bg-white/20 w-full h-full animate-shimmer" />
+              </div>
             </div>
+          </div>
+          <div className="text-xs text-slate-500 font-medium">Stable system state</div>
+        </div>
+
+        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 animate-fade-in-up stagger-4">
+          <div className="flex justify-between items-start">
+            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Budget Variance</span>
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+              <span className="material-symbols-outlined text-slate-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>account_balance_wallet</span>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-4xl font-black text-white tracking-tight">{formatMoney(Math.abs(budgetVariance))}</span>
+          </div>
+          <div className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+            {budgetVariance <= 0 ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <span className="text-emerald-400">{formatMoney(Math.abs(budgetVariance))} Under budget</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+                <span className="text-rose-400">{formatMoney(budgetVariance)} Over budget</span>
+              </>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Projects" value={dashboard?.totalProjects ?? 0} detail="Full portfolio volume" tone="teal" />
-        <StatCard label="Tasks" value={dashboard?.totalTasks ?? 0} detail="Tracked work items" tone="rust" />
-        <StatCard label="Overdue" value={dashboard?.overdueTasks ?? 0} detail="Tasks past target date" tone="ink" />
-        <StatCard label="Available Members" value={dashboard?.availableMembers ?? 0} detail="Ready capacity" tone="gold" />
-      </section>
+      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <div className="xl:col-span-2 flex flex-col gap-10">
+          <Panel title="Active Objectives" subtitle="Priority view for the signed-in user" actions={<button className="text-primary-light hover:text-white text-xs font-bold uppercase tracking-widest transition-all hover:underline underline-offset-4">View Full Ledger</button>}>
+            <TaskList tasks={myTasks.slice(0, 5)} showProgress />
+          </Panel>
 
-      <Panel title="My Work Queue" subtitle="Priority view for the signed-in user">
-        <TaskList tasks={myTasks.slice(0, 6)} />
-      </Panel>
+          {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") && (dashboard?.highRiskProjects ?? []).length > 0 && (
+            <section className="flex flex-col gap-6">
+              <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
+                High-Risk Interventions Required
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {(dashboard?.highRiskProjects ?? []).slice(0, 2).map((project: any) => (
+                  <RiskCard
+                    key={project.id}
+                    title={project.name}
+                    type={project.delayRisk > 0.3 ? "critical" : "warning"}
+                    description={project.description || "AI predicts significant delay risk based on current velocity and resource allocation."}
+                    metric={project.delayRisk ? `${Math.round(project.delayRisk * 100)} Days` : "Review needed"}
+                    metricLabel="Delay Est."
+                    actionLabel={project.delayRisk > 0.3 ? "Action Plan" : "Review"}
+                    onAction={() => {}}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
 
-      <Panel title="Unread Notifications" subtitle="New alerts and system events">
-        <NotificationList items={unread.slice(0, 6)} compact />
-      </Panel>
+        <div className="flex flex-col gap-10">
+          <section className="glass-card border-primary/30 rounded-2xl p-8 relative overflow-hidden hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-shadow duration-500">
+            <div className="absolute -right-20 -top-20 w-48 h-48 bg-primary/20 rounded-full blur-[80px] pointer-events-none" />
+            <h2 className="text-xs font-black text-primary-light uppercase tracking-[0.25em] flex items-center gap-3 mb-8">
+              <span className="material-symbols-outlined text-lg text-primary-light drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" style={{fontVariationSettings: 'FILL 1'}}>auto_awesome</span>
+              AI Intelligence
+            </h2>
+            <div className="flex flex-col gap-6">
+              {unread.slice(0, 3).map((notification) => (
+                <InsightCard
+                  key={notification.id}
+                  type={notification.priority === "Critical" ? "critical" : notification.priority === "High" ? "warning" : "info"}
+                  title={notification.title}
+                  message={notification.message}
+                />
+              ))}
+              {(dashboard?.workloadDistribution ?? []).some((w: any) => (w.aiBurnoutRiskScore ?? 0) > 0.6) && (
+                <InsightCard
+                  type="warning"
+                  title="Burnout Alert"
+                  message="Some team members are approaching capacity limits. Consider redistributing workload."
+                />
+              )}
+            </div>
+          </section>
 
-      <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
-        <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
-      </Panel>
+          <Panel title="Escalations" subtitle="Items requiring attention" actions={<span className="bg-rose-500/10 text-rose-400 text-[10px] font-black px-2.5 py-1 rounded border border-rose-500/20 tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">{overdue.length} PENDING</span>}>
+            <div className="flex flex-col gap-5">
+              {overdue.slice(0, 2).map((task) => (
+                <EscalationCard
+                  key={task.id}
+                  title={task.title}
+                  timeAgo={task.dueDate ? `${Math.floor((new Date().getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24))}d ago` : "Recently"}
+                  description={`Task is overdue. Current status: ${task.status}. Assignee: ${task.assignedToUserName || 'Unassigned'}`}
+                  actions={
+                    <>
+                      <button className="text-xs font-bold text-slate-400 hover:text-white transition-colors tracking-widest">DISMISS</button>
+                      <button className="text-xs font-black text-white bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors tracking-widest">REVIEW</button>
+                    </>
+                  }
+                />
+              ))}
+              {overdue.length === 0 && (
+                <div className="text-center py-8 text-slate-500 text-sm">No escalations pending</div>
+              )}
+            </div>
+          </Panel>
+        </div>
+      </div>
 
       <Panel title="Workload Distribution" subtitle="Team load and burnout exposure">
         <WorkloadBars items={dashboard?.workloadDistribution ?? []} />
       </Panel>
-
-      {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
-        <Panel title="Overdue Tasks" subtitle="Escalation candidates and blockers">
-          <TaskList tasks={overdue.slice(0, 8)} />
-        </Panel>
-      ) : null}
     </div>
   );
 }
