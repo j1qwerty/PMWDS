@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Panel } from "../../../ui";
+import { classNames, detailCardClass, ghostButtonClass, inputClass, labelClass, listCardClass, listColumnClass, Panel, primaryButtonClass, selectedCardClass } from "../../../ui";
 import type {
   AIModel,
   AIProvider,
@@ -49,42 +49,42 @@ export function AIProviderPanel(props: AIProviderPanelProps) {
             {selectedProvider?.isConfigured ? "Configured" : "Not configured"} / {props.selectedModel || selectedProvider?.defaultModel || "No model selected"}
           </p>
         </div>
-        <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setExpanded((current) => !current)}>
+        <button className={ghostButtonClass} onClick={() => setExpanded((current) => !current)}>
           {expanded ? "Collapse" : "Configure"}
         </button>
       </div>
       {!expanded ? null : (
       <div className="grid gap-5 lg:grid-cols-2">
-        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
+        <div className={listColumnClass}>
           {props.providers.map((item) => (
-            <button key={item.provider} className={`rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06] ${props.provider === item.provider ? "selected-card" : ""}`} onClick={() => props.onProviderChange(item.provider)}>
+            <button key={item.provider} className={classNames(listCardClass, props.provider === item.provider && selectedCardClass)} onClick={() => props.onProviderChange(item.provider)}>
               <strong>{item.displayName}</strong>
               <span>{item.defaultModel}</span>
               <small>{item.isConfigured ? "Configured" : "Not configured"}</small>
             </button>
           ))}
         </div>
-        <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
+        <div className={detailCardClass}>
           <div className="grid grid-cols-1 gap-4">
-            <label>
+            <label className={labelClass}>
               <span>Model Search</span>
-              <input value={props.modelSearch} onChange={(event) => props.onModelSearchChange(event.target.value)} />
+              <input className={inputClass} value={props.modelSearch} onChange={(event) => props.onModelSearchChange(event.target.value)} />
             </label>
-            <label>
+            <label className={labelClass}>
               <span>Model</span>
-              <select value={props.selectedModel} onChange={(event) => props.onModelChange(event.target.value)}>
+              <select className={inputClass} value={props.selectedModel} onChange={(event) => props.onModelChange(event.target.value)}>
                 {props.models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={props.onTestProvider}>Test Provider</button>
+            <button className={primaryButtonClass} onClick={props.onTestProvider}>Test Provider</button>
           </div>
           {props.testResult ? <p className="text-sm text-slate-300">{props.testResult.message}</p> : null}
           <div className="grid grid-cols-1 gap-4" style={{ marginTop: "1rem" }}>
-            <label>
+            <label className={labelClass}>
               <span>Project</span>
-              <select value={props.selectedProjectId} onChange={(event) => props.onProjectChange(event.target.value)}>
+              <select className={inputClass} value={props.selectedProjectId} onChange={(event) => props.onProjectChange(event.target.value)}>
                 {props.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
               </select>
             </label>
@@ -104,25 +104,25 @@ export function AIProviderPanel(props: AIProviderPanelProps) {
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2" style={{ marginTop: "0.75rem" }}>
-            <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={props.onOptimizeResources}>Optimize Resources</button>
+            <button className={ghostButtonClass} onClick={props.onOptimizeResources}>Optimize Resources</button>
           </div>
           {props.resourcePlan ? <p className="text-sm text-slate-300">Expected efficiency gain: {Math.round(props.resourcePlan.expectedEfficiencyGain * 100)}% across {props.resourcePlan.tasksAtRisk} tasks at risk.</p> : null}
           <div className="grid grid-cols-1 gap-4" style={{ marginTop: "1rem" }}>
-            <label>
+            <label className={labelClass}>
               <span>Chat Prompt</span>
-              <textarea rows={4} value={props.chatPrompt} onChange={(event) => props.onChatPromptChange(event.target.value)} />
+              <textarea className={inputClass} rows={4} value={props.chatPrompt} onChange={(event) => props.onChatPromptChange(event.target.value)} />
             </label>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={props.onRunChat}>Run Prompt</button>
+            <button className={primaryButtonClass} onClick={props.onRunChat}>Run Prompt</button>
           </div>
           {props.chatResult ? <p className="text-sm text-slate-300">{props.chatResult.message}</p> : null}
-          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1" style={{ marginTop: "1rem" }}>
+          <div className={classNames(listColumnClass, "mt-4")}>
             {props.burnout.slice(0, 5).map((item) => (
-              <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={item.userId}>
+              <div className={listCardClass} key={item.userId}>
                 <strong>{item.fullName}</strong>
                 <span>{item.riskLevel}</span>
-                <small>Burnout {Math.round(item.burnoutRisk * 100)}% · Load {Math.round(item.workloadScore)}%</small>
+                <small>Burnout {Math.round(item.burnoutRisk * 100)}% / Load {Math.round(item.workloadScore)}%</small>
               </div>
             ))}
           </div>
