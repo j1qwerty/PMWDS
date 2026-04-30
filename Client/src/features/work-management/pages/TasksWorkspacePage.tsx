@@ -3,7 +3,7 @@ import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { ProjectSelect } from "../../../components/selectors/ProjectSelect";
-import { ErrorPanel, LoadingPanel, Notice, Panel } from "../../../ui";
+import { ErrorPanel, formatPercent, LoadingPanel, Notice, Panel, primaryButtonClass } from "../../../ui";
 import type { Task } from "../../../types";
 import { TaskDetail } from "../components/TaskDetail";
 import { TaskFilters } from "../components/TaskFilters";
@@ -31,6 +31,10 @@ export function TasksWorkspacePage() {
   const subtasks = useMemo(() => selectedTask ? getChildTasks(tasks, selectedTask.id) : [], [selectedTask, tasks]);
 
   const refresh = () => setRefreshKey((value) => value + 1);
+  const overdueTasks = visibleTasks.filter((task) => task.isOverdue).length;
+  const inProgressTasks = visibleTasks.filter((task) => task.status === "InProgress").length;
+  const averageProgress = visibleTasks.length ? visibleTasks.reduce((total, task) => total + (task.progressPercentage ?? 0), 0) / visibleTasks.length : 0;
+  const highRiskTasks = visibleTasks.filter((task) => task.aiDelayProbability >= 0.65).length;
 
   const handleTaskSubmit = (form: Record<string, unknown>) => {
     if (!auth) return;
@@ -51,13 +55,28 @@ export function TasksWorkspacePage() {
   return (
     <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
+      <section className="col-span-12 rounded-2xl border border-white/10 bg-gradient-to-br from-[#111827] via-slate-950 to-[#0f172a] p-6 shadow-2xl shadow-black/25">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.24em] text-sky-300 uppercase">Production Workspace</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">Tasks Management</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Orchestrate standalone work, milestone task groups, assignees, subtasks, and AI delay signals in one board.</p>
+          </div>
+          <button className={primaryButtonClass} onClick={() => setEditingTask({} as Task)}>New Task</button>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Visible Tasks</span><strong className="mt-1 block text-2xl text-white">{visibleTasks.length}</strong></div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">In Progress</span><strong className="mt-1 block text-2xl text-sky-200">{inProgressTasks}</strong></div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Overdue / High Risk</span><strong className="mt-1 block text-2xl text-rose-200">{overdueTasks} / {highRiskTasks}</strong></div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Average Progress</span><strong className="mt-1 block text-2xl text-teal-200">{formatPercent(averageProgress)}</strong></div>
+        </div>
+      </section>
       <Panel title="Task Workspace" subtitle="Standalone tasks, milestone groups, assignees, and subtasks">
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /><TaskFilters filters={filters} milestones={milestones} users={users} onChange={(next) => setFilters({ ...filters, ...next })} /></div>
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="mb-5 grid grid-cols-1 gap-3 xl:grid-cols-[280px_minmax(0,1fr)]"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /><TaskFilters filters={filters} milestones={milestones} users={users} onChange={(next) => setFilters({ ...filters, ...next })} /></div>
+        <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_440px]">
           <TaskGroupBoard milestones={groupedTasks} standaloneTasks={standaloneTasks} allTasks={tasks} selectedTaskId={selectedTask?.id ?? ""} onSelect={setSelectedTaskId} />
           <TaskDetail task={selectedTask} subtasks={subtasks} onEdit={() => setEditingTask(selectedTask)} onDelete={() => setConfirmTask(selectedTask)} onCreateSubtask={() => setSubtaskParent(selectedTask)} onUpdateStatus={(status) => auth && selectedTask ? void api.updateTaskStatus(auth.token, selectedTask.id, status).then(() => { setMessage("Task status updated."); refresh(); }) : undefined} />
         </div>
-        <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingTask({} as Task)}>Create Task</button></div>
       </Panel>
       <TaskFormDialog open={editingTask !== null} task={editingTask?.id ? editingTask : undefined} projects={projects} milestones={milestones} users={users} selectedProjectId={selectedProjectId || projects[0]?.id || ""} onClose={() => setEditingTask(null)} onSubmit={handleTaskSubmit} />
       <TaskFormDialog open={subtaskParent !== null} parentTaskId={subtaskParent?.id} projects={projects} milestones={milestones} users={users} selectedProjectId={selectedProjectId || projects[0]?.id || ""} onClose={() => setSubtaskParent(null)} onSubmit={handleSubtaskSubmit} />

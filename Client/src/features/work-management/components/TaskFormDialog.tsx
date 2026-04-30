@@ -4,6 +4,7 @@ import { MilestoneSelect } from "../../../components/selectors/MilestoneSelect";
 import { ProjectSelect } from "../../../components/selectors/ProjectSelect";
 import { UserSelect } from "../../../components/selectors/UserSelect";
 import type { Milestone, Project, Task, User } from "../../../types";
+import { ghostButtonClass, inputClass, labelClass, primaryButtonClass } from "../../../ui";
 import { createTaskForm, type TaskFormState } from "../forms";
 
 type TaskFormDialogProps = {
@@ -30,14 +31,14 @@ export function TaskFormDialog({ open, task, parentTaskId = "", projects, milest
       <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); void onSubmit(form); }}>
         <ProjectSelect projects={projects} value={form.projectId} onChange={(value) => setForm({ ...form, projectId: value })} allowEmpty={false} />
         <MilestoneSelect milestones={milestones} value={form.milestoneId} onChange={(value) => setForm({ ...form, milestoneId: value })} />
-        <label><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
+        <label className={labelClass}><span>Title</span><input className={inputClass} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
         <UserSelect users={users} value={form.assignedToUserId} onChange={(value) => setForm({ ...form, assignedToUserId: value })} />
-        <label className="md:col-span-2"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-        <label><span>Start Date</span><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label>
-        <label><span>Due Date</span><input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /></label>
-        <label><span>Estimated Hours</span><input type="number" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: Number(event.target.value) })} /></label>
-        <label><span>Priority</span><input value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })} /></label>
-        <div className="md:col-span-2 mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={onClose} type="button">Cancel</button><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" type="submit">{task ? "Save Task" : "Create Task"}</button></div>
+        <label className={`${labelClass} md:col-span-2`}><span>Description</span><textarea className={inputClass} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+        <label className={labelClass}><span>Start Date</span><input className={inputClass} type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></label>
+        <label className={labelClass}><span>Due Date</span><input className={inputClass} type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /></label>
+        <label className={labelClass}><span>Estimated Hours</span><input className={inputClass} type="number" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: Number(event.target.value) })} /></label>
+        <label className={labelClass}><span>Priority</span><input className={inputClass} value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })} /></label>
+        <div className="md:col-span-2 mt-4 flex flex-wrap gap-2"><button className={ghostButtonClass} onClick={onClose} type="button">Cancel</button><button className={primaryButtonClass} type="submit">{task ? "Save Task" : "Create Task"}</button></div>
       </form>
     </Dialog>
   );
