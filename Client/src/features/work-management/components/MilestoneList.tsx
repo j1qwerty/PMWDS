@@ -5,11 +5,13 @@ import { dangerButtonClass, EmptyState, formatDate, formatPercent, ghostButtonCl
 type MilestoneListProps = {
   milestones: Milestone[];
   onEdit: (milestone: Milestone) => void;
+  onSelect?: (milestoneId: string) => void;
+  selectedId?: string;
   onComplete: (milestoneId: string) => void;
   onDelete: (milestone: Milestone) => void;
 };
 
-export function MilestoneList({ milestones, onEdit, onComplete, onDelete }: MilestoneListProps) {
+export function MilestoneList({ milestones, onEdit, onSelect, selectedId, onComplete, onDelete }: MilestoneListProps) {
   if (!milestones.length) {
     return <EmptyState compact title="No milestones" description="Create milestones to group tasks and track delivery checkpoints." />;
   }
@@ -17,7 +19,15 @@ export function MilestoneList({ milestones, onEdit, onComplete, onDelete }: Mile
   return (
     <div className="grid max-h-[520px] gap-3 overflow-y-auto pr-1">
       {milestones.map((milestone) => (
-        <article className="rounded-xl border border-white/8 bg-white/[0.04] p-4 shadow-lg shadow-black/10 transition hover:border-sky-300/30 hover:bg-white/[0.06]" key={milestone.id}>
+        <article 
+          className={`rounded-xl border p-4 shadow-lg shadow-black/10 transition cursor-pointer ${
+            selectedId === milestone.id 
+              ? "border-primary/50 bg-primary/5 hover:border-primary/70" 
+              : "border-white/8 bg-white/[0.04] hover:border-sky-300/30 hover:bg-white/[0.06]"
+          }`} 
+          key={milestone.id}
+          onClick={() => onSelect?.(milestone.id)}
+        >
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="mb-2 flex flex-wrap gap-2">
@@ -32,7 +42,7 @@ export function MilestoneList({ milestones, onEdit, onComplete, onDelete }: Mile
           <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-slate-800">
             <div className="h-full rounded-full bg-gradient-to-r from-sky-300 to-teal-200" style={{ width: `${Math.min(100, Math.max(0, milestone.progressPercentage ?? 0))}%` }} />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
             <button className={ghostButtonClass} onClick={() => onEdit(milestone)}>Edit</button>
             <button className={ghostButtonClass} onClick={() => onComplete(milestone.id)}>Complete</button>
             <button className={dangerButtonClass} onClick={() => onDelete(milestone)}>Delete</button>

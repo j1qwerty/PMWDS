@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
-import { ErrorPanel, formatMoney, formatPercent, LoadingPanel, Notice, Panel, primaryButtonClass } from "../../../ui";
-import type { Milestone, Project } from "../../../types";
+import { ErrorPanel, formatMoney, formatPercent, LoadingPanel, Panel, primaryButtonClass, classNames } from "../../../ui";
+import type { Milestone, Project, Task } from "../../../types";
 import { MilestoneFormDialog } from "../components/MilestoneFormDialog";
 import { MilestoneList } from "../components/MilestoneList";
 import { ProjectDetail } from "../components/ProjectDetail";
@@ -18,6 +18,8 @@ export function ProjectsWorkspacePage() {
   const { auth } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
+  const [projectTasks, setProjectTasks] = useState<Task[]>([]);
   const [filters, setFilters] = useState({ search: "", status: "", departmentId: "" });
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
@@ -27,7 +29,17 @@ export function ProjectsWorkspacePage() {
   const { projects, departments, users, milestones, loading, error } = useProjectWorkspace(auth?.token, selectedProjectId, refreshKey);
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? null, [projects, selectedProjectId]);
+  const selectedMilestone = useMemo(() => milestones.find((m) => m.id === selectedMilestoneId) ?? null, [milestones, selectedMilestoneId]);
   const visibleProjects = useMemo(() => filterProjects(projects, filters.search, filters.status, filters.departmentId), [projects, filters]);
+  const milestoneTasks = useMemo(() => projectTasks.filter((task) => task.milestoneId === selectedMilestoneId), [projectTasks, selectedMilestoneId]);
+
+  useEffect(() => {
+    if (!auth || !selectedProjectId) {
+      setProjectTasks([]);
+      return;
+    }
+    api.getTasksByProject(auth.token, selectedProjectId).then(setProjectTasks).catch(() => setProjectTasks([]));
+  }, [auth, selectedProjectId]);
 
   const refresh = () => setRefreshKey((value) => value + 1);
   const activeProjects = projects.filter((project) => project.status === "InProgress").length;
@@ -134,13 +146,16 @@ export function ProjectsWorkspacePage() {
             </Panel>
           </div>
 
-          {/* RIGHT COLUMN: Milestones section - wider, takes remaining space */}
-          <div className="h-full">
+          {/* RIGHT COLUMN: Milestones and Tasks side by side */}
+          <div className="h-full grid grid-cols-2 gap-6">
+            {/* Milestones section */}
             <Panel title="Milestones" subtitle="Manage milestones for the selected project" className="flex h-full flex-col">
               <div className="flex-1 overflow-y-auto">
                 <MilestoneList
                   milestones={milestones}
                   onEdit={setEditingMilestone}
+                  onSelect={setSelectedMilestoneId}
+                  selectedId={selectedMilestoneId}
                   onComplete={(milestoneId) =>
                     auth &&
                     void api.completeMilestone(auth.token, milestoneId).then(() => {
@@ -164,6 +179,71 @@ export function ProjectsWorkspacePage() {
                   <span className="material-symbols-outlined text-base">add</span>
                   Create Milestone
                 </button>
+              </div>
+            </Panel>
+
+            {/* Tasks section - shows tasks for selected milestone */}
+            <Panel title="Tasks" subtitle={selectedMilestone ? `Tasks for: ${selectedMilestone.name}` : "Select a milestone to view tasks"} className="flex h-full flex-col">
+              <div className="flex-1 overflow-y-auto">
+                {!selectedMilestone ? (
+                  <div className="flex h-32 items-center justify-center text-slate-400 text-sm">
+                    Select a milestone to view its tasks
+                  </div>
+                ) : milestoneTasks.length === 0 ? (
+                  <div className="flex h-32 items-center justify-center text-slate-400 text-sm">
+                    No tasks found for this milestone
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {milestoneTasks.map((task) => {
+                      const statusColors: Record<string, { bg: string; text: string }> = {
+                        NotStarted: { bg: "bg-slate-500/10", text: "text-slate-400" },
+                        Assigned: { bg: "bg-blue-500/10", text: "text-blue-400" },
+                        InProgress: { bg: "bg-amber-500/10", text: "text-amber-400" },
+                        Completed: { bg: "bg-emerald-500/10", text: "text-emerald-400" },
+                        Delayed: { bg: "bg-rose-500/10", text: "text-rose-400" },
+                      };
+                      const colors = statusColors[task.status] || statusColors.NotStarted;
+                      return (
+                        <div key={task.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-4 hover:bg-white/[0.04] transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <span className="block text-sm font-medium text-white truncate">{task.title}</span>
+                              <span className="mt-1 block text-xs text-slate-400">
+                                {task.assignedToUserName || "Unassigned"} • due {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No date"}
+                              </span>
+                            </div>
+                            <span className={classNames("px-2 py-0.5 text-[10px] font-bold uppercase rounded flex-shrink-0", colors.bg, colors.text)}>
+                              {task.status}
+                            </span>
+                          </div>
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                              <span>Progress</span>
+                              <span>{task.progressPercentage}%</span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progressPercentage}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 flex justify-end border-t border-white/10 pt-4">
+                {selectedMilestone && (
+                  <button
+                    className={primaryButtonClass + " flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary/20"}
+                    onClick={() => {
+                      setMessage("Create task dialog - coming soon");
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                    Add Task
+                  </button>
+                )}
               </div>
             </Panel>
           </div>

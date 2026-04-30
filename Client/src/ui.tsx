@@ -40,14 +40,16 @@ export function Panel({
   subtitle,
   children,
   style,
+  className,
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  className?: string;
 }) {
   return (
-    <section className="glass-card rounded-2xl border border-white/5 bg-black/40 overflow-hidden" style={style}>
+    <section className={`glass-card rounded-2xl border border-white/5 bg-black/40 overflow-hidden ${className || ""}`} style={style}>
       <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
         <div>
           <h2 className="font-semibold text-lg text-white tracking-wide">{title}</h2>

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { ProjectSelect } from "../../../components/selectors/ProjectSelect";
-import { ErrorPanel, formatPercent, LoadingPanel, Notice, Panel, primaryButtonClass } from "../../../ui";
-import type { Milestone } from "../../../types";
+import { ErrorPanel, formatPercent, LoadingPanel, Notice, Panel, primaryButtonClass, classNames } from "../../../ui";
+import type { Milestone, Task } from "../../../types";
 import { MilestoneFormDialog } from "../components/MilestoneFormDialog";
 import { MilestoneList } from "../components/MilestoneList";
 import { useProjectWorkspace } from "../hooks/useProjectWorkspace";
@@ -13,6 +13,8 @@ export function MilestonesWorkspacePage() {
   const { auth } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
+  const [projectTasks, setProjectTasks] = useState<Task[]>([]);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [confirmMilestone, setConfirmMilestone] = useState<Milestone | null>(null);
   const [message, setMessage] = useState("");
@@ -23,6 +25,16 @@ export function MilestonesWorkspacePage() {
   const criticalMilestones = milestones.filter((milestone) => milestone.isCritical).length;
   const averageProgress = milestones.length ? milestones.reduce((total, milestone) => total + (milestone.progressPercentage ?? 0), 0) / milestones.length : 0;
   const activeProject = projects.find((project) => project.id === (selectedProjectId || projects[0]?.id));
+  const selectedMilestone = useMemo(() => milestones.find((m) => m.id === selectedMilestoneId) ?? null, [milestones, selectedMilestoneId]);
+  const milestoneTasks = useMemo(() => projectTasks.filter((task) => task.milestoneId === selectedMilestoneId), [projectTasks, selectedMilestoneId]);
+
+  useEffect(() => {
+    if (!auth || !selectedProjectId) {
+      setProjectTasks([]);
+      return;
+    }
+    api.getTasksByProject(auth.token, selectedProjectId).then(setProjectTasks).catch(() => setProjectTasks([]));
+  }, [auth, selectedProjectId]);
 
   const handleSubmit = (form: Record<string, unknown>) => {
     if (!auth) return;
@@ -52,10 +64,70 @@ export function MilestonesWorkspacePage() {
           <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Average Progress</span><strong className="mt-1 block text-2xl text-sky-200">{formatPercent(averageProgress)}</strong></div>
         </div>
       </section>
-      <Panel title="Milestones" subtitle="Project checkpoint management and schedule controls">
-        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /></div>
-        <MilestoneList milestones={milestones} onEdit={setEditingMilestone} onComplete={(milestoneId) => auth && void api.completeMilestone(auth.token, milestoneId).then(() => { setMessage("Milestone completed."); refresh(); })} onDelete={setConfirmMilestone} />
-      </Panel>
+      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Panel title="Milestones" subtitle="Project checkpoint management and schedule controls">
+          <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /></div>
+          <MilestoneList 
+            milestones={milestones} 
+            onEdit={setEditingMilestone} 
+            onSelect={setSelectedMilestoneId}
+            selectedId={selectedMilestoneId}
+            onComplete={(milestoneId) => auth && void api.completeMilestone(auth.token, milestoneId).then(() => { setMessage("Milestone completed."); refresh(); })} 
+            onDelete={setConfirmMilestone} 
+          />
+        </Panel>
+
+        <Panel title="Tasks" subtitle={selectedMilestone ? `Tasks for: ${selectedMilestone.name}` : "Select a milestone to view tasks"} className="flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            {!selectedMilestone ? (
+              <div className="flex h-32 items-center justify-center text-slate-400 text-sm">
+                Select a milestone to view its tasks
+              </div>
+            ) : milestoneTasks.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-slate-400 text-sm">
+                No tasks found for this milestone
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {milestoneTasks.map((task) => {
+                  const statusColors: Record<string, { bg: string; text: string }> = {
+                    NotStarted: { bg: "bg-slate-500/10", text: "text-slate-400" },
+                    Assigned: { bg: "bg-blue-500/10", text: "text-blue-400" },
+                    InProgress: { bg: "bg-amber-500/10", text: "text-amber-400" },
+                    Completed: { bg: "bg-emerald-500/10", text: "text-emerald-400" },
+                    Delayed: { bg: "bg-rose-500/10", text: "text-rose-400" },
+                  };
+                  const colors = statusColors[task.status] || statusColors.NotStarted;
+                  return (
+                    <div key={task.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-4 hover:bg-white/[0.04] transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-white truncate">{task.title}</span>
+                          <span className="mt-1 block text-xs text-slate-400">
+                            {task.assignedToUserName || "Unassigned"} • due {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No date"}
+                          </span>
+                        </div>
+                        <span className={classNames("px-2 py-0.5 text-[10px] font-bold uppercase rounded flex-shrink-0", colors.bg, colors.text)}>
+                          {task.status}
+                        </span>
+                      </div>
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                          <span>Progress</span>
+                          <span>{task.progressPercentage}%</span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progressPercentage}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Panel>
+      </div>
       <MilestoneFormDialog open={editingMilestone !== null} projects={projects} selectedProjectId={selectedProjectId || projects[0]?.id || ""} milestone={editingMilestone?.id ? editingMilestone : undefined} onClose={() => setEditingMilestone(null)} onSubmit={handleSubmit} />
       <ConfirmDialog title="Delete Milestone" message={`Delete ${confirmMilestone?.name}?`} open={confirmMilestone !== null} onClose={() => setConfirmMilestone(null)} onConfirm={() => auth && confirmMilestone ? api.deleteMilestone(auth.token, confirmMilestone.id).then(() => { setMessage("Milestone deleted."); setConfirmMilestone(null); refresh(); }) : undefined} confirmLabel="Delete" />
     </div>
