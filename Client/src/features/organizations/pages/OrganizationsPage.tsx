@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
-import { ErrorPanel, LoadingPanel, Notice, Panel } from "../../../ui";
+import { classNames, dangerButtonClass, detailCardClass, EmptyState, ErrorPanel, ghostButtonClass, inputClass, listCardClass, listColumnClass, LoadingPanel, MetricRow, Notice, Panel, primaryButtonClass, selectedCardClass } from "../../../ui";
 import type { Department, OrganizationRecord } from "../../../types";
 import { OrganizationFormDialog } from "../components/OrganizationFormDialog";
 
@@ -62,11 +62,11 @@ export function OrganizationsPage() {
       {message ? <Notice>{message}</Notice> : null}
       <Panel title="Organizations" subtitle="Create organizations and bind departments to the right parent entity">
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
+          <div className={listColumnClass}>
             {organizations.map((organization) => (
               <button
                 key={organization.id}
-                className={`rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06] ${selectedOrganization?.id === organization.id ? "selected-card" : ""}`}
+                className={classNames(listCardClass, selectedOrganization?.id === organization.id && selectedCardClass)}
                 onClick={() => setSelectedId(organization.id)}
               >
                 <strong>{organization.name}</strong>
@@ -75,35 +75,35 @@ export function OrganizationsPage() {
               </button>
             ))}
           </div>
-          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
+          <div className={detailCardClass}>
             {selectedOrganization ? (
               <>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <h4>{selectedOrganization.name}</h4>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditing(selectedOrganization)}>
+                    <button className={ghostButtonClass} onClick={() => setEditing(selectedOrganization)}>
                       Edit
                     </button>
-                    <button className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20" onClick={() => setConfirmDelete(selectedOrganization)}>
+                    <button className={dangerButtonClass} onClick={() => setConfirmDelete(selectedOrganization)}>
                       Delete
                     </button>
                   </div>
                 </div>
                 <p>{selectedOrganization.address}</p>
-                <div className="metric-row"><span>Tax ID</span><strong>{selectedOrganization.taxId}</strong></div>
-                <div className="metric-row"><span>Phone</span><strong>{selectedOrganization.contactPhone}</strong></div>
-                <div className="metric-row"><span>Founded</span><strong>{new Date(selectedOrganization.foundedDate).toLocaleDateString()}</strong></div>
+                <MetricRow label="Tax ID" value={selectedOrganization.taxId} />
+                <MetricRow label="Phone" value={selectedOrganization.contactPhone} />
+                <MetricRow label="Founded" value={new Date(selectedOrganization.foundedDate).toLocaleDateString()} />
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3" style={{ marginTop: "1rem" }}>
                   <h4>Departments</h4>
                 </div>
-                <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
+                <div className={listColumnClass}>
                   {selectedOrganization.departments.map((department) => (
-                    <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={department.id}>
+                    <div className={listCardClass} key={department.id}>
                       <strong>{department.name}</strong>
                       <span>{department.code}</span>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <button
-                          className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                          className={ghostButtonClass}
                           onClick={() =>
                             auth &&
                             api.removeDepartmentFromOrganization(auth.token, selectedOrganization.id, department.id).then(() => {
@@ -119,7 +119,7 @@ export function OrganizationsPage() {
                   ))}
                 </div>
                 <div className="mt-4 flex w-full flex-wrap gap-2" style={{ marginTop: "1rem" }}>
-                  <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
+                  <select className={inputClass} value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
                     <option value="">Assign department</option>
                     {availableDepartments.map((department) => (
                       <option key={department.id} value={department.id}>
@@ -128,7 +128,7 @@ export function OrganizationsPage() {
                     ))}
                   </select>
                   <button
-                    className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={primaryButtonClass}
                     disabled={!departmentId}
                     onClick={() =>
                       auth &&
@@ -145,15 +145,12 @@ export function OrganizationsPage() {
                 </div>
               </>
             ) : (
-              <div className="rounded-lg border border-dashed border-[var(--pmwds-border)] bg-white/[0.025] p-8 text-center text-slate-400">
-                <strong>No organizations</strong>
-                <span>Create an organization to begin structuring departments.</span>
-              </div>
+              <EmptyState title="No organizations" description="Create an organization to begin structuring departments." />
             )}
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditing({} as OrganizationRecord)}>
+          <button className={primaryButtonClass} onClick={() => setEditing({} as OrganizationRecord)}>
             Create Organization
           </button>
         </div>
