@@ -68,20 +68,22 @@ public class DepartmentsController : BaseApiController
         [FromBody] CreateDepartmentDto dto,
         CancellationToken ct)
     {
+        var normalizedCode = dto.Code.ToUpper();
+        var normalizedName = dto.Name.ToLower().Trim();
         var existingByCode = await _uow.Departments.FindAsync(
-            d => d.Code == dto.Code.ToUpper(),
+            d => d.OrganizationId == dto.OrganizationId && d.Code == normalizedCode,
             ct);
         if (existingByCode.Any())
         {
-            return Conflict(new { message = $"Department with code '{dto.Code}' already exists." });
+            return Conflict(new { message = $"Department with code '{dto.Code}' already exists in this organization." });
         }
 
         var existingByName = await _uow.Departments.FindAsync(
-            d => d.Name.ToLower() == dto.Name.ToLower().Trim(),
+            d => d.OrganizationId == dto.OrganizationId && d.Name.ToLower() == normalizedName,
             ct);
         if (existingByName.Any())
         {
-            return Conflict(new { message = $"Department with name '{dto.Name}' already exists." });
+            return Conflict(new { message = $"Department with name '{dto.Name}' already exists in this organization." });
         }
 
         var department = Department.Create(dto.Name, dto.Code, dto.Description, dto.ParentDepartmentId);
@@ -121,22 +123,26 @@ public class DepartmentsController : BaseApiController
         }
 
         var newCode = dto.Code.ToUpper();
-        if (newCode != department.Code)
+        if (newCode != department.Code || dto.OrganizationId != department.OrganizationId)
         {
-            var existingByCode = await _uow.Departments.FindAsync(d => d.Code == newCode, ct);
+            var existingByCode = await _uow.Departments.FindAsync(
+                d => d.Id != id && d.OrganizationId == dto.OrganizationId && d.Code == newCode,
+                ct);
             if (existingByCode.Any())
             {
-                return Conflict(new { message = $"Department with code '{dto.Code}' already exists." });
+                return Conflict(new { message = $"Department with code '{dto.Code}' already exists in this organization." });
             }
         }
 
         var newName = dto.Name.ToLower().Trim();
-        if (newName != department.Name.ToLower())
+        if (newName != department.Name.ToLower() || dto.OrganizationId != department.OrganizationId)
         {
-            var existingByName = await _uow.Departments.FindAsync(d => d.Name.ToLower() == newName, ct);
+            var existingByName = await _uow.Departments.FindAsync(
+                d => d.Id != id && d.OrganizationId == dto.OrganizationId && d.Name.ToLower() == newName,
+                ct);
             if (existingByName.Any())
             {
-                return Conflict(new { message = $"Department with name '{dto.Name}' already exists." });
+                return Conflict(new { message = $"Department with name '{dto.Name}' already exists in this organization." });
             }
         }
 

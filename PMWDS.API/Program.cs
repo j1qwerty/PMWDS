@@ -343,7 +343,7 @@ static async Task<bool> HasExpectedSqliteSchemaAsync(ApplicationDbContext db)
             }
         }
 
-        return true;
+        return !await HasSqliteIndexAsync(connection, "IX_Departments_Code");
     }
     finally
     {
@@ -352,4 +352,12 @@ static async Task<bool> HasExpectedSqliteSchemaAsync(ApplicationDbContext db)
             await connection.CloseAsync();
         }
     }
+}
+
+static async Task<bool> HasSqliteIndexAsync(DbConnection connection, string indexName)
+{
+    await using var command = connection.CreateCommand();
+    command.CommandText = $"SELECT name FROM sqlite_master WHERE type='index' AND name='{indexName}'";
+    var result = await command.ExecuteScalarAsync();
+    return result != null && result != DBNull.Value;
 }

@@ -14,7 +14,8 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
         b.Property(e => e.Code).HasMaxLength(50).IsRequired();
         b.Property(e => e.Description).HasMaxLength(500);
         b.Property(e => e.DepartmentHeadUserId).HasMaxLength(100);
-        b.HasIndex(e => e.Code).IsUnique();
+        b.HasIndex(e => new { e.OrganizationId, e.Code }).IsUnique();
+        b.HasIndex(e => new { e.OrganizationId, e.Name }).IsUnique();
         b.HasOne(e => e.Organization)
             .WithMany(e => e.Departments)
             .HasForeignKey(e => e.OrganizationId)
