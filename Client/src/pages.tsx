@@ -555,6 +555,7 @@ export function DepartmentsPage() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedId, setSelectedId] = useState("");
+  const [editingDepartmentId, setEditingDepartmentId] = useState("");
   const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -594,6 +595,32 @@ export function DepartmentsPage() {
   const selectedDepartment = departments.find((department) => department.id === selectedId) ?? null;
   const selectedOrganization = organizations.find((organization) => organization.id === selectedDepartment?.organizationId);
   const departmentsInFormOrganization = departments.filter((department) => department.organizationId === form.organizationId);
+
+  function editDepartment(department: Department) {
+    setEditingDepartmentId(department.id);
+    setForm({
+      name: department.name,
+      code: department.code,
+      description: department.description ?? "",
+      organizationId: department.organizationId ?? "",
+      parentDepartmentId: department.parentDepartmentId ?? "",
+      departmentHeadUserId: department.departmentHeadUserId ?? "",
+      maxCapacity: department.maxCapacity,
+    });
+  }
+
+  function resetDepartmentForm() {
+    setEditingDepartmentId("");
+    setForm({
+      name: "",
+      code: "",
+      description: "",
+      organizationId: organizations[0]?.id ?? "",
+      parentDepartmentId: "",
+      departmentHeadUserId: "",
+      maxCapacity: 24,
+    });
+  }
 
   return (
     <div className="page-grid">
@@ -637,7 +664,13 @@ export function DepartmentsPage() {
                 parentDepartmentId: form.parentDepartmentId || null,
                 departmentHeadUserId: form.departmentHeadUserId || null,
               };
-              void api.createDepartment(auth.token, payload).then(() => loadDepartments());
+              const action = editingDepartmentId
+                ? api.updateDepartment(auth.token, editingDepartmentId, payload)
+                : api.createDepartment(auth.token, payload);
+              void action.then(() => {
+                resetDepartmentForm();
+                return loadDepartments();
+              });
             }}
           >
             <label><span>Name</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
@@ -666,7 +699,21 @@ export function DepartmentsPage() {
             </label>
             <label><span>Max Capacity</span><input type="number" value={form.maxCapacity} onChange={(event) => setForm({ ...form, maxCapacity: Number(event.target.value) })} /></label>
             <div className="inline-actions wide">
-              <button className="primary-button" type="submit">Create Department</button>
+              <button className="primary-button" type="submit">{editingDepartmentId ? "Update Department" : "Create Department"}</button>
+              {editingDepartmentId ? (
+                <button className="ghost-button" type="button" onClick={resetDepartmentForm}>
+                  Cancel Edit
+                </button>
+              ) : null}
+              {selectedId ? (
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => selectedDepartment && editDepartment(selectedDepartment)}
+                >
+                  Edit Selected
+                </button>
+              ) : null}
               {selectedId ? (
                 <button
                   className="danger-button"
