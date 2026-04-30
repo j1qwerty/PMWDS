@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
-import { ErrorPanel, LoadingPanel, Notice, Panel } from "../../../ui";
+import { ErrorPanel, formatMoney, formatPercent, LoadingPanel, Notice, Panel, primaryButtonClass } from "../../../ui";
 import type { Milestone, Project } from "../../../types";
 import { MilestoneFormDialog } from "../components/MilestoneFormDialog";
 import { MilestoneList } from "../components/MilestoneList";
@@ -30,6 +30,10 @@ export function ProjectsWorkspacePage() {
   const visibleProjects = useMemo(() => filterProjects(projects, filters.search, filters.status, filters.departmentId), [projects, filters]);
 
   const refresh = () => setRefreshKey((value) => value + 1);
+  const activeProjects = projects.filter((project) => project.status === "InProgress").length;
+  const delayedProjects = projects.filter((project) => project.status === "Delayed").length;
+  const totalBudget = projects.reduce((total, project) => total + (project.plannedBudget ?? 0), 0);
+  const averageHealth = projects.length ? projects.reduce((total, project) => total + (project.aiHealthScore ?? 0), 0) / projects.length : 0;
 
   const handleProjectStatus = (status: string) => {
     if (!auth || !selectedProject) return;
@@ -54,17 +58,32 @@ export function ProjectsWorkspacePage() {
   return (
     <div className="grid grid-cols-12 gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
+      <section className="col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-[#111827] to-[#0b1120] p-6 shadow-2xl shadow-black/25">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.24em] text-sky-300 uppercase">Portfolio Command</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">Project Portfolio</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Track active initiatives, milestone checkpoints, delivery risk, and budget signals from one operational workspace.</p>
+          </div>
+          <button className={primaryButtonClass} onClick={() => setEditingProject({} as Project)}>Create Project</button>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Projects</span><strong className="mt-1 block text-2xl text-white">{projects.length}</strong></div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">In Progress</span><strong className="mt-1 block text-2xl text-sky-200">{activeProjects}</strong></div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Delayed</span><strong className="mt-1 block text-2xl text-rose-200">{delayedProjects}</strong></div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.04] p-4"><span className="text-xs text-slate-400">Budget / Health</span><strong className="mt-1 block text-lg text-white">{formatMoney(totalBudget)} / {formatPercent(averageHealth)}</strong></div>
+        </div>
+      </section>
       <Panel title="Projects" subtitle="Portfolio overview, project controls, and milestone management">
         <ProjectFilters search={filters.search} status={filters.status} departmentId={filters.departmentId} departments={departments} onChange={setFilters} />
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
           <ProjectList projects={visibleProjects} selectedId={selectedProject?.id ?? ""} onSelect={setSelectedProjectId} />
           <ProjectDetail project={selectedProject} onStatusChange={handleProjectStatus} onEdit={() => setEditingProject(selectedProject)} onDelete={() => setConfirmProject(selectedProject)} />
         </div>
-        <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingProject({} as Project)}>Create Project</button></div>
       </Panel>
       <Panel title="Milestones" subtitle="Manage milestones for the selected project">
         <MilestoneList milestones={milestones} onEdit={setEditingMilestone} onComplete={(milestoneId) => auth && void api.completeMilestone(auth.token, milestoneId).then(() => { setMessage("Milestone marked complete."); refresh(); })} onDelete={setConfirmMilestone} />
-        <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingMilestone({ ...createMilestoneForm(selectedProject?.id ?? ""), id: "" } as unknown as Milestone)}>Create Milestone</button></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button className={primaryButtonClass} onClick={() => setEditingMilestone({ ...createMilestoneForm(selectedProject?.id ?? ""), id: "" } as unknown as Milestone)}>Create Milestone</button></div>
       </Panel>
       <ProjectFormDialog open={editingProject !== null} project={editingProject?.id ? editingProject : undefined} departments={departments} users={users} onClose={() => setEditingProject(null)} onSubmit={handleProjectSubmit} />
       <MilestoneFormDialog open={editingMilestone !== null} projects={projects} selectedProjectId={selectedProject?.id ?? ""} milestone={editingMilestone?.id ? editingMilestone : undefined} onClose={() => setEditingMilestone(null)} onSubmit={handleMilestoneSubmit} />
