@@ -49,6 +49,8 @@ Run the API:
 ```powershell
 dotnet build PMWDS.slnx
 dotnet run --project PMWDS.API --urls http://localhost:5177
+or 
+dotnet run --project PMWDS.API\PMWDS.API.csproj --launch-profile http  
 ```
 
 Run the client:
