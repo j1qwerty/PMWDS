@@ -269,7 +269,7 @@ html, body {
 
 /* === SURFACE & GLASS EFFECTS === */
 
-/* Glass Panel - Frosted glass effect */
+/* Glass Panel - Frosted glass effect
 .glass-panel {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
@@ -298,7 +298,7 @@ html, body {
   box-shadow: 0 10px 30px -10px rgba(70, 72, 212, 0.08);
   border-radius: var(--pmwds-radius-lg);
   background: var(--pmwds-surface-container-lowest);
-}
+} */
 
 /* === GRADIENTS === */
 
@@ -467,31 +467,33 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--pmwds-outline);
+  background-color: var(--pmwds-primary) !important;
   border-radius: 3px;
-  transition: background 0.2s ease;
+  opacity: 0.7;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--pmwds-primary);
+  background-color: var(--pmwds-secondary) !important;
+  opacity: 1;
 }
 
-/* Sidebar Scrollbar */
+/* Sidebar Scrollbar - More prominent */
 .sidebar-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--pmwds-primary);
+  background-color: var(--pmwds-primary) !important;
   border-radius: 10px;
+  opacity: 0.9;
 }
 
 /* === FOCUS & ACCESSIBILITY === */

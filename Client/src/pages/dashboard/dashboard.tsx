@@ -48,8 +48,8 @@ export function DashboardPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="gap-6">
-      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+    <div className=" mx-4 my-4 gap-6">
+      <section className=" my-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="flex flex-col gap-2">
           <span className="text-[12px] text-primary font-semibold uppercase tracking-wider">Overview • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
         </div>
@@ -63,7 +63,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <section className="my-4 grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
           <div className="flex justify-between items-start">
             <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">TOTAL</span>
@@ -151,7 +151,7 @@ export function DashboardPage() {
         <div className="xl:col-span-2 flex flex-col gap-10">
           <section className="glass-card rounded-2xl flex flex-col overflow-hidden">
             <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-              <h2 className="text-lg font-black text-white tracking-wide">Active Objectives</h2>
+              <h2 className="text-lg font-black text-black  tracking-wide">Active Objectives</h2>
               <button className="text-primary-light hover:text-white text-xs font-bold uppercase tracking-widest transition-all hover:underline underline-offset-4">View Full Ledger</button>
             </div>
             <TaskList tasks={myTasks.slice(0, 5)} showProgress />
@@ -231,9 +231,9 @@ export function DashboardPage() {
             </div>
           </section>
 
-          <section className="glass-card rounded-2xl p-8">
+          <section className="glass-card rounded-2xl my-4 p-8">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">Escalations</h2>
+              <h2 className="text-xs font-black  uppercase tracking-[0.2em]">Escalations</h2>
               <span className="bg-rose-500/10 text-rose-400 text-[10px] font-black px-2.5 py-1 rounded border border-rose-500/20 tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                 {overdue.length} PENDING
               </span>
@@ -260,7 +260,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
+      <div className="my-4 col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
         <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
           <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
         </Panel>
