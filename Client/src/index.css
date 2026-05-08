@@ -129,10 +129,10 @@ html, body {
   overflow-x: hidden;
 }
 
-/* App container - centered with max-width for big screens (1920px+) */
-@media (min-width: 1920px) {
+/* App container - centered with max-width accounting for sidebar (2560px+) */
+@media (min-width: 2560px) {
   .layout-max-width {
-    max-width: 1600px;
+    max-width: 2320px;
     margin: 0 auto;
   }
 }

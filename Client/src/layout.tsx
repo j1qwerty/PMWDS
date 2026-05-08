@@ -170,8 +170,8 @@ return (
         </div>
       </nav>
 
-      {/* Main Content Area - centered with max-width for big screens */}
-      <div className="flex-1 flex flex-col min-h-screen layout-max-width 2xl:max-w-[1600px] 2xl:mx-auto">
+      {/* Main Content Area - centered with max-width accounting for sidebar */}
+      <div className="ml-[240px] flex-1 flex flex-col min-h-screen layout-max-width">
         {/* TopAppBar */}
         <header className="sticky top-0 h-[56px] bg-surface/90 backdrop-blur-2xl text-primary font-semibold shadow-sm z-40 border-b border-surface-variant/30">
           <div className="flex justify-between items-center w-full px-lg h-full">
