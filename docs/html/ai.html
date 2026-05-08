@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Insights | The Kinetic Archive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface": "#f7f9fb",
+                "on-background": "#191c1e",
+                "surface-dim": "#d8dadc",
+                "on-error-container": "#93000a",
+                "on-secondary-container": "#fffbff",
+                "tertiary": "#545c72",
+                "tertiary-fixed-dim": "#bec6e0",
+                "on-tertiary-container": "#fefcff",
+                "on-tertiary-fixed": "#131b2e",
+                "surface-tint": "#494bd6",
+                "primary": "#4648d4",
+                "error": "#ba1a1a",
+                "outline-variant": "#c7c4d7",
+                "surface-container-low": "#f2f4f6",
+                "on-surface-variant": "#464554",
+                "secondary-container": "#9c48ea",
+                "tertiary-container": "#6c748b",
+                "surface-container": "#eceef0",
+                "primary-container": "#6063ee",
+                "secondary-fixed": "#f0dbff",
+                "tertiary-fixed": "#dae2fd",
+                "on-primary-fixed-variant": "#2f2ebe",
+                "secondary-fixed-dim": "#ddb7ff",
+                "secondary": "#8127cf",
+                "on-secondary-fixed-variant": "#6900b3",
+                "inverse-primary": "#c0c1ff",
+                "on-secondary-fixed": "#2c0051",
+                "inverse-surface": "#2d3133",
+                "inverse-on-surface": "#eff1f3",
+                "primary-fixed": "#e1e0ff",
+                "on-surface": "#191c1e",
+                "outline": "#767586",
+                "on-primary-fixed": "#07006c",
+                "surface-container-high": "#e6e8ea",
+                "on-tertiary-fixed-variant": "#3f465c",
+                "primary-fixed-dim": "#c0c1ff",
+                "on-error": "#ffffff",
+                "surface-variant": "#e0e3e5",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "on-tertiary": "#ffffff",
+                "surface-container-highest": "#e0e3e5",
+                "surface-bright": "#f7f9fb",
+                "on-primary-container": "#fffbff",
+                "on-primary": "#ffffff",
+                "background": "#f7f9fb",
+                "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "headline": ["Inter"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+        }
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #4648d4 0%, #8127cf 100%);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f7f9fb;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d8dadc;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-4 space-y-2 bg-surface-container-lowest w-64 border-r border-outline-variant/30 z-[60]">
+<div class="flex items-center space-x-3 px-2 mb-8">
+<div class="w-8 h-8 rounded kinetic-gradient flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">dataset</span>
+</div>
+<span class="font-headline font-bold text-lg tracking-tight text-on-surface">Archive</span>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="font-headline text-sm font-medium">Dashboard</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">folder_open</span>
+<span class="font-headline text-sm font-medium">Projects</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">assignment</span>
+<span class="font-headline text-sm font-medium">Tasks</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="font-headline text-sm font-medium">Users</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">domain</span>
+<span class="font-headline text-sm font-medium">Departments</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="font-headline text-sm font-medium">Reports</span>
+</div>
+</nav>
+<div class="mt-auto space-y-6">
+<div class="bg-surface-container p-4 rounded-xl border border-outline-variant/30">
+<div class="flex items-center justify-between mb-3">
+<span class="text-[10px] font-bold tracking-widest uppercase text-primary">AI Insights</span>
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(70,72,212,0.3)]"></span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Neural analysis active. Project 'Vanguard' shows 12% health improvement.</p>
+</div>
+<div class="space-y-1">
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-headline text-sm font-medium">Settings</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2.5 transition-all duration-300 ease-in-out text-on-surface-variant hover:text-primary hover:bg-surface-container cursor-pointer rounded-lg">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+<span class="font-headline text-sm font-medium">Help</span>
+</div>
+</div>
+<div class="flex items-center space-x-3 px-2 py-4 border-t border-outline-variant/20">
+<img alt="Alex Rivera" class="w-8 h-8 rounded-full object-cover" data-alt="portrait of a professional male project manager with a confident expression in a studio with light professional background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5-HXEtVv8KSXYR40uEfP7f4kd6iiSDWlHqIZqE4ePsuJ-iTw8KcI9YazImJG7MsagBJRhE-yIYE3JhuRewYdwBr73FSycbkRZGTiDUrDiyq-odEb-tA7FV_3Z1WcUeALgX069d3FzqYiI6uEHFcty4cvcd8puOzebRkbte8EnO8RJNIOQr5Dt5urFMqHP1mMR_og5EcMhUp4YL9_GRN3EcCoJXLLMpUX4ltiocMIplUepXPnapjSQwrsLG5isN2RXkEUuWCeOg4U"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-on-surface">Alex Rivera</span>
+<span class="text-[10px] text-on-surface-variant">SuperAdmin</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 min-h-screen bg-surface flex flex-col">
+<!-- Top Navigation -->
+<header class="h-16 flex items-center justify-between px-8 bg-surface-container-lowest border-b border-outline-variant/20 sticky top-0 z-50">
+<div class="flex items-center space-x-8">
+<h1 class="text-xl font-headline font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent tracking-tight">The Kinetic Archive</h1>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="bg-surface-container border-none rounded-lg pl-10 pr-4 py-1.5 text-sm w-64 focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline/60 transition-all" placeholder="Query archive..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-outline hover:text-primary cursor-pointer transition-colors">notifications</span>
+<span class="material-symbols-outlined text-outline hover:text-primary cursor-pointer transition-colors">auto_awesome</span>
+<span class="material-symbols-outlined text-outline hover:text-primary cursor-pointer transition-colors">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Content Grid -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Side Navigation for AI Agents -->
+<nav class="w-64 bg-surface-container-low flex flex-col p-4 border-r border-outline-variant/20">
+<div class="mb-6">
+<span class="text-[10px] font-bold tracking-[0.2em] uppercase text-outline px-2">Active Neural Agents</span>
+</div>
+<div class="space-y-1">
+<div class="p-3 bg-primary-container/10 border-r-4 border-primary rounded-l-lg flex flex-col space-y-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<span class="text-sm font-bold text-primary">Nexus-7</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_4px_rgba(70,72,212,0.4)]"></span>
+</div>
+<span class="text-[11px] text-on-surface-variant">Core Project Logic</span>
+</div>
+<div class="p-3 hover:bg-surface-container rounded-lg transition-colors group flex flex-col space-y-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<span class="text-sm font-bold text-on-surface group-hover:text-primary">Eon Analyst</span>
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
+</div>
+<span class="text-[11px] text-on-surface-variant">Timeline &amp; Prediction</span>
+</div>
+<div class="p-3 hover:bg-surface-container rounded-lg transition-colors group flex flex-col space-y-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<span class="text-sm font-bold text-on-surface group-hover:text-primary">Vanguard Risk</span>
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
+</div>
+<span class="text-[11px] text-on-surface-variant">Security &amp; Stability</span>
+</div>
+</div>
+<div class="mt-auto bg-surface-container-high/40 p-4 rounded-xl border border-outline-variant/20">
+<div class="flex items-center space-x-2 mb-2 text-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-xs font-bold">System Load</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-1/3 h-full kinetic-gradient"></div>
+</div>
+<div class="flex justify-between mt-2">
+<span class="text-[9px] text-on-surface-variant uppercase tracking-wider">Compute Unit B-12</span>
+<span class="text-[9px] font-bold text-primary">24%</span>
+</div>
+</div>
+</nav>
+<!-- Main Interactive Area -->
+<div class="flex-1 flex flex-col relative bg-surface">
+<!-- Chat Window -->
+<div class="flex-1 overflow-y-auto p-8 space-y-8">
+<!-- AI Message -->
+<div class="flex space-x-4 max-w-3xl">
+<div class="w-8 h-8 rounded kinetic-gradient flex-shrink-0 flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-white text-[18px]">hub</span>
+</div>
+<div class="space-y-4">
+<div class="glass-panel p-5 rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm">
+<p class="text-sm leading-relaxed text-on-surface">
+                                    Archive synchronized. I have analyzed the current velocity of <span class="text-primary font-bold">Project Vanguard</span>. 
+                                    Based on the last 48 hours of commit data and meeting transcripts, I've detected a shift in resource allocation.
+                                </p>
+</div>
+<!-- Analysis Cards Bento Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container p-4 rounded-xl border border-outline-variant/20 flex flex-col justify-between h-32 relative overflow-hidden group hover:border-primary/40 transition-colors">
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[80px] text-primary">health_and_safety</span>
+</div>
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">Project Health</span>
+</div>
+<h3 class="text-2xl font-bold text-on-surface">88.4%</h3>
+</div>
+<div class="flex items-center text-[10px] text-primary font-bold">
+<span class="material-symbols-outlined text-xs mr-1">trending_up</span>
+<span>+2.4% vs last week</span>
+</div>
+</div>
+<div class="bg-surface-container p-4 rounded-xl border border-outline-variant/20 flex flex-col justify-between h-32 relative overflow-hidden group hover:border-error/40 transition-colors">
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[80px] text-error">psychology_alt</span>
+</div>
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">Burnout Risk</span>
+</div>
+<h3 class="text-2xl font-bold text-on-surface">Elevated</h3>
+</div>
+<div class="flex items-center text-[10px] text-error font-bold">
+<span class="material-symbols-outlined text-xs mr-1">warning</span>
+<span>4 Devs in critical range</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex space-x-4 max-w-3xl ml-auto flex-row-reverse">
+<div class="w-8 h-8 rounded-full flex-shrink-0 border border-outline-variant/50 overflow-hidden ml-4 ring-2 ring-primary/10">
+<img alt="Alex Rivera" class="w-full h-full object-cover" data-alt="portrait of a man with short hair wearing professional attire in light clean lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmlGLjATUsdLI_aqVyaydWpk-tsQnEfLQ8ZoFUovQIWilyBxIGyvM74WouZKdWYSXvS5bqB6iXOkOgis2XP6FDTbqmS9-Ewtr0JZPthwkLQFTAg6OB94K54Uuv7ttqrH_oyQ4iPBf9BkXB_H_TIqyO_lSWDIVTnxL28Tqtxfz-lvBmtNYa_geI80qhJ8GG_F5U0H9C-74ej06Rl_J0fRpPGYoeSpREr8hDHnfs8L-TR4nqxP7VcM9lZWh1sRJZoeFrMZQVECgq14k"/>
+</div>
+<div class="bg-surface-container-high p-4 rounded-2xl rounded-tr-none text-sm text-on-surface shadow-sm border border-outline-variant/10">
+                            Could you provide a visualization of the burnout risk across the Engineering department for the current sprint?
+                        </div>
+</div>
+<!-- AI Visualization Message -->
+<div class="flex space-x-4 max-w-3xl">
+<div class="w-8 h-8 rounded kinetic-gradient flex-shrink-0 flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-white text-[18px]">hub</span>
+</div>
+<div class="space-y-4 w-full">
+<div class="glass-panel p-5 rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm">
+<p class="text-sm mb-4 text-on-surface">Generating neural heatmap for Engineering...</p>
+<!-- Visual Data -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 relative h-64 overflow-hidden">
+<div class="absolute inset-0 flex items-end px-6 pb-8 space-x-4">
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-high rounded-t-lg h-24 relative overflow-hidden transition-all duration-500 hover:bg-primary/10">
+<div class="absolute bottom-0 w-full bg-primary/30 h-1/2"></div>
+</div>
+<span class="text-[8px] mt-2 text-on-surface-variant font-bold uppercase tracking-tighter">Backend</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-high rounded-t-lg h-48 relative overflow-hidden transition-all duration-500 hover:bg-error/10">
+<div class="absolute bottom-0 w-full bg-error h-2/3 shadow-[0_0_15px_rgba(186,26,26,0.2)]"></div>
+</div>
+<span class="text-[8px] mt-2 text-error font-bold uppercase tracking-tighter">Frontend</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-high rounded-t-lg h-32 relative overflow-hidden transition-all duration-500 hover:bg-primary/10">
+<div class="absolute bottom-0 w-full bg-primary/30 h-1/3"></div>
+</div>
+<span class="text-[8px] mt-2 text-on-surface-variant font-bold uppercase tracking-tighter">DevOps</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-high rounded-t-lg h-40 relative overflow-hidden transition-all duration-500 hover:bg-primary/10">
+<div class="absolute bottom-0 w-full bg-primary/30 h-2/3"></div>
+</div>
+<span class="text-[8px] mt-2 text-on-surface-variant font-bold uppercase tracking-tighter">Mobile</span>
+</div>
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-surface-container-high rounded-t-lg h-20 relative overflow-hidden transition-all duration-500 hover:bg-primary/10">
+<div class="absolute bottom-0 w-full bg-primary/30 h-1/4"></div>
+</div>
+<span class="text-[8px] mt-2 text-on-surface-variant font-bold uppercase tracking-tighter">QA</span>
+</div>
+</div>
+<div class="absolute top-4 right-4 flex space-x-4">
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-primary/30"></div>
+<span class="text-[9px] text-on-surface-variant font-bold uppercase">Normal</span>
+</div>
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="text-[9px] text-error font-bold uppercase">High Risk</span>
+</div>
+</div>
+<div class="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col space-y-8">
+<span class="text-[8px] text-outline uppercase tracking-widest -rotate-90">Intensity</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Field Fixed Bottom -->
+<div class="p-6 bg-surface/90 backdrop-blur-xl border-t border-outline-variant/30">
+<div class="max-w-4xl mx-auto relative group">
+<div class="absolute inset-0 kinetic-gradient rounded-xl blur-lg opacity-10 group-focus-within:opacity-20 transition-opacity"></div>
+<div class="relative bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex items-center space-x-2 shadow-sm">
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-on-surface placeholder:text-outline/50" placeholder="Inquire about project health, risks, or timeline..." type="text"/>
+<button class="px-6 py-2 kinetic-gradient text-white rounded-lg text-sm font-bold flex items-center space-x-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+<div class="flex items-center justify-center space-x-8 mt-4">
+<button class="text-[10px] text-outline font-bold hover:text-primary transition-colors flex items-center space-x-1.5 uppercase tracking-wider">
+<span class="material-symbols-outlined text-xs">auto_fix</span>
+<span>Optimize Timeline</span>
+</button>
+<button class="text-[10px] text-outline font-bold hover:text-primary transition-colors flex items-center space-x-1.5 uppercase tracking-wider">
+<span class="material-symbols-outlined text-xs">description</span>
+<span>Summarize Status</span>
+</button>
+<button class="text-[10px] text-outline font-bold hover:text-primary transition-colors flex items-center space-x-1.5 uppercase tracking-wider">
+<span class="material-symbols-outlined text-xs">group_work</span>
+<span>Resource Forecast</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Insights Panel (Right Sidebar) -->
+<aside class="w-80 bg-surface-container-low p-6 space-y-8 border-l border-outline-variant/20 overflow-y-auto">
+<div>
+<h4 class="text-[10px] font-bold tracking-[0.2em] uppercase text-outline mb-6">Archive Pulse</h4>
+<div class="space-y-6">
+<!-- Project Metrics Card -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm relative overflow-hidden group">
+<div class="flex items-start justify-between mb-4">
+<div class="flex flex-col">
+<span class="text-[11px] text-on-surface-variant font-medium">Active Sprint</span>
+<span class="text-sm font-bold text-on-surface">Vanguard Alpha-9</span>
+</div>
+<div class="w-10 h-10 rounded-full border-2 border-surface-container-high flex items-center justify-center relative">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-high" cx="20" cy="20" fill="transparent" r="18" stroke="currentColor" stroke-width="2"></circle>
+<circle class="text-primary" cx="20" cy="20" fill="transparent" r="18" stroke="currentColor" stroke-dasharray="113" stroke-dashoffset="34" stroke-linecap="round" stroke-width="2"></circle>
+</svg>
+<span class="absolute text-[10px] font-bold text-primary">70%</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-[10px] text-on-surface-variant font-medium">Open Risks</span>
+<span class="text-[10px] font-bold text-error">12 High Priority</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] text-on-surface-variant font-medium">Velocity</span>
+<span class="text-[10px] font-bold text-primary">64 pts / wk</span>
+</div>
+</div>
+</div>
+<!-- Real-time Notifications Feed -->
+<div class="space-y-4">
+<span class="text-[10px] font-bold tracking-widest text-outline uppercase">ANOMALY FEED</span>
+<div class="flex space-x-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+<div class="w-1.5 h-1.5 rounded-full bg-error mt-2 shrink-0 shadow-[0_0_8px_rgba(186,26,26,0.3)]"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">Pipeline Failure</span>
+<span class="text-[10px] text-on-surface-variant leading-tight">Backend repo 'Hydra' failed build 10.4.</span>
+<span class="text-[9px] text-outline font-medium mt-1 uppercase">2 mins ago</span>
+</div>
+</div>
+<div class="flex space-x-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+<div class="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0 shadow-[0_0_8px_rgba(70,72,212,0.3)]"></div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">New Insight</span>
+<span class="text-[10px] text-on-surface-variant leading-tight">Potential resource conflict detected in Mobile Sprint.</span>
+<span class="text-[9px] text-outline font-medium mt-1 uppercase">14 mins ago</span>
+</div>
+</div>
+</div>
+<!-- Mini Map / Location -->
+<div class="rounded-2xl h-32 w-full overflow-hidden relative group border border-outline-variant/30 shadow-sm">
+<img alt="Data visualization map" class="w-full h-full object-cover filter saturate-[0.2] opacity-80 group-hover:saturate-100 transition-all duration-700" data-alt="abstract satellite map of an urban grid with glowing blue nodes at key intersections" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASUHN4dq2PjA4vztndtn7onA5_0Okt9M7bc7qy65beNcHSRGO4f62UxqKN_W26nrovbaDW2-rb8gJ9IRcOxU4DnF1nZsxUpVxfhuv4wdJD78qydUN8CNPiX8otaoSFXEeB7sbsUX_aFYBj5LoH4FUICHZi71wj7aFaS0jzDEHgcmoQfvVFpXc9VLkw3mO8A5Wl25XDKhDMB_v0Hsni08WOLpuKL3zDuIdO-MAlT8uvZDutlWXMmacA907EFyV9WBIM-9Cc3gA_Uk8"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
+<div class="absolute bottom-3 left-3">
+<span class="text-[9px] font-bold tracking-widest uppercase text-primary">Global Ops Center</span>
+<p class="text-[11px] font-bold text-on-surface">Node: California-12</p>
+</div>
+</div>
+<!-- Upgrade / CTA Card -->
+<div class="bg-primary/5 rounded-2xl p-5 border border-primary/20 relative overflow-hidden group">
+<div class="absolute -right-6 -top-6 w-24 h-24 kinetic-gradient opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity"></div>
+<h5 class="text-xs font-bold text-on-surface mb-2">Advance Neural Engine</h5>
+<p class="text-[10px] text-on-surface-variant mb-4 leading-relaxed">Unlock Tier-3 predictive modeling for enterprise projects.</p>
+<button class="w-full py-2 bg-white text-primary border border-primary/30 rounded-lg text-[10px] font-bold hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm active:scale-[0.98]">
+                                UPGRADE AGENT
+                            </button>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</body></html>

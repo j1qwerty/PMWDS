@@ -1,0 +1,9 @@
+/* MODAL */
+.ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px }
+.modal { background: #fff; border-radius: 16px; width: 100%; max-width: 560px; box-shadow: 0 24px 64px rgba(0,0,0,.2); overflow: hidden; max-height: 90vh; overflow-y: auto }
+.mh { padding: 16px 20px; border-bottom: 1px solid var(--bdr); display: flex; align-items: center; justify-content: space-between }
+.mh h3 { font-size: 15px; font-weight: 700; color: var(--primary) }
+.mx-btn { background: none; border: none; font-size: 20px; color: var(--mx); cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center }
+.mx-btn:hover { background: var(--bg) }
+.mb2 { padding: 20px }
+.mf { padding: 14px 20px; border-top: 1px solid var(--bdr); display: flex; gap: 8px; justify-content: flex-end }

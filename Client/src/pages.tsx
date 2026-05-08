@@ -78,105 +78,103 @@ export function DashboardPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className="grid  gap-10 content-start">
-      <section className="glass-card col-span-12 rounded-2xl p-10 relative overflow-hidden flex flex-col justify-end min-h-[220px]">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/10 via-primary/5 to-transparent pointer-events-none" />
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-8">
-          <div className="text-left">
-            <h1 className="text-4xl font-black tracking-tight text-white mb-3">System Overview</h1>
-            <p className="text-slate-400 text-base max-w-xl leading-relaxed">
-              You have {dashboard?.activeProjects ?? 0} active projects under watch. Project health, delay exposure, workload pressure, and notifications are consolidated into one command view.
-            </p>
-          </div>
-          <div className="flex gap-4">
-            <button className="glass-card text-white font-semibold text-sm px-6 py-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 group border border-white/10">
-              <span className="material-symbols-outlined text-lg group-hover:scale-110 transition-transform" style={{fontVariationSettings: 'FILL 1'}}>summarize</span>
-              Report Center
-            </button>
-            <button className="bg-primary text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-primary-light transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.3)] group">
-              <span className="material-symbols-outlined text-lg group-hover:rotate-90 transition-transform" style={{fontVariationSettings: 'FILL 1'}}>add</span>
-              New Objective
-            </button>
-          </div>
+    <div className="gap-6">
+      {/* Hero Section */}
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="flex flex-col gap-2">
+          <span className="text-[12px] text-primary font-semibold uppercase tracking-wider">Overview • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+        </div>
+        <div className="flex gap-3">
+          <button className="px-4 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low transition-colors text-[12px] font-semibold flex items-center gap-2">
+            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Report Center
+          </button>
         </div>
       </section>
 
-      <section className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300">
+      {/* KPI Row - MD3 Style */}
+      <section className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
           <div className="flex justify-between items-start">
-            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Active Projects</span>
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary-light text-lg" style={{fontVariationSettings: 'FILL 1'}}>layers</span>
+            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">TOTAL</span>
+            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
             </div>
           </div>
-          <div className="flex items-baseline gap-3 mt-2">
-            <span className="text-4xl font-black text-white tracking-tight">{dashboard?.activeProjects ?? 0}</span>
-            <span className="text-xs font-bold text-emerald-400 flex items-center bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
-              <span className="material-symbols-outlined text-sm mr-1" style={{fontVariationSettings: 'FILL 1'}}>arrow_upward</span> 12%
+          <span className="text-h1 text-h1 text-on-surface">{dashboard?.totalProjects ?? 0}</span>
+        </div>
+
+        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
+          <div className="flex justify-between items-start">
+            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">ACTIVE</span>
+            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="flex items-end justify-between">
+            <span className="text-h1 text-h1 text-on-surface">{dashboard?.activeProjects ?? 0}</span>
+            <span className="text-[12px] text-[#10B981] flex items-center bg-[#10B981]/10 px-2 py-1 rounded-full font-semibold">
+              <svg className="w-[14px] h-[14px] mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              12%
             </span>
           </div>
-          <div className="text-xs text-slate-500 font-medium">{dashboard?.totalProjects ?? 0} total projects</div>
         </div>
 
-        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:border-rose-500/30">
+        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
           <div className="flex justify-between items-start">
-            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Pending Tasks</span>
-            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-              <span className="material-symbols-outlined text-slate-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>checklist</span>
+            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">PENDING</span>
+            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
             </div>
           </div>
-          <div className="flex items-baseline gap-3 mt-2">
-            <span className="text-4xl font-black text-white tracking-tight">{dashboard?.totalTasks ?? 0}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-h1 text-h1 text-on-surface">{dashboard?.totalTasks ?? 0}</span>
             {(dashboard?.overdueTasks ?? 0) > 0 && (
-              <span className="text-xs font-bold text-rose-400 flex items-center bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20">
-                {dashboard?.overdueTasks} Critical
-              </span>
+              <span className="text-[10px] text-error bg-error-container font-bold px-2 py-1 rounded-full">{(dashboard?.overdueTasks ?? 0)} URGENT</span>
             )}
           </div>
-          <div className="text-xs text-slate-500 font-medium">{dashboard?.completedTasks ?? 0} completed this month</div>
         </div>
 
-        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:border-amber-500/30">
+        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
           <div className="flex justify-between items-start">
-            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">AI Health Score</span>
-            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-              <span className="material-symbols-outlined text-amber-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>auto_awesome</span>
+            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">AI HEALTH</span>
+            <div className="w-8 h-8 rounded-full primary-gradient flex items-center justify-center shadow-sm shadow-primary/40">
+              <svg className="w-[18px] h-[18px] text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
           </div>
-          <div className="flex flex-col gap-3 mt-2">
-            <span className="text-4xl font-black text-white tracking-tight">{formatPercent(dashboard?.overallHealthScore ?? 0)}</span>
-            <div className="w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-amber-500 rounded-full relative shadow-[0_0_15px_rgba(245,158,11,0.3)]" style={{ width: `${dashboard?.overallHealthScore ?? 0}%` }}>
-                <div className="absolute inset-0 bg-white/20 w-full h-full animate-shimmer" />
-              </div>
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-h1 text-h1 text-on-surface">{formatPercent(dashboard?.overallHealthScore ?? 0)}</span>
+            <svg className="w-[20px] h-[20px] text-outline/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.543-.214-.877-.597-1.124l-.547-.547a3.374 3.374 0 01-.516-1.778m-3.485 3.116l-.543-.547a3 3 0 012.828-2.828" />
+            </svg>
           </div>
-          <div className="text-xs text-slate-500 font-medium">Stable system state</div>
         </div>
 
-        <div className="glass-card glass-card-hover rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300">
+        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
           <div className="flex justify-between items-start">
-            <span className="text-xs uppercase tracking-[0.15em] font-bold text-slate-400">Budget Variance</span>
-            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-              <span className="material-symbols-outlined text-slate-400 text-lg" style={{fontVariationSettings: 'FILL 1'}}>account_balance_wallet</span>
+            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">BUDGET</span>
+            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
             </div>
           </div>
-          <div className="flex items-baseline gap-3 mt-2">
-            <span className="text-4xl font-black text-white tracking-tight">{formatMoney(Math.abs(dashboard?.budgetVariance ?? 0))}</span>
-          </div>
-          <div className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-            {(dashboard?.budgetVariance ?? 0) <= 0 ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                <span className="text-emerald-400">Under budget</span>
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
-                <span className="text-rose-400">Over budget</span>
-              </>
-            )}
+          <div className="flex flex-col">
+            <span className="text-h1 text-h1 text-[#10B981]">{formatMoney(Math.abs(dashboard?.budgetVariance ?? 0))}</span>
+            <span className="text-[10px] text-on-surface-variant opacity-70 tracking-wider uppercase">{(dashboard?.budgetVariance ?? 0) <= 0 ? 'ON TRACK' : 'OVER'}</span>
           </div>
         </div>
       </section>
@@ -225,10 +223,6 @@ export function DashboardPage() {
               </div>
             </section>
           )}
-
-          <Panel title="Workload Distribution" subtitle="Team load and burnout exposure">
-            <WorkloadBars items={dashboard?.workloadDistribution ?? []} />
-          </Panel>
         </div>
 
         <div className="flex flex-col gap-10">
@@ -298,17 +292,23 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-3 gap-10">
-        <Panel title="My Work Queue" subtitle="Priority view for the signed-in user">
-          <TaskList tasks={myTasks.slice(0, 6)} />
+      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
+        <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
+          <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
         </Panel>
 
         <Panel title="Unread Notifications" subtitle="New alerts and system events">
           <NotificationList items={unread.slice(0, 6)} compact />
         </Panel>
+      </div>
 
-        <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
-          <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
+      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
+        <Panel title="My Work Queue" subtitle="Priority view for the signed-in user">
+          <TaskList tasks={myTasks.slice(0, 6)} />
+        </Panel>
+
+        <Panel title="Workload Distribution" subtitle="Team load and burnout exposure">
+          <WorkloadBars items={dashboard?.workloadDistribution ?? []} />
         </Panel>
       </div>
     </div>
@@ -674,7 +674,7 @@ export function UsersPage() {
         </Panel>
       ) : null}
 
-      <Panel title="Availability Controls" subtitle="Update readiness, add skills, or deactivate users">
+      <Panel title="skills" subtitle="Update readiness, add skills, or deactivate users">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label>
             <span>User</span>

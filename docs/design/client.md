@@ -328,7 +328,7 @@ interface DelayPrediction {
 - Workload visualization
 - User registration (SuperAdmin)
 - Skill management
-- Availability controls
+- skills
 
 #### Departments Page
 - Department list

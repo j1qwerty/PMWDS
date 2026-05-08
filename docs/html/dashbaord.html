@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PMWDS Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#131b2e",
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#e1e0ff",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "secondary-fixed": "#f0dbff",
+                        "tertiary": "#545c72",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed-dim": "#ddb7ff",
+                        "on-background": "#191c1e",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "primary-container": "#6063ee",
+                        "secondary-container": "#9c48ea",
+                        "on-secondary-fixed": "#2c0051",
+                        "background": "#f7f9fb",
+                        "on-surface-variant": "#464554",
+                        "surface": "#f7f9fb",
+                        "on-secondary-fixed-variant": "#6900b3",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-container": "#fffbff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#fffbff",
+                        "tertiary-container": "#6c748b",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "secondary": "#8127cf",
+                        "surface-container-low": "#f2f4f6",
+                        "error": "#ba1a1a",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#dae2fd",
+                        "outline": "#767586",
+                        "inverse-surface": "#2d3133",
+                        "primary": "#4648d4",
+                        "surface-dim": "#d8dadc",
+                        "inverse-primary": "#c0c1ff",
+                        "outline-variant": "#c7c4d7",
+                        "surface-tint": "#494bd6",
+                        "on-tertiary-container": "#fefcff",
+                        "on-primary-fixed": "#07006c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "column-gutter": "20px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "xl": "40px",
+                        "container-margin": "32px"
+                    },
+                    "fontFamily": {
+                        "h1": ["Inter"],
+                        "display": ["Inter"],
+                        "h2": ["Inter"],
+                        "body-md": ["Inter"],
+                        "numeric": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "h1": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "h2": ["24px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-md": ["15px", { "lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "numeric": ["14px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .gradient-btn {
+            background: linear-gradient(135deg, #4648d4 0%, #8127cf 100%);
+            letter-spacing: 0.5px;
+        }
+        .primary-gradient {
+            background: linear-gradient(90deg, #4648d4 0%, #8127cf 100%);
+        }
+        .status-pulse {
+            box-shadow: 0 0 0 4px rgba(186, 26, 26, 0.4);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(186, 26, 26, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(186, 26, 26, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(186, 26, 26, 0); }
+        }
+        .ambient-glow {
+            box-shadow: 0 10px 30px -10px rgba(70, 72, 212, 0.08);
+        }
+    </style>
+<style>
+        .sidebar-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+            background: #07006c;
+            border-radius: 10px;
+        }
+    </style>
+    </head>
+<body class="bg-surface text-on-surface font-body-md antialiased overflow-x-hidden">
+<nav class="fixed left-0 top-0 h-full w-[240px] bg-surface-container-lowest/95 backdrop-blur-3xl dark:bg-black/90 text-primary dark:text-primary-fixed-dim font-body-md text-body-md font-medium shadow-[4px_0_24px_rgba(0,0,0,0.05)] flex flex-col py-md z-50">
+<div class="px-lg pb-sm flex flex-col items-start gap-sm">
+  <div class="font-title-sm text-title-sm font-black text-primary uppercase tracking-widest">PMWDS</div>
+  <div class="flex items-center gap-sm pb-sm border-b border-surface-variant/30">
+    <img alt="Alex Rivera" class="w-[36px] h-[36px] rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAGqBarX5jzc6JO3z60rOSv4u_DPtRxQyB3IcbJ0y3o-d0VFkVqoenp9U5Dvm1YG-ohpcsshQFIxFhpZ6uMVXmJc4pnlpCyVd6ijPDlFI38Jg6_kXhmnx1CRQnpI3CYq43TsLS9SRxzXc6yTIHoWOyNx-zx42yH1yGNnEsPsvRxjMXfwz3ocIE0Z1f-tvuK_Z4ZOnahs7oqtTXNdSQHZTW8XEkRquFoKkzeK3cusMms6rIom1gEABW1TquKdDnZNWjMTj69eA5IuA"/>
+    <div class="flex flex-col overflow-hidden">
+      <span class="font-h2 text-[13px] text-on-surface truncate">Admin</span>
+      <span class="font-label-caps text-[10px] text-on-surface-variant">SuperAdmin</span>
+    </div>
+  </div>
+</div>
+<div class="flex-1 mt-2 flex flex-col gap-xs overflow-y-auto sidebar-scrollbar">
+
+<div class="flex flex-col gap-xs mb-md">
+<div class="px-4 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Navigation</div>
+<a class="flex items-center gap-md bg-secondary-container/10 text-primary border-r-4 border-primary px-4 py-3" href="#">
+<span class="material-symbols-outlined fill-icon">grid_view</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">flag</span>
+<span>Milestones</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">task_alt</span>
+<span>Tasks</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">inbox</span>
+<span>Inbox</span>
+</a>
+</div>
+<div class="flex flex-col gap-xs mb-md">
+<div class="px-4 py-2 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">People</div>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">corporate_fare</span>
+<span>Organizations</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span>Departments</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>Users</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span>Profiles</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span>Roles and permissions</span>
+</a>
+</div>
+<div class="flex flex-col gap-xs mb-md">
+<div class="px-4 py-2 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Resources</div>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span>Skills</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+<span>Knowledge</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span>AI Insights</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span>Reports</span>
+</a>
+</div>
+<div class="flex flex-col gap-xs mb-md">
+<div class="px-4 py-2 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">System</div>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>Activity Logs</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</div>
+<div class="mt-auto flex flex-col gap-xs pb-lg">
+<a class="flex items-center gap-md text-on-surface-variant px-4 py-3 opacity-70 hover:bg-surface-variant transition-all duration-300" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Log Out</span>
+</a>
+</div>
+</nav>
+<!-- Main Content -->
+<div class="ml-[240px] flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="sticky top-0 h-[56px] bg-surface/90 backdrop-blur-2xl text-primary font-semibold shadow-sm z-40 border-b border-surface-variant/30">
+<div class="flex justify-between items-center w-full px-lg h-full">
+<div class="font-display text-[24px] font-bold text-primary tracking-tighter">PMWDS</div>
+<div class="flex items-center gap-md">
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="pl-xl pr-md py-sm rounded-full bg-surface-container-high border-none text-body-md focus:ring-2 focus:ring-primary w-[240px]" placeholder="Search..." type="text"/>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-[36px] h-[36px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+<div class="h-[24px] w-[1px] bg-outline-variant mx-sm"></div>
+<div class="flex gap-sm">
+<button class="gradient-btn text-on-primary font-label-caps text-label-caps px-md py-sm rounded-full shadow-md flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">add</span> New Project
+                        </button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 p-container-margin flex flex-col gap-xl">
+<!-- Hero Section -->
+<section class="flex flex-col md:flex-row justify-between items-start md:items-end gap-lg">
+<div class="flex flex-col gap-sm">
+<span class="font-label-caps text-label-caps text-primary tracking-widest uppercase">Overview • Tuesday, Oct 24</span>
+</div>
+<div class="flex gap-md">
+<button class="px-md py-sm rounded-lg border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors font-label-caps text-label-caps flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">assessment</span> Report Center
+                    </button>
+</div>
+</section>
+<!-- KPI Row -->
+<section class="grid grid-cols-1 md:grid-cols-5 gap-column-gutter">
+<div class="glass-panel p-md rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-surface-variant/30">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider">TOTAL</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[20px]">folder_open</span>
+</div>
+</div>
+<span class="font-h1 text-h1 text-on-surface">24</span>
+</div>
+<div class="glass-panel p-md rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-surface-variant/30">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider">ACTIVE</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[20px]">play_circle</span>
+</div>
+</div>
+<div class="flex items-end justify-between">
+<span class="font-h1 text-h1 text-on-surface">12</span>
+<span class="font-numeric text-[12px] text-[#10B981] flex items-center bg-[#10B981]/10 px-sm py-[2px] rounded-full">
+<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> 12%
+</span>
+</div>
+</div>
+<div class="glass-panel p-md rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-surface-variant/30">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider">PENDING</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[20px]">task</span>
+</div>
+</div>
+<div class="flex items-baseline gap-sm">
+<span class="font-h1 text-h1 text-on-surface">45</span>
+<span class="font-label-caps text-[10px] text-error bg-error-container/30 px-sm py-[2px] rounded-full font-bold">3 URGENT</span>
+</div>
+</div>
+<div class="glass-panel p-md rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-surface-variant/30">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider">AI HEALTH</span>
+<div class="w-8 h-8 rounded-full primary-gradient flex items-center justify-center shadow-sm shadow-primary/40">
+<span class="material-symbols-outlined text-white text-[18px]">bolt</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-h1 text-h1 text-on-surface">92%</span>
+<span class="material-symbols-outlined text-outline/40 text-[20px]">psychology</span>
+</div>
+</div>
+<div class="glass-panel p-md rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-surface-variant/30">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wider">BUDGET</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[20px]">account_balance_wallet</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-h1 text-h1 text-[#10B981]">+$4.2k</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant opacity-70 tracking-widest">ON TRACK</span>
+</div>
+</div>
+</section>
+<!-- Row 1: High Risk Projects & Unread Notifications -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- High Risk Projects Panel (2/3) -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+<div class="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-error">priority_high</span>
+<h2 class="font-h2 text-h2 text-on-surface">High Risk Projects</h2>
+</div>
+<button class="text-primary font-label-caps text-label-caps hover:underline">Full Audit</button>
+</div>
+<div class="flex flex-col gap-xs">
+<!-- Table Row 1 -->
+<div class="flex items-center justify-between py-md px-sm rounded-lg hover:bg-surface-container-low transition-colors group">
+<div class="flex flex-col w-1/4">
+<span class="font-label-caps text-[10px] text-outline uppercase">PRJ-X90</span>
+<a class="font-body-lg font-semibold text-on-surface hover:text-primary transition-colors" href="#">Core Engine Refactor</a>
+</div>
+<div class="w-1/4 flex justify-center">
+<span class="px-sm py-[2px] bg-error-container text-error rounded-full text-[11px] font-medium flex items-center gap-xs">
+<span class="w-1 h-1 rounded-full bg-error"></span> Delayed
+                                </span>
+</div>
+<div class="w-1/4 px-md">
+<div class="flex flex-col gap-xs">
+<div class="h-2 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full primary-gradient" style="width: 42%"></div>
+</div>
+<span class="text-[11px] font-numeric text-on-surface-variant text-right">42% Complete</span>
+</div>
+</div>
+<div class="w-1/4 flex items-center justify-end gap-xl">
+<div class="flex -space-x-2">
+<img class="w-7 h-7 rounded-full border-2 border-surface-container-lowest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMLrZguWFNaq0HWwF8P3dJT772SkjJRfP--8MZc7Rk4JHFyOl9I0R_Znl3JGlNPynZ9WpTgXxrf5BhsKQHK8FOckZ2PrOGD8Z8NK5t74SqVEdaBln9tc_kGTZC_KsItlGze4p8u2ySfkjBZByXSt5zK2Ml-NNiQucCy8cWTJrjn2WB0bU5jR_LEOdTsiwUt7dCZdyB0meoa6vgwKWIvg1QycFTFoRsoeYk1ZTBPpTfqFi4M1ljtDXQW7jLCOuie8f6VJJGBIQgDg8"/>
+<div class="w-7 h-7 rounded-full bg-surface-variant border-2 border-surface-container-lowest flex items-center justify-center text-[10px] text-on-surface-variant">+3</div>
+</div>
+<span class="material-symbols-outlined text-error text-[20px] fill-icon" title="Critical Health">report</span>
+</div>
+</div>
+<!-- Table Row 2 -->
+<div class="flex items-center justify-between py-md px-sm rounded-lg hover:bg-surface-container-low transition-colors group">
+<div class="flex flex-col w-1/4">
+<span class="font-label-caps text-[10px] text-outline uppercase">PRJ-A42</span>
+<a class="font-body-lg font-semibold text-on-surface hover:text-primary transition-colors" href="#">Global CDN Setup</a>
+</div>
+<div class="w-1/4 flex justify-center">
+<span class="px-sm py-[2px] bg-primary/10 text-primary rounded-full text-[11px] font-medium flex items-center gap-xs">
+<span class="w-1 h-1 rounded-full bg-primary"></span> In Progress
+                                </span>
+</div>
+<div class="w-1/4 px-md">
+<div class="flex flex-col gap-xs">
+<div class="h-2 w-full bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full primary-gradient" style="width: 58%"></div>
+</div>
+<span class="text-[11px] font-numeric text-on-surface-variant text-right">58% Complete</span>
+</div>
+</div>
+<div class="w-1/4 flex items-center justify-end gap-xl">
+<div class="flex -space-x-2">
+<img class="w-7 h-7 rounded-full border-2 border-surface-container-lowest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB91yOg8I5IhGk4MSUIIeMwfVxdmz7Ptq4iOvZDeDAXZTmfMf6xCpLbNPcXVZMnFBUOyPuecEQQCpy-93OyErDPVmWW6pyrBrX6KjtbehpDDu8-Iq_mtJUjhPbaIIN-DRslwo6ZyLLfKf4Bp1MNQye4CjYQWmwZuQ6nT9wetRaZRDL5etqVMeG6XwZcHshBhXD-9jMiFW7dUK861Q_5DKfGFSM_nv3rW_DLckF4ae6yBE3RlBUYr0yipi3soTm3mv5nexnZjIAqxtE"/>
+</div>
+<span class="material-symbols-outlined text-[#F59E0B] text-[20px] fill-icon" title="At Risk">warning</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Unread Notifications Panel (1/3) -->
+<div class="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+<div class="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">inbox</span>
+<h2 class="font-h2 text-h2 text-on-surface">Notifications</h2>
+</div>
+<span class="bg-primary text-on-primary text-[10px] font-bold px-2 py-[2px] rounded-full">4 New</span>
+</div>
+<div class="flex flex-col gap-md">
+<div class="flex gap-md items-start p-sm rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[16px]">chat</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[13px] text-on-surface font-medium">Sarah mentioned you in <span class="text-primary">Sprint #24</span></span>
+<span class="text-[11px] text-outline mt-1">12 minutes ago</span>
+</div>
+</div>
+<div class="flex gap-md items-start p-sm rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
+<div class="w-8 h-8 rounded-full bg-error/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error text-[16px]">priority_high</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[13px] text-on-surface font-medium">Critical Bug reported: <span class="text-error">Auth Leak</span></span>
+<span class="text-[11px] text-outline mt-1">45 minutes ago</span>
+</div>
+</div>
+<div class="flex gap-md items-start p-sm rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
+<div class="w-8 h-8 rounded-full bg-secondary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-[16px]">rocket_launch</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[13px] text-on-surface font-medium">New Release: v2.4.0 is now live</span>
+<span class="text-[11px] text-outline mt-1">2 hours ago</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Row 2: My Work Queue & Workload Distribution -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- My Work Queue (1/2) -->
+<div class="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+<div class="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
+<h2 class="font-h2 text-h2 text-on-surface">My Work Queue</h2>
+<span class="text-outline font-label-caps text-[10px]">8 Tasks Pending</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center justify-between py-3 border-b border-surface-variant/50 hover:bg-surface-container-low px-2 rounded-md transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<div class="flex flex-col">
+<span class="font-body-md text-on-surface font-medium">Finalize Design Tokens</span>
+<span class="text-[11px] text-on-surface-variant">Project Obsidian</span>
+</div>
+</div>
+<span class="px-2 py-1 bg-error-container/20 text-error text-[10px] font-bold rounded uppercase">High</span>
+</div>
+<div class="flex items-center justify-between py-3 border-b border-surface-variant/50 hover:bg-surface-container-low px-2 rounded-md transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<div class="flex flex-col">
+<span class="font-body-md text-on-surface font-medium">Weekly Stakeholder Sync</span>
+<span class="text-[11px] text-on-surface-variant">Core Engine</span>
+</div>
+</div>
+<span class="px-2 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded uppercase">Medium</span>
+</div>
+<div class="flex items-center justify-between py-3 hover:bg-surface-container-low px-2 rounded-md transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<div class="flex flex-col">
+<span class="font-body-md text-on-surface font-medium">User Interview Review</span>
+<span class="text-[11px] text-on-surface-variant">UX Audit</span>
+</div>
+</div>
+<span class="px-2 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded uppercase">Low</span>
+</div>
+</div>
+</div>
+<!-- Workload Distribution (1/2) -->
+<div class="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+<div class="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
+<h2 class="font-h2 text-h2 text-on-surface">Workload Distribution</h2>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">more_horiz</span>
+</div>
+<div class="flex flex-col gap-lg mt-md">
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-[13px]">
+<span class="font-medium text-on-surface">Design Team</span>
+<span class="font-numeric text-primary">88% Capacity</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full primary-gradient rounded-full" style="width: 88%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-[13px]">
+<span class="font-medium text-on-surface">Engineering Pod Alpha</span>
+<span class="font-numeric text-error font-bold">112% Overflow</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full" style="width: 100%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-[13px]">
+<span class="font-medium text-on-surface">QA &amp; DevOps</span>
+<span class="font-numeric text-on-surface-variant">45% Capacity</span>
+</div>
+<div class="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 45%"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- High-Risk Interventions & Recent Escalations -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<div class="lg:col-span-2 flex flex-col gap-sm">
+<div class="flex items-center gap-sm mb-xs">
+<span class="material-symbols-outlined text-error">warning</span>
+<h2 class="font-h2 text-h2 text-on-surface">High-Risk Interventions</h2>
+<span class="px-xs py-[2px] border border-outline rounded text-[10px] text-outline font-label-caps uppercase ml-sm">Admin Only</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="glass-panel p-md rounded-xl border border-error-container bg-error-container/10 relative overflow-hidden">
+<div class="absolute top-md right-md w-2 h-2 rounded-full bg-error status-pulse"></div>
+<h3 class="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">API Gateway Timeout</h3>
+<p class="font-body-md text-on-surface-variant text-[13px] mb-md">SLA violation risk critical. 45ms latency spike detected in US-East region.</p>
+<div class="flex gap-sm">
+<button class="px-sm py-xs bg-error text-on-error rounded font-label-caps text-[11px] hover:bg-on-error-container transition-colors">Intervene</button>
+<button class="px-sm py-xs border border-outline-variant rounded font-label-caps text-[11px] text-on-surface hover:bg-surface-variant transition-colors">Details</button>
+</div>
+</div>
+<div class="glass-panel p-md rounded-xl border border-[#F59E0B]/30 bg-[#FEF3C7]/20 relative overflow-hidden">
+<div class="absolute top-md right-md w-2 h-2 rounded-full bg-[#F59E0B]"></div>
+<h3 class="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">Resource Bottleneck</h3>
+<p class="font-body-md text-on-surface-variant text-[13px] mb-md">Design team allocation exceeding 110% capacity for current sprint.</p>
+<div class="flex gap-sm">
+<button class="px-sm py-xs bg-[#F59E0B] text-white rounded font-label-caps text-[11px] hover:bg-[#D97706] transition-colors">Reallocate</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Escalations Panel -->
+<div class="bg-surface-container-lowest rounded-xl p-lg ambient-glow flex flex-col h-full">
+<div class="flex items-center gap-sm mb-md pb-sm border-b border-surface-variant">
+<span class="material-symbols-outlined text-error">bolt</span>
+<h2 class="font-h2 text-h2 text-on-surface">Urgent Escalations</h2>
+</div>
+<div class="flex flex-col gap-sm flex-1">
+<!-- Danger Alert -->
+<div class="p-sm rounded-lg bg-error-container/10 border-l-4 border-error flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<span class="font-body-md font-bold text-error text-[13px]">Server Downtime Risk</span>
+<span class="text-[10px] text-outline">5m ago</span>
+</div>
+<p class="text-[12px] text-on-surface-variant leading-tight">Database migration failed on production cluster #4. Data integrity check required.</p>
+<button class="mt-2 w-full py-1 bg-error text-on-error rounded text-[10px] font-bold uppercase tracking-wider">Execute Recovery</button>
+</div>
+<!-- Warning Alert -->
+<div class="p-sm rounded-lg bg-[#FEF3C7]/20 border-l-4 border-[#F59E0B] flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<span class="font-body-md font-bold text-[#D97706] text-[13px]">Security Policy Breach</span>
+<span class="text-[10px] text-outline">18m ago</span>
+</div>
+<p class="text-[12px] text-on-surface-variant leading-tight">Unauthorized access attempt detected from unknown IP in 'Staging'.</p>
+<div class="flex gap-2 mt-2">
+<button class="flex-1 py-1 border border-[#F59E0B] text-[#D97706] rounded text-[10px] font-bold uppercase">Investigate</button>
+<button class="flex-1 py-1 bg-[#F59E0B] text-white rounded text-[10px] font-bold uppercase">Block IP</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+<div class="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">track_changes</span>
+<h2 class="font-h2 text-h2 text-on-surface">Active Objectives</h2>
+</div>
+<button class="text-primary font-label-caps text-label-caps hover:underline">View All</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<div class="p-md rounded-lg bg-surface-container-low border border-surface-variant/30">
+<div class="flex justify-between items-start mb-sm"><div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-primary uppercase">Q4 Infrastructure</span>
+</div>
+<div class="flex items-center gap-sm">
+<div class="flex -space-x-2 mr-1">
+<img alt="User" class="w-5 h-5 rounded-full border border-surface-container-low" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMLrZguWFNaq0HWwF8P3dJT772SkjJRfP--8MZc7Rk4JHFyOl9I0R_Znl3JGlNPynZ9WpTgXxrf5BhsKQHK8FOckZ2PrOGD8Z8NK5t74SqVEdaBln9tc_kGTZC_KsItlGze4p8u2ySfkjBZByXSt5zK2Ml-NNiQucCy8cWTJrjn2WB0bU5jR_LEOdTsiwUt7dCZdyB0meoa6vgwKWIvg1QycFTFoRsoeYk1ZTBPpTfqFi4M1ljtDXQW7jLCOuie8f6VJJGBIQgDg8"/>
+<img alt="User" class="w-5 h-5 rounded-full border border-surface-container-low" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB91yOg8I5IhGk4MSUIIeMwfVxdmz7Ptq4iOvZDeDAXZTmfMf6xCpLbNPcXVZMnFBUOyPuecEQQCpy-93OyErDPVmWW6pyrBrX6KjtbehpDDu8-Iq_mtJUjhPbaIIN-DRslwo6ZyLLfKf4Bp1MNQye4CjYQWmwZuQ6nT9wetRaZRDL5etqVMeG6XwZcHshBhXD-9jMiFW7dUK861Q_5DKfGFSM_nv3rW_DLckF4ae6yBE3RlBUYr0yipi3soTm3mv5nexnZjIAqxtE"/>
+<div class="w-5 h-5 rounded-full bg-surface-variant border border-surface-container-low flex items-center justify-center text-[8px] text-on-surface-variant font-bold">+2</div>
+</div>
+<span class="text-numeric text-[12px] text-on-surface-variant">75%</span>
+</div></div>
+<h3 class="font-body-md font-bold text-on-surface mb-2">Cloud Migration Phase 2</h3>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden" id="active-objectives-cloud-migration-progress">
+<div class="h-full primary-gradient" style="width: 75%"></div>
+</div>
+</div>
+<div class="p-md rounded-lg bg-surface-container-low border border-surface-variant/30">
+<div class="flex justify-between items-start mb-sm"><div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-secondary uppercase">Product Excellence</span>
+</div>
+<div class="flex items-center gap-sm">
+<div class="flex -space-x-2 mr-1">
+<img alt="User" class="w-5 h-5 rounded-full border border-surface-container-low" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAGqBarX5jzc6JO3z60rOSv4u_DPtRxQyB3IcbJ0y3o-d0VFkVqoenp9U5Dvm1YG-ohpcsshQFIxFhpZ6uMVXmJc4pnlpCyVd6ijPDlFI38Jg6_kXhmnx1CRQnpI3CYq43TsLS9SRxzXc6yTIHoWOyNx-zx42yH1yGNnEsPsvRxjMXfwz3ocIE0Z1f-tvuK_Z4ZOnahs7oqtTXNdSQHZTW8XEkRquFoKkzeK3cusMms6rIom1gEABW1TquKdDnZNWjMTj69eA5IuA"/>
+<img alt="User" class="w-5 h-5 rounded-full border border-surface-container-low" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMLrZguWFNaq0HWwF8P3dJT772SkjJRfP--8MZc7Rk4JHFyOl9I0R_Znl3JGlNPynZ9WpTgXxrf5BhsKQHK8FOckZ2PrOGD8Z8NK5t74SqVEdaBln9tc_kGTZC_KsItlGze4p8u2ySfkjBZByXSt5zK2Ml-NNiQucCy8cWTJrjn2WB0bU5jR_LEOdTsiwUt7dCZdyB0meoa6vgwKWIvg1QycFTFoRsoeYk1ZTBPpTfqFi4M1ljtDXQW7jLCOuie8f6VJJGBIQgDg8"/>
+<div class="w-5 h-5 rounded-full bg-surface-variant border border-surface-container-low flex items-center justify-center text-[8px] text-on-surface-variant font-bold">+2</div>
+</div>
+<span class="text-numeric text-[12px] text-on-surface-variant">40%</span>
+</div></div>
+<h3 class="font-body-md font-bold text-on-surface mb-2">UX Design System V3</h3>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden" id="active-objectives-ux-design-progress">
+<div class="h-full bg-secondary" style="width: 40%"></div>
+</div>
+</div>
+<div class="p-md rounded-lg bg-surface-container-low border border-surface-variant/30">
+<div class="flex justify-between items-start mb-sm"><div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-error uppercase">Security Ops</span>
+</div>
+<div class="flex items-center gap-sm">
+<div class="flex -space-x-2 mr-1">
+<img alt="User" class="w-5 h-5 rounded-full border border-surface-container-low" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB91yOg8I5IhGk4MSUIIeMwfVxdmz7Ptq4iOvZDeDAXZTmfMf6xCpLbNPcXVZMnFBUOyPuecEQQCpy-93OyErDPVmWW6pyrBrX6KjtbehpDDu8-Iq_mtJUjhPbaIIN-DRslwo6ZyLLfKf4Bp1MNQye4CjYQWmwZuQ6nT9wetRaZRDL5etqVMeG6XwZcHshBhXD-9jMiFW7dUK861Q_5DKfGFSM_nv3rW_DLckF4ae6yBE3RlBUYr0yipi3soTm3mv5nexnZjIAqxtE"/>
+<img alt="User" class="w-5 h-5 rounded-full border border-surface-container-low" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAGqBarX5jzc6JO3z60rOSv4u_DPtRxQyB3IcbJ0y3o-d0VFkVqoenp9U5Dvm1YG-ohpcsshQFIxFhpZ6uMVXmJc4pnlpCyVd6ijPDlFI38Jg6_kXhmnx1CRQnpI3CYq43TsLS9SRxzXc6yTIHoWOyNx-zx42yH1yGNnEsPsvRxjMXfwz3ocIE0Z1f-tvuK_Z4ZOnahs7oqtTXNdSQHZTW8XEkRquFoKkzeK3cusMms6rIom1gEABW1TquKdDnZNWjMTj69eA5IuA"/>
+<div class="w-5 h-5 rounded-full bg-surface-variant border border-surface-container-low flex items-center justify-center text-[8px] text-on-surface-variant font-bold">+2</div>
+</div>
+<span class="text-numeric text-[12px] text-on-surface-variant">92%</span>
+</div></div>
+<h3 class="font-body-md font-bold text-on-surface mb-2">Zero Trust Audit</h3>
+<div class="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden" id="active-objectives-zero-trust-progress">
+<div class="h-full bg-error" style="width: 92%"></div>
+</div>
+</div>
+</div>
+</section></main>
+</div>
+</body></html>

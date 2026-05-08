@@ -44,7 +44,7 @@ function TaskCard({ task, childCount, selectedTaskId, onSelect }: { task: Task; 
 
 function TaskColumn({ title, tasks, allTasks, selectedTaskId, onSelect }: { title: string; tasks: Task[]; allTasks: Task[]; selectedTaskId: string; onSelect: (taskId: string) => void; }) {
   return (
-    <section className="rounded-2xl border border-white/8 bg-white/[0.025] p-4">
+    <section className="rounded-2xl border border-white/8 bg-white/[0.025] p-4 min-h-[200px]">
       <div className="mb-4 flex items-center justify-between">
         <h4 className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">{title}</h4>
         <span className="rounded-md bg-white/[0.06] px-2 py-1 text-[0.65rem] font-bold text-slate-300">{tasks.length}</span>
@@ -58,7 +58,7 @@ function TaskColumn({ title, tasks, allTasks, selectedTaskId, onSelect }: { titl
 
 export function TaskGroupBoard({ milestones, standaloneTasks, allTasks, selectedTaskId, onSelect }: TaskGroupBoardProps) {
   return (
-    <div className="grid max-h-[760px] grid-cols-1 gap-4 overflow-y-auto pr-1 xl:grid-cols-3">
+    <div className="grid max-h-[760px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pr-1">
       <TaskColumn title="Standalone" tasks={standaloneTasks} allTasks={allTasks} selectedTaskId={selectedTaskId} onSelect={onSelect} />
       {milestones.map(({ milestone, tasks }) => (
         <TaskColumn key={milestone.id} title={milestone.name} tasks={tasks} allTasks={allTasks} selectedTaskId={selectedTaskId} onSelect={onSelect} />

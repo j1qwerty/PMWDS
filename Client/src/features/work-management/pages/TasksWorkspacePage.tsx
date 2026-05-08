@@ -73,9 +73,13 @@ export function TasksWorkspacePage() {
       </section>
       <Panel title="Task Workspace" subtitle="Standalone tasks, milestone groups, assignees, and subtasks">
         <div className="mb-5 grid grid-cols-1 gap-3 xl:grid-cols-[280px_minmax(0,1fr)]"><ProjectSelect projects={projects} value={selectedProjectId || projects[0]?.id || ""} onChange={setSelectedProjectId} allowEmpty={false} /><TaskFilters filters={filters} milestones={milestones} users={users} onChange={(next) => setFilters({ ...filters, ...next })} /></div>
-        <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_440px]">
-          <TaskGroupBoard milestones={groupedTasks} standaloneTasks={standaloneTasks} allTasks={tasks} selectedTaskId={selectedTask?.id ?? ""} onSelect={setSelectedTaskId} />
-          <TaskDetail task={selectedTask} subtasks={subtasks} onEdit={() => setEditingTask(selectedTask)} onDelete={() => setConfirmTask(selectedTask)} onCreateSubtask={() => setSubtaskParent(selectedTask)} onUpdateStatus={(status) => auth && selectedTask ? void api.updateTaskStatus(auth.token, selectedTask.id, status).then(() => { setMessage("Task status updated."); refresh(); }) : undefined} />
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-5">
+          <div className="xl:col-span-3">
+            <TaskGroupBoard milestones={groupedTasks} standaloneTasks={standaloneTasks} allTasks={tasks} selectedTaskId={selectedTask?.id ?? ""} onSelect={setSelectedTaskId} />
+          </div>
+          <div className="xl:col-span-1">
+            <TaskDetail task={selectedTask} subtasks={subtasks} onEdit={() => setEditingTask(selectedTask)} onDelete={() => setConfirmTask(selectedTask)} onCreateSubtask={() => setSubtaskParent(selectedTask)} onUpdateStatus={(status) => auth && selectedTask ? void api.updateTaskStatus(auth.token, selectedTask.id, status).then(() => { setMessage("Task status updated."); refresh(); }) : undefined} />
+          </div>
         </div>
       </Panel>
       <TaskFormDialog open={editingTask !== null} task={editingTask?.id ? editingTask : undefined} projects={projects} milestones={milestones} users={users} selectedProjectId={selectedProjectId || projects[0]?.id || ""} onClose={() => setEditingTask(null)} onSubmit={handleTaskSubmit} />

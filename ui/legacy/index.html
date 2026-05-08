@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PMWDS</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="./styles.css"></script>
+
+</head>
+<body>
+<div id="app"> 
+<!-- ══════════════════════════════════════════ LOGIN PAGE ══════════════════════════════════════════ -->
+<div v-if="!auth.isLoggedIn" class="lp">
+ <div class="lc">
+ <div class="ll">
+ <div class="ico">�</div>
+ <h1>PMWDS 2.0 University Portal</h1>
+ <p>AI-Powered Project Monitoring & Work Distribution System</p>
+ </div>
+ <div v-if="login.error" class="alert a-err">{{login.error}}</div>
+ <div v-if="login.success" class="alert a-ok">{{login.success}}</div>
+ <!-- POST /api/v1/auth/login -->
+ <div class="fg">
+ <label>University Email</label>
+ <input class="fc" :class="{err:login.eErr}" type="email" v-model="loginForm.email" placeholder="you@university.edu" @blur="valEmail"/>
+ <small v-if="login.eErr" style="color:var(--err);font-size:11px">Enter a valid email</small>
+ </div>
+ <div class="fg">
+ <label>Password</label>
+ <input class="fc" :class="{err:login.pErr}" type="password" v-model="loginForm.password" placeholder="••••••••" @keyup.enter="doLogin"/>
+ <small v-if="login.pErr" style="color:var(--err);font-size:11px">Password required</small>
+ </div>
+ <div class="rem">
+ <input type="checkbox" v-model="loginForm.remember" id="rem"/>
+ <label for="rem">Remember me for 8 hours</label>
+ </div>
+ <button class="btn btn-p" @click="doLogin" :disabled="login.loading"><span>{{login.loading?'�':'�'}}</span>{{login.loading?'Authenticating...':'Sign In'}}</button>
+ <div class="div">or continue with</div>
+ <div style="display:flex;gap:8px">
+ <button class="btn btn-o" style="flex:1;font-size:12px" @click="ssoLogin">University SSO</button>
+ <button class="btn btn-gh" style="flex:1;font-size:12px">LDAP Login</button>
+ </div>
+ <!-- Live API call preview -->
+ <div class="alog" style="margin-top:14px">
+ <div class="alt"><span class="adot"></span>Live API Call</div>
+ <pre><span class="m">POST</span> <span class="u">/api/v1/auth/login</span>
+{
+ <span class="k">"email"</span>: <span class="v">"{{loginForm.email||'user@uni.edu'}}"</span>,
+ <span class="k">"password"</span>: <span class="v">"••••••••"</span>
+}
+→ Binds: <span class="k">token</span>→<span class="v">authStore.token</span> | <span class="k">roles[]</span>→<span class="v">sidebar visibility</span>
+ <span class="k">fullName</span>→<span class="v">header display</span> | <span class="k">expiresAt</span>→<span class="v">auto-refresh timer</span></pre>
+ </div>
+ </div>
+</div>
+
+<!-- ══════════════════════════════════════════ APP SHELL ══════════════════════════════════════════ -->
+<div v-else class="app">
+ <!-- SIDEBAR -->
+ <nav class="sb" :class="{col:sb.col}">
+ <div class="sb-brand">
+ <div class="sb-ico">�</div>
+ <div class="sb-txt"><h2>PMWDS 2.0</h2><p>University Edition</p></div>
+ </div>
+ <div class="sb-nav">
+ <div class="sb-sec">Main Menu</div>
+ <div v-for="item in nav" :key="item.id" class="ni" :class="{act:pg===item.id}" @click="go(item.id)"><span class="n-ico">{{item.icon}}</span><span class="n-lbl">{{item.label}}</span><span v-if="item.badge" class="nb">{{item.badge}}</span></div>
+ <div class="sb-sec" style="margin-top:8px">AI Tools</div>
+ <div v-for="item in aiNav" :key="item.id" class="ni" :class="{act:pg===item.id}" @click="go(item.id)"><span class="n-ico">{{item.icon}}</span><span class="n-lbl">{{item.label}}</span></div>
+ </div>
+ <div class="sb-foot">
+ <div class="ni" @click="logout"><span class="n-ico">�</span><span class="n-lbl">Logout</span></div>
+ </div>
+ </nav>
+
+
+ <!-- MAIN -->
+ <div class="main">
+ <!-- HEADER -->
+<header class="hdr">
+ <button class="h-tog" @click="sb.col=!sb.col">☰</button>
+ <div class="h-br"><span>University</span><span style="color:var(--bdr)">›</span><span class="cur">{{pgLabel}}</span></div>
+ <div class="h-sp"></div>
+ <div class="h-srch"><span></span><input v-model="hdr.q" placeholder="Search projects, tasks..."/></div>
+ <div class="h-acts">
+ <button class="ib" @click="go('notifications')" title="Notifications"> <span class="bdg" v-if="notifCount>0">{{notifCount}}</span></button>
+ <button class="ib" @click="go('ai')" title="AI Assistant"></button>
+ <button class="ib" title="Settings"> </button>
+ <div class="um">
+ <div class="uav">{{auth.user.ini}}</div>
+ <div class="ui"><h4>{{auth.user.fullName}}</h4><p>{{auth.user.role}}</p></div>
+ </div>
+ </div>
+</header>
+
+ <!-- PAGE CONTENT -->
+ <div class="pg">
+<!-- ═══════════════════════════════════ DASHBOARD ═══════════════════════════════════ -->
+<div v-if="pg==='dashboard'">
+ <div class="ph">
+ <div class="ph-t"><h2>Good Morning, {{auth.user.fullName.split(' ')[0]}}</h2><p>{{today}} · AI Health Score: <strong style="color:var(--ok)">{{dash.health}}%</strong></p></div>
+ <div class="ph-a"><button class="btn btn-ai btn-s" @click="refreshDash">AI Refresh</button><button class="btn btn-gold btn-s" @click="go('reports')">Reports</button><button class="btn btn-p btn-s" @click="go('projects')">+ New Project</button></div>
+ </div>
+ <!-- ESCALATION BANNER -->
+ <div class="esc-ban" v-if="dash.escalated>0"> <strong>{{dash.escalated}} task(s) escalated</strong> — require immediate attention. <button class="btn btn-s btn-err" style="margin-left:auto" @click="go('tasks')">View Tasks</button></div>
+ <!-- KPI CARDS — GET /api/v1/projects/dashboard -->
+ <div class="kgrid"><div v-for="k in kpis" :key="k.label" class="kpi" :class="k.col" @click="go(k.nav)"><div class="kpi-top"><div class="kico" :class="k.col">{{k.icon}}</div><span class="ktr" :class="k.up?'up':'dn'">{{k.up?'▲':'▼'}} {{Math.abs(k.trend)}}%</span></div><div class="kval">{{k.val}}</div><div class="klbl">{{k.label}}</div><div class="ksub">{{k.sub}}</div></div></div>
+ <!-- API LOG -->
+ <div class="alog" style="margin-bottom:18px"><div class="alt"><span class="adot"></span>Dashboard API</div><pre><span class="m">GET</span> <span class="u">/api/v1/projects/dashboard?departmentId={{auth.user.deptId}}</span>
+Authorization: Bearer <span class="v">{{auth.token.substr(0,24)}}...</span>
+→ <span class="k">totalProjects</span>→<span class="v">KPI</span> | <span class="k">activeProjects</span>→<span class="v">KPI</span> | <span class="k">budgetVariance</span>→<span class="v">Budget KPI color</span>
+ <span class="k">overallHealthScore</span>→<span class="v">Donut</span> | <span class="k">highRiskProjects[]</span>→<span class="v">At-Risk table</span>
+ <span class="k">workloadDistribution[]</span>→<span class="v">Workload bars</span> | <span class="k">taskCompletionTrend[]</span>→<span class="v">Line chart</span></pre></div>
+ <div class="g2">
+ <!-- TREND CHART -->
+ <div class="card"><div class="ch"><h3>Task Completion Trend (30 Days)</h3><span class="bdg bok">● Live</span></div><div class="cb"><canvas id="trendChart" height="190"></canvas></div></div>
+ <!-- HEALTH DONUT -->
+ <div class="card"><div class="ch"><h3>Project Health</h3><button class="btn btn-ai btn-s" @click="fetchHealth">Analyse</button></div><div class="cb"><div class="dw" style="margin-bottom:16px"><canvas id="donutChart" width="130" height="130"></canvas><div class="dc"><div class="dv">{{dash.health}}%</div><div class="dl">Health</div></div></div><div v-for="h in healthBars" :key="h.lbl" class="hi"><div class="ht"><span>{{h.lbl}}</span><span :style="{color:h.v>=70?'var(--ok)':h.v>=50?'var(--warn)':'var(--err)'}">{{h.v}}%</span></div><div class="pw"><div class="pb" :class="h.v>=70?'g':h.v>=50?'y':'r'" :style="{width:h.v+'%'}"></div></div></div></div></div>
+ </div>
+ <div class="g2">
+ <!-- AT-RISK -->
+ <div class="card"><div class="ch"><h3>At-Risk Projects</h3><span class="bdg berr">{{atRisk.length}} Critical</span></div><div class="tw"><table><thead><tr><th>Code</th><th>Project</th><th>Progress</th><th>Risk</th><th>Action</th></tr></thead><tbody><tr v-for="p in atRisk" :key="p.id"><td><span class="bdg b-p">{{p.code}}</span></td><td><strong>{{p.name}}</strong></td><td style="min-width:90px"><div class="pw"><div class="pb" :class="p.prog>=70?'g':p.prog>=40?'y':'r'" :style="{width:p.prog+'%'}"></div></div><small style="color:var(--mx)">{{p.prog}}%</small></td><td><span class="rb" :class="p.risk>80?'rc':p.risk>60?'rh':p.risk>40?'rm':'rl'">{{p.risk}}%</span></td><td><button class="btn btn-s btn-err" @click="escalate(p)"> Escalate</button></td></tr></tbody></table></div></div>
+ <!-- WORKLOAD -->
+ <div class="card"><div class="ch"><h3>Team Workload</h3><button class="btn btn-s btn-o" @click="fetchWL">↻</button></div><div class="cb"><div v-for="w in workload" :key="w.name" style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><div style="display:flex;align-items:center;gap:7px"><div class="av">{{w.name[0]}}</div><span style="font-weight:600;font-size:13px">{{w.name}}</span><span class="bdg b-gr" style="font-size:10px">{{w.role}}</span></div><span :style="{color:w.load>80?'var(--err)':w.load>60?'var(--warn)':'var(--ok)',fontWeight:'700',fontSize:'13px'}">{{w.load}}%</span></div><div class="pw"><div class="pb" :class="w.load>80?'r':w.load>60?'y':'g'" :style="{width:w.load+'%'}"></div></div><div style="font-size:11px;color:var(--mx);margin-top:2px">{{w.tasks}} tasks · Burnout: {{w.burnout}}%</div></div></div></div>
+ </div>
+ <!-- BUDGET OVERVIEW -->
+ <div class="card"><div class="ch"><h3>Budget Overview</h3><span class="bdg b-gd">FY 2025</span></div><div class="cb"><canvas id="budgetChart" height="120"></canvas></div></div>
+</div>
+
+ <!-- ═══════════════════════════════════ PROJECTS ═══════════════════════════════════ -->
+<div v-if="pg==='projects'">
+ <div class="ph">
+ <div class="ph-t"><h2>Research Projects & Courses</h2><p>Manage all departmental projects and research initiatives</p></div>
+ <div class="ph-a"><button class="btn btn-p" @click="showProjModal=true">+ New Project</button><button class="btn btn-ai btn-s" @click="aiOptimize">AI Optimize</button><button class="btn btn-gold btn-s">Export</button></div>
+ </div>
+ <!-- GET /api/v1/projects -->
+ <div class="alog" style="margin-bottom:16px"><div class="alt"><span class="adot"></span>Projects API</div><pre><span class="m">GET</span> <span class="u">/api/v1/projects?departmentId={{auth.user.deptId}}&status={{pf.status||'all'}}&priority={{pf.priority||'all'}}</span>
+→ <span class="k">[].name</span>→<span class="v">Name col</span> | <span class="k">[].status</span>→<span class="v">badge color</span> | <span class="k">[].progressPercentage</span>→<span class="v">progress bar</span>
+ <span class="k">[].aiHealthScore</span>→<span class="v">health icon</span> | <span class="k">[].aiDelayRiskScore</span>→<span class="v">risk badge</span>
+ <span class="k">[].plannedEndDate</span>→<span class="v">due date (red if overdue)</span></pre></div>
+ <div class="fb"><div class="si"><span></span><input v-model="pf.q" placeholder="Search projects..."/></div><select class="fsel" v-model="pf.status" @change="fetchProjects"><option value="">All Status</option><option value="InProgress">Active</option><option value="Delayed">Delayed</option><option value="OnHold">On Hold</option><option value="Completed">Completed</option></select><select class="fsel" v-model="pf.priority"><option value="">All Priority</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select><select class="fsel" v-model="pf.dept"><option value="">All Departments</option><option value="SE">Software Eng.</option><option value="AI">Artificial Intelligence</option><option value="CS">Computer Science</option></select></div>
+ <div class="card"><div class="tw"><table><thead><tr><th>Code</th><th>Project / Course</th><th>Dept</th><th>Status</th><th>Progress</th><th>Health</th><th>Risk</th><th>Due Date</th><th>Budget</th><th>Actions</th></tr></thead><tbody><tr v-for="p in filteredProjs" :key="p.id"><td><span class="bdg b-p">{{p.code}}</span></td><td><strong>{{p.name}}</strong><div style="font-size:11px;color:var(--mx)">PM: {{p.manager}}</div></td><td><span class="bdg b-inf">{{p.dept}}</span></td><td><span class="bdg" :class="p.status==='Active'?'bok':p.status==='Delayed'?'b-err':p.status==='OnHold'?'b-inf':'b-gr'">{{p.status==='Active'?'':p.status==='Delayed'?'':p.status==='OnHold'?'':' '}}{{p.status}}</span></td><td style="min-width:110px"><div class="pw"><div class="pb" :class="p.prog>=70?'g':p.prog>=40?'y':'r'" :style="{width:p.prog+'%'}"></div></div><small>{{p.prog}}%</small></td><td>{{p.health>=70?'':p.health>=50?'':' '}}<strong style="font-size:12px">{{p.health}}</strong></td><td><span class="rb" :class="p.risk>70?'rh':p.risk>40?'rm':'rl'">{{p.risk}}%</span></td><td style="font-size:12px" :style="{color:isLate(p.due)?'var(--err)':'var(--tx)'}">{{p.due}}</td><td style="font-size:12px"><div style="font-size:11px;color:var(--mx)">${{p.budget}}K / ${{p.actual}}K</div><div class="pw" style="margin-top:2px"><div class="pb" :class="p.actual>p.budget?'r':'g'" :style="{width:Math.min(100,(p.actual/p.budget*100))+'%'}"></div></div></td><td><div style="display:flex;gap:4px"><button class="btn btn-s btn-o" @click="viewProj(p)"></button><button class="btn btn-s btn-gold" @click="editProj(p)">✏</button><button class="btn btn-s btn-ai" @click="aiHealth(p)"></button></div></td></tr></tbody></table></div></div>
+ <!-- Pagination -->
+ <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0"><span style="font-size:13px;color:var(--mx)">Showing {{filteredProjs.length}} of {{projects.length}} projects</span><div style="display:flex;gap:5px"><button class="btn btn-gh btn-s">← Prev</button><button class="btn btn-p btn-s" style="width:30px;padding:0">1</button><button class="btn btn-gh btn-s" style="width:30px;padding:0">2</button><button class="btn btn-gh btn-s">Next →</button></div></div>
+</div>
+
+ <!-- ═══════════════════════════════════ TASKS / KANBAN ═══════════════════════════════════ -->
+<div v-if="pg==='tasks'">
+ <div class="ph">
+ <div class="ph-t"><h2>Task Management</h2><p>PROJ-001: AI Research Initiative · Sprint 3</p></div>
+ <div class="ph-a"><button class="btn btn-p" @click="showTaskModal=true">+ New Task</button><button class="btn btn-ai btn-s" @click="aiAssignAll">AI AutoAssign</button><button class="btn btn-gold btn-s" @click="go('reports')">Export</button></div>
+ </div>
+ <!-- API LOG -->
+ <div class="alog" style="margin-bottom:14px"><div class="alt"><span class="adot"></span>Tasks API</div><pre><span class="m">GET</span> <span class="u">/api/v1/tasks/byproject/{{selProj.id}}</span> → <span class="k">[].status</span>→<span class="v">Kanban col</span>
+<span class="m">PATCH</span> <span class="u">/api/v1/tasks/{taskId}/progress</span> → <span class="k">progressPercentage</span>,<span class="k">notes</span>
+<span class="m">PATCH</span> <span class="u">/api/v1/tasks/{taskId}/assign</span> → <span class="k">assigneeId</span>
+<span class="m">POST</span> <span class="u">/api/v1/tasks/{taskId}/escalate</span> → escalation trigger 
+<span class="m">GET</span> <span class="u">/api/v1/tasks/{taskId}/ai/delayprediction</span> → <span class="k">delayProbability</span></pre></div>
+ <div class="tbr"><button class="tab" :class="{act:tv==='kanban'}" @click="tv='kanban'">Kanban</button><button class="tab" :class="{act:tv==='list'}" @click="tv='list'">List</button><button class="tab" :class="{act:tv==='gantt'}" @click="tv='gantt'">Gantt</button></div>
+ <!-- KANBAN -->
+ <div v-if="tv==='kanban'" class="kb"><div v-for="col in kanbanCols" :key="col.status" class="kc"><div class="kch"><div class="kct">{{col.icon}} {{col.label}}</div><span class="kcn">{{tasksIn(col.status).length}}</span></div><div v-for="t in tasksIn(col.status)" :key="t.id" class="tc" :class="t.pri.toLowerCase()" @click="openTask(t)"><div class="tch"><span class="tct">{{t.title}}</span><span class="bdg" :class="t.pri==='Critical'?'b-err':t.pri==='High'?'b-warn':t.pri==='Medium'?'b-p':'b-ok'" style="font-size:10px">{{t.pri}}</span></div><div class="pw"><div class="pb b" :style="{width:t.prog+'%'}"></div></div><div class="tcm"><div class="tca"><div class="av">{{(t.assignee||'?')[0]}}</div><span>{{t.assignee||'Unassigned'}}</span></div><span class="tcd" :class="{late:isLate(t.due)}">{{t.due}}</span></div><div style="margin-top:7px;display:flex;gap:5px;flex-wrap:wrap"><span class="rb" :class="t.aiRisk>70?'rc':t.aiRisk>60?'rh':t.aiRisk>40?'rm':'rl'" style="font-size:10px"> {{t.aiRisk}}%</span><span v-if="t.escalated" class="bdg b-err" style="font-size:10px"> Escalated</span></div></div></div></div>
+ <!-- LIST VIEW -->
+ <div v-if="tv==='list'" class="card"><div class="tw">\n<table>\n<thead>\n<tr><th>ID</th><th>Title</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Progress</th><th>AI Risk</th><th>Due</th><th>Actions</th></tr>\n</thead>\n<tbody>\n<tr v-for="t in tasks" :key="t.id"><td><span class="bdg b-p" style="font-size:10px">TSK-{{t.id}}</span></td>\n<td><strong>{{t.title}}</strong><span v-if="t.escalated" class="bdg b-err" style="font-size:10px;margin-left:5px"></span></td>\n<td><span class="bdg" :class="t.status==='Done'?'b-ok':t.status==='InProgress'?'b-p':t.status==='InReview'?'b-warn':'b-gr'">{{t.status}}</span></td>\n<td><span class="bdg" :class="t.pri==='Critical'?'b-err':t.pri==='High'?'b-warn':t.pri==='Medium'?'b-p':'b-ok'">{{t.pri}}</span></td>\n<td><div style="display:flex;align-items:center;gap:5px"><div class="av">{{(t.assignee||'?')[0]}}</div><span style="font-size:12px">{{t.assignee||'Unassigned'}}</span></div></td>\n<td style="min-width:100px"><div class="pw"><div class="pb b" :style="{width:t.prog+'%'}"></div></div><small>{{t.prog}}%</small></td>\n<td><span class="rb" :class="t.aiRisk>70?'rh':t.aiRisk>40?'rm':'rl'">{{t.aiRisk}}%</span></td>\n<td style="font-size:12px" :style="{color:isLate(t.due)?'var(--err)':'var(--tx)'}">{{t.due}}</td>\n<td><div style="display:flex;gap:4px"><button class="btn btn-s btn-o" @click="openTask(t)"></button><button class="btn btn-s btn-gold">✏</button><button class="btn btn-s btn-err" @click="escalateTask(t)" title="Escalate"></button></div></td>\n</tr>\n</tbody>\n</table>\n</div></div>
+ <!-- GANTT VIEW -->
+ <div v-if="tv==='gantt'" class="card"><div class="ch"><h3>Gantt Chart — Sprint 3</h3><span class="bdg b-inf">Feb 1 → Mar 31, 2025</span></div><div class="cb"><div class="alog" style="margin-bottom:12px"><div class="alt"><span class="adot"></span>Gantt API</div><pre><span class="m">GET</span> <span class="u">/api/v1/tasks/byproject/{{selProj.id}}?includeGantt=true</span>
+→ <span class="k">[].startDate</span>→<span class="v">bar left offset</span> | <span class="k">[].dueDate</span>→<span class="v">bar width</span>
+ <span class="k">[].progressPercentage</span>→<span class="v">fill overlay</span></pre></div><div class="gantt"><div class="gt"><div style="display:flex;padding:0 0 8px 200px;gap:0;border-bottom:2px solid var(--bdr);margin-bottom:6px"><div v-for="m in ganttMonths" :key="m" style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--primary)">{{m}}</div></div><div v-for="t in tasks" :key="t.id" class="gr2"><div class="gl2"><span class="bdg b-p" style="font-size:10px;margin-right:4px">TSK-{{t.id}}</span>{{t.title}}</div><div class="gbar-wrap"><div class="gbar" :style="{ left: t.ganttLeft+'%', width: t.ganttWidth+'%', background: t.pri==='Critical'?'var(--err)':t.pri==='High'?'var(--warn)':t.pri==='Medium'?'var(--primary)':'var(--ok)' }">{{t.prog}}%</div></div></div></div></div></div></div></div>
+</div>
+<!-- ═══════════════════════════════════ TEAM / USERS PAGE ═══════════════════════════════════ -->
+<div v-if="pg==='team'">
+ <div class="ph">
+ <div class="ph-t"><h2>Team Members & Workload</h2><p>Manage team availability, skills, and workload distribution</p></div>
+ <div class="ph-a"><button class="btn btn-p" @click="showUserModal=true">+ Add Member</button><button class="btn btn-ai btn-s" @click="aiBurnout">Burnout Analysis</button><button class="btn btn-gold btn-s" @click="go('reports')">Workload Report</button></div>
+ </div>
+ <!-- API LOG -->
+ <div class="alog" style="margin-bottom:16px"><div class="alt"><span class="adot"></span>Users API</div><pre><span class="m">GET</span> <span class="u">/api/v1/users?departmentId={{auth.user.deptId}}</span>
+<span class="m">GET</span> <span class="u">/api/v1/users/workload?departmentId={{auth.user.deptId}}</span>
+<span class="m">GET</span> <span class="u">/api/v1/users/available</span>
+→ <span class="k">[].availabilityPercentage</span>→<span class="v">workload bar</span>
+ <span class="k">[].aiBurnoutRiskScore</span>→<span class="v">burnout badge</span>
+ <span class="k">[].aiWorkloadScore</span>→<span class="v">overload warning</span></pre></div>
+ <!-- WORKLOAD SUMMARY KPIs -->
+ <div class="kgrid" style="margin-bottom:18px"><div class="kpi bl"><div class="kpi-top"><div class="kico bl"></div><span class="ktr up">▲ 2%</span></div><div class="kval">{{teamMembers.length}}</div><div class="klbl">Total Members</div></div><div class="kpi gr"><div class="kpi-top"><div class="kico gr"></div><span class="ktr up">▲ 5%</span></div><div class="kval">{{teamMembers.filter(m=>m.status==='Available').length}}</div><div class="klbl">Available Now</div></div><div class="kpi rd"><div class="kpi-top"><div class="kico rd"> </div><span class="ktr dn">▼ 1%</span></div><div class="kval">{{teamMembers.filter(m=>m.load>80).length}}</div><div class="klbl">Overloaded</div></div><div class="kpi or"><div class="kpi-top"><div class="kico or"></div><span class="ktr dn">▼ 3%</span></div><div class="kval">{{teamMembers.filter(m=>m.burnout>60).length}}</div><div class="klbl">Burnout Risk</div></div></div>
+ <!-- TEAM GRID -->
+ <div class="ga"><div v-for="m in teamMembers" :key="m.id" class="ucard"><div class="ucav">{{m.name[0]}}</div><div class="uc-name">{{m.name}}</div><div class="uc-role"><span class="bdg b-p" style="font-size:11px">{{m.role}}</span><span class="bdg" :class="m.status==='Available'?'bok':m.status==='Busy'?'b-warn':'b-gr'" style="font-size:11px;margin-left:4px">{{m.status}}</span></div><div class="uc-stats"><div class="uc-stat"><div class="uc-sv">{{m.tasks}}</div><div class="uc-sl">Tasks</div></div><div class="uc-stat"><div class="uc-sv">{{m.done}}</div><div class="uc-sl">Done/Mo</div></div><div class="uc-stat"><div class="uc-sv" :style="{color:m.perf>=80?'var(--ok)':m.perf>=60?'var(--warn)':'var(--err)'}">{{m.perf}}</div><div class="uc-sl">Score</div></div></div><div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:600">Workload</span><span :style="{color:m.load>80?'var(--err)':m.load>60?'var(--warn)':'var(--ok)',fontWeight:'700'}">{{m.load}}%</span></div><div class="pw"><div class="pb" :class="m.load>80?'r':m.load>60?'y':'g'" :style="{width:m.load+'%'}"></div></div></div><div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:600">Burnout Risk</span><span :style="{color:m.burnout>60?'var(--err)':m.burnout>40?'var(--warn)':'var(--ok)',fontWeight:'700'}">{{m.burnout}}%</span></div><div class="pw"><div class="pb" :class="m.burnout>60?'r':m.burnout>40?'y':'g'" :style="{width:m.burnout+'%'}"></div></div></div><div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;margin-bottom:5px;color:var(--mx)">SKILLS</div><div><span v-for="sk in m.skills" :key="sk" class="skill-chip">{{sk}}</span></div></div><div style="display:flex;gap:6px"><button class="btn btn-s btn-o" style="flex:1" @click="viewMember(m)">View</button><button class="btn btn-s btn-ai" @click="aiAssignTo(m)">Assign</button></div></div></div>
+</div>
+
+<!-- ═══════════════════════════════════ NOTIFICATIONS PAGE ═══════════════════════════════════ -->
+<div v-if="pg==='notifications'">
+ <div class="ph">
+ <div class="ph-t"><h2>Notifications</h2><p>{{notifCount}} unread · System alerts, escalations & AI insights</p></div>
+ <div class="ph-a"><button class="btn btn-o btn-s" @click="markAllRead">Mark All Read</button><button class="btn btn-err btn-s">Clear All</button></div>
+ </div>
+ <!-- API LOG -->
+ <div class="alog" style="margin-bottom:16px"><div class="alt"><span class="adot"></span>Notifications API</div><pre><span class="m">GET</span> <span class="u">/api/v1/notifications?unreadOnly=false&page=1&pageSize=20</span>
+<span class="m">GET</span> <span class="u">/api/v1/notifications/unread-count</span> → <span class="k">count</span>→<span class="v">header badge</span>
+<span class="m">PATCH</span> <span class="u">/api/v1/notifications/{id}/read</span> → mark single read
+<span class="m">PATCH</span> <span class="u">/api/v1/notifications/read-all</span> → mark all read
+<span class="m">POST</span> <span class="u">/api/v1/notifications/broadcast</span> → admin broadcast (Manager+)
+→ SignalR hub: <span class="k">NotificationHub</span> → real-time push to connected clients</pre></div>
+ <div class="card"><div class="ch"><h3>All Notifications</h3><div style="display:flex;gap:7px"><select class="fsel" style="min-width:100px"><option>All Types</option><option>Escalations</option><option>AI Insights</option><option>Deadlines</option><option>Tasks</option></select></div></div><div class="nl"><div v-for="n in notifications" :key="n.id" class="nitem" :class="{unr:!n.read}" @click="readNotif(n)"><div class="nico" :style="{background:n.bg}">{{n.icon}}</div><div class="nb2"><div class="nt">{{n.title}}</div><div class="nm">{{n.msg}}</div><div style="display:flex;align-items:center;gap:8px"><span class="ntime">{{n.time}}</span><span v-if="n.ai" class="bdg b-ai" style="font-size:10px">AI Generated</span><span class="bdg" :class="n.type==='Escalation'?'b-err':n.type==='Deadline'?'b-warn':'b-p'" style="font-size:10px">{{n.type}}</span></div></div><div v-if="!n.read" class="ndot"></div></div></div></div>
+</div>
+<!-- ═══════════════════════════════════ AI ASSISTANT PAGE ═══════════════════════════════════ -->
+<div v-if="pg==='ai'">
+ <div class="ph">
+ <div class="ph-t"><h2>AI Assistant & Analytics</h2><p>Powered by GPT-4o · ML.NET Delay Prediction · Smart Task Allocation</p></div>
+ <div class="ph-a"><button class="btn btn-ai btn-s" @click="trainModel">Retrain Models</button><button class="btn btn-gold btn-s" @click="go('reports')">AI Report</button></div>
+ </div>
+ <!-- API LOG -->
+ <div class="alog" style="margin-bottom:16px"><div class="alt"><span class="adot"></span>AI APIs</div><pre><span class="m">POST</span> <span class="u">/api/v1/ai/chat</span> → GPT-4o chat
+<span class="m">GET</span> <span class="u">/api/v1/tasks/{id}/ai/recommend-assignee</span> → ML allocation
+<span class="m">GET</span> <span class="u">/api/v1/tasks/{id}/ai/delay-prediction</span> → ML.NET FastTree
+<span class="m">GET</span> <span class="u">/api/v1/projects/{id}/ai/health</span> → health scoring
+<span class="m">GET</span> <span class="u">/api/v1/projects/{id}/ai/insights</span> → NLG insights
+<span class="m">GET</span> <span class="u">/api/v1/users/{id}/ai/burnout-risk</span> → burnout score
+<span class="m">POST</span> <span class="u">/api/v1/ai/train</span> → trigger retraining</pre></div>
+ <div class="g2">
+ <!-- AI CHAT -->
+ <div class="card"><div class="ch"><h3>AI Chat Assistant</h3><span class="bdg b-ok">● Online · GPT-4o</span></div><div class="cb"><div class="chat" ref="chatBox"><div v-for="(m,i) in chatMsgs" :key="i" class="msg" :class="m.role"><div class="mb">{{m.text}}</div><div class="mt">{{m.time}}</div></div><div v-if="ai.typing" class="msg ai"><div class="mb" style="color:var(--mx)">Thinking<span class="dots">...</span></div></div></div><div class="cir"><div class="ciw"><span></span><input v-model="ai.input" placeholder="Ask about projects, risks, workload..." @keyup.enter="sendChat"/></div><button class="btn btn-ai" @click="sendChat">Send</button></div><div class="chips"><span class="chip" @click="quickChat('Which tasks are at highest risk of delay?')"> Delay Risks</span><span class="chip" @click="quickChat('Who is overloaded this week?')"> Overload</span><span class="chip" @click="quickChat('Summarize project health')"> Health</span><span class="chip" @click="quickChat('Recommend task assignments')"> Assign</span><span class="chip" @click="quickChat('Show burnout risk report')"> Burnout</span></div></div></div>
+ <!-- AI SCORES -->
+ <div style="display:flex;flex-direction:column;gap:16px">
+ <!-- Model Performance -->
+ <div class="card"><div class="ch"><h3>AI Model Performance</h3><span class="bdg b-ai">v2.4.1</span></div><div class="cb"><div class="ring-wrap"><div v-for="r in aiMetrics" :key="r.label" class="ring-item"><div class="ring" :style="{background:r.val>=80?'var(--ok)':r.val>=60?'var(--warn)':'var(--err)'}">{{r.val}}%</div><div class="ring-lbl">{{r.label}}</div></div></div><div class="alog" style="margin-top:10px"><div class="alt"><span class="adot"></span>Model Stats</div><pre><span class="k">Task Allocation</span> → <span class="v">ML.NET + Rule Engine</span>
+<span class="k">Delay Prediction</span> → <span class="v">FastTree Regression</span>
+<span class="k">Health Analysis</span> → <span class="v">Weighted Scoring</span>
+<span class="k">NLP Chat</span> → <span class="v">GPT-4o via OpenAI</span>
+<span class="k">Last Trained</span> → <span class="v">{{new Date().toLocaleDateString()}}</span>
+<span class="k">Next Training</span> → <span class="v">Daily 2:00 AM (Hangfire)</span></pre></div></div></div>
+ <!-- AI Insights Feed -->
+ <div class="card"><div class="ch"><h3>Live AI Insights</h3><button class="btn btn-s btn-ai" @click="refreshInsights">↻ Refresh</button></div><div class="cb" style="padding:10px"><div v-for="ins in aiInsights" :key="ins.id" style="padding:10px;border-radius:10px;margin-bottom:8px;border-left:3px solid" :style="{borderColor:ins.sev==='High'?'var(--err)':ins.sev==='Medium'?'var(--warn)':'var(--ok)',background:ins.sev==='High'?'#fde8ea':ins.sev==='Medium'?'#fff3cd':'#d4edda'}"><div style="font-weight:700;font-size:13px;margin-bottom:3px">{{ins.icon}} {{ins.title}}</div><div style="font-size:12px;color:var(--mx)">{{ins.msg}}</div><div style="display:flex;justify-content:space-between;margin-top:5px"><span class="rb" :class="ins.sev==='High'?'rh':ins.sev==='Medium'?'rm':'rl'" style="font-size:10px">{{ins.sev}}</span><span style="font-size:11px;color:var(--mx)">{{ins.time}}</span></div></div></div></div>
+ </div>
+ </div>
+ <!-- AI PREDICTION TABLE -->
+ <div class="card"><div class="ch"><h3>Delay Prediction — All Active Tasks</h3><span class="bdg b-ai">ML.NET FastTree Model</span></div><div class="tw">\n<table>\n<thead>\n<tr><th>Task</th><th>Project</th><th>Assignee</th><th>Due Date</th><th>Delay Prob.</th><th>Expected Delay</th><th>Risk Level</th><th>Mitigations</th></tr>\n</thead>\n<tbody>\n<tr v-for="p in aiPredictions" :key="p.id"><td><strong>{{p.task}}</strong></td>\n<td><span class="bdg b-p" style="font-size:10px">{{p.proj}}</span></td>\n<td><div style="display:flex;align-items:center;gap:5px"><div class="av">{{p.assignee[0]}}</div><span>{{p.assignee}}</span></div></td>\n<td style="font-size:12px" :style="{color:isLate(p.due)?'var(--err)':'var(--tx)'}">{{p.due}}</td>\n<td><div class="pw" style="margin-bottom:2px"><div class="pb" :class="p.prob>70?'r':p.prob>40?'y':'g'" :style="{width:p.prob+'%'}"></div></div><strong :style="{color:p.prob>70?'var(--err)':p.prob>40?'var(--warn)':'var(--ok)'}">{{p.prob}}%</strong></td>\n<td style="font-size:12px">{{p.delayDays > 0 ? '+'+p.delayDays+' days' : 'On track'}}</td>\n<td><span class="rb" :class="p.risk==='Critical'?'rc':p.risk==='High'?'rh':p.risk==='Medium'?'rm':'rl'">{{p.risk}}</span></td>\n<td><ul style="font-size:11px;color:var(--mx);padding-left:14px;margin:0"><li v-for="m in p.mitigations.slice(0,2)" :key="m">{{m}}</li></ul></td>\n</tr>\n</tbody>\n</table>\n</div></div>
+</div>
+<!-- ═══════════════════════════════════ REPORTS PAGE ═══════════════════════════════════ -->
+<div v-if="pg==='reports'">
+ <div class="ph">
+ <div class="ph-t"><h2>Reports & Analytics</h2><p>Generate PDF/Excel reports · AI-narrated insights</p></div>
+ <div class="ph-a"><button class="btn btn-p btn-s" @click="generateReport">Generate Report</button><button class="btn btn-ai btn-s" @click="aiNarrate">AI Narrate</button></div>
+ </div>
+ <!-- API LOG -->
+ <div class="alog" style="margin-bottom:16px"><div class="alt"><span class="adot"></span>Reports API</div><pre><span class="m">GET</span> <span class="u">/api/v1/reports/project-status/{id}?format={{rep.format}}</span>
+<span class="m">POST</span> <span class="u">/api/v1/reports/task-completion?format={{rep.format}}</span>
+<span class="m">POST</span> <span class="u">/api/v1/reports/department-workload?format={{rep.format}}</span>
+<span class="m">GET</span> <span class="u">/api/v1/reports/budget-variance/{id}?format={{rep.format}}</span>
+<span class="m">POST</span> <span class="u">/api/v1/reports/delay-analysis?format={{rep.format}}</span>
+<span class="m">GET</span> <span class="u">/api/v1/reports/ai-insights/{id}?format={{rep.format}}</span>
+→ Returns: <span class="v">byte[]</span> with Content-Type: <span class="k">application/pdf</span> or <span class="k">application/vnd.openxmlformats</span></pre></div>
+ <div class="rep-grid">
+ <!-- Report Type Selector -->
+ <div class="card"><div class="ch"><h3>Report Type</h3></div><div class="cb"><div class="rep-type"><div v-for="r in reportTypes" :key="r.id" class="rep-opt" :class="{sel:rep.type===r.id}" @click="rep.type=r.id">{{r.icon}} {{r.label}}</div></div><div style="margin-top:16px"><div class="fc2" style="margin-bottom:10px"><label>Format</label><select class="fsel" v-model="rep.format" style="width:100%"><option value="pdf">PDF</option><option value="excel">Excel</option><option value="csv">CSV</option></select></div><div class="fc2" style="margin-bottom:10px"><label>Department</label><select class="fsel" v-model="rep.dept" style="width:100%"><option value="">All Departments</option><option value="SE">Software Engineering</option><option value="AI">AI Research</option><option value="CS">Computer Science</option></select></div><div class="fr"><div class="fc2"><label>From</label><input type="date" v-model="rep.from"/></div><div class="fc2"><label>To</label><input type="date" v-model="rep.to"/></div></div><button class="btn btn-p" style="width:100%;margin-top:14px" @click="generateReport"> Generate {{rep.format.toUpperCase()}}</button><button class="btn btn-ai" style="width:100%;margin-top:8px" @click="aiNarrate"> AI Narrated Report</button></div></div></div>
+ <!-- Report Preview -->
+ <div class="card"><div class="ch"><h3>Report Preview — {{reportTypes.find(r=>r.id===rep.type)?.label}}</h3><span class="bdg b-ok">{{new Date().toLocaleDateString()}}</span></div><div class="cb"><div style="display:flex;gap:20px;margin-bottom:18px;flex-wrap:wrap"><div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--primary)">{{projects.length}}</div><div style="font-size:12px;color:var(--mx)">Total Projects</div></div><div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--ok)">{{tasks.filter(t=>t.status==='Done').length}}</div><div style="font-size:12px;color:var(--mx)">Completed Tasks</div></div><div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--warn)">{{tasks.filter(t=>t.aiRisk>60).length}}</div><div style="font-size:12px;color:var(--mx)">High Risk Tasks</div></div><div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--ai)">{{dash.health}}%</div><div style="font-size:12px;color:var(--mx)">Avg Health Score</div></div></div><canvas id="reportChart" height="200"></canvas><div v-if="rep.narration" class="alert a-inf" style="margin-top:14px"><strong>AI Narration:</strong> {{rep.narration}}</div></div></div>
+ </div>
+</div>
+<!-- ═══════════════════════════════════ DEPARTMENTS PAGE ═══════════════════════════════════ -->
+<div v-if="pg==='departments'">
+ <div class="ph">
+ <div class="ph-t"><h2>Departments</h2><p>Manage university departments and their project portfolios</p></div>
+ <div class="ph-a"><button class="btn btn-p" @click="showDeptModal=true">+ New Department</button></div>
+ </div>
+ <div class="alog" style="margin-bottom:16px"><div class="alt"><span class="adot"></span>Departments API</div><pre><span class="m">GET</span> <span class="u">/api/v1/departments</span>
+<span class="m">GET</span> <span class="u">/api/v1/departments/{id}/dashboard</span>
+<span class="m">POST</span> <span class="u">/api/v1/departments</span> { <span class="k">name</span>, <span class="k">code</span>, <span class="k">description</span>, <span class="k">budget</span> }
+<span class="m">PUT</span> <span class="u">/api/v1/departments/{id}</span>
+<span class="m">DELETE</span> <span class="u">/api/v1/departments/{id}</span></pre></div>
+ <div class="ga"><div v-for="d in departments" :key="d.id" class="card" style="cursor:pointer;transition:var(--tr)" @click="viewDept(d)"><div class="ch"><div><h3>{{d.icon}} {{d.name}}</h3><span class="bdg b-p" style="margin-top:3px;display:inline-block">{{d.code}}</span></div><span class="bdg" :class="d.health>=70?'b-ok':d.health>=50?'b-warn':'b-err'">Health: {{d.health}}%</span></div><div class="cb"><div style="display:flex;justify-content:space-around;margin-bottom:14px"><div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--primary)">{{d.projects}}</div><div style="font-size:11px;color:var(--mx)">Projects</div></div><div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--ok)">{{d.members}}</div><div style="font-size:11px;color:var(--mx)">Members</div></div><div style="text-align:center"><div style="font-size:22px;font-weight:800;color:var(--gold)">{{d.budget}}K</div><div style="font-size:11px;color:var(--mx)">Budget ($)</div></div></div><div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>Budget Used</span><span :style="{color:d.budgetUsed>90?'var(--err)':d.budgetUsed>70?'var(--warn)':'var(--ok)',fontWeight:'700'}">{{d.budgetUsed}}%</span></div><div class="pw"><div class="pb" :class="d.budgetUsed>90?'r':d.budgetUsed>70?'y':'g'" :style="{width:d.budgetUsed+'%'}"></div></div></div><div style="display:flex;gap:6px"><button class="btn btn-s btn-o" style="flex:1">Dashboard</button><button class="btn btn-s btn-gold">✏ Edit</button></div></div></div></div>
+</div>
+</div><!-- end .pg -->
+</div><!-- end .main -->
+</div><!-- end .app -->
+
+<!-- ══════════════════════════════════════════ MODALS ══════════════════════════════════════════ -->
+<!-- NEW PROJECT MODAL — POST /api/v1/projects -->
+<div v-if="showProjModal" class="ov" @click.self="showProjModal=false">
+ <div class="modal">
+ <div class="mh"><h3>Create New Project</h3><button class="mx-btn" @click="showProjModal=false">✕</button></div>
+ <div class="mb2">
+ <div class="alog" style="margin-bottom:14px"><div class="alt"><span class="adot"></span>API Call</div><pre><span class="m">POST</span> <span class="u">/api/v1/projects</span>
+{ <span class="k">"projectCode"</span>:<span class="v">"{{pForm.code}}"</span>, <span class="k">"name"</span>:<span class="v">"{{pForm.name}}"</span>,
+ <span class="k">"plannedStartDate"</span>:<span class="v">"{{pForm.start}}"</span>, <span class="k">"plannedEndDate"</span>:<span class="v">"{{pForm.end}}"</span>,
+ <span class="k">"plannedBudget"</span>:<span class="v">{{pForm.budget||0}}</span>, <span class="k">"priority"</span>:<span class="v">"{{pForm.priority}}"</span>,
+ <span class="k">"departmentId"</span>:<span class="v">"{{auth.user.deptId}}"</span>
+}</pre></div>
+ <div class="fr"><div class="fc2"><label>Project Code *</label><input v-model="pForm.code" placeholder="PROJ-002"/></div><div class="fc2"><label>Priority *</label><select v-model="pForm.priority"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div><div class="fc2 ff"><label>Project Name *</label><input v-model="pForm.name" placeholder="e.g. AI Research Initiative Phase 2"/></div><div class="fc2 ff"><label>Description</label><textarea v-model="pForm.desc" placeholder="Project scope and objectives..."></textarea></div><div class="fc2"><label>Category</label><select v-model="pForm.cat"><option>Research</option><option>Software Development</option><option>Infrastructure</option><option>Education</option></select></div><div class="fc2"><label>Department</label><select v-model="pForm.dept"><option value="SE">Software Engineering</option><option value="AI">Artificial Intelligence</option><option value="CS">Computer Science</option></select></div><div class="fc2"><label>Start Date *</label><input type="date" v-model="pForm.start"/></div><div class="fc2"><label>End Date *</label><input type="date" v-model="pForm.end"/></div><div class="fc2"><label>Planned Budget ($)</label><input type="number" v-model="pForm.budget" placeholder="250000"/></div><div class="fc2"><label>Project Manager</label><select v-model="pForm.manager"><option v-for="m in teamMembers" :key="m.id" :value="m.id">{{m.name}}</option></select></div></div>
+ </div>
+ <div class="mf"><button class="btn btn-gh" @click="showProjModal=false">Cancel</button><button class="btn btn-ai" @click="aiValidate">AI Validate</button><button class="btn btn-p" @click="createProject">Create Project</button></div>
+ </div>
+</div>
+<!-- NEW TASK MODAL — POST /api/v1/tasks -->
+<div v-if="showTaskModal" class="ov" @click.self="showTaskModal=false">
+ <div class="modal">
+ <div class="mh"><h3>Create New Task</h3><button class="mx-btn" @click="showTaskModal=false">✕</button></div>
+ <div class="mb2">
+ <div class="alog" style="margin-bottom:14px"><div class="alt"><span class="adot"></span>API Call</div><pre><span class="m">POST</span> <span class="u">/api/v1/tasks</span>
+{ <span class="k">"title"</span>:<span class="v">"{{tForm.title}}"</span>, <span class="k">"priority"</span>:<span class="v">"{{tForm.priority}}"</span>,
+ <span class="k">"projectId"</span>:<span class="v">"{{selProj.id}}"</span>, <span class="k">"assignedToUserId"</span>:<span class="v">"{{tForm.assignee}}"</span>,
+ <span class="k">"dueDate"</span>:<span class="v">"{{tForm.due}}"</span>, <span class="k">"estimatedHours"</span>:<span class="v">{{tForm.hours||0}}</span> }</pre></div>
+ <div class="fr"><div class="fc2 ff"><label>Task Title *</label><input v-model="tForm.title" placeholder="e.g. Design database schema"/></div><div class="fc2 ff"><label>Description</label><textarea v-model="tForm.desc" placeholder="Task details..."></textarea></div><div class="fc2"><label>Priority *</label><select v-model="tForm.priority"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></div><div class="fc2"><label>Estimated Hours</label><input type="number" v-model="tForm.hours" placeholder="e.g. 8"/></div><div class="fc2"><label>Start Date</label><input type="date" v-model="tForm.start"/></div><div class="fc2"><label>Due Date *</label><input type="date" v-model="tForm.due"/></div><div class="fc2"><label>Assignee</label><select v-model="tForm.assignee"><option value="">-- AI Auto-Assign --</option><option v-for="m in teamMembers" :key="m.id" :value="m.id">{{m.name}} ({{m.load}}% load)</option></select></div><div class="fc2"><label>Milestone</label><select v-model="tForm.milestone"><option value="">No Milestone</option><option>Phase 1 — Architecture</option><option>Phase 2 — Development</option><option>Phase 3 — Testing</option></select></div></div>
+ </div>
+ <div class="mf"><button class="btn btn-gh" @click="showTaskModal=false">Cancel</button><button class="btn btn-ai" @click="aiRecommendAssignee">AI Recommend</button><button class="btn btn-p" @click="createTask">Create Task</button></div>
+ </div>
+</div>
+<!-- TASK DETAIL MODAL -->
+<div v-if="showTaskDetail && selTask" class="ov" @click.self="showTaskDetail=false">
+ <div class="modal" style="max-width:640px">
+ <div class="mh"><h3>TSK-{{selTask.id}} · {{selTask.title}}</h3><button class="mx-btn" @click="showTaskDetail=false">✕</button></div>
+ <div class="mb2">
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><span class="bdg" :class="selTask.status==='Done'?'b-ok':selTask.status==='InProgress'?'b-p':'b-gr'">{{selTask.status}}</span><span class="bdg" :class="selTask.pri==='Critical'?'b-err':selTask.pri==='High'?'b-warn':'b-p'">{{selTask.pri}}</span><span v-if="selTask.escalated" class="bdg b-err">Escalated</span><span class="bdg b-ai">Risk: {{selTask.aiRisk}}%</span></div>
+ <div style="margin-bottom:16px"><label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Progress: {{taskProg}}%</label><input type="range" v-model="taskProg" min="0" max="100" style="width:100%;accent-color:var(--primary)"/><div class="pw" style="margin-top:6px"><div class="pb b" :style="{width:taskProg+'%'}"></div></div></div>
+ <div class="fc2" style="margin-bottom:14px"><label>Progress Notes</label><textarea v-model="taskNote" placeholder="Describe what was completed..."></textarea></div>
+ <div class="alert a-warn" style="margin-bottom:14px"><strong>AI Delay Prediction:</strong> {{selTask.aiRisk}}% delay probability · <span v-if="selTask.aiRisk>60">Expected +{{Math.round(selTask.aiRisk/10)}} days delay · <strong>Escalation recommended</strong></span><span v-else>On track</span></div>
+ <div class="alog"><div class="alt"><span class="adot"></span>Progress Update API</div><pre><span class="m">PATCH</span> <span class="u">/api/v1/tasks/{{selTask.id}}/progress</span>
+{ <span class="k">"progressPercentage"</span>: <span class="v">{{taskProg}}</span>, <span class="k">"notes"</span>: <span class="v">"{{taskNote||'...'||(taskNote.substring?taskNote.substring(0,30):'...')}}"</span>
+}</pre></div>
+ </div>
+ <div class="mf"><button class="btn btn-gh" @click="showTaskDetail=false">Close</button><button class="btn btn-err btn-s" @click="escalateTask(selTask)">Escalate</button><button class="btn btn-ai" @click="aiPredictTask(selTask)">AI Predict</button><button class="btn btn-p" @click="updateProgress">Save Progress</button></div>
+ </div>
+</div>
+</div><!-- end #app -->
+
+<script src="script.js"></script>
+</body>
+</html>
