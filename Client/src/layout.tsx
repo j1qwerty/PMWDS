@@ -119,7 +119,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         title: "System",
         items: [
           { path: "/activity-logs", label: "Activity Logs", icon: "activity", roles: [] },
-          { path: "/settings", label: "Settings", icon: "settings", roles: [] },
+          // { path: "/settings", label: "Settings", icon: "settings", roles: [] },
           // { path: "/permissions", label: "Permissions", icon: "permissions", roles: ["SuperAdmin"] },
         ],
       },
@@ -138,37 +138,14 @@ function Layout({ children }: { children: React.ReactNode }) {
       .flatMap((g) => g.items)
       .find((item) => isActive(item.path))?.label || "PMWDS";
 
-  const navLinkClass = (path: string) =>
-    `
-    group relative flex items-center gap-3
-    px-3 py-[9px]
-    rounded-md
-    transition-all duration-300 ease-out
-    overflow-hidden
-    ${isActive(path)
-      ? `
-          bg-gradient-to-r from-primary/20 via-primary/10 to-transparent
-          text-primary
-          shadow-[0_8px_30px_rgba(99,102,241,0.16)]
-          border border-primary/10
-        `
-      : `
-          text-on-surface-variant/75
-          hover:text-on-surface
-          hover:bg-surface-container-high/70
-          hover:border hover:border-white/5
-        `
-    }
-  `;
-
   return (
-    <div className="flex min-h-screen bg-surface text-on-surface font-body-md antialiased">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       {/* Sidebar */}
       <nav
         className="
           fixed left-0 top-0 z-50
           h-full w-[240px]
-          bg-surface-container-lowest/95
+          bg-white/95
           backdrop-blur-3xl
           shadow-[8px_0_40px_rgba(0,0,0,0.22)]
           flex flex-col
@@ -176,28 +153,28 @@ function Layout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="px-5 pt-5 pb-3">
-          <div className="text-[22px] font-black text-primary uppercase tracking-[0.22em]">
+          <div className="text-[22px] font-black text-blue-600 uppercase tracking-[0.22em]">
             PMWDS
           </div>
         </div>
 
         {/* User */}
-        <div className="mx-3 mb-4 rounded-2xl bg-surface-container-low px-3 py-3">
+        <div className="mx-3 mb-4 rounded-2xl bg-slate-100 px-3 py-3">
           <div className="flex items-center gap-3">
             <img
               alt={auth?.fullName || "User"}
-              className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/10"
+              className="h-9 w-9 rounded-full object-cover ring-2 ring-blue-200"
               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
                 auth?.fullName || "U"
               )}&background=4648d4&color=fff`}
             />
 
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-on-surface">
+              <span className="truncate text-[13px] font-medium text-slate-700">
                 {auth?.fullName || "Alex Rivera"}
               </span>
 
-              <span className="truncate text-[9px] uppercase tracking-[0.18em] text-on-surface-variant">
+              <span className="truncate text-[9px] uppercase tracking-[0.18em] text-slate-400">
                 {auth?.roles?.join(", ") || "SuperAdmin"}
               </span>
             </div>
@@ -214,50 +191,47 @@ function Layout({ children }: { children: React.ReactNode }) {
           "
         >
           {navGroups.map((group, index) => (
-            <div key={group.title} className="space-y-1.5">
-              {/* Remove first Overview title */}
-              {index !== 0 && (
-                <div className="px-3 pb-1 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant/60">
-                  {group.title}
-                </div>
-              )}
-
-              <div className="space-y-[2px]">
-                {group.items
-                  .filter(
-                    (item) =>
-                      item.roles.length === 0 || hasRole(...item.roles)
-                  )
-                  .map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={navLinkClass(item.path)}
-                    >
-                      {/* Active Glow */}
-                      {isActive(item.path) && (
-                        <div className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-md bg-primary shadow-[0_0_16px_rgba(99,102,241,0.8)]" />
+                    <div key={group.title} className="space-y-1.5">
+                      {/* Remove first Overview title */}
+                      {index !== 0 && (
+                        <div className="px-3 pb-1 text-[10px] uppercase tracking-[0.18em] text-slate-400/60">
+                          {group.title}
+                        </div>
                       )}
 
-                      <span
-                        className={`
-                          transition-all duration-300
-                          ${isActive(item.path)
-                            ? "scale-105 text-primary"
-                            : "group-hover:scale-105"
-                          }
-                        `}
-                      >
-                        {iconMap[item.icon]}
-                      </span>
+                      <div className="space-y-[2px]">
+                        {group.items
+                          .filter(
+                            (item) =>
+                              item.roles.length === 0 || hasRole(...item.roles)
+                          )
+                          .map((item) => (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              className={`relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200 ${
+                                isActive(item.path)
+                                  ? "bg-blue-100 text-blue-700 font-semibold border-r-[3px] border-blue-600"
+                                  : "text-slate-600 hover:bg-blue-50 hover:text-blue-600 border-r-[3px] border-transparent"
+                              }`}
+                            >
+                              <span
+                                className={`transition-transform duration-300 ${
+                                  isActive(item.path)
+                                    ? "scale-105 text-blue-700"
+                                    : "group-hover:scale-105 text-slate-500"
+                                }`}
+                              >
+                                {iconMap[item.icon]}
+                              </span>
 
-                      <span className="text-[13px] font-medium tracking-[0.01em]">
-                        {item.label}
-                      </span>
+                              <span className="text-[13px] font-medium tracking-[0.01em]">
+                                {item.label}
+                              </span>
 
                       {item.path === "/notifications" &&
                         unreadCount > 0 && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-error shadow-[0_0_12px_rgba(239,68,68,0.7)]" />
+                          <span className="ml-auto h-2 w-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.9)]" />
                         )}
                     </Link>
                   ))}
@@ -270,16 +244,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         <div className="px-3 pb-3 pt-2">
           <button
             onClick={logout}
-            className="
-              flex items-center gap-3
-              w-full
-              rounded-2xl
-              px-3 py-2.5
-              text-on-surface-variant/70
-              transition-all duration-300
-              hover:bg-surface-container-high
-              hover:text-on-surface
-            "
+            className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-slate-500 transition-all duration-300 hover:bg-red-50 hover:text-red-600"
           >
             <svg
               className="h-[18px] w-[18px]"
@@ -304,41 +269,35 @@ function Layout({ children }: { children: React.ReactNode }) {
       <div className="ml-[240px] flex min-h-screen flex-1 flex-col layout-max-width">
         {/* Topbar */}
         <header
-          className="
-            sticky top-0 z-40
-            h-[56px]
-            bg-surface/85
-            backdrop-blur-2xl
-            border-b border-white/[0.04]
-          "
+          className="sticky top-0 z-40 h-[56px] bg-white/90 backdrop-blur-2xl border-b border-slate-200"
         >
-          <div className="flex h-full items-center justify-between px-lg">
+          <div className="flex h-full items-center justify-between px-6">
             {/* Page Title */}
-            <div className="text-[24px] font-bold tracking-[-0.03em] text-primary">
+            <div className="text-[24px] font-bold tracking-[-0.03em] text-blue-600">
               {pageTitle}
             </div>
 
             {/* Right */}
-            <div className="flex items-center gap-md">
+            <div className="flex items-center gap-4">
               {/* Search */}
               <div className="relative hidden md:block">
-                <HiOutlineSearch className="absolute left-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-on-surface-variant/70" />
+                <HiOutlineSearch className="absolute left-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-slate-400" />
                 <input
                   className="
                     w-[250px]
                     h-[40px]
                     rounded-full
-                    bg-surface-container-high/70
-                    border border-white/[0.04]
+                    bg-slate-100
+                    border border-slate-200
                     pl-11 pr-4
                     text-[13px]
-                    text-on-surface
-                    placeholder:text-on-surface-variant/70
+                    text-slate-700
+                    placeholder:text-slate-400
                     outline-none
                     transition-all duration-300
-                    focus:border-primary/20
-                    focus:bg-surface-container-high
-                    focus:ring-2 focus:ring-primary/10
+                    focus:border-blue-300
+                    focus:bg-white
+                    focus:ring-2 focus:ring-blue-100
                   "
                   placeholder="Search..."
                   type="text"
@@ -348,15 +307,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               {/* Chat */}
               <Link
                 to="/chat"
-                className="
-                  relative flex h-[38px] w-[38px]
-                  items-center justify-center
-                  rounded-full
-                  text-on-surface-variant
-                  transition-all duration-300
-                  hover:bg-surface-container-high
-                  hover:text-on-surface
-                "
+                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full text-slate-500 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600"
               >
                 <HiOutlineChatAlt2 className="h-[18px] w-[18px]" />
               </Link>
@@ -364,12 +315,12 @@ function Layout({ children }: { children: React.ReactNode }) {
               {/* Notifications */}
               <Link
                 to="/notifications"
-                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full  transition-all duration-300 hover:bg-[#4648d4]/20 hover:text-white"
+                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all duration-300 hover:bg-blue-50 hover:text-blue-600"
               >
                 {iconMap.inbox}
 
                 {unreadCount > 0 && (
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-error shadow-[0_0_12px_rgba(239,68,68,0.7)]" />
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.9)]" />
                 )}
               </Link>
             </div>
@@ -377,7 +328,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content */}
-        <main className="flex flex-1 flex-col gap-xl p-container-margin">
+        <main className="flex flex-1 flex-col gap-xl p-container-margin px-4">
           {children}
         </main>
       </div>

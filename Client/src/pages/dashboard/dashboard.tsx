@@ -2,17 +2,12 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { NotificationItem, Task } from "../../types";
-import {
-  ErrorPanel,
-  LoadingPanel,
-  NotificationList,
-  Panel,
-  SimpleProjectList,
-  TaskList,
-  WorkloadBars,
-  formatMoney,
-  formatPercent,
-} from "../../ui";
+import { NotificationList } from "../shared/NotificationList";
+import { SimpleProjectList } from "../shared/SimpleProjectList";
+import { TaskList } from "../shared/TaskList";
+import { WorkloadBars } from "../shared/WorkloadBars";
+import { KpiCard } from "./kpicard";
+import { formatMoney, formatPercent, ErrorPanel, LoadingPanel } from "../../ui";
 
 export function DashboardPage() {
   const { auth, hasRole } = useAuth();
@@ -49,101 +44,78 @@ export function DashboardPage() {
 
   return (
     <div className=" mx-4 my-4 gap-6">
-      <section className=" my-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div className="flex flex-col gap-2">
-          <span className="text-[12px] text-primary font-semibold uppercase tracking-wider">Overview • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-        </div>
-        <div className="flex gap-3">
-          <button className="px-4 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low transition-colors text-[12px] font-semibold flex items-center gap-2">
-            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+      <section className="my-6 w-full">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <span className="text-sm font-semibold text-primary/80 uppercase tracking-wider">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </span>
+          <button className="group px-5 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-on-surface hover:border-primary/50 hover:shadow-md transition-all duration-200 text-sm font-medium flex items-center gap-2">
+            <svg className="w-4 h-4 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Report Center
           </button>
         </div>
-      </section>
 
-      <section className="my-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
-          <div className="flex justify-between items-start">
-            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">TOTAL</span>
-            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
-              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-            </div>
-          </div>
-          <span className="text-h1 text-h1 text-on-surface">{dashboard?.totalProjects ?? 0}</span>
-        </div>
+        {/* KPI Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Total Projects */}
+          <KpiCard
+            title="Total projects"
+            value={dashboard?.totalProjects ?? 0}
+            icon="folder_open"
+            iconBgColor="bg-primary/10"
+            iconColor="text-primary"
+          />
 
-        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
-          <div className="flex justify-between items-start">
-            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">ACTIVE</span>
-            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
-              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <div className="flex items-end justify-between">
-            <span className="text-h1 text-h1 text-on-surface">{dashboard?.activeProjects ?? 0}</span>
-            <span className="text-[12px] text-[#10B981] flex items-center bg-[#10B981]/10 px-2 py-1 rounded-full font-semibold">
-              <svg className="w-[14px] h-[14px] mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              12%
-            </span>
-          </div>
-        </div>
+          {/* Active Projects – trend badge uses same colors */}
+          <KpiCard
+            title="Active"
+            value={dashboard?.activeProjects ?? 0}
+            icon="play_circle"
+            iconBgColor="bg-emerald-500/10"
+            iconColor="text-emerald-600"
+            trend={{
+              value: "12%",
+              positive: true,
+              bgColor: "bg-emerald-500/10",   // matches icon background
+              textColor: "text-emerald-600",
+            }}
+          />
 
-        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
-          <div className="flex justify-between items-start">
-            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">PENDING</span>
-            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
-              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-h1 text-h1 text-on-surface">{dashboard?.totalTasks ?? 0}</span>
-            {(dashboard?.overdueTasks ?? 0) > 0 && (
-              <span className="text-[10px] text-error bg-error-container font-bold px-2 py-1 rounded-full">{(dashboard?.overdueTasks ?? 0)} URGENT</span>
-            )}
-          </div>
-        </div>
+          {/* Pending Tasks */}
+          <KpiCard
+            title="Pending tasks"
+            value={dashboard?.totalTasks ?? 0}
+            icon="task"
+            iconBgColor="bg-amber-500/10"
+            iconColor="text-amber-600"
+          />
 
-        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
-          <div className="flex justify-between items-start">
-            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">AI HEALTH</span>
-            <div className="w-8 h-8 rounded-full primary-gradient flex items-center justify-center shadow-sm shadow-primary/40">
-              <svg className="w-[18px] h-[18px] text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-h1 text-h1 text-on-surface">{formatPercent(dashboard?.overallHealthScore ?? 0)}</span>
-            <svg className="w-[20px] h-[20px] text-outline/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.543-.214-.877-.597-1.124l-.547-.547a3.374 3.374 0 01-.516-1.778m-3.485 3.116l-.543-.547a3 3 0 012.828-2.828" />
-            </svg>
-          </div>
-        </div>
+          {/* AI Health */}
+          <KpiCard
+            title="AI health"
+            value={formatPercent(dashboard?.overallHealthScore ?? 0)}
+            icon="bolt"
+            iconBgColor="bg-purple-500/10"
+            iconColor="text-purple-600"
+          />
 
-        <div className="glass-panel p-4 rounded-xl ambient-glow flex flex-col justify-between h-[120px] border border-outline-variant/30">
-          <div className="flex justify-between items-start">
-            <span className="text-[12px] text-on-surface-variant font-semibold uppercase tracking-wider">BUDGET</span>
-            <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
-              <svg className="w-[20px] h-[20px] text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-h1 text-h1 text-[#10B981]">{formatMoney(Math.abs(dashboard?.budgetVariance ?? 0))}</span>
-            <span className="text-[10px] text-on-surface-variant opacity-70 tracking-wider uppercase">{(dashboard?.budgetVariance ?? 0) <= 0 ? 'ON TRACK' : 'OVER'}</span>
-          </div>
+          {/* Budget Variance – Rupee symbol */}
+          <KpiCard
+            title="Budget variance"
+            value={(() => {
+              const raw = formatMoney(Math.abs(dashboard?.budgetVariance ?? 0));
+              return raw.replace('$', '₹');
+            })()}
+            icon="account_balance_wallet"
+            iconBgColor="bg-teal-500/10"
+            iconColor="text-teal-600"
+            valueClassName={(dashboard?.budgetVariance ?? 0) <= 0 ? "text-emerald-600" : "text-rose-500"}
+            subtext={(dashboard?.budgetVariance ?? 0) <= 0 ? "On track" : "Over budget"}
+          />
         </div>
       </section>
 
@@ -154,7 +126,7 @@ export function DashboardPage() {
               <h2 className="text-lg font-black text-black  tracking-wide">Active Objectives</h2>
               <button className="text-primary-light hover:text-white text-xs font-bold uppercase tracking-widest transition-all hover:underline underline-offset-4">View Full Ledger</button>
             </div>
-            <TaskList tasks={myTasks.slice(0, 5)} showProgress />
+            <TaskList tasks={myTasks.slice(0, 5)} title="Active Objectives" />
           </section>
 
           {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") && (dashboard?.highRiskProjects ?? []).length > 0 && (
@@ -261,24 +233,14 @@ export function DashboardPage() {
       </div>
 
       <div className="my-4 col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
-        <Panel title="High Risk Projects" subtitle="AI and schedule pressure combined">
-          <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} />
-        </Panel>
+          <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} title="High Risk Projects" />
+          <NotificationList items={unread.slice(0, 6)} title="Recent Notifications" />
+        </div>
 
-        <Panel title="Unread Notifications" subtitle="New alerts and system events">
-          <NotificationList items={unread.slice(0, 6)} compact />
-        </Panel>
-      </div>
-
-      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
-        <Panel title="My Work Queue" subtitle="Priority view for the signed-in user">
-          <TaskList tasks={myTasks.slice(0, 6)} />
-        </Panel>
-
-        <Panel title="Workload Distribution" subtitle="Team load and burnout exposure">
-          <WorkloadBars items={dashboard?.workloadDistribution ?? []} />
-        </Panel>
-      </div>
+        <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
+          <TaskList tasks={myTasks.slice(0, 6)} title="My Work Queue" subtitle="Priority tasks" />
+          <WorkloadBars items={dashboard?.workloadDistribution ?? []} title="Workload Distribution" />
+        </div>
     </div>
   );
 }

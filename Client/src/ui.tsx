@@ -6,7 +6,7 @@ import type { NotificationItem, Project, Task, User } from "./types";
 
 export const pageGridClass = "grid gap-lg content-start";
 
-export const panelClass = "glass-card rounded-2xl overflow-hidden bg-surface-container-lowest border border-outline-variant shadow-sm transition-all duration-300 hover:shadow-md";
+export const panelClass = "glass-card rounded-2xl overflow-hidden bg-surface-container-lowest border-transparent border border-outline-variant shadow-sm transition-all duration-300 hover:shadow-md";
 
 export const panelHeadClass = "flex items-start justify-between border-b border-outline-variant pb-lg mb-lg";
 
