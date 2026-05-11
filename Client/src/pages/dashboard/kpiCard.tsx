@@ -29,13 +29,13 @@ export function KpiCard({
   const trendText = trend?.textColor ?? iconColor;
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-container-lowest to-surface-container-low p-4 shadow-sm hover:shadow-lg transition-all duration-300 h-full flex flex-col justify-between border-0">
+    <div className="group relative overflow-hidden rounded-2xl  from-surface-container-lowest to-surface-container-low p-4 shadow-sm hover:shadow-lg transition-all duration-300 h-full flex flex-col justify-between border-0">
       {/* Animated blur background */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all pointer-events-none" />
 
       {/* Top row */}
       <div className="flex justify-between items-start">
-        <span className="text-[10px] font-semibold text-on-surface-variant/70 uppercase tracking-wider">
+        <span className="text-[12px] font-semibold  uppercase tracking-wider">
           {title}
         </span>
         <div className={`w-8 h-8 rounded-full ${iconBgColor} flex items-center justify-center ${iconColor} shrink-0`}>

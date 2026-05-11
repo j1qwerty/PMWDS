@@ -11,39 +11,39 @@ export function TaskList({
 }) {
   if (!tasks.length) {
     return (
-      <div className="bg-slate-900/50 rounded-xl p-lg border border-slate-700/30">
-        <div className="flex justify-between items-center mb-md pb-sm border-b border-slate-700/30">
+      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+        <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-[#818cf8]">task</span>
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+            <span className="material-symbols-outlined text-primary">check_circle</span>
+            <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
           </div>
-          {subtitle && <span className="text-xs text-slate-400">{subtitle}</span>}
+          {subtitle && <span className="text-outline font-label-caps text-[10px]">{subtitle}</span>}
         </div>
         <div className="flex flex-col items-center justify-center py-lg text-center">
-          <span className="material-symbols-outlined text-slate-500 text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-            task
+          <span className="material-symbols-outlined text-outline text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+            assignment
           </span>
-          <p className="text-slate-400 text-sm">No tasks found</p>
+          <p className="text-on-surface-variant text-sm">No tasks found</p>
         </div>
       </div>
     );
   }
 
-  const statusColors: Record<string, { bg: string; text: string }> = {
-    NotStarted: { bg: "bg-slate-700/30", text: "text-slate-400" },
-    Assigned: { bg: "bg-[#4648d4]/20", text: "text-[#818cf8]" },
-    InProgress: { bg: "bg-amber-500/20", text: "text-amber-400" },
-    Completed: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
-    Delayed: { bg: "bg-rose-500/20", text: "text-rose-400" },
-    OnHold: { bg: "bg-slate-600/30", text: "text-slate-400" },
-    Cancelled: { bg: "bg-slate-700/30", text: "text-slate-500" },
+  const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
+    NotStarted: { bg: "bg-surface-container-high", text: "text-on-surface-variant", dot: "bg-outline" },
+    Assigned: { bg: "bg-primary/10", text: "text-primary", dot: "bg-primary" },
+    InProgress: { bg: "bg-[#F59E0B]/10", text: "text-[#F59E0B]", dot: "bg-[#F59E0B]" },
+    Completed: { bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
+    Delayed: { bg: "bg-error-container", text: "text-error", dot: "bg-error" },
+    OnHold: { bg: "bg-surface-container-high", text: "text-on-surface-variant", dot: "bg-outline" },
+    Cancelled: { bg: "bg-surface-container-high", text: "text-outline", dot: "bg-outline" },
   };
 
-  const priorityIcons: Record<string, string> = {
-    Critical: "priority_high",
-    High: "keyboard_double_arrow_up",
-    Medium: "task",
-    Low: "arrow_downward",
+  const priorityConfig: Record<string, { icon: string; color: string }> = {
+    Critical: { icon: "priority_high", color: "text-error" },
+    High: { icon: "arrow_upward", color: "text-error" },
+    Medium: { icon: "remove", color: "text-[#F59E0B]" },
+    Low: { icon: "arrow_downward", color: "text-on-surface-variant" },
   };
 
   const formatDate = (dateStr: string) => {
@@ -52,42 +52,61 @@ export function TaskList({
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-return (
-    <div className="bg-slate-900/50 rounded-xl p-lg border border-slate-700/30">
-      <div className="flex justify-between items-center mb-md pb-sm border-b border-slate-700/30">
+  return (
+    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+      <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
-          <span className="material-symbols-outlined text-[#818cf8]">task</span>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <span className="material-symbols-outlined text-primary">check_circle</span>
+          <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
         </div>
-        {subtitle && <span className="text-xs text-slate-400">{subtitle}</span>}
+        {subtitle && <span className="text-outline font-label-caps text-[10px]">{subtitle}</span>}
       </div>
-      <div className="flex flex-col gap-xs">
+      <div className="flex flex-col">
         {tasks.map((task) => {
-          const colors = statusColors[task.status] || statusColors.NotStarted;
+          const config = statusConfig[task.status] || statusConfig.NotStarted;
+          const priority = priorityConfig[task.priority] || priorityConfig.Medium;
           const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Completed";
 
           return (
             <div
               key={task.id}
-              className="flex items-center gap-md p-md rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-[#4648d4]/50 hover:bg-[#4648d4]/10 transition-all cursor-pointer group"
+              className="flex items-center justify-between py-md px-sm rounded-lg hover:bg-surface-container-low transition-colors group border-b border-surface-variant/50 last:border-b-0"
             >
-              <div className="w-12 h-12 rounded-lg bg-slate-700/50 border border-slate-600 flex items-center justify-center flex-shrink-0 group-hover:border-[#4648d4] group-hover:bg-[#4648d4]/20 transition-all">
-                <span className="material-symbols-outlined text-slate-400 text-xl group-hover:text-[#818cf8] transition-colors" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  {priorityIcons[task.priority] || "task"}
+              <div className="flex items-center gap-md">
+                <span className={`material-symbols-outlined ${task.status === "Completed" ? "text-primary" : "text-outline"} group-hover:text-primary transition-colors`}>
+                  {task.status === "Completed" ? "check_circle" : "radio_button_unchecked"}
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-body-md text-on-surface font-medium">{task.title}</span>
+                  <span className="text-[11px] text-on-surface-variant">
+                    {task.projectName || "Standalone"} • due {formatDate(task.dueDate)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-xl">
+                <div className="w-24">
+                  <div className="flex flex-col gap-xs">
+                    <div className="h-1.5 w-full bg-surface-variant rounded-full overflow-hidden">
+                      <div 
+                        className="h-full primary-gradient rounded-full" 
+                        style={{ width: `${task.progressPercentage}%` }} 
+                      />
+                    </div>
+                    <span className="text-[11px] font-numeric text-on-surface-variant text-right">
+                      {task.progressPercentage}% Complete
+                    </span>
+                  </div>
+                </div>
+                {isOverdue && (
+                  <span className="px-sm py-[2px] bg-error-container text-error rounded-full text-[11px] font-medium flex items-center gap-xs">
+                    <span className="w-1 h-1 rounded-full bg-error"></span> Overdue
+                  </span>
+                )}
+                <span className={`px-sm py-[2px] rounded-full text-[11px] font-medium flex items-center gap-xs ${config.bg} ${config.text}`}>
+                  <span className={`w-1 h-1 rounded-full ${config.dot}`}></span> 
+                  {task.status}
                 </span>
               </div>
-              <div className="flex flex-col flex-grow min-w-0">
-                <span className="text-white font-medium truncate">{task.title}</span>
-                <span className="text-xs text-slate-400">{task.projectName || "Standalone"} • due {formatDate(task.dueDate)}</span>
-              </div>
-              <div className="flex flex-col items-end gap-xs flex-shrink-0 w-40">
-                <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-[#4648d4] to-[#818cf8] rounded-full" style={{ width: `${task.progressPercentage}%` }} />
-                </div>
-                <span className="text-xs text-slate-400 text-right">{task.progressPercentage}% Complete</span>
-                {isOverdue && <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-[10px] rounded font-medium">Overdue</span>}
-              </div>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${colors.bg} ${colors.text}`}>{task.status}</span>
             </div>
           );
         })}

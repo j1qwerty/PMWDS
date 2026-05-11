@@ -33,38 +33,68 @@ export function NotificationTemplateFormDialog({
   }, [template, open]);
 
   return (
-    <Dialog
-      open={open}
-      title={template ? "Edit Template" : "Create Template"}
-      onClose={onClose}
-    >
-      <div className="grid gap-4">
-        <div className="grid grid-cols-1 gap-4">
-          <label>
-            <span>Template Type</span>
-            <input value={form.templateType} onChange={(event) => setForm({ ...form, templateType: event.target.value })} />
-          </label>
-          <label>
-            <span>Subject Template</span>
-            <input value={form.subjectTemplate} onChange={(event) => setForm({ ...form, subjectTemplate: event.target.value })} />
-          </label>
-          <label>
-            <span>Body Template</span>
-            <textarea rows={5} value={form.bodyTemplate} onChange={(event) => setForm({ ...form, bodyTemplate: event.target.value })} />
-          </label>
-          <label>
-            <span>Variables</span>
-            <textarea rows={4} value={form.variables} onChange={(event) => setForm({ ...form, variables: event.target.value })} />
-          </label>
-          <label>
-            <span>Supported Channels</span>
-            <textarea rows={4} value={form.supportedChannels} onChange={(event) => setForm({ ...form, supportedChannels: event.target.value })} />
-          </label>
+    <Dialog open={open} title={template?.id ? "Edit Template" : "Create Template"} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Template Type</label>
+            <input 
+              value={form.templateType} 
+              onChange={(event) => setForm({ ...form, templateType: event.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              placeholder="e.g., task_reminder"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Subject Template</label>
+            <input 
+              value={form.subjectTemplate} 
+              onChange={(event) => setForm({ ...form, subjectTemplate: event.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              placeholder="Task reminder: {{taskName}}"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Body Template</label>
+            <textarea 
+              rows={5} 
+              value={form.bodyTemplate} 
+              onChange={(event) => setForm({ ...form, bodyTemplate: event.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none"
+              placeholder="Hello {{userName}}, this is a reminder for {{taskName}}..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Variables (one per line)</label>
+            <textarea 
+              rows={4} 
+              value={form.variables} 
+              onChange={(event) => setForm({ ...form, variables: event.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none font-mono text-sm"
+              placeholder="userName&#10;taskName&#10;dueDate"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Supported Channels (one per line)</label>
+            <textarea 
+              rows={4} 
+              value={form.supportedChannels} 
+              onChange={(event) => setForm({ ...form, supportedChannels: event.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none font-mono text-sm"
+              placeholder="in_app&#10;email&#10;push"
+            />
+          </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={onClose}>Cancel</button>
-          <button
-            className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+        <div className="flex justify-end gap-2 pt-2">
+          <button 
+            className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button 
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50"
+            disabled={!form.templateType || !form.subjectTemplate}
             onClick={() =>
               onSubmit({
                 templateType: form.templateType,

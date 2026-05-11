@@ -7,6 +7,7 @@ import { SimpleProjectList } from "../shared/SimpleProjectList";
 import { TaskList } from "../shared/TaskList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import { KpiCard } from "./kpicard";
+import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent, ErrorPanel, LoadingPanel } from "../../ui";
 
 export function DashboardPage() {
@@ -43,12 +44,12 @@ export function DashboardPage() {
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <div className=" mx-4 my-4 gap-6">
+    <div className=" mx-4 my-2 gap-6">
 
-      <section className="my-6 w-full">
+      <section className="my-2 w-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <span className="text-sm font-semibold text-primary/80 uppercase tracking-wider">
+          <span className="text-sm font-semibold text-blue-700 uppercase tracking-wider">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </span>
           <button className="group px-5 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-on-surface hover:border-primary/50 hover:shadow-md transition-all duration-200 text-sm font-medium flex items-center gap-2">
@@ -119,128 +120,116 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <div className="col-span-12 grid grid-cols-1 xl:grid-cols-3 gap-10">
-        <div className="xl:col-span-2 flex flex-col gap-10">
-          <section className="glass-card rounded-2xl flex flex-col overflow-hidden">
-            <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-              <h2 className="text-lg font-black text-black  tracking-wide">Active Objectives</h2>
-              <button className="text-primary-light hover:text-white text-xs font-bold uppercase tracking-widest transition-all hover:underline underline-offset-4">View Full Ledger</button>
-            </div>
-            <TaskList tasks={myTasks.slice(0, 5)} title="Active Objectives" />
-          </section>
-
-          {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") && (dashboard?.highRiskProjects ?? []).length > 0 && (
-            <section className="flex flex-col gap-6">
-              <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
-                High-Risk Interventions Required
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {(dashboard?.highRiskProjects ?? []).slice(0, 2).map((project: any, index: number) => (
-                  <div key={project.id} className={`glass-card p-8 rounded-2xl flex flex-col gap-5 relative overflow-hidden group border ${index === 0 ? 'border-rose-500/30 hover:border-rose-500/60' : 'border-amber-500/30 hover:border-amber-500/60'} transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.15)]`}>
-                    <div className={`absolute top-0 left-0 w-1.5 h-full rounded-l ${index === 0 ? 'bg-rose-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)]'}`} />
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-lg font-black text-white tracking-wide">{project.name}</h3>
-                      <span className={`px-2.5 py-1 text-[10px] font-black uppercase rounded border tracking-widest ${index === 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
-                        {index === 0 ? 'CRITICAL' : 'WARNING'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-400 leading-relaxed">AI predicts significant delay risk based on current velocity and resource allocation.</p>
-                    <div className="flex items-center justify-between mt-4 pt-6 border-t border-white/10">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Delay Est.</span>
-                        <span className={`text-lg font-black ${index === 0 ? 'text-rose-400' : 'text-white'}`}>
-                          {project.delayRisk ? `${Math.round(project.delayRisk * 100)} Days` : 'Review needed'}
-                        </span>
-                      </div>
-                      <button className={`text-xs font-black px-4 py-2 rounded-lg uppercase tracking-widest flex items-center gap-2 transition-all border ${index === 0 ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'}`}>
-                        {index === 0 ? 'ACTION PLAN' : 'REVIEW'} 
-                        <span className="material-symbols-outlined text-base">arrow_forward</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+      <div className="col-span-12 flex flex-col gap-lg">
+        {/* Active Objectives - Full Width */}
+          <ActiveObjectives
+            objectives={myTasks.slice(0, 3).map((task, index) => ({
+              id: task.id,
+              category: task.projectName || "General",
+              title: task.title,
+              progressPercentage: task.progressPercentage,
+              // Temporary assignees since they don't exist in the data yet
+              assignees: [
+                {
+                  avatar: `https://ui-avatars.com/api/?name=User+${index + 1}&background=6063ee&color=fff&size=40`,
+                  name: `Team Lead ${index + 1}`,
+                },
+                {
+                  avatar: `https://ui-avatars.com/api/?name=Dev+${index + 1}&background=9c48ea&color=fff&size=40`,
+                  name: `Developer ${index + 1}`,
+                },
+                {
+                  avatar: `https://ui-avatars.com/api/?name=QA+${index + 1}&background=545c72&color=fff&size=40`,
+                  name: `QA Engineer ${index + 1}`,
+                },
+              ],
+            }))}
+            title="Active Objectives"
+          />
+      <div className="col-span-12 flex flex-col gap-lg">
+        {/* Row 1: High Risk Projects + Notifications */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+          <div className="lg:col-span-2">
+            <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} title="High Risk Projects" />
+          </div>
+          <div className="lg:col-span-1">
+            <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-10">
-          <section className="glass-card border-primary/30 rounded-2xl p-8 relative overflow-hidden hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-shadow duration-500">
-            <div className="absolute -right-20 -top-20 w-48 h-48 bg-primary/20 rounded-full blur-[80px] pointer-events-none" />
-            <h2 className="text-xs font-black text-primary-light uppercase tracking-[0.25em] flex items-center gap-3 mb-8">
-              <span className="material-symbols-outlined text-lg text-primary-light drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" style={{fontVariationSettings: 'FILL 1'}}>auto_awesome</span>
-              AI Intelligence
-            </h2>
-            <div className="flex flex-col gap-6">
-              {unread.slice(0, 3).map((notification) => {
-                const type = notification.priority === "Critical" ? "critical" : notification.priority === "High" ? "warning" : "info";
-                const typeStyles = {
-                  critical: { dot: "bg-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]", hover: "group-hover:text-rose-400" },
-                  warning: { dot: "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]", hover: "group-hover:text-amber-400" },
-                  info: { dot: "bg-primary-light shadow-[0_0_12px_rgba(129,140,248,0.8)]", hover: "group-hover:text-primary-light" },
-                };
-                const styles = typeStyles[type];
-                return (
-                  <div key={notification.id} className="flex gap-5 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group cursor-pointer">
-                    <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${styles.dot}`} />
-                    <div className="flex flex-col gap-1.5">
-                      <span className={`text-sm font-bold text-white tracking-wide transition-colors ${styles.hover}`}>{notification.title}</span>
-                      <p className="text-xs text-slate-400 leading-relaxed">{notification.message.slice(0, 80)}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              {(dashboard?.workloadDistribution ?? []).some((w: any) => (w.aiBurnoutRiskScore ?? 0) > 0.6) && (
-                <div className="flex gap-5 p-4 rounded-xl bg-white/[0.02] border border-amber-500/20 hover:bg-white/[0.04] transition-all group cursor-pointer">
-                  <div className="mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-sm font-bold text-white tracking-wide group-hover:text-amber-400 transition-colors">Burnout Alert</span>
-                    <p className="text-xs text-slate-400 leading-relaxed">Some team members are approaching capacity limits.</p>
-                  </div>
-                </div>
-              )}
+        {/* Row 2: High-Risk Interventions + Urgent Escalations */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+          <div className="lg:col-span-2 flex flex-col gap-sm">
+            <div className="flex items-center gap-sm mb-xs">
+              <span className="material-symbols-outlined text-error">warning</span>
+              <h2 className="font-h2 text-h2 text-on-surface">High-Risk Interventions</h2>
+              <span className="px-xs py-[2px] border border-outline rounded text-[10px] text-outline font-label-caps uppercase ml-sm">Admin Only</span>
             </div>
-          </section>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
+              {/* Critical Card */}
+              <div className="glass-panel p-md rounded-xl border border-error-container bg-error-container/10 relative overflow-hidden">
+                <div className="absolute top-md right-md w-2 h-2 rounded-full bg-error status-pulse"></div>
+                <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">API Gateway Timeout</h3>
+                <p className="font-body-md text-on-surface-variant text-[13px] mb-md">SLA violation risk critical. 45ms latency spike detected in US-East region.</p>
+                <div className="flex gap-sm">
+                  <button className="px-sm py-xs bg-error text-on-error rounded font-label-caps text-[11px] hover:bg-on-error-container transition-colors">Intervene</button>
+                  <button className="px-sm py-xs border border-outline-variant rounded font-label-caps text-[11px] text-on-surface hover:bg-surface-variant transition-colors">Details</button>
+                </div>
+              </div>
 
-          <section className="glass-card rounded-2xl my-4 p-8">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xs font-black  uppercase tracking-[0.2em]">Escalations</h2>
-              <span className="bg-rose-500/10 text-rose-400 text-[10px] font-black px-2.5 py-1 rounded border border-rose-500/20 tracking-widest shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                {overdue.length} PENDING
-              </span>
-            </div>
-            <div className="flex flex-col gap-5">
-              {overdue.slice(0, 2).map((task) => (
-                <div key={task.id} className="p-5 bg-black/40 border border-white/5 rounded-xl flex flex-col gap-4 group hover:border-white/20 transition-all">
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-bold text-white tracking-wide">{task.title}</span>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Overdue</span>
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">Task is overdue. Current status: {task.status}.</p>
-                  <div className="flex justify-end gap-4 pt-3 border-t border-white/5">
-                    <button className="text-xs font-bold text-slate-400 hover:text-white transition-colors tracking-widest">DISMISS</button>
-                    <button className="text-xs font-black text-white bg-white/10 px-3 py-1.5 rounded hover:bg-white/20 transition-colors tracking-widest">REVIEW</button>
-                  </div>
+              {/* Warning Card */}
+              <div className="glass-panel p-md rounded-xl border border-[#F59E0B]/30 bg-[#FEF3C7]/20 relative overflow-hidden">
+                <div className="absolute top-md right-md w-2 h-2 rounded-full bg-[#F59E0B]"></div>
+                <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">Resource Bottleneck</h3>
+                <p className="font-body-md text-on-surface-variant text-[13px] mb-md">Design team allocation exceeding 110% capacity for current sprint.</p>
+                <div className="flex gap-sm">
+                  <button className="px-sm py-xs bg-[#F59E0B] text-white rounded font-label-caps text-[11px] hover:bg-[#D97706] transition-colors">Reallocate</button>
                 </div>
-              ))}
-              {overdue.length === 0 && (
-                <div className="text-center py-8 text-slate-500 text-sm">No escalations pending</div>
-              )}
+              </div>
             </div>
-          </section>
+          </div>
+
+          {/* Recent Escalations Panel */}
+          <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow flex flex-col h-full">
+            <div className="flex items-center gap-sm mb-md pb-sm border-b border-surface-variant">
+              <span className="material-symbols-outlined text-error">bolt</span>
+              <h2 className="font-h2 text-h2 text-on-surface">Urgent Escalations</h2>
+            </div>
+            <div className="flex flex-col gap-sm flex-1">
+              {/* Danger Alert */}
+              <div className="p-sm rounded-lg bg-error-container/10 border-l-4 border-error flex flex-col gap-1">
+                <div className="flex justify-between items-start">
+                  <span className="font-body-md font-bold text-error text-[13px]">Server Downtime Risk</span>
+                  <span className="text-[10px] text-outline">5m ago</span>
+                </div>
+                <p className="text-[12px] text-on-surface-variant leading-tight">Database migration failed on production cluster #4. Data integrity check required.</p>
+                <button className="mt-2 w-full py-1 bg-error text-on-error rounded text-[10px] font-bold uppercase tracking-wider hover:bg-on-error-container transition-colors">Execute Recovery</button>
+              </div>
+
+              {/* Warning Alert */}
+              <div className="p-sm rounded-lg bg-[#FEF3C7]/20 border-l-4 border-[#F59E0B] flex flex-col gap-1">
+                <div className="flex justify-between items-start">
+                  <span className="font-body-md font-bold text-[#D97706] text-[13px]">Security Policy Breach</span>
+                  <span className="text-[10px] text-outline">18m ago</span>
+                </div>
+                <p className="text-[12px] text-on-surface-variant leading-tight">Unauthorized access attempt detected from unknown IP in 'Staging'.</p>
+                <div className="flex gap-2 mt-2">
+                  <button className="flex-1 py-1 border border-[#F59E0B] text-[#D97706] rounded text-[10px] font-bold uppercase hover:bg-[#F59E0B]/10 transition-colors">Investigate</button>
+                  <button className="flex-1 py-1 bg-[#F59E0B] text-white rounded text-[10px] font-bold uppercase hover:bg-[#D97706] transition-colors">Block IP</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Row 3: My Work Queue + Workload Distribution */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-lg">
+          <TaskList tasks={myTasks.slice(0, 6)} title="My Work Queue" subtitle={`${myTasks.length} Tasks Pending`} />
+          <WorkloadBars items={dashboard?.workloadDistribution ?? []} title="Workload Distribution" />
         </div>
       </div>
 
-      <div className="my-4 col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
-          <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} title="High Risk Projects" />
-          <NotificationList items={unread.slice(0, 6)} title="Recent Notifications" />
-        </div>
-
-        <div className="col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-10">
-          <TaskList tasks={myTasks.slice(0, 6)} title="My Work Queue" subtitle="Priority tasks" />
-          <WorkloadBars items={dashboard?.workloadDistribution ?? []} title="Workload Distribution" />
-        </div>
     </div>
+  </div>
   );
 }

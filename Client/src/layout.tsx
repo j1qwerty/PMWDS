@@ -191,43 +191,41 @@ function Layout({ children }: { children: React.ReactNode }) {
           "
         >
           {navGroups.map((group, index) => (
-                    <div key={group.title} className="space-y-1.5">
-                      {/* Remove first Overview title */}
-                      {index !== 0 && (
-                        <div className="px-3 pb-1 text-[10px] uppercase tracking-[0.18em] text-slate-400/60">
-                          {group.title}
-                        </div>
-                      )}
+            <div key={group.title} className="space-y-1.5">
+              {/* Remove first Overview title */}
+              {index !== 0 && (
+                <div className="px-3 pb-1 text-[10px] uppercase tracking-[0.18em] text-slate-400/60">
+                  {group.title}
+                </div>
+              )}
 
-                      <div className="space-y-[2px]">
-                        {group.items
-                          .filter(
-                            (item) =>
-                              item.roles.length === 0 || hasRole(...item.roles)
-                          )
-                          .map((item) => (
-                            <Link
-                              key={item.path}
-                              to={item.path}
-                              className={`relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200 ${
-                                isActive(item.path)
-                                  ? "bg-blue-100 text-blue-700 font-semibold border-r-[3px] border-blue-600"
-                                  : "text-slate-600 hover:bg-blue-50 hover:text-blue-600 border-r-[3px] border-transparent"
-                              }`}
-                            >
-                              <span
-                                className={`transition-transform duration-300 ${
-                                  isActive(item.path)
-                                    ? "scale-105 text-blue-700"
-                                    : "group-hover:scale-105 text-slate-500"
-                                }`}
-                              >
-                                {iconMap[item.icon]}
-                              </span>
+              <div className="space-y-[2px]">
+                {group.items
+                  .filter(
+                    (item) =>
+                      item.roles.length === 0 || hasRole(...item.roles)
+                  )
+                  .map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200 ${isActive(item.path)
+                          ? "bg-blue-100 text-blue-700 font-semibold border-r-[3px] border-blue-600"
+                          : "text-slate-600 hover:bg-blue-50 hover:text-blue-600 border-r-[3px] border-transparent"
+                        }`}
+                    >
+                      <span
+                        className={`transition-transform duration-300 ${isActive(item.path)
+                            ? "scale-105 text-blue-700"
+                            : "group-hover:scale-105 text-slate-500"
+                          }`}
+                      >
+                        {iconMap[item.icon]}
+                      </span>
 
-                              <span className="text-[13px] font-medium tracking-[0.01em]">
-                                {item.label}
-                              </span>
+                      <span className="text-[13px] font-medium tracking-[0.01em]">
+                        {item.label}
+                      </span>
 
                       {item.path === "/notifications" &&
                         unreadCount > 0 && (
@@ -281,23 +279,23 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               {/* Search */}
               <div className="relative hidden md:block">
-                <HiOutlineSearch className="absolute left-4 top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-slate-400" />
+                <HiOutlineSearch className="absolute left-4 top-3 h-[16px] w-[16px] text-outline pointer-events-none" />
                 <input
                   className="
                     w-[250px]
                     h-[40px]
                     rounded-full
-                    bg-slate-100
-                    border border-slate-200
+                    bg-surface-container-low
+                    border border-surface-variant
                     pl-11 pr-4
                     text-[13px]
-                    text-slate-700
-                    placeholder:text-slate-400
+                    text-on-surface
+                    placeholder:text-outline
                     outline-none
                     transition-all duration-300
-                    focus:border-blue-300
-                    focus:bg-white
-                    focus:ring-2 focus:ring-blue-100
+                    focus:border-primary
+                    focus:bg-surface-container-lowest
+                    focus:ring-2 focus:ring-primary/10
                   "
                   placeholder="Search..."
                   type="text"

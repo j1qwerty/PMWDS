@@ -11,28 +11,56 @@ export function NotificationList({
 
   if (!itemsArray.length) {
     return (
-      <div className="bg-slate-900/50 rounded-xl p-lg border border-slate-700/30">
-        <div className="flex justify-between items-center mb-md pb-sm border-b border-slate-700/30">
+      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+        <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-[#818cf8]">notifications</span>
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+            <span className="material-symbols-outlined text-primary">inbox</span>
+            <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
           </div>
+          <span className="bg-primary text-on-primary text-[10px] font-bold px-2 py-[2px] rounded-full">0 New</span>
         </div>
         <div className="flex flex-col items-center justify-center py-lg text-center">
-          <span className="material-symbols-outlined text-slate-500 text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-            notifications_none
+          <span className="material-symbols-outlined text-outline text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+            notifications_off
           </span>
-          <p className="text-slate-400 text-sm">No notifications</p>
+          <p className="text-on-surface-variant text-sm">No notifications</p>
         </div>
       </div>
     );
   }
 
-  const priorityStyles: Record<string, { icon: string; bg: string; text: string }> = {
-    Critical: { icon: "cancel", bg: "bg-rose-500/20", text: "text-rose-400" },
-    High: { icon: "warning", bg: "bg-amber-500/20", text: "text-amber-400" },
-    Info: { icon: "info", bg: "bg-[#4648d4]/20", text: "text-[#818cf8]" },
-    Success: { icon: "check_circle", bg: "bg-emerald-500/20", text: "text-emerald-400" },
+  // Map priority to exact reference notification types
+  const getNotificationType = (item: NotificationItem) => {
+    const priority = item.priority || "Info";
+    
+    switch (priority) {
+      case "Critical":
+        return {
+          type: "critical",
+          icon: "priority_high",
+          bg: "bg-error/10",
+          iconColor: "text-error",
+          highlightColor: "text-error",
+        };
+      case "High":
+        return {
+          type: "mention",
+          icon: "chat",
+          bg: "bg-primary/10",
+          iconColor: "text-primary",
+          highlightColor: "text-primary",
+        };
+      case "Info":
+      case "Success":
+      default:
+        return {
+          type: "release",
+          icon: "rocket_launch",
+          bg: "bg-secondary-container/10",
+          iconColor: "text-secondary",
+          highlightColor: "text-secondary",
+        };
+    }
   };
 
   const formatTime = (dateStr: string) => {
@@ -41,34 +69,72 @@ export function NotificationList({
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes} minutes ago`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours === 1) return "1 hour ago";
+    if (hours < 24) return `${hours} hours ago`;
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
+  const unreadCount = itemsArray.filter(item => !item.isRead).length;
+
   return (
-    <div className="bg-slate-900/50 rounded-xl p-lg border border-slate-700/30">
-      <div className="flex justify-between items-center mb-md pb-sm border-b border-slate-700/30">
+    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+      <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
-          <span className="material-symbols-outlined text-[#818cf8]">notifications</span>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <span className="material-symbols-outlined text-primary">inbox</span>
+          <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
         </div>
+        {unreadCount > 0 && (
+          <span className="bg-primary text-on-primary text-[10px] font-bold px-2 py-[2px] rounded-full">
+            {unreadCount} New
+          </span>
+        )}
       </div>
-      <div className="flex flex-col gap-sm">
+      <div className="flex flex-col gap-md">
         {itemsArray.map((item) => {
-          const style = priorityStyles[item.priority] || priorityStyles.Info;
+          const config = getNotificationType(item);
+          
+          // Extract highlighted text from message if it contains a colon or specific pattern
+          let mainText = item.title;
+          let highlightedText = "";
+          
+          if (item.title.includes(": ")) {
+            const parts = item.title.split(": ");
+            mainText = parts[0] + ": ";
+            highlightedText = parts[1];
+          } else if (item.title.includes(" in ")) {
+            const parts = item.title.split(" in ");
+            mainText = parts[0] + " in ";
+            highlightedText = parts[1];
+          }
+
           return (
-            <div key={item.id} className={`flex gap-sm items-start p-sm rounded-lg hover:bg-slate-800/50 cursor-pointer transition-all border-l-2 ${item.isRead ? "border-transparent" : "border-[#4648d4]"}`}>
-              <div className={`w-8 h-8 rounded-full ${style.bg} flex items-center justify-center flex-shrink-0`}>
-                <span className={`material-symbols-outlined ${style.text} text-[16px]`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                  {style.icon}
+            <div 
+              key={item.id} 
+              className="flex gap-md items-start p-sm rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors"
+            >
+              <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center shrink-0`}>
+                <span className={`material-symbols-outlined ${config.iconColor} text-[16px]`}>
+                  {config.icon}
                 </span>
               </div>
-              <div className="flex flex-col flex-grow min-w-0">
-                <span className="text-sm text-white font-medium truncate">{item.title}</span>
-                <span className="text-xs text-slate-400 mt-xs">{item.message.slice(0, 80)}</span>
-                <span className="text-[10px] text-slate-500 mt-xs">{formatTime(item.createdDate)}</span>
+              <div className="flex flex-col">
+                <span className="text-[13px] text-on-surface font-medium">
+                  {mainText}
+                  {highlightedText && (
+                    <span className={config.highlightColor}>{highlightedText}</span>
+                  )}
+                </span>
+                {item.message && (
+                  <span className="text-[11px] text-on-surface-variant mt-xs">
+                    {item.message.slice(0, 80)}
+                  </span>
+                )}
+                <span className="text-[11px] text-outline mt-1">
+                  {formatTime(item.createdDate)}
+                </span>
               </div>
             </div>
           );

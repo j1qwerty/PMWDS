@@ -7,6 +7,7 @@ import { DashboardsPage } from "./features/dashboards/pages/DashboardsPage";
 import { IntegrationsPage } from "./features/integrations/pages/IntegrationsPage";
 import { WebhooksPage } from "./features/integrations/pages/WebhooksPage";
 import { KnowledgePage } from "./features/knowledge/pages/KnowledgePage";
+// import { NotificationsPage } from "./features/notifications/pages/NotificationsPage";
 import { OrganizationsPage } from "./features/organizations/pages/OrganizationsPage";
 import { ProfilesPage } from "./features/profiles/pages/ProfilesPage";
 import { SkillsPage } from "./features/skills/pages/SkillsPage";
@@ -17,7 +18,7 @@ import { ProjectsPage } from "./pages/projects/projects";
 import { TasksPage } from "./pages/tasks/tasks";
 import { UsersPage } from "./pages/users/users";
 import { DepartmentsPage } from "./pages/departments/departments";
-import { NotificationsPage as CoreNotificationsPage } from "./pages/notifications/notifications";
+import { NotificationsPage } from "./pages/notifications/notifications";
 import { AIPage as CoreAIPage } from "./pages/ai/ai";
 import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { SettingsPage } from "./pages/settings/settings";
@@ -56,7 +57,7 @@ function AppRoutes() {
                 <Route path="/activity-logs" element={<ActivityLogsPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
-                <Route path="/notifications" element={<CoreNotificationsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/ai" element={<CoreAIPage />} />
                 <Route path="/reports" element={<CoreReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
