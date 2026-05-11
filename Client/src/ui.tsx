@@ -621,8 +621,24 @@ export function UserTable({ users }: { users: User[] }) {
 // WorkloadBars Component
 // ============================================================
 
-export function WorkloadBars({ items }: { items: Array<any> }) {
-  if (!items.length)
+export interface WorkloadItem {
+  id: string;
+  name: string;
+  score: number;
+  workloadScore?: number;
+  activeTasks?: number;
+  memberCount?: number;
+  jobTitle?: string;
+  burnoutRisk?: number;
+}
+
+export function WorkloadBars({ items, isDepartment = false }: { items?: WorkloadItem[]; isDepartment?: boolean }) {
+  const workloadItems = items?.map(item => ({
+    ...item,
+    score: item.workloadScore ?? item.score,
+  })) ?? [];
+
+  if (!workloadItems.length)
     return (
       <EmptyState
         title="No workload data"
@@ -633,41 +649,40 @@ export function WorkloadBars({ items }: { items: Array<any> }) {
 
   return (
     <div className="flex flex-col gap-md">
-      {items.map((item) => {
-        const score = Number(
-          item.workloadScore ?? item.aiWorkloadScore ?? 0
-        );
-        const burnoutRaw = Number(
-          item.burnoutRisk ?? item.aiBurnoutRiskScore ?? 0
-        );
+      {workloadItems.map((item) => {
+        const score = Number(item.score ?? 0);
+        const normalizedScore = score <= 1 ? score * 100 : score;
+        const burnoutRaw = Number(item.burnoutRisk ?? 0);
         const burnout = burnoutRaw <= 1 ? burnoutRaw * 100 : burnoutRaw;
 
         return (
           <div
             className="grid grid-cols-[1fr_2fr_auto] items-center gap-md rounded-lg border border-outline-variant bg-surface-container-low p-md"
-            key={item.userId ?? item.fullName}
+            key={item.id}
           >
             <div>
               <strong className="block text-body-md text-on-surface">
-                {item.fullName}
+                {item.name}
               </strong>
               <span className="text-label-caps text-on-surface-variant">
-                {item.jobTitle || "Team member"}
+                {item.memberCount !== undefined ? `${item.memberCount} members` : (item.jobTitle || "Team member")}
               </span>
             </div>
             <div>
               <div className="h-2 overflow-hidden rounded-full bg-surface-container-high border border-outline-variant">
                 <div
                   className="h-full primary-gradient rounded-full"
-                  style={{ width: `${Math.min(score, 100)}%` }}
+                  style={{ width: `${Math.min(normalizedScore, 100)}%` }}
                 />
               </div>
               <small className="mt-xs block text-label-caps text-on-surface-variant">
-                Load {formatPercent(score)}
+                {isDepartment ? `Load ${formatPercent(normalizedScore)}` : `Load ${formatPercent(score)}`}
               </small>
             </div>
             <small className="text-body-md text-on-surface-variant">
-              Burnout {formatPercent(burnout)}
+              {isDepartment && item.activeTasks !== undefined 
+                ? `${item.activeTasks} active`
+                : `Burnout ${formatPercent(burnout)}`}
             </small>
           </div>
         );

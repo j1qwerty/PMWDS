@@ -20,6 +20,7 @@ import {
   HiOutlineChatAlt2,
   HiOutlineSearch,
   HiOutlineBell,
+  HiChat,
 } from "react-icons/hi";
 
 import { VscSymbolProperty } from "react-icons/vsc";
@@ -31,6 +32,11 @@ import {
   RiDashboard3Line,
   RiGitRepositoryLine,
 } from "react-icons/ri";
+
+// ─── Helper: classNames ────────────────────────────────────────────
+function classNames(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(" ");
+}
 
 const iconClass = "h-[18px] w-[18px] shrink-0";
 
@@ -56,6 +62,69 @@ const iconMap: Record<string, React.ReactNode> = {
   settings: <HiOutlineCog className={iconClass} />,
   roles: <VscSymbolProperty className={iconClass} />,
   permissions: <HiOutlineCube className={iconClass} />,
+};
+
+// Section color themes matching status button intensity pattern
+const sectionThemes: Record<string, {
+  active: string;
+  hover: string;
+  bgHover: string;
+  borderActive: string;
+  textActive: string;
+  textHover: string;
+  textDefault: string;
+  iconActive: string;
+  iconDefault: string;
+  dot: string;
+}> = {
+  Overview: {
+    active: "bg-primary/10 text-primary font-semibold",
+    hover: "hover:bg-primary/5 hover:text-primary",
+    bgHover: "hover:bg-primary/5",
+    borderActive: "border-r-[3px] border-primary",
+    textActive: "text-primary",
+    textHover: "hover:text-primary",
+    textDefault: "text-on-surface-variant",
+    iconActive: "text-primary",
+    iconDefault: "text-outline",
+    dot: "bg-primary",
+  },
+  Team: {
+    active: "bg-secondary/10 text-secondary font-semibold",
+    hover: "hover:bg-secondary/5 hover:text-secondary",
+    bgHover: "hover:bg-secondary/5",
+    borderActive: "border-r-[3px] border-secondary",
+    textActive: "text-secondary",
+    textHover: "hover:text-secondary",
+    textDefault: "text-on-surface-variant",
+    iconActive: "text-secondary",
+    iconDefault: "text-outline",
+    dot: "bg-secondary",
+  },
+  Tools: {
+    active: "bg-tertiary/10 text-tertiary font-semibold",
+    hover: "hover:bg-tertiary/5 hover:text-tertiary",
+    bgHover: "hover:bg-tertiary/5",
+    borderActive: "border-r-[3px] border-tertiary",
+    textActive: "text-tertiary",
+    textHover: "hover:text-tertiary",
+    textDefault: "text-on-surface-variant",
+    iconActive: "text-tertiary",
+    iconDefault: "text-outline",
+    dot: "bg-tertiary",
+  },
+  System: {
+    active: "bg-error/10 text-error font-semibold",
+    hover: "hover:bg-error/5 hover:text-error",
+    bgHover: "hover:bg-error/5",
+    borderActive: "border-r-[3px] border-error",
+    textActive: "text-error",
+    textHover: "hover:text-error",
+    textDefault: "text-on-surface-variant",
+    iconActive: "text-error",
+    iconDefault: "text-outline",
+    dot: "bg-error",
+  },
 };
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -129,7 +198,6 @@ function Layout({ children }: { children: React.ReactNode }) {
     if (path === "/") {
       return location.pathname === "/";
     }
-
     return location.pathname.startsWith(path);
   };
 
@@ -139,42 +207,42 @@ function Layout({ children }: { children: React.ReactNode }) {
       .find((item) => isActive(item.path))?.label || "PMWDS";
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
       {/* Sidebar */}
       <nav
         className="
           fixed left-0 top-0 z-50
           h-full w-[240px]
-          bg-white/95
+          bg-surface-container-lowest/95
           backdrop-blur-3xl
-          shadow-[8px_0_40px_rgba(0,0,0,0.22)]
+          shadow-[8px_0_40px_rgba(0,0,0,0.05)]
           flex flex-col
         "
       >
         {/* Logo */}
         <div className="px-5 pt-5 pb-3">
-          <div className="text-[22px] font-black text-blue-600 uppercase tracking-[0.22em]">
+          <div className="text-[22px] font-black text-primary uppercase tracking-[0.22em]">
             PMWDS
           </div>
         </div>
 
         {/* User */}
-        <div className="mx-3 mb-4 rounded-2xl bg-slate-100 px-3 py-3">
+        <div className="mx-3 mb-4 rounded-2xl bg-surface-container-low px-3 py-3">
           <div className="flex items-center gap-3">
             <img
               alt={auth?.fullName || "User"}
-              className="h-9 w-9 rounded-full object-cover ring-2 ring-blue-200"
+              className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/20"
               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
                 auth?.fullName || "U"
               )}&background=4648d4&color=fff`}
             />
 
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-slate-700">
+              <span className="truncate text-[13px] font-medium text-on-surface">
                 {auth?.fullName || "Alex Rivera"}
               </span>
 
-              <span className="truncate text-[9px] uppercase tracking-[0.18em] text-slate-400">
+              <span className="truncate text-[9px] uppercase tracking-[0.18em] text-outline">
                 {auth?.roles?.join(", ") || "SuperAdmin"}
               </span>
             </div>
@@ -190,59 +258,72 @@ function Layout({ children }: { children: React.ReactNode }) {
             space-y-5
           "
         >
-          {navGroups.map((group, index) => (
-            <div key={group.title} className="space-y-1.5">
-              {/* Remove first Overview title */}
-              {index !== 0 && (
-                <div className="px-3 pb-1 text-[10px] uppercase tracking-[0.18em] text-slate-400/60">
-                  {group.title}
+          {navGroups.map((group, index) => {
+            const theme = sectionThemes[group.title] || sectionThemes.Overview;
+            
+            return (
+              <div key={group.title} className="space-y-1.5">
+                {/* Show section title for all groups except first (Overview) */}
+                {index !== 0 && (
+                  <div className={`px-3 pb-1 text-[10px] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}>
+                    {group.title}
+                  </div>
+                )}
+
+                <div className="space-y-[2px]">
+                  {group.items
+                    .filter(
+                      (item) =>
+                        item.roles.length === 0 || hasRole(...item.roles)
+                    )
+                    .map((item) => {
+                      const active = isActive(item.path);
+                      
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={classNames(
+                            "relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200",
+                            active
+                              ? `${theme.active} ${theme.borderActive}`
+                              : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`,
+                            "group"
+                          )}
+                        >
+                          <span
+                            className={classNames(
+                              "transition-all duration-300",
+                              active
+                                ? `${theme.iconActive} scale-110`
+                                : `${theme.iconDefault} group-hover:scale-110`
+                            )}
+                          >
+                            {iconMap[item.icon]}
+                          </span>
+
+                          <span className="text-[13px] font-medium tracking-[0.01em]">
+                            {item.label}
+                          </span>
+
+                          {item.path === "/notifications" &&
+                            unreadCount > 0 && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                            )}
+                        </Link>
+                      );
+                    })}
                 </div>
-              )}
-
-              <div className="space-y-[2px]">
-                {group.items
-                  .filter(
-                    (item) =>
-                      item.roles.length === 0 || hasRole(...item.roles)
-                  )
-                  .map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200 ${isActive(item.path)
-                          ? "bg-blue-100 text-blue-700 font-semibold border-r-[3px] border-blue-600"
-                          : "text-slate-600 hover:bg-blue-50 hover:text-blue-600 border-r-[3px] border-transparent"
-                        }`}
-                    >
-                      <span
-                        className={`transition-transform duration-300 ${isActive(item.path)
-                            ? "scale-105 text-blue-700"
-                            : "group-hover:scale-105 text-slate-500"
-                          }`}
-                      >
-                        {iconMap[item.icon]}
-                      </span>
-
-                      <span className="text-[13px] font-medium tracking-[0.01em]">
-                        {item.label}
-                      </span>
-
-                      {item.path === "/notifications" &&
-                        unreadCount > 0 && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.9)]" />
-                        )}
-                    </Link>
-                  ))}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Logout */}
         <div className="px-3 pb-3 pt-2">
           <button
             onClick={logout}
-            className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-slate-500 transition-all duration-300 hover:bg-red-50 hover:text-red-600"
+            className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-on-surface-variant transition-all duration-300 hover:bg-error-container hover:text-error"
           >
             <svg
               className="h-[18px] w-[18px]"
@@ -267,11 +348,11 @@ function Layout({ children }: { children: React.ReactNode }) {
       <div className="ml-[240px] flex min-h-screen flex-1 flex-col layout-max-width">
         {/* Topbar */}
         <header
-          className="sticky top-0 z-40 h-[56px] bg-white/90 backdrop-blur-2xl border-b border-slate-200"
+          className="sticky top-0 z-40 h-[56px] bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
         >
           <div className="flex h-full items-center justify-between px-6">
             {/* Page Title */}
-            <div className="text-[24px] font-bold tracking-[-0.03em] text-blue-600">
+            <div className="text-h2 font-bold tracking-[-0.03em] text-primary">
               {pageTitle}
             </div>
 
@@ -279,7 +360,9 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               {/* Search */}
               <div className="relative hidden md:block">
-                <HiOutlineSearch className="absolute left-4 top-3 h-[16px] w-[16px] text-outline pointer-events-none" />
+                <span className="material-symbols-outlined absolute left-4 top-2 text-outline text-[20px] pointer-events-none">
+                  search
+                </span>
                 <input
                   className="
                     w-[250px]
@@ -305,20 +388,22 @@ function Layout({ children }: { children: React.ReactNode }) {
               {/* Chat */}
               <Link
                 to="/chat"
-                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full text-slate-500 transition-all duration-300 hover:bg-blue-50 hover:text-blue-600"
+                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
               >
-                <HiOutlineChatAlt2 className="h-[18px] w-[18px]" />
+                {/* <span className="material-symbols-outlined text-[20px]">chat</span> */}
+                <HiOutlineChatAlt2></HiOutlineChatAlt2>
               </Link>
 
               {/* Notifications */}
               <Link
                 to="/notifications"
-                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full transition-all duration-300 hover:bg-blue-50 hover:text-blue-600"
+                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
               >
-                {iconMap.inbox}
+                {/* <span className="material-symbols-outlined text-[20px]">inbox</span> */}
+                <HiOutlineBell></HiOutlineBell>
 
                 {unreadCount > 0 && (
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.9)]" />
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
                 )}
               </Link>
             </div>

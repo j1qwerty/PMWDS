@@ -15,7 +15,7 @@ export function ActiveObjectives({
 
   if (!objectiveList.length) {
     return (
-      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow ">
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary">track_changes</span>

@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney, formatPercent } from "../../ui";
 import { projectStatuses, priorities } from "../constants";
+import { MilestonesTab } from "../shared/MilestonesTab";
 
 export function ProjectsPage() {
   const { auth, hasRole } = useAuth();
@@ -11,12 +12,15 @@ export function ProjectsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
   const [_milestones, setMilestones] = useState<Milestone[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [_message, setMessage] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [form, setForm] = useState({
     projectCode: "",
     name: "",
@@ -38,6 +42,11 @@ export function ProjectsPage() {
   });
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
+  
+  // Filter projects by selected department
+  const filteredProjects = selectedDepartmentId
+    ? projects.filter(p => p.departmentId === selectedDepartmentId)
+    : projects;
 
   async function loadProjects() {
     if (!auth) return;
@@ -80,12 +89,46 @@ export function ProjectsPage() {
     await loadProjects();
   }
 
+  async function handleEditProject(event: FormEvent) {
+    event.preventDefault();
+    if (!auth || !selectedProject) return;
+    await api.updateProject(auth.token, selectedProject.id, form);
+    setMessage("Project updated.");
+    setShowEditModal(false);
+    await loadProjects();
+  }
+
+  async function handleDeleteProject() {
+    if (!auth || !selectedProject) return;
+    await api.deleteProject(auth.token, selectedProject.id);
+    setMessage("Project deleted.");
+    setShowDeleteConfirm(false);
+    setSelectedProjectId("");
+    await loadProjects();
+  }
+
+  const openEditModal = () => {
+    if (!selectedProject) return;
+    setForm({
+      projectCode: selectedProject.projectCode || "",
+      name: selectedProject.name || "",
+      description: selectedProject.description || "",
+      category: selectedProject.category || "Monitoring",
+      plannedStartDate: selectedProject.plannedStartDate ? selectedProject.plannedStartDate.split('T')[0] : "",
+      plannedEndDate: selectedProject.plannedEndDate ? selectedProject.plannedEndDate.split('T')[0] : "",
+      plannedBudget: selectedProject.plannedBudget || 0,
+      departmentId: selectedProject.departmentId || "",
+      projectManagerId: selectedProject.projectManagerId || "",
+      priority: selectedProject.priority || "Medium",
+    });
+    setShowEditModal(true);
+  };
+
   const handleCreateMilestone = async (event: FormEvent) => {
     event.preventDefault();
     if (!auth || !selectedProjectId) return;
     await api.createMilestone(auth.token, { ...milestoneForm, projectId: selectedProjectId });
     setMessage("Milestone created.");
-    // Optionally reload milestones
   };
 
   const getStatusDisplay = (status: string) => {
@@ -100,6 +143,18 @@ export function ProjectsPage() {
   const healthScore = selectedProject?.aiHealthScore != null ? Math.round(selectedProject.aiHealthScore * 100) : null;
   const progress = selectedProject?.progressPercentage || 0;
   const delayRisk = selectedProject?.aiDelayRiskScore != null ? Math.round(selectedProject.aiDelayRiskScore * 100) : null;
+
+  // Department colors for cards
+  const departmentColors = [
+    { gradient: "from-primary to-primary-container", bg: "bg-primary/5", border: "border-primary/30", text: "text-primary", dot: "bg-primary" },
+    { gradient: "from-secondary to-secondary-container", bg: "bg-secondary/5", border: "border-secondary/30", text: "text-secondary", dot: "bg-secondary" },
+    { gradient: "from-tertiary to-tertiary-container", bg: "bg-tertiary/5", border: "border-tertiary/30", text: "text-tertiary", dot: "bg-tertiary" },
+    { gradient: "from-error to-error-container", bg: "bg-error/5", border: "border-error/30", text: "text-error", dot: "bg-error" },
+    { gradient: "from-amber-500 to-amber-300", bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", dot: "bg-amber-500" },
+    { gradient: "from-emerald-500 to-emerald-300", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" },
+    { gradient: "from-blue-500 to-blue-300", bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "bg-blue-500" },
+    { gradient: "from-purple-500 to-purple-300", bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", dot: "bg-purple-500" },
+  ];
 
   return (
     <div className="mx-4 my-2 flex flex-col gap-4 h-full">
@@ -117,243 +172,272 @@ export function ProjectsPage() {
         </button>
       </div>
 
-      {/* Dual Pane Layout */}
-      <div className="flex-1 flex overflow-hidden gap-lg">
-       {/* LEFT COLUMN: Projects Board */}
-      <section className="w-2/5 min-w-[380px] flex flex-col gap-md overflow-y-auto custom-scrollbar pr-2">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-h2 text-h2 text-on-surface font-bold">Projects Board</h2>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-outline-variant tracking-widest uppercase">{projects.length} Active</span>
-            <button className="text-outline hover:text-primary transition-colors">
-              <span className="material-symbols-outlined">filter_list</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="relative mb-3">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
-          <input
-            className="w-full bg-surface border border-outline-variant rounded-md py-2 pl-10 pr-3 text-sm text-on-surface placeholder-outline focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none shadow-sm"
-            placeholder="Filter projects..."
-            type="text"
-          />
-        </div>
-
-        {projects.map((project) => {
-          const projProgress = project.progressPercentage || 0;
-          const projHealth = project.aiHealthScore != null ? Math.round(project.aiHealthScore * 100) : null;
-          const isSelected = project.id === selectedProjectId;
-          
-          const getStatusStyles = (status: string) => {
-            const styles: Record<string, { 
-              label: string; 
-              dot: string; 
-              border: string;
-              borderSelected: string;
-              ring: string;
-              progressColor: string;
-              bgHover: string;
-              bgSelected: string;
-              textColor: string;
-              badge: string;
-              shadow: string;
-            }> = {
-              NotStarted: { 
-                label: "Not Started",
-                dot: "bg-slate-400",
-                border: "border-slate-200",
-                borderSelected: "border-slate-400",
-                ring: "ring-slate-200",
-                progressColor: "stroke-slate-400",
-                bgHover: "hover:bg-slate-50",
-                bgSelected: "bg-slate-50",
-                textColor: "text-slate-600",
-                badge: "bg-slate-100 text-slate-600",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-              Assigned: { 
-                label: "Assigned",
-                dot: "bg-blue-500",
-                border: "border-blue-200",
-                borderSelected: "border-blue-400",
-                ring: "ring-blue-200",
-                progressColor: "stroke-blue-500",
-                bgHover: "hover:bg-blue-50",
-                bgSelected: "bg-blue-50",
-                textColor: "text-blue-700",
-                badge: "bg-blue-50 text-blue-700",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-              InProgress: { 
-                label: "On Track",
-                dot: "bg-primary",
-                border: "border-outline-variant/30",
-                borderSelected: "border-primary",
-                ring: "ring-primary/20",
-                progressColor: "stroke-primary",
-                bgHover: "hover:bg-primary/5",
-                bgSelected: "bg-primary/5",
-                textColor: "text-primary",
-                badge: "bg-primary/10 text-primary",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-              Completed: { 
-                label: "Completed",
-                dot: "bg-emerald-500",
-                border: "border-emerald-200",
-                borderSelected: "border-emerald-400",
-                ring: "ring-emerald-200",
-                progressColor: "stroke-emerald-500",
-                bgHover: "hover:bg-emerald-50",
-                bgSelected: "bg-emerald-50",
-                textColor: "text-emerald-700",
-                badge: "bg-emerald-50 text-emerald-700",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-              Delayed: { 
-                label: "At Risk",
-                dot: "bg-error",
-                border: "border-error/20",
-                borderSelected: "border-error",
-                ring: "ring-error/20",
-                progressColor: "stroke-error",
-                bgHover: "hover:bg-error/5",
-                bgSelected: "bg-error/5",
-                textColor: "text-error",
-                badge: "bg-error-container text-error",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-              OnHold: { 
-                label: "On Hold",
-                dot: "bg-amber-500",
-                border: "border-amber-200",
-                borderSelected: "border-amber-400",
-                ring: "ring-amber-200",
-                progressColor: "stroke-amber-500",
-                bgHover: "hover:bg-amber-50",
-                bgSelected: "bg-amber-50",
-                textColor: "text-amber-700",
-                badge: "bg-amber-50 text-amber-700",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-              Cancelled: { 
-                label: "Cancelled",
-                dot: "bg-slate-400",
-                border: "border-slate-100",
-                borderSelected: "border-slate-300",
-                ring: "ring-slate-100",
-                progressColor: "stroke-slate-400",
-                bgHover: "hover:bg-slate-50",
-                bgSelected: "bg-slate-50",
-                textColor: "text-slate-500",
-                badge: "bg-slate-100 text-slate-500",
-                shadow: "shadow-sm hover:shadow-md",
-              },
-            };
-            return styles[status] || styles.NotStarted;
-          };
-
-          const statusStyle = getStatusStyles(project.status);
-
-          const getHealthColor = (score: number) => {
-            if (score >= 80) return "bg-green-100 text-green-700";
-            if (score >= 50) return "bg-orange-100 text-orange-700";
-            return "bg-red-100 text-red-700";
-          };
-
-          return (
-            <div
-              key={project.id}
-              onClick={() => setSelectedProjectId(project.id)}
-              className={classNames(
-                "p-md rounded-xl cursor-pointer relative overflow-hidden group border shadow-sm transition-all duration-200",
-                isSelected 
-                  ? `${statusStyle.borderSelected} ${statusStyle.bgSelected} shadow-md border-2` 
-                  : `${statusStyle.border} bg-white ${statusStyle.shadow}`,
-                statusStyle.bgHover,
-              )}
+      {/* Department Cards Section */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-h2 text-h2 text-on-surface font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">account_balance</span>
+            Departments
+          </h2>
+          {selectedDepartmentId && (
+            <button
+              onClick={() => setSelectedDepartmentId("")}
+              className="text-xs font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1"
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex flex-col min-w-0 flex-1 mr-3">
-                  <span className={`text-[10px] font-bold tracking-widest ${statusStyle.textColor}`}>
-                    {project.id}
-                  </span>
-                  <h3 className="text-lg font-bold text-on-surface truncate">
-                    {project.name}
-                  </h3>
-                </div>
-                
-                <div className="size-12 relative flex items-center justify-center flex-shrink-0">
-                  <svg className="size-full -rotate-90" viewBox="0 0 36 36">
-                    <circle 
-                      className="stroke-surface-container" 
-                      cx="18" cy="18" fill="none" r="16" strokeWidth="3" 
-                    />
-                    <circle
-                      className={`${statusStyle.progressColor} transition-all duration-700`}
-                      cx="18" cy="18" fill="none" r="16"
-                      strokeDasharray="100"
-                      strokeDashoffset={100 - projProgress}
-                      strokeLinecap="round"
-                      strokeWidth="3"
-                    />
-                  </svg>
-                  <span className={`absolute text-[10px] font-bold ${statusStyle.textColor}`}>
-                    {projProgress}%
-                  </span>
-                </div>
-              </div>
+              <span className="material-symbols-outlined text-[14px]">close</span>
+              Clear Filter
+            </button>
+          )}
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+          {/* All Departments Card */}
+          <button
+            onClick={() => setSelectedDepartmentId("")}
+            className={classNames(
+              "flex-shrink-0 p-4 rounded-xl border-2 transition-all duration-200 min-w-[200px]",
+              !selectedDepartmentId
+                ? "border-primary bg-primary/5 shadow-md"
+                : "border-outline-variant/30 bg-surface-container-lowest hover:border-primary/30 hover:shadow-sm"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-outlined text-primary text-[20px]">grid_view</span>
+              <span className="text-sm font-bold text-on-surface">All Departments</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-on-surface">{projects.length}</span>
+              <span className="text-[11px] text-outline">projects</span>
+            </div>
+          </button>
 
-              <div className="flex items-center justify-between text-xs text-on-surface-variant mb-4">
-                <div className="flex items-center gap-2">
-                  <div className={`size-2 rounded-full ${statusStyle.dot} ${project.status === 'Delayed' ? 'animate-pulse' : ''}`} />
-                  <span className={`font-medium ${statusStyle.textColor}`}>{statusStyle.label}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">calendar_today</span>
-                  <span className="truncate">
-                    {project.plannedStartDate && project.plannedEndDate 
-                      ? `${new Date(project.plannedStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(project.plannedEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                      : "No dates set"}
-                  </span>
-                </div>
-              </div>
+          {/* Department Cards */}
+          {departments.map((dept, index) => {
+            const deptProjects = projects.filter(p => p.departmentId === dept.id);
+            const colors = departmentColors[index % departmentColors.length];
+            const isSelected = selectedDepartmentId === dept.id;
 
-              <div className="flex items-center justify-between border-t border-outline-variant/10 pt-3">
-                <div className="flex -space-x-2">
-                  <img 
-                    className="size-7 rounded-full border-2 border-white" 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH7I8--A4X3bMb2GA7rQzdC7-2jNm_mCdJRLa6ZL6SdNt18YUGrdfY-DqK2MBC2ZQTN-tVpRzN4RSkG4JJ2AnWGFE2seXiAVI0lSIUy_-DnukmKmhiz68FMexzkx3N-TPa2R8DFC4XojhiMAq4JOrOGnnAmib6ul7qb2zL8zfvOEx3QVdnHhHyos4GweTRuE2CJBBPCqRsDsvhuiaorRENV1LeUp6NluUA2KKDNI9cldhsfmmKFQLRaybGIprk_-BGMAJnTxzHztk" 
-                    alt="" 
-                  />
-                  <img 
-                    className="size-7 rounded-full border-2 border-white" 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDq7aiGGBXrem7dlepCOoYtG_gf419xnUzZbg3HiIaDvVLG8lrtSUiAx02OTiNP1aa4UUPO5yYPQ51wBWSdmH7wfZawua3q2kYGqjvLIEzHfLMBdtkO6LD8REAdAieETXdYHatSe_e09hPc5p5g5LFWJNNbMZj29WuzEZPPTJ0URAuMDgqKAE2o4EtBLy95CNSqKWUFMcoc1jtdt0DOnOZJBFNkQeSq3zqWu-xY0vZPGQMsWld1IcO7SsuLbGkbRTrNZbUfactXvCM" 
-                    alt="" 
-                  />
-                  <div className="size-7 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold border-2 border-white">
-                    +2
+            return (
+              <button
+                key={dept.id}
+                onClick={() => setSelectedDepartmentId(isSelected ? "" : dept.id)}
+                className={classNames(
+                  "flex-shrink-0 p-4 rounded-xl border-2 transition-all duration-200 min-w-[200px]",
+                  isSelected
+                    ? `${colors.border} ${colors.bg} shadow-md`
+                    : "border-outline-variant/30 bg-surface-container-lowest hover:border-primary/30 hover:shadow-sm"
+                )}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                  <span className={`text-sm font-bold ${isSelected ? colors.text : 'text-on-surface'}`}>{dept.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-2xl font-bold ${isSelected ? colors.text : 'text-on-surface'}`}>
+                    {deptProjects.length}
+                  </span>
+                  <span className="text-[11px] text-outline">projects</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dual Pane Layout */}
+      <div className="flex-1 flex overflow-hidden gap-lg ">
+        {/* LEFT COLUMN: Projects Board */}
+        <section className="w-2/5 min-w-[380px] flex flex-col gap-md overflow-y-auto custom-scrollbar pr-2">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-h2 text-h2 text-on-surface font-bold">Projects Board</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-outline-variant tracking-widest uppercase">
+                {filteredProjects.length} Active
+              </span>
+              <button className="text-outline hover:text-primary transition-colors">
+                <span className="material-symbols-outlined">filter_list</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mb-3">
+            <span className="material-symbols-outlined absolute left-3 top-2 text-outline text-[18px]">search</span>
+            <input
+              className="w-full bg-surface border border-outline-variant rounded-md py-2 pl-10 pr-3 text-sm text-on-surface placeholder-outline focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none shadow-sm"
+              placeholder="Filter projects..."
+              type="text"
+            />
+          </div>
+
+          {filteredProjects.map((project) => {
+            // ... (rest of the project card mapping code remains the same)
+            const projProgress = project.progressPercentage || 0;
+            const projHealth = project.aiHealthScore != null ? Math.round(project.aiHealthScore * 100) : null;
+            const isSelected = project.id === selectedProjectId;
+            
+            const getStatusStyles = (status: string) => {
+              const styles: Record<string, { 
+                label: string; 
+                dot: string; 
+                border: string;
+                borderSelected: string;
+                ring: string;
+                progressColor: string;
+                bgHover: string;
+                bgSelected: string;
+                textColor: string;
+                badge: string;
+                shadow: string;
+              }> = {
+                NotStarted: { 
+                  label: "Not Started", dot: "bg-slate-400", border: "border-slate-200",
+                  borderSelected: "border-slate-400", ring: "ring-slate-200",
+                  progressColor: "stroke-slate-400", bgHover: "hover:bg-slate-50",
+                  bgSelected: "bg-slate-50", textColor: "text-slate-600",
+                  badge: "bg-slate-100 text-slate-600", shadow: "shadow-sm hover:shadow-md",
+                },
+                Assigned: { 
+                  label: "Assigned", dot: "bg-blue-500", border: "border-blue-200",
+                  borderSelected: "border-blue-400", ring: "ring-blue-200",
+                  progressColor: "stroke-blue-500", bgHover: "hover:bg-blue-50",
+                  bgSelected: "bg-blue-50", textColor: "text-blue-700",
+                  badge: "bg-blue-50 text-blue-700", shadow: "shadow-sm hover:shadow-md",
+                },
+                InProgress: { 
+                  label: "On Track", dot: "bg-primary", border: "border-outline-variant/30",
+                  borderSelected: "border-primary", ring: "ring-primary/20",
+                  progressColor: "stroke-primary", bgHover: "hover:bg-primary/5",
+                  bgSelected: "bg-primary/5", textColor: "text-primary",
+                  badge: "bg-primary/10 text-primary", shadow: "shadow-sm hover:shadow-md",
+                },
+                Completed: { 
+                  label: "Completed", dot: "bg-emerald-500", border: "border-emerald-200",
+                  borderSelected: "border-emerald-400", ring: "ring-emerald-200",
+                  progressColor: "stroke-emerald-500", bgHover: "hover:bg-emerald-50",
+                  bgSelected: "bg-emerald-50", textColor: "text-emerald-700",
+                  badge: "bg-emerald-50 text-emerald-700", shadow: "shadow-sm hover:shadow-md",
+                },
+                Delayed: { 
+                  label: "At Risk", dot: "bg-error", border: "border-error/20",
+                  borderSelected: "border-error", ring: "ring-error/20",
+                  progressColor: "stroke-error", bgHover: "hover:bg-error/5",
+                  bgSelected: "bg-error/5", textColor: "text-error",
+                  badge: "bg-error-container text-error", shadow: "shadow-sm hover:shadow-md",
+                },
+                OnHold: { 
+                  label: "On Hold", dot: "bg-amber-500", border: "border-amber-200",
+                  borderSelected: "border-amber-400", ring: "ring-amber-200",
+                  progressColor: "stroke-amber-500", bgHover: "hover:bg-amber-50",
+                  bgSelected: "bg-amber-50", textColor: "text-amber-700",
+                  badge: "bg-amber-50 text-amber-700", shadow: "shadow-sm hover:shadow-md",
+                },
+                Cancelled: { 
+                  label: "Cancelled", dot: "bg-slate-400", border: "border-slate-100",
+                  borderSelected: "border-slate-300", ring: "ring-slate-100",
+                  progressColor: "stroke-slate-400", bgHover: "hover:bg-slate-50",
+                  bgSelected: "bg-slate-50", textColor: "text-slate-500",
+                  badge: "bg-slate-100 text-slate-500", shadow: "shadow-sm hover:shadow-md",
+                },
+              };
+              return styles[status] || styles.NotStarted;
+            };
+
+            const statusStyle = getStatusStyles(project.status);
+            const getHealthColor = (score: number) => {
+              if (score >= 80) return "bg-green-100 text-green-700";
+              if (score >= 50) return "bg-orange-100 text-orange-700";
+              return "bg-red-100 text-red-700";
+            };
+
+            return (
+              <div
+                key={project.id}
+                onClick={() => setSelectedProjectId(project.id)}
+                className={classNames(
+                  "p-md rounded-xl cursor-pointer relative overflow-hidden group border shadow-sm transition-all duration-200",
+                  isSelected 
+                    ? `${statusStyle.borderSelected} ${statusStyle.bgSelected} shadow-md border-2` 
+                    : `${statusStyle.border} bg-white ${statusStyle.shadow}`,
+                  statusStyle.bgHover,
+                )}
+              >
+                {/* Project card content remains same as before */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex flex-col min-w-0 flex-1 mr-3">
+                    <span className={`text-[10px] font-bold tracking-widest ${statusStyle.textColor}`}>
+                      {project.id}
+                    </span>
+                    <h3 className="text-lg font-bold text-on-surface truncate">
+                      {project.name}
+                    </h3>
+                  </div>
+                  
+                  <div className="size-12 relative flex items-center justify-center flex-shrink-0">
+                    <svg className="size-full -rotate-90" viewBox="0 0 36 36">
+                      <circle className="stroke-surface-container" cx="18" cy="18" fill="none" r="16" strokeWidth="3" />
+                      <circle
+                        className={`${statusStyle.progressColor} transition-all duration-700`}
+                        cx="18" cy="18" fill="none" r="16"
+                        strokeDasharray="100"
+                        strokeDashoffset={100 - projProgress}
+                        strokeLinecap="round"
+                        strokeWidth="3"
+                      />
+                    </svg>
+                    <span className={`absolute text-[10px] font-bold ${statusStyle.textColor}`}>
+                      {projProgress}%
+                    </span>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-outline">Health</span>
-                  {projHealth != null ? (
-                    <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getHealthColor(projHealth)}`}>
-                      {projHealth}
-                    </div>
-                  ) : (
-                    <div className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
-                      N/A
-                    </div>
-                  )}
+
+                <div className="flex items-center justify-between text-xs text-on-surface-variant mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`size-2 rounded-full ${statusStyle.dot} ${project.status === 'Delayed' ? 'animate-pulse' : ''}`} />
+                    <span className={`font-medium ${statusStyle.textColor}`}>{statusStyle.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">calendar_today</span>
+                    <span className="truncate">
+                      {project.plannedStartDate && project.plannedEndDate 
+                        ? `${new Date(project.plannedStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(project.plannedEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                        : "No dates set"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-outline-variant/10 pt-3">
+                  <div className="flex -space-x-2">
+                    <img className="size-7 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH7I8--A4X3bMb2GA7rQzdC7-2jNm_mCdJRLa6ZL6SdNt18YUGrdfY-DqK2MBC2ZQTN-tVpRzN4RSkG4JJ2AnWGFE2seXiAVI0lSIUy_-DnukmKmhiz68FMexzkx3N-TPa2R8DFC4XojhiMAq4JOrOGnnAmib6ul7qb2zL8zfvOEx3QVdnHhHyos4GweTRuE2CJBBPCqRsDsvhuiaorRENV1LeUp6NluUA2KKDNI9cldhsfmmKFQLRaybGIprk_-BGMAJnTxzHztk" alt="" />
+                    <img className="size-7 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDq7aiGGBXrem7dlepCOoYtG_gf419xnUzZbg3HiIaDvVLG8lrtSUiAx02OTiNP1aa4UUPO5yYPQ51wBWSdmH7wfZawua3q2kYGqjvLIEzHfLMBdtkO6LD8REAdAieETXdYHatSe_e09hPc5p5g5LFWJNNbMZj29WuzEZPPTJ0URAuMDgqKAE2o4EtBLy95CNSqKWUFMcoc1jtdt0DOnOZJBFNkQeSq3zqWu-xY0vZPGQMsWld1IcO7SsuLbGkbRTrNZbUfactXvCM" alt="" />
+                    <div className="size-7 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold border-2 border-white">+2</div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-outline">Health</span>
+                    {projHealth != null ? (
+                      <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getHealthColor(projHealth)}`}>
+                        {projHealth}
+                      </div>
+                    ) : (
+                      <div className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">N/A</div>
+                    )}
+                  </div>
                 </div>
               </div>
+            );
+          })}
+
+          {filteredProjects.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <span className="material-symbols-outlined text-outline text-4xl mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>
+                folder_off
+              </span>
+              <p className="text-on-surface-variant font-medium">No projects found</p>
+              <p className="text-xs text-outline mt-1">
+                {selectedDepartmentId ? "Try selecting a different department" : "Create a new project to get started"}
+              </p>
             </div>
-          );
-        })}
-    </section>
+          )}
+        </section>
 
         {/* RIGHT COLUMN: Project Detail Pane */}
         <section className="flex-1 glass-card rounded-xl p-lg flex flex-col gap-lg overflow-y-auto custom-scrollbar">
@@ -376,19 +460,19 @@ export function ProjectsPage() {
                 </div>
                 <div className="flex gap-2">
                   {hasRole("SuperAdmin") && (
-                    <button
-                      onClick={async () => {
-                        if (!auth) return;
-                        await api.deleteProject(auth.token, selectedProject.id);
-                        setSelectedProjectId("");
-                        await loadProjects();
-                      }}
-                      className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors text-error"
-                    >
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors text-error"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </>
                   )}
-                  <button className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors">
+                  <button 
+                    onClick={openEditModal}
+                    className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors"
+                  >
                     <span className="material-symbols-outlined text-on-surface-variant">edit</span>
                   </button>
                   {/* <button className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors">
@@ -723,7 +807,7 @@ export function ProjectsPage() {
                   </div>
 
                   {/* Quick Actions - Create Milestone */}
-                  {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
+                  {/* {hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? (
                     <div className="bg-surface-container-lowest/80 p-md rounded-xl border border-outline-variant/20 flex flex-col gap-md">
                       <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">bolt</span>
@@ -792,13 +876,13 @@ export function ProjectsPage() {
                         </div>
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
               
 
               {/* File Upload & Actions */}
-              <div className="flex flex-wrap items-center gap-3 mt-4">
+              {/* <div className="flex flex-wrap items-center gap-3 mt-4">
                 <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} className="text-sm" />
                 <button
                   onClick={async () => {
@@ -811,8 +895,12 @@ export function ProjectsPage() {
                 >
                   Upload Document
                 </button>
-              </div>
+              </div> */}
             </>
+
+          
+
+
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <span className="material-symbols-outlined text-outline text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -822,7 +910,20 @@ export function ProjectsPage() {
               <p className="text-sm text-outline mt-1">Choose a project to inspect milestones and AI signals.</p>
             </div>
           )}
+
+            <div className="p-4 ">
+           {selectedProject && (
+                <MilestonesTab 
+                  key={selectedProject.id}
+                  projectId={selectedProject.id} 
+                  authToken={auth?.token} 
+                />
+              )}
+              </div>
+              
         </section>
+        
+             
       </div>
 
       {/* Create Project Modal */}
@@ -887,6 +988,105 @@ export function ProjectsPage() {
                 <button type="submit" className="px-6 py-2 primary-gradient text-white font-bold rounded-lg text-sm">Create Project</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-xl p-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl ambient-glow">
+            <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
+              <h2 className="font-h2 text-h2 text-on-surface">Edit Project</h2>
+              <button onClick={() => setShowEditModal(false)} className="material-symbols-outlined text-outline hover:text-primary">close</button>
+            </div>
+            <form onSubmit={handleEditProject} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Project Code</span>
+                <input value={form.projectCode} onChange={(e) => setForm({ ...form, projectCode: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm" required />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Name</span>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm" required />
+              </label>
+              <div className="md:col-span-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Description</span>
+                  <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm" rows={3} />
+                </label>
+              </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Category</span>
+                <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Priority</span>
+                <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm">
+                  {priorities.map((p) => <option key={p}>{p}</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Start Date</span>
+                <input type="date" value={form.plannedStartDate} onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">End Date</span>
+                <input type="date" value={form.plannedEndDate} onChange={(e) => setForm({ ...form, plannedEndDate: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Budget</span>
+                <input type="number" value={form.plannedBudget} onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })} className="border border-outline-variant rounded-lg p-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Department</span>
+                <select value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm">
+                  <option value="">Choose</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Project Manager</span>
+                <select value={form.projectManagerId} onChange={(e) => setForm({ ...form, projectManagerId: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm">
+                  <option value="">Choose</option>
+                  {users.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                </select>
+              </label>
+              <div className="md:col-span-2 flex justify-end gap-3 mt-4">
+                <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant">Cancel</button>
+                <button type="submit" className="px-6 py-2 primary-gradient text-white font-bold rounded-lg text-sm">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-xl p-lg w-full max-w-md shadow-xl ambient-glow">
+            <div className="flex flex-col items-center text-center mb-md">
+              <div className="size-16 rounded-full bg-error-container flex items-center justify-center mb-md">
+                <span className="material-symbols-outlined text-error text-3xl">warning</span>
+              </div>
+              <h2 className="font-h2 text-h2 text-on-surface mb-2">Delete Project?</h2>
+              <p className="text-body-md text-on-surface-variant">
+                Are you sure you want to delete <strong className="text-on-surface">{selectedProject.name}</strong>? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteProject}
+                className="flex-1 px-4 py-2 bg-error text-white font-bold rounded-lg text-sm hover:bg-error/90 transition-colors"
+              >
+                Delete Project
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { NotificationItem, Task } from "../../types";
+import type { NotificationItem, Task, Department, User } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { SimpleProjectList } from "../shared/SimpleProjectList";
 import { TaskList } from "../shared/TaskList";
 import { WorkloadBars } from "../shared/WorkloadBars";
+import type { WorkloadItem } from "../shared/WorkloadBars";
 import { KpiCard } from "./kpicard";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent, ErrorPanel, LoadingPanel } from "../../ui";
@@ -16,6 +17,8 @@ export function DashboardPage() {
   const [myTasks, setMyTasks] = useState<Task[]>([]);
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,12 +29,16 @@ export function DashboardPage() {
       api.getDashboard(auth.token),
       api.getMyTasks(auth.token),
       api.getNotifications(auth.token, true),
+      api.getDepartments(auth.token),
+      api.getUsers(auth.token),
       hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardResult, tasksResult, notificationsResult, overdueResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, overdueResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
         if (notificationsResult.status === "fulfilled") setUnread(notificationsResult.value);
+        if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
+        if (usersResult.status === "fulfilled") setUsers(usersResult.value);
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
         if (dashboardResult.status === "rejected") {
           setError(dashboardResult.reason instanceof Error ? dashboardResult.reason.message : "Dashboard unavailable");
@@ -39,6 +46,36 @@ export function DashboardPage() {
       })
       .finally(() => setLoading(false));
   }, [auth]);
+
+  const departmentWorkload: WorkloadItem[] = departments.map((dept) => {
+    const deptUsers = users.filter((u) => u.departmentId === dept.id);
+    const deptTasks = myTasks.filter((t) => {
+      const assignee = users.find((u) => u.id === t.assignedToUserId);
+      return assignee?.departmentId === dept.id;
+    });
+    
+    const totalTasks = deptTasks.length;
+    const completedTasks = deptTasks.filter((t) => t.status === "Completed" || t.progressPercentage === 100).length;
+    const activeTasks = totalTasks - completedTasks;
+    
+    const memberCount = deptUsers.length;
+    const avgWorkload = memberCount > 0 
+      ? deptUsers.reduce((sum, u) => sum + u.aiWorkloadScore, 0) / memberCount 
+      : 0;
+    
+    const workloadScore = memberCount > 0 
+      ? (totalTasks / memberCount) * 10 + avgWorkload 
+      : totalTasks * 10;
+
+    return {
+      id: dept.id,
+      name: dept.name,
+      score: Math.min(workloadScore, 150),
+      activeTasks,
+      memberCount,
+      workloadScore: Math.round(workloadScore),
+    };
+  });
 
   if (loading) return <LoadingPanel label="Loading control room..." />;
   if (error) return <ErrorPanel message={error} />;
@@ -61,8 +98,9 @@ export function DashboardPage() {
         </div>
 
         {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4   py-2 rounded-xl">
           {/* Total Projects */}
+          
           <KpiCard
             title="Total projects"
             value={dashboard?.totalProjects ?? 0}
@@ -120,8 +158,9 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <div className="col-span-12 flex flex-col gap-lg">
+      <div className="col-span-12 flex flex-col gap-lg ">
         {/* Active Objectives - Full Width */}
+        <div className="">
           <ActiveObjectives
             objectives={myTasks.slice(0, 3).map((task, index) => ({
               id: task.id,
@@ -146,7 +185,8 @@ export function DashboardPage() {
             }))}
             title="Active Objectives"
           />
-      <div className="col-span-12 flex flex-col gap-lg">
+          </div>
+        <div className="col-span-12 flex flex-col gap-lg ">
         {/* Row 1: High Risk Projects + Notifications */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
           <div className="lg:col-span-2">
@@ -225,7 +265,11 @@ export function DashboardPage() {
         {/* Row 3: My Work Queue + Workload Distribution */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-lg">
           <TaskList tasks={myTasks.slice(0, 6)} title="My Work Queue" subtitle={`${myTasks.length} Tasks Pending`} />
-          <WorkloadBars items={dashboard?.workloadDistribution ?? []} title="Workload Distribution" />
+          <WorkloadBars 
+            items={departmentWorkload} 
+            title="Workload Distribution" 
+            isDepartment={true}
+          />
         </div>
       </div>
 

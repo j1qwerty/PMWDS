@@ -404,6 +404,15 @@ export interface DashboardData {
     burnoutRisk: number;
     activeTasks: number;
   }>;
+  departmentWorkloadDistribution: Array<{
+    departmentId: string;
+    departmentName: string;
+    totalTasks: number;
+    completedTasks: number;
+    activeTasks: number;
+    workloadScore: number;
+    memberCount: number;
+  }>;
   taskCompletionTrend: Array<{
     date: string;
     completed: number;
