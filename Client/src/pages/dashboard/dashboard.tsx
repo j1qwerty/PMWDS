@@ -7,9 +7,9 @@ import { SimpleProjectList } from "../shared/SimpleProjectList";
 import { TaskList } from "../shared/TaskList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
-import { KpiCard } from "./kpicard";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent, ErrorPanel, LoadingPanel } from "../../ui";
+import { KpiCard } from "./kpiCard";
 
 export function DashboardPage() {
   const { auth, hasRole } = useAuth();

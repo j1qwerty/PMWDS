@@ -29,7 +29,7 @@ export function KpiCard({
   const trendText = trend?.textColor ?? iconColor;
 
   return (
-    <div className=" shadow-lg shadow-blue-300 group relative overflow-hidden rounded-2xl  from-surface-container-lowest to-surface-container-low p-4  hover:shadow-2xl transition-all duration-300 h-full flex flex-col justify-between border-0">
+    <div className=" shadow-lg group relative overflow-hidden rounded-2xl  from-surface-container-lowest to-surface-container-low p-4  hover:shadow-2xl transition-all duration-300 h-full flex flex-col justify-between border-0">
       {/* Animated blur background */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all pointer-events-none" />
 

@@ -85,10 +85,10 @@ export function DepartmentsPage() {
   }
 
   return (
-    <div className="grid  gap-4 content-start">
+    <div className="grid  gap-4 content-start bg-amber-300">
       <Panel title="Department Grid" subtitle="Structure, capacity, and delivery ownership">
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
+          <div className="flex max-h-105 flex-col gap-2 overflow-y-auto pr-1">
             {departments.map((department) => (
               <button
                 key={department.id}
@@ -102,7 +102,7 @@ export function DepartmentsPage() {
               </button>
             ))}
           </div>
-          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
+          <div className="rounded-lg border border-(--pmwds-border) bg-(--pmwds-surface-2)/86 p-5 shadow-xl shadow-black/15">
             <h4>{dashboard?.["name"] ? String(dashboard["name"]) : "Department view"}</h4>
             <MetricRow label="Organization" value={selectedOrganization?.name ?? "Unassigned"} />
             <MetricRow label="Members" value={String(dashboard?.["teamMembers"] ?? "0")} />

@@ -123,7 +123,7 @@ export function LoginPage() {
             margin: 0,
             lineHeight: "1.5",
           }}>
-            Project Management & Workflow Delivery System
+            Project Monitoring & Workflow Distribution System
           </p>
         </div>
 

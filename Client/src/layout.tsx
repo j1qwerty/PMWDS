@@ -166,6 +166,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         title: "Team",
         items: [
           { path: "/organizations", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
+          { path: "/organizationStructure", label: "organizationStructure", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/departments", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/users", label: "People", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
           { path: "/profiles", label: "Profiles", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },

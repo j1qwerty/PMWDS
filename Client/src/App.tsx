@@ -23,6 +23,7 @@ import { AIPage as CoreAIPage } from "./pages/ai/ai";
 import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { SettingsPage } from "./pages/settings/settings";
 import { LoginPage } from "./pages/login/login";
+import { OrganizationStructurePage } from "./pages/oraganisations/OrganizationStructurePage";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -61,6 +62,8 @@ function AppRoutes() {
                 <Route path="/ai" element={<CoreAIPage />} />
                 <Route path="/reports" element={<CoreReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/organizationStructure" element={<OrganizationStructurePage />} />
+                
               </Routes>
             </Layout>
           </PrivateRoute>

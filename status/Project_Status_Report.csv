@@ -1,0 +1,52 @@
+Page,API Integration Status,Integrated APIs,Missing Features/APIs,Notes
+"Login Page","Fully Integrated","auth/login, auth/refresh","None","Login, token refresh working. Change password also available in API but not in UI"
+
+"Dashboard Page","Fully Integrated","projects/dashboard, tasks/my-tasks, notifications, departments, users, tasks/overdue","None","KPI cards, project list, notifications, workload bars, active objectives all integrated"
+
+"Projects Page","Fully Integrated","projects, projects/{id}, projects (POST), projects/{id} (PUT), projects/{id}/status (PATCH), projects/{id}/progress, projects/{id}/documents (POST), projects/{id} (DELETE)","project/{id}/ai/insights, project/{id}/ai/health, project/{id}/ai/optimize-resources - API exists but not fully used in UI","Project CRUD, status updates, progress tracking, document upload all integrated. AI features partially used"
+
+"Milestones Page (Workspace)","Fully Integrated","milestones/by-project/{projectId}, milestones (POST), milestones/{id}, milestones/{id} (PUT), milestones/{id}/complete (PATCH), milestones/{id} (DELETE)","None","Full CRUD for milestones including complete functionality"
+
+"Tasks Page (Workspace)","Fully Integrated","tasks/by-project/{projectId}, tasks/my-tasks, tasks/{id}, tasks (POST), tasks/{id} (PUT), tasks/{id}/progress (PATCH), tasks/{id}/status (PATCH), tasks/{id}/assign (POST), tasks/{id}/ai/recommend-assignee, tasks/{id}/ai/delay-prediction, tasks/{id}/escalate (POST), tasks/{id}/comments (POST), tasks/{id}/attachments (POST), tasks/{id}/time/start (POST), tasks/{id}/time/stop (POST), tasks/{id} (DELETE), tasks/overdue, tasks/escalated, tasks/unassigned, subtasks APIs","None","Complete task management with time tracking, AI recommendations, delay predictions, escalation, comments, attachments"
+
+"Tasks (Legacy Page)","Partially Integrated","Basic task list","Time tracking, AI features, comments/attachments not fully integrated in this view","Uses work-management components internally"
+
+"Roles Page","Fully Integrated","roles, roles (POST), roles/{id} (PUT), roles/{id} (DELETE), roles/permissions","None","Full role CRUD with permissions management"
+
+"Permissions Page","Fully Integrated","roles/permissions, roles/permissions (POST), roles/permissions/{id} (PUT), roles/permissions/{id} (DELETE)","None","Full permission management"
+
+"Profiles Page","Fully Integrated","profiles/{userId}, profiles/{userId} (PUT)","None","Profile view and update integrated"
+
+"Organizations Page","Fully Integrated","organizations, organizations/{id}, organizations (POST), organizations/{id} (PUT), organizations/{id}/departments/{departmentId} (PUT), organizations/{id}/departments/{departmentId} (DELETE), organizations/{id} (DELETE)","None","Full organization CRUD with department assignment"
+
+"Organization Structure Page","Partially Integrated","organizations (read only)","Add/Edit organization, department assignment UI not fully integrated","View only or partial integration"
+
+"Dashboards Page","Fully Integrated","dashboards, dashboards/{id}, dashboards (POST), dashboards/{id} (PUT), dashboards/{id}/widgets (POST), dashboards/widgets/{widgetId} (PUT), dashboards/{id}/widgets/reorder (PATCH), dashboards/widgets/{widgetId} (DELETE), dashboards/{id} (DELETE)","None","Full dashboard and widget management"
+
+"Integrations Page","Fully Integrated","integrations, integrations/{id}, integrations (POST), integrations/{id} (PUT), integrations/{id}/sync (PATCH), integrations/{id} (DELETE)","None","Full integration CRUD with sync functionality"
+
+"Webhooks Page","Fully Integrated","webhooks, webhooks/{id}, webhooks (POST), webhooks/{id} (PUT), webhooks/{id}/deliveries (POST), webhooks/{id} (DELETE)","None","Full webhook management including delivery logging"
+
+"Skills Page","Fully Integrated","skills, skills (POST), skills/{id} (PUT), skills/{id} (DELETE)","None","Full skill CRUD (SuperAdmin only)"
+
+"Knowledge Page","Fully Integrated","knowledge/articles, knowledge/articles/{id}, knowledge/articles (POST), knowledge/articles/{id} (PUT), knowledge/articles/{id} (DELETE), knowledge/lessons, knowledge/lessons (POST), knowledge/lessons/{id} (PUT), knowledge/lessons/{id} (DELETE)","None","Full knowledge articles and lessons learned management"
+
+"Activity Logs Page","Fully Integrated","activitylogs, activitylogs/user/{userId} (POST for admin), activitylogs (POST)","None","View own activity logs, admin can view user logs"
+
+"Users Page","Fully Integrated","users, users/me, users/available, users/workload, users/register (POST), users/{id}/availability (PATCH), users/{id}/skills (POST), users/{id}/deactivate (PATCH)","User skill update/delete, user skill removal not in main UI","User management with registration, availability, skills, deactivation"
+
+"Departments Page","Fully Integrated","departments, departments/{id}, departments (POST), departments/{id} (PUT), departments/{id} (DELETE), departments/{id}/dashboard (Manager)","None","Full department CRUD with dashboard for managers"
+
+"Notifications Page","Fully Integrated","notifications, notifications/unread-count, notifications/{id}/read (PATCH), notifications/read-all (PATCH), notifications/{id} (DELETE), notifications/broadcast (POST), notifications/templates, notifications/templates (POST), notifications/templates/{id} (PUT), notifications/templates/{id} (DELETE), notifications/rules, notifications/rules (POST), notifications/rules/{id} (PUT), notifications/rules/{id} (DELETE)","None","Full notification management including templates and alert rules"
+
+"AI Page","Fully Integrated","ai/providers, ai/providers/{provider}/models, ai/providers/{provider}/test, ai/chat, ai/burnout-risk, ai/insights/{projectId}, ai/project-health/{projectId}, ai/optimize-resources/{projectId}, ai/predict-delay/{taskId}, ai/recommend-assignee/{taskId}, ai/recommendations/{taskId} (POST), ai/recommendations/{taskId}/history, ai/recommendations/{recommendationId}/accept (POST), ai/recommendations/{recommendationId}/reject (POST), ai/recommendations/{recommendationId}/explanation, ai/tasks/{taskId}/analysis, ai/predictions/{taskId} (POST), ai/predictions/{taskId}/history, ai/projects/{projectId}/predictions (POST), ai/prediction-results, ai/models, ai/models/{modelId}, ai/models (POST), ai/models/{modelId} (PUT), ai/models/{modelId} (DELETE), ai/training-data, ai/training-data (POST), ai/performance, ai/settings, ai/settings (POST), ai/train (POST)","None","Comprehensive AI features - chat, predictions, recommendations, models, training data, settings"
+
+"Reports Page","Fully Integrated","reports/stored, reports/stored/{id}, reports/stored (POST), reports/stored/{id} (PUT), reports/stored/{id} (DELETE), reports/stored/{id}/download, reports/schedules, reports/schedules (POST), reports/schedules/{id} (PUT), reports/schedules/{id} (DELETE)","Report generation APIs (project-status, task-completion, department-workload, budget-variance, delay-analysis) not directly exposed in UI","Stored reports and scheduled reports fully integrated"
+
+"Settings Page","Partially Integrated","Users can view profile","User update, password change, notification preferences not in settings page","Settings page appears to be basic/not fully developed"
+
+"Summary","","","",""
+"Total Pages","20","","",""
+"Fully Integrated","16","","",""
+"Partially Integrated","3","Login (change password missing), Organization Structure, Settings","",""
+"Legacy/Transitioning","1","Tasks (legacy page being replaced by workspace)","",""
