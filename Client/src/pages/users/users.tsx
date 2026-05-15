@@ -10,6 +10,7 @@ import { UsersTable } from "./UsersTable";
 import { WorkloadView } from "./WorkloadView";
 import { RegisterUserForm } from "./RegisterUserForm";
 import { UserSkillsPanel } from "./UserSkillsPanel"
+import { UserDepartmentManager } from "./UserDepartmentManager";
 
 export function UsersPage() {
   const { auth, hasRole } = useAuth();
@@ -135,7 +136,17 @@ export function UsersPage() {
       {/* Tab Content */}
       <div className="relative z-10">
         {activeTab === "directory" && (
-          <UsersTable users={users} departments={departments} organizations={organizations} />
+          <UsersTable
+            users={users}
+            departments={departments}
+            organizations={organizations}
+            token={auth?.token ?? ""}
+            canUploadPictures={isAdmin}
+            onPictureUploaded={(updated) => {
+              setUsers(current => current.map(user => user.id === updated.id ? updated : user));
+              setMessage("Profile picture updated.");
+            }}
+          />
         )}
 
         {activeTab === "workload" && (
@@ -159,6 +170,17 @@ export function UsersPage() {
       skills={skills}
       onMessage={setMessage}
       onUpdate={loadData}
+    />
+    <UserDepartmentManager
+      users={users}
+      departments={departments}
+      organizations={organizations}
+      onAssign={async (userId, departmentIds, primaryDepartmentId) => {
+        if (!auth) return;
+        await api.assignUserDepartments(auth.token, userId, departmentIds, primaryDepartmentId);
+        setMessage("Department assignments updated.");
+        loadData();
+      }}
     />
   </div>
 )}

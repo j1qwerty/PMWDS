@@ -21,9 +21,11 @@ export interface User {
   lastName: string;
   fullName: string;
   email: string;
+  profilePictureUrl?: string | null;
   jobTitle?: string | null;
   department?: string | null;
   departmentId?: string | null;
+  departments: UserDepartmentAssignment[];
   profileId?: string | null;
   bio?: string | null;
   availabilityStatus: string;
@@ -36,6 +38,15 @@ export interface User {
   lastLoginDate?: string | null;
   roles: string[];
   skills: string[];
+}
+
+export interface UserDepartmentAssignment {
+  departmentId: string;
+  departmentName: string;
+  departmentCode: string;
+  organizationId?: string | null;
+  organizationName?: string | null;
+  isPrimary: boolean;
 }
 
 export interface PermissionRecord {

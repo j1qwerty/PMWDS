@@ -37,7 +37,9 @@ public class UserRepository : BaseRepository<ApplicationUser>, IUserRepository
         Guid departmentId,
         CancellationToken ct = default)
         => await IncludeIdentityGraph()
-            .Where(u => u.DepartmentId == departmentId && u.IsActive)
+            .Where(u => (u.DepartmentId == departmentId ||
+                         u.DepartmentAssignments.Any(d => d.DepartmentId == departmentId)) &&
+                        u.IsActive)
             .Include(u => u.Skills)
             .ThenInclude(s => s.Skill)
             .ToListAsync(ct);
@@ -84,6 +86,9 @@ public class UserRepository : BaseRepository<ApplicationUser>, IUserRepository
     private IQueryable<ApplicationUser> IncludeIdentityGraph()
         => _dbSet
             .Include(u => u.Department)
+            .Include(u => u.DepartmentAssignments)
+            .ThenInclude(d => d.Department)
+            .ThenInclude(d => d!.Organization)
             .Include(u => u.Profile)
             .Include(u => u.Roles);
 }

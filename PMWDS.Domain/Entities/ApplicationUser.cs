@@ -28,6 +28,7 @@ public class ApplicationUser : AuditableEntity
     public Department? Department { get; private set; }
     public UserProfile? Profile { get; private set; }
     public ICollection<Role> Roles { get; private set; } = new List<Role>();
+    public ICollection<UserDepartment> DepartmentAssignments { get; private set; } = new List<UserDepartment>();
     public IReadOnlyCollection<UserSkill> Skills =>
     _skills.AsReadOnly();
     public IReadOnlyCollection<TaskAssignment> TaskAssignments =>
@@ -69,6 +70,7 @@ public class ApplicationUser : AuditableEntity
         ProfilePictureUrl = profilePictureUrl;
     }
     public void AssignToDepartment(Guid departmentId) => DepartmentId = departmentId;
+    public void ClearPrimaryDepartment() => DepartmentId = null;
     public void UpdateAvailability(
     AvailabilityStatus status, double percentage)
     {

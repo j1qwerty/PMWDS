@@ -218,6 +218,13 @@ public static class SeedData
                 await context.Users.AddAsync(user, ct);
             }
 
+            user.UpdateProfile(
+                user.FirstName,
+                user.LastName,
+                user.PhoneNumber,
+                user.JobTitle,
+                $"https://api.dicebear.com/9.x/initials/svg?seed={user.EmployeeCode}");
+
             if (roles.TryGetValue(spec.Role, out var role) && user.Roles.All(r => r.Id != role.Id))
             {
                 user.Roles.Add(role);
@@ -225,7 +232,29 @@ public static class SeedData
         }
 
         await context.SaveChangesAsync(ct);
+        await SeedUserDepartmentsAsync(context, ct);
         await AssignDepartmentHeadsAsync(context, ct);
+    }
+
+    private static async Task SeedUserDepartmentsAsync(ApplicationDbContext context, CancellationToken ct)
+    {
+        var users = await context.Users.ToListAsync(ct);
+        foreach (var user in users.Where(u => u.DepartmentId.HasValue))
+        {
+            var exists = await context.UserDepartments.AnyAsync(
+                d => d.UserId == user.Id && d.DepartmentId == user.DepartmentId!.Value,
+                ct);
+            if (exists)
+            {
+                continue;
+            }
+
+            var assignment = UserDepartment.Create(user.Id, user.DepartmentId!.Value, isPrimary: true);
+            assignment.SetCreatedBy(SeedUser);
+            await context.UserDepartments.AddAsync(assignment, ct);
+        }
+
+        await context.SaveChangesAsync(ct);
     }
 
     private static async Task SeedProfilesAndSkillsAsync(ApplicationDbContext context, CancellationToken ct)

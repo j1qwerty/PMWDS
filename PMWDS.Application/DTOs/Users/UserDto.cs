@@ -8,9 +8,11 @@ public record UserDto(
  string LastName,
  string FullName,
  string Email,
+ string? ProfilePictureUrl,
  string? JobTitle,
  string? Department,
  Guid? DepartmentId,
+ List<UserDepartmentDto> Departments,
  Guid? ProfileId,
  string? Bio,
  string AvailabilityStatus,
@@ -33,9 +35,11 @@ public record UserDto(
     LastName: u.LastName,
     FullName: u.FullName,
     Email: u.Email,
+    ProfilePictureUrl: u.ProfilePictureUrl,
     JobTitle: u.Profile?.JobTitle ?? u.JobTitle,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
+    Departments: MapDepartments(u),
     ProfileId: u.Profile?.Id,
     Bio: u.Profile?.Bio,
     AvailabilityStatus: u.AvailabilityStatus
@@ -60,9 +64,11 @@ public record UserDto(
     LastName: u.LastName,
     FullName: u.FullName,
     Email: u.Email,
+    ProfilePictureUrl: u.ProfilePictureUrl,
     JobTitle: u.Profile?.JobTitle ?? u.JobTitle,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
+    Departments: MapDepartments(u),
     ProfileId: u.Profile?.Id,
     Bio: u.Profile?.Bio,
     AvailabilityStatus: u.AvailabilityStatus
@@ -80,7 +86,27 @@ public record UserDto(
     .Select(s => s.Skill?.Name ?? "")
     .ToList()
     );
+
+    private static List<UserDepartmentDto> MapDepartments(ApplicationUser u)
+        => u.DepartmentAssignments
+            .Where(d => d.Department != null)
+            .Select(d => new UserDepartmentDto(
+                d.DepartmentId,
+                d.Department!.Name,
+                d.Department.Code,
+                d.Department.OrganizationId,
+                d.Department.Organization?.Name,
+                d.IsPrimary))
+            .ToList();
 }
+
+public record UserDepartmentDto(
+ Guid DepartmentId,
+ string DepartmentName,
+ string DepartmentCode,
+ Guid? OrganizationId,
+ string? OrganizationName,
+ bool IsPrimary);
 
 public record UserSkillDto(
  Guid SkillId,
@@ -108,6 +134,7 @@ public record RegisterUserDto(
  string Password,
  string? JobTitle,
  Guid? DepartmentId,
+ List<Guid>? DepartmentIds,
  string Role = "TeamMember");
 public record UpdateUserDto(
  string FirstName,
@@ -115,6 +142,7 @@ public record UpdateUserDto(
  string? JobTitle,
  string? PhoneNumber,
  Guid? DepartmentId,
+ List<Guid>? DepartmentIds,
  double AvailabilityPercentage);
 public record WorkloadDistributionDto(
  Guid? DepartmentId,

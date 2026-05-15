@@ -1,5 +1,7 @@
 import type { AuthState } from "../../auth";
+import { api } from "../../api";
 import { GlassCard, GradientButton } from "../shared";
+import { ProfilePictureUploader } from "../users/ProfilePictureUploader";
 
 interface ProfileSettingsProps {
   auth: AuthState | null;
@@ -17,6 +19,25 @@ export function ProfileSettings({ auth, onSave, onLogout }: ProfileSettingsProps
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="size-14 rounded-full bg-slate-200 flex items-center justify-center text-lg font-bold text-slate-600">
+              {(auth?.fullName ?? "U").split(" ").map(part => part[0]).join("").slice(0, 2)}
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-slate-700">Profile picture</div>
+              <div className="text-xs text-slate-400 mb-2">Images are cropped square and compressed before upload.</div>
+              {auth && (
+                <ProfilePictureUploader
+                  userId={auth.userId}
+                  token={auth.token}
+                  onUpload={async (file) => {
+                    await api.uploadUserProfilePicture(auth.token, auth.userId, file);
+                    onSave();
+                  }}
+                />
+              )}
+            </div>
+          </div>
           <div>
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Email</label>
             <input

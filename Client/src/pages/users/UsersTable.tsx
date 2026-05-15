@@ -1,15 +1,27 @@
 import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
+import { api } from "../../api";
 import { GlassCard } from "../shared";
+import { ProfilePictureUploader } from "./ProfilePictureUploader";
 
 interface UsersTableProps {
   users: User[];
   departments: Department[];
   organizations: OrganizationRecord[];
+  token: string;
+  canUploadPictures: boolean;
+  onPictureUploaded: (user: User) => void;
 }
 
-export function UsersTable({ users, departments, organizations }: UsersTableProps) {
+export function UsersTable({
+  users,
+  departments,
+  organizations,
+  token,
+  canUploadPictures,
+  onPictureUploaded,
+}: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedDept, setSelectedDept] = useState("");
@@ -97,16 +109,32 @@ export function UsersTable({ users, departments, organizations }: UsersTableProp
               const burnoutScore = user.aiBurnoutRiskScore || 0;
               const burnoutPercent = burnoutScore <= 1 ? burnoutScore * 100 : burnoutScore;
               const dept = departments.find(d => d.id === user.departmentId);
+              const org = organizations.find(item => item.id === dept?.organizationId);
+              const departmentsLabel = user.departments?.length
+                ? user.departments.map(item => `${item.departmentName}${item.organizationName ? ` (${item.organizationName})` : ""}`).join(", ")
+                : dept?.name || user.department || "Unassigned";
 
               return (
                 <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <img
-                        className="size-9 rounded-full ring-2 ring-white shadow-sm"
-                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=e2e8f0&color=475569&size=36`}
-                        alt={user.fullName}
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <img
+                          className="size-9 rounded-full ring-2 ring-white shadow-sm object-cover"
+                          src={user.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=e2e8f0&color=475569&size=36`}
+                          alt={user.fullName}
+                        />
+                        {canUploadPictures && (
+                          <ProfilePictureUploader
+                            userId={user.id}
+                            token={token}
+                            onUpload={async (file) => {
+                              const result = await api.uploadUserProfilePicture(token, user.id, file);
+                              onPictureUploaded(result.user);
+                            }}
+                          />
+                        )}
+                      </div>
                       <div>
                         <div className="font-semibold text-slate-800">{user.fullName}</div>
                         <div className="text-xs text-slate-400">{user.email}</div>
@@ -115,13 +143,14 @@ export function UsersTable({ users, departments, organizations }: UsersTableProp
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-xs font-medium text-slate-600">
-                      {user.roles?.join(", ") || user.jobTitle || "—"}
+                      {user.roles?.join(", ") || user.jobTitle || "-"}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-xs text-slate-600">
-                      {dept?.name || user.department || "Unassigned"}
+                      {departmentsLabel}
                     </span>
+                    {org && <div className="text-[10px] text-slate-400 mt-1">{org.name}</div>}
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={user.availabilityStatus || "Available"} />

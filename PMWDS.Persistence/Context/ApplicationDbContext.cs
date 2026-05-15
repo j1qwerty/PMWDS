@@ -19,6 +19,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ApplicationUser> Users { get; set; }
     public DbSet<Skill> Skills { get; set; }
     public DbSet<UserSkill> UserSkills { get; set; }
+    public DbSet<UserDepartment> UserDepartments { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<UserProfile> UserProfiles { get; set; }

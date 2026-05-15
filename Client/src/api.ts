@@ -323,6 +323,22 @@ export const api = {
   registerUser(token: string, payload: Record<string, unknown>) {
     return request<User>("users/register", { token, method: "POST", body: payload });
   },
+  assignUserDepartments(token: string, id: string, departmentIds: string[], primaryDepartmentId?: string | null) {
+    return request<User>(`users/${id}/departments`, {
+      token,
+      method: "PUT",
+      body: { departmentIds, primaryDepartmentId },
+    });
+  },
+  uploadUserProfilePicture(token: string, id: string, file: File) {
+    const form = new FormData();
+    form.set("file", file);
+    return request<{ profilePictureUrl: string; user: User }>(`users/${id}/profile-picture`, {
+      token,
+      method: "POST",
+      body: form,
+    });
+  },
   updateAvailability(token: string, id: string, status: string, availabilityPercentage: number) {
     return request<User>(`users/${id}/availability`, {
       token,

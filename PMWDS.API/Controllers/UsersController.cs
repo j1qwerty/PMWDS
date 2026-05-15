@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Features.Users.Queries;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using PMWDS.Infrastructure.Services;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
@@ -12,13 +15,19 @@ public class UsersController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly ApplicationDbContext _db;
+    private readonly IFileStorageService _files;
 
     public UsersController(
         IUnitOfWork uow,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        ApplicationDbContext db,
+        IFileStorageService files)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _db = db;
+        _files = files;
     }
 
     [HttpGet]
@@ -85,10 +94,7 @@ public class UsersController : BaseApiController
             dto.PhoneNumber ?? string.Empty,
             dto.JobTitle ?? string.Empty);
 
-        if (dto.DepartmentId.HasValue)
-        {
-            user.AssignToDepartment(dto.DepartmentId.Value);
-        }
+        await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, ct);
 
         var profile = user.Profile ?? UserProfile.Create(user.Id, null, dto.JobTitle, null, null, null, null);
         profile.UpdateProfileDetails(
@@ -150,6 +156,8 @@ public class UsersController : BaseApiController
         user.SetPassword(passwordHash);
 
         await _uow.Users.AddAsync(user, ct);
+        await _uow.SaveChangesAsync(ct);
+        await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, ct);
 
         var profile = UserProfile.Create(
             user.Id,
@@ -166,6 +174,77 @@ public class UsersController : BaseApiController
 
         var created = await _uow.Users.GetByIdWithSkillsAsync(user.Id, ct);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(created!, UserRoleResolver.Resolve(created!)));
+    }
+
+    [HttpPut("{id}/departments")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> AssignDepartments(
+        string id,
+        [FromBody] AssignUserDepartmentsRequest req,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(id, out var parsedId))
+        {
+            return BadRequest("Invalid user id.");
+        }
+
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        await AssignDepartmentsAsync(user, req.DepartmentIds, req.PrimaryDepartmentId, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        return Ok(UserDto.FromEntityWithSkills(refreshed!, UserRoleResolver.Resolve(refreshed!)));
+    }
+
+    [HttpPost("{id}/profile-picture")]
+    [Authorize(Policy = "Authenticated")]
+    [RequestSizeLimit(2_000_000)]
+    public async Task<IActionResult> UploadProfilePicture(
+        string id,
+        [FromForm] IFormFile file,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(id, out var parsedId))
+        {
+            return BadRequest("Invalid user id.");
+        }
+
+        if (_currentUser.UserId != id && !User.IsInRole("SuperAdmin"))
+        {
+            return Forbid();
+        }
+
+        if (file.Length == 0 || file.Length > 1_500_000)
+        {
+            return BadRequest(new { message = "Profile picture must be between 1 byte and 1.5 MB." });
+        }
+
+        var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowed.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Only JPEG, PNG, and WebP images are supported." });
+        }
+
+        var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        await using var stream = file.OpenReadStream();
+        var extension = Path.GetExtension(file.FileName);
+        var url = await _files.UploadAsync(stream, $"profile-{parsedId:N}{extension}", file.ContentType, ct);
+        user.UpdateProfile(user.FirstName, user.LastName, user.PhoneNumber, user.JobTitle, url);
+        user.SetModified(_currentUser.UserId ?? "system");
+        await _uow.Users.UpdateAsync(user, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        return Ok(new { profilePictureUrl = url, user = UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)) });
     }
 
     [HttpPatch("{id}/availability")]
@@ -368,6 +447,68 @@ public class UsersController : BaseApiController
         await _uow.SaveChangesAsync(ct);
         return Ok();
     }
+
+    private async Task AssignDepartmentsAsync(
+        ApplicationUser user,
+        IReadOnlyCollection<Guid>? departmentIds,
+        Guid? primaryDepartmentId,
+        CancellationToken ct)
+    {
+        var requested = (departmentIds ?? Array.Empty<Guid>())
+            .Append(primaryDepartmentId ?? Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        var existing = await _db.UserDepartments
+            .Where(d => d.UserId == user.Id)
+            .ToListAsync(ct);
+
+        if (requested.Count == 0)
+        {
+            _db.UserDepartments.RemoveRange(existing);
+            user.ClearPrimaryDepartment();
+            return;
+        }
+
+        var validDepartments = await _db.Departments
+            .Where(d => requested.Contains(d.Id))
+            .Select(d => d.Id)
+            .ToListAsync(ct);
+
+        foreach (var assignment in existing.Where(e => !validDepartments.Contains(e.DepartmentId)))
+        {
+            _db.UserDepartments.Remove(assignment);
+        }
+
+        var primary = primaryDepartmentId.HasValue && validDepartments.Contains(primaryDepartmentId.Value)
+            ? primaryDepartmentId.Value
+            : validDepartments.FirstOrDefault();
+
+        foreach (var assignment in existing)
+        {
+            if (assignment.DepartmentId == primary)
+            {
+                assignment.MarkPrimary();
+            }
+            else
+            {
+                assignment.ClearPrimary();
+            }
+        }
+
+        foreach (var departmentId in validDepartments.Where(id => existing.All(e => e.DepartmentId != id)))
+        {
+            var assignment = UserDepartment.Create(user.Id, departmentId, departmentId == primary);
+            assignment.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _db.UserDepartments.AddAsync(assignment, ct);
+        }
+
+        if (primary != Guid.Empty)
+        {
+            user.AssignToDepartment(primary);
+        }
+    }
 }
 
 public record UpdateAvailabilityRequest(
@@ -382,3 +523,7 @@ public record AddUserSkillRequest(
 public record UpdateUserSkillRequest(
     int ProficiencyLevel,
     int ExperienceMonths);
+
+public record AssignUserDepartmentsRequest(
+    List<Guid> DepartmentIds,
+    Guid? PrimaryDepartmentId);
