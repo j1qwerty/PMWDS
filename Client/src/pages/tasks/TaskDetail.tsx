@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Milestone, Project, Task, User } from "../../types";
+import { api } from "../../api";
+import { useAuth } from "../../auth";
 import { formatPercent, formatDate } from "../../ui";
 import { GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
 
@@ -17,6 +19,7 @@ interface TaskDetailProps {
   onAddComment: (comment: string) => void;
   onStartTimer: (description: string) => void;
   onUploadAttachment: (file: File) => void;
+  onRefresh: () => void;
 }
 
 export function TaskDetail({
@@ -33,7 +36,9 @@ export function TaskDetail({
   onAddComment,
   onStartTimer,
   onUploadAttachment,
+  onRefresh,
 }: TaskDetailProps) {
+  const { auth } = useAuth();
   const statusColors = getStatusColor(task.status);
   const priorityColors = getPriorityColor(task.priority);
   const assignedUser = task.assignedToUserId ? users.find(u => u.id === task.assignedToUserId) : null;
@@ -42,6 +47,47 @@ export function TaskDetail({
   const [comment, setComment] = useState("");
   const [timerDescription, setTimerDescription] = useState("Focused execution block");
   const [attachment, setAttachment] = useState<File | null>(null);
+
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
+  const [subtaskForm, setSubtaskForm] = useState({ title: "", description: "", priority: "Medium", dueDate: "", estimatedHours: 0, assignedToUserId: "" });
+
+  useEffect(() => {
+    if (!auth) return;
+    api.getSubtasks(auth.token, task.id)
+      .then(setSubtasks)
+      .catch(() => setSubtasks([]));
+  }, [auth, task.id]);
+
+  const handleCreateSubtask = async () => {
+    if (!auth || !subtaskForm.title) return;
+    await api.createSubtask(auth.token, task.id, {
+      ...subtaskForm,
+      projectId: task.projectId,
+      milestoneId: task.milestoneId,
+      startDate: new Date().toISOString(),
+    });
+    setSubtaskForm({ title: "", description: "", priority: "Medium", dueDate: "", estimatedHours: 0, assignedToUserId: "" });
+    setShowSubtaskForm(false);
+    const updated = await api.getSubtasks(auth.token, task.id);
+    setSubtasks(updated);
+    onRefresh();
+  };
+
+  const handleSubtaskStatusChange = async (subtaskId: string, status: string) => {
+    if (!auth) return;
+    await api.updateSubtaskStatus(auth.token, subtaskId, status);
+    const updated = await api.getSubtasks(auth.token, task.id);
+    setSubtasks(updated);
+    onRefresh();
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    if (!auth) return;
+    await api.deleteSubtask(auth.token, subtaskId);
+    setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
+    onRefresh();
+  };
 
   const statuses = ["NotStarted", "Assigned", "InProgress", "Completed", "Delayed", "OnHold"];
 
@@ -130,6 +176,180 @@ export function TaskDetail({
               {delay.predictedCompletionDate && ` • Est. completion: ${formatDate(delay.predictedCompletionDate)}`}
             </p>
           </div>
+        )}
+      </GlassCard>
+
+      {/* Subtasks Section */}
+      <GlassCard className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            {/* <span className="text-lg"></span> */}
+            Subtasks
+            <span className="text-xs font-medium text-slate-400">({subtasks.length})</span>
+          </h4>
+          {isAdmin && (
+            <GradientButton variant="ghost" onClick={() => setShowSubtaskForm(!showSubtaskForm)}>
+              <span className="material-symbols-outlined text-base">{showSubtaskForm ? "close" : "add"}</span>
+              {showSubtaskForm ? "Cancel" : "Add"}
+            </GradientButton>
+          )}
+        </div>
+
+        {showSubtaskForm && isAdmin && (
+          <div className="mb-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="space-y-3">
+              <input
+                value={subtaskForm.title}
+                onChange={(e) => setSubtaskForm({ ...subtaskForm, title: e.target.value })}
+                placeholder="Subtask title"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+              />
+              <textarea
+                value={subtaskForm.description}
+                onChange={(e) => setSubtaskForm({ ...subtaskForm, description: e.target.value })}
+                placeholder="Description (optional)"
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300 resize-none"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={subtaskForm.priority}
+                  onChange={(e) => setSubtaskForm({ ...subtaskForm, priority: e.target.value })}
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Critical">Critical</option>
+                </select>
+                <input
+                  type="date"
+                  value={subtaskForm.dueDate}
+                  onChange={(e) => setSubtaskForm({ ...subtaskForm, dueDate: e.target.value })}
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="number"
+                  min={0}
+                  value={subtaskForm.estimatedHours}
+                  onChange={(e) => setSubtaskForm({ ...subtaskForm, estimatedHours: Number(e.target.value) })}
+                  placeholder="Est. hours"
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                />
+                <select
+                  value={subtaskForm.assignedToUserId}
+                  onChange={(e) => setSubtaskForm({ ...subtaskForm, assignedToUserId: e.target.value })}
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.fullName}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={handleCreateSubtask}
+                disabled={!subtaskForm.title}
+                className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create Subtask
+              </button>
+            </div>
+          </div>
+        )}
+
+        {subtasks.length > 0 ? (
+          <div className="space-y-2">
+            {subtasks.map((subtask) => {
+              const subStatusColors = getStatusColor(subtask.status);
+              const subPriorityColors = getPriorityColor(subtask.priority);
+              const subAssignee = subtask.assignedToUserId ? users.find(u => u.id === subtask.assignedToUserId) : null;
+
+              return (
+                <div
+                  key={subtask.id}
+                  className="p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-slate-800 truncate">{subtask.title}</span>
+                        <span className={`text-[9px] font-medium uppercase ${subPriorityColors.text}`}>
+                          {subtask.priority}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-slate-500">
+                        {subAssignee && (
+                          <span className="flex items-center gap-1">
+                            <img
+                              className="size-3.5 rounded-full"
+                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(subAssignee.fullName)}&background=e0e7ff&color=4f46e5&size=14`}
+                              alt={subAssignee.fullName}
+                            />
+                            {subAssignee.fullName}
+                          </span>
+                        )}
+                        {subtask.dueDate && (
+                          <span className="flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-xs">calendar_today</span>
+                            {formatDate(subtask.dueDate)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteSubtask(subtask.id)}
+                          className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${subStatusColors.dot}`}
+                        style={{ width: `${subtask.progressPercentage || 0}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-400">{subtask.progressPercentage || 0}%</span>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {statuses.map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => handleSubtaskStatusChange(subtask.id, status)}
+                        className={`
+                          px-2 py-0.5 rounded text-[9px] font-medium transition-all
+                          ${subtask.status === status
+                            ? "bg-indigo-600 text-white"
+                            : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                          }
+                        `}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          !showSubtaskForm && (
+            <div className="text-center py-8 text-slate-400">
+              <span className="material-symbols-outlined text-2xl mb-2 block">subtasks</span>
+              <p className="text-xs">No subtasks yet</p>
+              <p className="text-[10px] mt-1">Add subtasks to break down this task</p>
+            </div>
+          )
         )}
       </GlassCard>
 
@@ -248,6 +468,8 @@ export function TaskDetail({
           )}
         </GlassCard>
       )}
+
+      
     </div>
   );
 }

@@ -748,6 +748,7 @@ export function TasksPage() {
           await api.uploadTaskAttachment(auth.token, selectedTask.id, file);
           setMessage("Attachment uploaded.");
         }}
+        onRefresh={loadData}
       />
     ) : (
       <GlassCard className="p-10 h-full text-center flex flex-col items-center justify-center">

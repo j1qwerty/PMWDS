@@ -45,12 +45,6 @@ export function ProfileDetail({ user, profile, canEdit, onEdit }: ProfileDetailP
                     <span className="material-symbols-outlined text-sm">mail</span>
                     {user.email}
                   </span>
-                  {user.phone && (
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">call</span>
-                      {user.phone}
-                    </span>
-                  )}
                 </div>
               </div>
 
