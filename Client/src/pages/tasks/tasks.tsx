@@ -10,12 +10,14 @@ import {
   PageHeader,
   getStatusColor,
   getPriorityColor,
+  useToast,
 } from "../shared";
 import { TaskDetail } from "./TaskDetail";
 import { TaskFormModal } from "./TaskFormModal";
 
 export function TasksPage() {
   const { auth, hasRole } = useAuth();
+  const { addToast } = useToast();
   const isAdmin = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead");
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -218,9 +220,11 @@ export function TasksPage() {
       if (taskModal.editTask) {
         await api.updateTask(auth.token, taskModal.editTask.id, form);
         setMessage("Task updated.");
+        addToast("Task updated.");
       } else {
         await api.createTask(auth.token, form);
         setMessage("Task created.");
+        addToast("Task created.");
       }
       setTaskModal({ open: false });
       if (selectedProjectId) {
@@ -233,7 +237,9 @@ export function TasksPage() {
         loadData();
       }
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      const errorMsg = `Error: ${e instanceof Error ? e.message : "Save failed"}`;
+      setMessage(errorMsg);
+      addToast(errorMsg, "error");
     }
   };
 
@@ -242,9 +248,12 @@ export function TasksPage() {
     try {
       await api.updateTaskStatus(auth.token, taskId, status);
       setMessage("Status updated.");
+      addToast("Status updated.");
       loadData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Update failed"}`);
+      const errorMsg = `Error: ${e instanceof Error ? e.message : "Update failed"}`;
+      setMessage(errorMsg);
+      addToast(errorMsg, "error");
     }
   };
 
@@ -737,18 +746,22 @@ export function TasksPage() {
           if (!auth) return;
           await api.addTaskComment(auth.token, selectedTask.id, comment);
           setMessage("Comment added.");
+          addToast("Comment added.");
         }}
         onStartTimer={async (description) => {
           if (!auth) return;
           await api.startTaskTimer(auth.token, selectedTask.id, description);
           setMessage("Timer started.");
+          addToast("Timer started.");
         }}
         onUploadAttachment={async (file) => {
           if (!auth) return;
           await api.uploadTaskAttachment(auth.token, selectedTask.id, file);
           setMessage("Attachment uploaded.");
+          addToast("Attachment uploaded.");
         }}
         onRefresh={loadData}
+        onMessage={setMessage}
       />
     ) : (
       <GlassCard className="p-10 h-full text-center flex flex-col items-center justify-center">

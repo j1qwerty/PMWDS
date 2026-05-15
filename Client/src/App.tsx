@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { Layout } from "./layout";
+import { ToastProvider } from "./pages/shared/Toast";
 
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
@@ -107,7 +108,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -386,6 +386,11 @@ html, body {
   100% { background-position: -200% 0; }
 }
 
+@keyframes slideInRight {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
 /* Responsive Layout */
 @media (min-width: 2560px) {
   .layout-max-width {

@@ -14,6 +14,7 @@ export { MilestonesTab } from "./MilestonesTab";
 export { WorkloadBars } from "./WorkloadBars";
 export { TaskList } from "./TaskList";
 export { SimpleProjectList } from "./SimpleProjectList";
+export { useToast } from "./Toast";
 export { 
   departmentColorPalette, 
   statusColorPalette, 

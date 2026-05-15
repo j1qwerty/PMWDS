@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Milestone, Project, Task, User } from "../../types";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
+import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
 import { GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
 
@@ -20,6 +21,7 @@ interface TaskDetailProps {
   onStartTimer: (description: string) => void;
   onUploadAttachment: (file: File) => void;
   onRefresh: () => void;
+  onMessage?: (message: string) => void;
 }
 
 export function TaskDetail({
@@ -37,8 +39,10 @@ export function TaskDetail({
   onStartTimer,
   onUploadAttachment,
   onRefresh,
+  onMessage,
 }: TaskDetailProps) {
   const { auth } = useAuth();
+  const { addToast } = useToast();
   const statusColors = getStatusColor(task.status);
   const priorityColors = getPriorityColor(task.priority);
   const assignedUser = task.assignedToUserId ? users.find(u => u.id === task.assignedToUserId) : null;
@@ -72,6 +76,8 @@ export function TaskDetail({
     const updated = await api.getSubtasks(auth.token, task.id);
     setSubtasks(updated);
     onRefresh();
+    addToast("Subtask created.");
+    onMessage?.("Subtask created.");
   };
 
   const handleSubtaskStatusChange = async (subtaskId: string, status: string) => {
@@ -80,6 +86,8 @@ export function TaskDetail({
     const updated = await api.getSubtasks(auth.token, task.id);
     setSubtasks(updated);
     onRefresh();
+    addToast("Subtask status updated.");
+    onMessage?.("Subtask status updated.");
   };
 
   const handleDeleteSubtask = async (subtaskId: string) => {
@@ -87,6 +95,8 @@ export function TaskDetail({
     await api.deleteSubtask(auth.token, subtaskId);
     setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
     onRefresh();
+    addToast("Subtask deleted.");
+    onMessage?.("Subtask deleted.");
   };
 
   const statuses = ["NotStarted", "Assigned", "InProgress", "Completed", "Delayed", "OnHold"];
@@ -345,7 +355,7 @@ export function TaskDetail({
         ) : (
           !showSubtaskForm && (
             <div className="text-center py-8 text-slate-400">
-              <span className="material-symbols-outlined text-2xl mb-2 block">subtasks</span>
+              {/* <span className="material-symbols-outlined text-2xl mb-2 block">subtasks</span> */}
               <p className="text-xs">No subtasks yet</p>
               <p className="text-[10px] mt-1">Add subtasks to break down this task</p>
             </div>
