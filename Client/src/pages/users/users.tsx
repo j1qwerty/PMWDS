@@ -1,144 +1,222 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { Department, User, WorkloadReport } from "../../types";
-import {
-  Notice,
-  Panel,
-  UserTable,
-  WorkloadBars,
-} from "../../ui";
-import { availabilityStatuses } from "../constants";
+import type { Department, OrganizationRecord, SkillRecord, User, WorkloadReport } from "../../types";
+import { 
+  AnimatedBackground, 
+  PageHeader,
+} from "../shared";
+import { UsersTable } from "./UsersTable";
+import { WorkloadView } from "./WorkloadView";
+import { RegisterUserForm } from "./RegisterUserForm";
+import { UserSkillsPanel } from "./UserSkillsPanel"
 
 export function UsersPage() {
   const { auth, hasRole } = useAuth();
+  const isAdmin = hasRole("SuperAdmin");
+
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [workload, setWorkload] = useState<WorkloadReport | null>(null);
   const [message, setMessage] = useState("");
-  const [registerForm, setRegisterForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "Pmwds@123",
-    jobTitle: "TeamMember",
-    departmentId: "",
-    role: "TeamMember",
-  });
-  const [skillForm, setSkillForm] = useState({ userId: "", skillId: "", proficiencyLevel: 3, experienceMonths: 12 });
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"directory" | "workload" | "manage">("directory");
 
-  async function loadUsers() {
+  const loadData = () => {
     if (!auth) return;
-    const [userData, departmentData, workloadData] = await Promise.all([
+    setLoading(true);
+    Promise.all([
       api.getUsers(auth.token),
       api.getDepartments(auth.token),
+      api.getOrganizations(auth.token),
+      api.getSkills(auth.token),
       api.getWorkload(auth.token),
-    ]);
-    setUsers(userData);
-    setDepartments(departmentData);
-    setWorkload(workloadData);
-    if (!skillForm.userId && userData[0]) setSkillForm((current) => ({ ...current, userId: userData[0].id }));
-  }
+    ])
+      .then(([userData, departmentData, orgData, skillData, workloadData]) => {
+        setUsers(userData);
+        setDepartments(departmentData);
+        setOrganizations(orgData);
+        setSkills(skillData);
+        setWorkload(workloadData);
+      })
+      .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load users."))
+      .finally(() => setLoading(false));
+  };
 
-  useEffect(() => {
-    void loadUsers().catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load users."));
-  }, [auth]);
+  useEffect(() => { loadData(); }, [auth]);
 
-  return (
-    <div className="grid  gap-4 content-start">
-      <Panel title="People Operations" subtitle="Capacity, activation state, workload shape, and profile controls">
-        <UserTable users={users} />
-      </Panel>
-
-      <Panel title="Workload View" subtitle="Availability and burnout exposure">
-        <WorkloadBars items={workload?.members ?? []} />
-      </Panel>
-
-      {hasRole("SuperAdmin") ? (
-        <Panel title="Register User" subtitle="Bootstrap new team members with role hints">
-          <form
-            className="grid grid-cols-1 gap-4 md:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!auth) return;
-              void api.registerUser(auth.token, registerForm).then(() => loadUsers());
-            }}
-          >
-            <label><span>First Name</span><input value={registerForm.firstName} onChange={(event) => setRegisterForm({ ...registerForm, firstName: event.target.value })} /></label>
-            <label><span>Last Name</span><input value={registerForm.lastName} onChange={(event) => setRegisterForm({ ...registerForm, lastName: event.target.value })} /></label>
-            <label><span>Email</span><input value={registerForm.email} onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value })} /></label>
-            <label><span>Password</span><input value={registerForm.password} onChange={(event) => setRegisterForm({ ...registerForm, password: event.target.value })} /></label>
-            <label><span>Job Title</span><input value={registerForm.jobTitle} onChange={(event) => setRegisterForm({ ...registerForm, jobTitle: event.target.value })} /></label>
-            <label>
-              <span>Role</span>
-              <select value={registerForm.role} onChange={(event) => setRegisterForm({ ...registerForm, role: event.target.value })}>
-                <option>SuperAdmin</option><option>ProjectManager</option><option>DepartmentHead</option><option>TeamLead</option><option>TeamMember</option><option>Viewer</option>
-              </select>
-            </label>
-            <label>
-              <span>Department</span>
-              <select value={registerForm.departmentId} onChange={(event) => setRegisterForm({ ...registerForm, departmentId: event.target.value })}>
-                <option value="">None</option>
-                {departments.map((department) => (<option key={department.id} value={department.id}>{department.name}</option>))}
-              </select>
-            </label>
-            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" type="submit">Register</button>
-          </form>
-        </Panel>
-      ) : null}
-
-      <Panel title="skills" subtitle="Update readiness, add skills, or deactivate users">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label>
-            <span>User</span>
-            <select value={skillForm.userId} onChange={(event) => setSkillForm({ ...skillForm, userId: event.target.value })}>
-              {users.map((user) => (<option key={user.id} value={user.id}>{user.fullName}</option>))}
-            </select>
-          </label>
-          <label>
-            <span>Availability</span>
-            <select
-              onChange={(event) => {
-                const user = users.find((item) => item.id === skillForm.userId);
-                if (!auth || !user) return;
-                void api.updateAvailability(auth.token, user.id, event.target.value, user.availabilityPercentage).then(() => loadUsers());
-              }}
-            >
-              <option value="">Change status...</option>
-              {availabilityStatuses.map((status) => (<option key={status}>{status}</option>))}
-            </select>
-          </label>
-          <label><span>Skill Id</span><input value={skillForm.skillId} onChange={(event) => setSkillForm({ ...skillForm, skillId: event.target.value })} /></label>
-          <label><span>Proficiency</span><input type="number" min={1} max={5} value={skillForm.proficiencyLevel} onChange={(event) => setSkillForm({ ...skillForm, proficiencyLevel: Number(event.target.value) })} /></label>
-          <label><span>Experience Months</span><input type="number" value={skillForm.experienceMonths} onChange={(event) => setSkillForm({ ...skillForm, experienceMonths: Number(event.target.value) })} /></label>
-          <div className="mt-4 flex w-full flex-wrap gap-2">
-            <button
-              className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={async () => {
-                if (!auth || !skillForm.userId || !skillForm.skillId) return;
-                await api.addUserSkill(auth.token, skillForm.userId, skillForm.skillId, skillForm.proficiencyLevel, skillForm.experienceMonths);
-                setMessage("Skill attached to user.");
-              }}
-            >
-              Add Skill
-            </button>
-            {hasRole("SuperAdmin") ? (
-              <button
-                className="rounded-md border border-rose-300/40 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-400/20"
-                onClick={async () => {
-                  if (!auth || !skillForm.userId) return;
-                  await api.deactivateUser(auth.token, skillForm.userId);
-                  await loadUsers();
-                }}
-              >
-                Deactivate
-              </button>
-            ) : null}
+  if (loading) {
+    return (
+      <div className="min-h-screen p-7 relative font-sans">
+        <AnimatedBackground />
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+            <span className="text-slate-400 text-sm font-medium">Loading users...</span>
           </div>
         </div>
-      </Panel>
+      </div>
+    );
+  }
 
-      {message ? <Notice>{message}</Notice> : null}
+  return (
+    <div className="min-h-screen p-7 relative font-sans">
+      <AnimatedBackground />
+
+      {/* Page Header */}
+      <div className="relative z-10">
+        <PageHeader
+          title="Users"
+          description="People operations, capacity, activation state, and workload shape"
+        />
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
+          <span className="material-symbols-outlined">check_circle</span>
+          {message}
+          <button
+            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
+            onClick={() => setMessage("")}
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      )}
+
+      {/* Stats Row */}
+      <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <StatCard label="Total Users" value={users.length} color="indigo" icon="people" />
+        <StatCard label="Departments" value={departments.length} color="violet" icon="business" />
+        <StatCard 
+          label="Avg Workload" 
+          value={`${Math.round(workload?.members?.reduce((sum, m) => sum + (m.workloadScore || 0) * 100, 0) / (workload?.members?.length || 1) || 0)}%`}
+          color="amber" 
+          icon="trending_up" 
+        />
+        <StatCard 
+          label="Active Users" 
+          value={users.filter(u => u.isActive !== false).length} 
+          color="emerald" 
+          icon="check_circle" 
+        />
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="relative z-10 mb-5">
+        <div className="flex gap-2 border-b border-slate-200">
+          <TabButton
+            active={activeTab === "directory"}
+            onClick={() => setActiveTab("directory")}
+            icon="groups"
+            label="Directory"
+            count={users.length}
+          />
+          <TabButton
+            active={activeTab === "workload"}
+            onClick={() => setActiveTab("workload")}
+            icon="monitoring"
+            label="Workload"
+          />
+          {isAdmin && (
+            <TabButton
+              active={activeTab === "manage"}
+              onClick={() => setActiveTab("manage")}
+              icon="settings"
+              label="Manage"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="relative z-10">
+        {activeTab === "directory" && (
+          <UsersTable users={users} departments={departments} organizations={organizations} />
+        )}
+
+        {activeTab === "workload" && (
+          <WorkloadView workload={workload} />
+        )}
+
+{activeTab === "manage" && isAdmin && (
+   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <RegisterUserForm 
+      departments={departments}
+      organizations={organizations}
+      onSubmit={async (form) => {
+        if (!auth) return;
+        await api.registerUser(auth.token, form);
+        setMessage("User registered successfully.");
+        loadData();
+      }} 
+    />
+    <UserSkillsPanel 
+      users={users}
+      skills={skills}
+      onMessage={setMessage}
+      onUpdate={loadData}
+    />
+  </div>
+)}
+      </div>
     </div>
+  );
+}
+
+// Helper Components
+function StatCard({ label, value, color, icon }: { label: string; value: string | number; color: string; icon: string }) {
+  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
+    violet: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-100" },
+    amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
+    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
+  };
+  const colors = colorMap[color] || colorMap.indigo;
+
+  return (
+    <div className={`rounded-xl border p-4 ${colors.border} ${colors.bg}`}>
+      <div className="flex items-center gap-3">
+        <span className={`material-symbols-outlined text-xl ${colors.text}`}>{icon}</span>
+        <div>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+          <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, icon, label, count }: {
+  active: boolean;
+  onClick: () => void;
+  icon: string;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 flex items-center gap-2
+        ${active
+          ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-[1px]"
+          : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+        }
+      `}
+    >
+      <span className="material-symbols-outlined text-lg">{icon}</span>
+      {label}
+      {count !== undefined && (
+        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+          active ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-500"
+        }`}>
+          {count}
+        </span>
+      )}
+    </button>
   );
 }

@@ -1,0 +1,188 @@
+import { useState } from "react";
+import type { Department, OrganizationRecord, User } from "../../types";
+import { formatPercent } from "../../ui";
+import { GlassCard } from "../shared";
+
+interface UsersTableProps {
+  users: User[];
+  departments: Department[];
+  organizations: OrganizationRecord[];
+}
+
+export function UsersTable({ users, departments, organizations }: UsersTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedOrg, setSelectedOrg] = useState("");
+  const [selectedDept, setSelectedDept] = useState("");
+
+  const filteredDepartments = selectedOrg 
+    ? departments.filter(d => d.organizationId === selectedOrg)
+    : departments;
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = !searchTerm || 
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesDept = !selectedDept || user.departmentId === selectedDept;
+    const userDept = departments.find(d => d.id === user.departmentId);
+    const matchesOrg = !selectedOrg || userDept?.organizationId === selectedOrg;
+    return matchesSearch && matchesDept && matchesOrg;
+  });
+
+  return (
+    <GlassCard className="overflow-hidden">
+      {/* Filters */}
+      <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
+            search
+          </span>
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-10 pl-10 pr-10 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+          )}
+        </div>
+
+        <select
+          value={selectedOrg}
+          onChange={(e) => { setSelectedOrg(e.target.value); setSelectedDept(""); }}
+          className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+        >
+          <option value="">All Organizations</option>
+          {organizations.map((org) => (
+            <option key={org.id} value={org.id}>{org.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={selectedDept}
+          onChange={(e) => setSelectedDept(e.target.value)}
+          className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+        >
+          <option value="">All Departments</option>
+          {filteredDepartments.map((dept) => (
+            <option key={dept.id} value={dept.id}>{dept.name}</option>
+          ))}
+        </select>
+
+        <span className="text-xs text-slate-400 ml-auto">
+          {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Name</th>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Role</th>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Department</th>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Status</th>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Workload</th>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Burnout Risk</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filteredUsers.map((user) => {
+              const workloadScore = user.aiWorkloadScore || 0;
+              const workloadPercent = workloadScore <= 1 ? workloadScore * 100 : workloadScore;
+              const burnoutScore = user.aiBurnoutRiskScore || 0;
+              const burnoutPercent = burnoutScore <= 1 ? burnoutScore * 100 : burnoutScore;
+              const dept = departments.find(d => d.id === user.departmentId);
+
+              return (
+                <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        className="size-9 rounded-full ring-2 ring-white shadow-sm"
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=e2e8f0&color=475569&size=36`}
+                        alt={user.fullName}
+                      />
+                      <div>
+                        <div className="font-semibold text-slate-800">{user.fullName}</div>
+                        <div className="text-xs text-slate-400">{user.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-medium text-slate-600">
+                      {user.roles?.join(", ") || user.jobTitle || "—"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-slate-600">
+                      {dept?.name || user.department || "Unassigned"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={user.availabilityStatus || "Available"} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden max-w-[100px]">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            workloadPercent > 80 ? "bg-red-400" : workloadPercent > 60 ? "bg-amber-400" : "bg-emerald-400"
+                          }`}
+                          style={{ width: `${Math.min(workloadPercent, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-slate-500">
+                        {formatPercent(workloadPercent)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`text-xs font-medium ${
+                      burnoutPercent > 70 ? "text-red-500" : burnoutPercent > 40 ? "text-amber-500" : "text-emerald-500"
+                    }`}>
+                      {formatPercent(burnoutPercent)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {filteredUsers.length === 0 && (
+          <div className="py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-3xl text-slate-400">person_off</span>
+            </div>
+            <p className="text-sm font-medium text-slate-500">No users found</p>
+          </div>
+        )}
+      </div>
+    </GlassCard>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const statusMap: Record<string, { bg: string; text: string; dot: string }> = {
+    Available: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+    Busy: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+    Away: { bg: "bg-slate-50", text: "text-slate-700", dot: "bg-slate-500" },
+    "In Meeting": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
+    Offline: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
+    "Deep Work": { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-500" },
+  };
+
+  const colors = statusMap[status] || statusMap.Available;
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${colors.bg} ${colors.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`}></span>
+      {status}
+    </span>
+  );
+}
