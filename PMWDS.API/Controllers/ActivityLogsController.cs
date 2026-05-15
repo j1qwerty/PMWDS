@@ -38,6 +38,38 @@ public class ActivityLogsController : BaseApiController
         return Ok(logs.OrderByDescending(a => a.Timestamp).Take(count).Select(MapLog));
     }
 
+    [HttpGet("team")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetTeam([FromQuery] int count = 50, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(_currentUser.UserId, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        var users = await _uow.Users.FindAsync(u => u.Id == currentUserId, ct);
+        var currentUser = users.FirstOrDefault();
+        if (currentUser == null || currentUser.DepartmentId == null)
+        {
+            return Ok(Array.Empty<ActivityLogResponse>());
+        }
+
+        var departmentId = currentUser.DepartmentId.Value;
+        var teamUsers = await _uow.Users.FindAsync(u => u.DepartmentId == departmentId, ct);
+        var teamUserIds = teamUsers.Select(u => u.Id).ToHashSet();
+
+        var logs = await _uow.ActivityLogs.FindAsync(a => teamUserIds.Contains(a.UserId), ct);
+        return Ok(logs.OrderByDescending(a => a.Timestamp).Take(count).Select(MapLog));
+    }
+
+    [HttpGet("all")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> GetAll([FromQuery] int count = 50, CancellationToken ct = default)
+    {
+        var logs = await _uow.ActivityLogs.FindAsync(a => true, ct);
+        return Ok(logs.OrderByDescending(a => a.Timestamp).Take(count).Select(MapLog));
+    }
+
     [HttpPost]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest req, CancellationToken ct)
