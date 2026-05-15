@@ -493,41 +493,93 @@ export function TasksPage() {
         const progress = milestone.progressPercentage || 0;
 
         return (
-          <button
-            key={milestone.id}
-            onClick={() => setSelectedMilestoneId(milestone.id)}
-            className={`
-              w-full text-left p-2.5 rounded-lg cursor-pointer transition-all duration-200
-              ${isSelected
-                ? "bg-indigo-50 border border-indigo-100"
-                : "hover:bg-slate-50 border border-transparent"
-              }
-            `}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${statusColors.dot}`} />
-              <span className={`text-sm truncate flex-1 ${isSelected ? "text-indigo-700 font-semibold" : "text-slate-700"}`}>
-                {milestone.name}
-              </span>
-              <span className="text-[10px] text-slate-400 shrink-0">{mTasks.length}</span>
-            </div>
-            
-            <div className="ml-4">
-              <div className="w-full h-1 rounded-full bg-slate-200 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${statusColors.dot}`}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
+  <button
+    key={milestone.id}
+    onClick={() => setSelectedMilestoneId(milestone.id)}
+    className={`
+      w-full text-left p-3 rounded-xl cursor-pointer transition-all duration-200
+      ${isSelected
+        ? "bg-indigo-50 border border-indigo-200 shadow-sm"
+        : "bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm"
+      }
+    `}
+  >
+    {/* Milestone Header */}
+    <div className="flex items-start gap-2.5 mb-2">
+      <div className={`
+        w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+        ${isSelected ? "bg-indigo-100" : "bg-slate-100"}
+      `}>
+        <span className={`material-symbols-outlined text-lg ${
+          isSelected ? "text-indigo-600" : "text-slate-400"
+        }`}>
+          {milestone.status === "Completed" ? "check_circle" : "flag"}
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className={`text-sm font-semibold truncate ${
+            isSelected ? "text-indigo-800" : "text-slate-700"
+          }`}>
+            {milestone.name}
+          </span>
+          {milestone.isCritical && (
+            <span className="material-symbols-outlined text-sm text-red-500 shrink-0">priority_high</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+            statusColors.bg
+          } ${statusColors.text}`}>
+            {milestone.status}
+          </span>
+          {milestone.dueDate && (
+            <span className="text-[9px] text-slate-400 flex items-center gap-0.5">
+              <span className="material-symbols-outlined text-[10px]">calendar_today</span>
+              {formatDate(milestone.dueDate)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
 
-            {milestone.isCritical && (
-              <div className="ml-4 mt-1">
-                <span className="text-[10px] font-bold text-red-500">⚠ Critical</span>
-              </div>
-            )}
-          </button>
-        );
+    {/* Progress Section */}
+    <div className="ml-10">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9px] text-slate-400 font-medium">Progress</span>
+        <span className="text-[9px] font-bold text-slate-600">{Math.round(progress)}%</span>
+      </div>
+      <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            milestone.status === "Completed"
+              ? "bg-gradient-to-r from-emerald-400 to-emerald-500"
+              : milestone.isCritical
+              ? "bg-gradient-to-r from-red-400 to-red-500"
+              : "bg-gradient-to-r from-indigo-400 to-violet-500"
+          }`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+
+    {/* Task Count & Critical Badge */}
+    <div className="ml-10 mt-2 flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <span className="material-symbols-outlined text-xs text-slate-400">task_alt</span>
+        <span className="text-[10px] text-slate-500 font-medium">
+          {mTasks.length} task{mTasks.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+      {milestone.isCritical && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-600 border border-red-100">
+          <span className="w-1 h-1 rounded-full bg-red-500"></span>
+          Critical
+        </span>
+      )}
+    </div>
+  </button>
+);
       })}
 
       {filteredMilestones.length === 0 && (

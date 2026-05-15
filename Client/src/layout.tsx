@@ -161,7 +161,6 @@ function Layout({ children }: { children: React.ReactNode }) {
           { path: "/tasks", label: "Tasks", icon: "tasks", roles: [] },
           { path: "/notifications", label: "Notifications", icon: "inbox", roles: [] },
           { path: "/chat", label: "Chats", icon: "chat", roles: [] },
-          { path: "/milestones", label: "Milestones", icon: "milestones", roles: [] },
         ],
       },
       {
@@ -207,6 +206,8 @@ function Layout({ children }: { children: React.ReactNode }) {
           { path: "/old/projects", label: "Projects (Old)", icon: "projects", roles: [], commented: true },
           { path: "/old/tasks", label: "Tasks (Old)", icon: "tasks", roles: [], commented: true },
           { path: "/old/milestones", label: "Milestones (Old)", icon: "milestones", roles: [], commented: true },
+          { path: "/milestones", label: "Milestones", icon: "milestones", roles: [] },
+
           { path: "/organizations", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/departments", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
 
