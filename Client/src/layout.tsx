@@ -344,7 +344,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                             {item.label}
                           </span>
 
-                          {item.path === "/notifications" &&
+                          {(item.path === "/notifications" || item.path === "/notificationsPage") &&
                             unreadCount > 0 && (
                               <span className="ml-auto h-2 w-2 rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
                             )}

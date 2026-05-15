@@ -2,67 +2,176 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, Project } from "../../types";
-import {
-  Panel,
-} from "../../ui";
+import { 
+  AnimatedBackground, 
+  GlassCard, 
+  PageHeader,
+} from "../shared";
+import { ReportFilters } from "./ReportFilters";
+import { ReportGenerator } from "./ReportGenerator";
+import { RecentExports } from "./RecentExports";
 
 export function ReportsPage() {
   const { auth } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [downloads, setDownloads] = useState<string[]>([]);
-  const [filters, setFilters] = useState({ projectId: "", departmentId: "", startDate: "", endDate: "", status: "" });
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ 
+    projectId: "", 
+    departmentId: "", 
+    startDate: "", 
+    endDate: "", 
+    status: "" 
+  });
 
   useEffect(() => {
     if (!auth) return;
-    Promise.all([api.getProjects(auth.token), api.getDepartments(auth.token)]).then(([projectData, departmentData]) => {
+    setLoading(true);
+    Promise.all([
+      api.getProjects(auth.token), 
+      api.getDepartments(auth.token)
+    ]).then(([projectData, departmentData]) => {
       setProjects(projectData);
       setDepartments(departmentData);
-      if (projectData[0]) setFilters((current) => ({ ...current, projectId: current.projectId || projectData[0].id }));
-      if (departmentData[0]) setFilters((current) => ({ ...current, departmentId: current.departmentId || departmentData[0].id }));
-    });
+      if (projectData[0]) setFilters((current) => ({ ...current, projectId: projectData[0].id }));
+      if (departmentData[0]) setFilters((current) => ({ ...current, departmentId: departmentData[0].id }));
+    }).finally(() => setLoading(false));
   }, [auth]);
 
-  async function download(label: string, action: () => Promise<Blob>) {
-    const blob = await action();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${label}.pdf`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setDownloads((current) => [label, ...current].slice(0, 5));
+  const handleDownload = async (label: string, action: () => Promise<Blob>) => {
+    try {
+      const blob = await action();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${label}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setDownloads((current) => [label, ...current].slice(0, 5));
+      setMessage(`${label} report downloaded successfully.`);
+    } catch (e) {
+      setMessage(`Error: ${e instanceof Error ? e.message : "Download failed"}`);
+    }
+  };
+
+  const downloadProjectStatus = () => {
+    if (!auth || !filters.projectId) return;
+    handleDownload("project-status", () => 
+      api.downloadReport(auth.token, `reports/project-status/${filters.projectId}`)
+    );
+  };
+
+  const downloadBudgetVariance = () => {
+    if (!auth || !filters.projectId) return;
+    handleDownload("budget-variance", () => 
+      api.downloadReport(auth.token, `reports/budget-variance/${filters.projectId}`)
+    );
+  };
+
+  const downloadTaskCompletion = () => {
+    if (!auth) return;
+    handleDownload("task-completion", () => 
+      api.downloadReport(auth.token, "reports/task-completion", { 
+        method: "POST", 
+        body: filters 
+      })
+    );
+  };
+
+  const downloadDepartmentWorkload = () => {
+    if (!auth) return;
+    handleDownload("department-workload", () => 
+      api.downloadReport(auth.token, "reports/department-workload", { 
+        method: "POST", 
+        body: { 
+          departmentId: filters.departmentId, 
+          startDate: filters.startDate || new Date().toISOString(), 
+          endDate: filters.endDate || new Date().toISOString() 
+        } 
+      })
+    );
+  };
+
+  const downloadDelayAnalysis = () => {
+    if (!auth) return;
+    handleDownload("delay-analysis", () => 
+      api.downloadReport(auth.token, "reports/delay-analysis", { 
+        method: "POST", 
+        body: filters 
+      })
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-7 relative font-sans">
+        <AnimatedBackground />
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+            <span className="text-slate-400 text-sm font-medium">Loading reports...</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="grid  gap-4 content-start">
-      <Panel title="Report Studio" subtitle="Generate portfolio, workload, delay, and budget outputs">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label><span>Project</span><select value={filters.projectId} onChange={(event) => setFilters({ ...filters, projectId: event.target.value })}>{projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}</select></label>
-          <label><span>Department</span><select value={filters.departmentId} onChange={(event) => setFilters({ ...filters, departmentId: event.target.value })}>{departments.map((department) => (<option key={department.id} value={department.id}>{department.name}</option>))}</select></label>
-          <label><span>Start Date</span><input type="date" value={filters.startDate} onChange={(event) => setFilters({ ...filters, startDate: event.target.value })} /></label>
-          <label><span>End Date</span><input type="date" value={filters.endDate} onChange={(event) => setFilters({ ...filters, endDate: event.target.value })} /></label>
-          <label><span>Status</span><input value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })} /></label>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("project-status", () => api.downloadReport(auth.token, `reports/project-status/${filters.projectId}`))}>Project Status</button>
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("budget-variance", () => api.downloadReport(auth.token, `reports/budget-variance/${filters.projectId}`))}>Budget Variance</button>
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("task-completion", () => api.downloadReport(auth.token, "reports/task-completion", { method: "POST", body: filters }))}>Task Completion</button>
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("department-workload", () => api.downloadReport(auth.token, "reports/department-workload", { method: "POST", body: { departmentId: filters.departmentId, startDate: filters.startDate || new Date().toISOString(), endDate: filters.endDate || new Date().toISOString() } }))}>Department Workload</button>
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => auth && void download("delay-analysis", () => api.downloadReport(auth.token, "reports/delay-analysis", { method: "POST", body: filters }))}>Delay Analysis</button>
-        </div>
-      </Panel>
+    <div className="min-h-screen p-7 relative font-sans">
+      <AnimatedBackground />
 
-      <Panel title="Recent Exports" subtitle="The last report actions from this browser session">
-        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
-          {downloads.map((item) => (
-            <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={item}>
-              <strong>{item}</strong>
-              <span>Downloaded</span>
-            </div>
-          ))}
+      {/* Page Header */}
+      <div className="relative z-10">
+        <PageHeader
+          title="Reports"
+          description="Generate portfolio, workload, delay, and budget reports"
+        />
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
+          <span className="material-symbols-outlined">check_circle</span>
+          {message}
+          <button
+            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
+            onClick={() => setMessage("")}
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
         </div>
-      </Panel>
+      )}
+
+      {/* Main Content */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+        {/* Left: Filters & Report Generation */}
+        <div className="flex flex-col gap-6">
+          {/* Filters */}
+          <ReportFilters
+            filters={filters}
+            projects={projects}
+            departments={departments}
+            onFilterChange={setFilters}
+          />
+
+          {/* Report Generator */}
+          <ReportGenerator
+            filters={filters}
+            onDownloadProjectStatus={downloadProjectStatus}
+            onDownloadBudgetVariance={downloadBudgetVariance}
+            onDownloadTaskCompletion={downloadTaskCompletion}
+            onDownloadDepartmentWorkload={downloadDepartmentWorkload}
+            onDownloadDelayAnalysis={downloadDelayAnalysis}
+          />
+        </div>
+
+        {/* Right: Recent Exports */}
+        <div className="lg:sticky lg:top-7 h-fit">
+          <RecentExports downloads={downloads} />
+        </div>
+      </div>
     </div>
   );
 }
