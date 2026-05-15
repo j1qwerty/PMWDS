@@ -15,7 +15,7 @@ import { ProjectsWorkspacePage } from "./features/work-management/pages/Projects
 import { TasksWorkspacePage } from "./features/work-management/pages/TasksWorkspacePage";
 import { AIPage } from "./features/ai/pages/AIPage";
 import { ReportsPage } from "./features/reports/pages/ReportsPage";
-import { SettingsPage } from "./features/system/pages/SettingsPage";
+import { SettingsPage } from "./pages/settings/settings";
 import { DashboardPage } from "./pages/dashboard/dashboard";
 import { ProjectsPage } from "./pages/projects/projects";
 import { TasksPage } from "./pages/tasks/tasks";

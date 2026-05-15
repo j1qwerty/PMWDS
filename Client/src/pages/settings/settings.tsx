@@ -1,24 +1,26 @@
-import { useEffect, useState } from "react";
-import { useDeferredValue } from "react";
+import { useEffect, useState, useDeferredValue } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { AIModel, AIProvider, AISettingsResponse } from "../../types";
-import {
-  LoadingPanel,
-  Notice,
-  Panel,
-  classNames,
-  listCardClass,
-  selectedCardClass,
-  MetricRow,
-} from "../../ui";
+import { 
+  AnimatedBackground, 
+  GlassCard, 
+  GradientButton, 
+  PageHeader,
+} from "../shared";
+import { ProfileSettings } from "./ProfileSettings";
+import { AIConfiguration } from "./AIConfiguration";
+import { ProviderMatrix } from "./ProviderMatrix";
 
 export function SettingsPage() {
   const { logout, auth, hasRole } = useAuth();
-  const [saved, setSaved] = useState("");
   const isSuperAdmin = hasRole("SuperAdmin");
   const isDev = import.meta.env.DEV;
 
+  const [saved, setSaved] = useState("");
+  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix">("profile");
+
+  // AI Settings State
   const [aiSettings, setAiSettings] = useState<AISettingsResponse | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
@@ -31,6 +33,7 @@ export function SettingsPage() {
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name: string; free: boolean }>>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
+  // Provider Matrix State
   const [matrixProviders, setMatrixProviders] = useState<AIProvider[]>([]);
   const [matrixProvider, setMatrixProvider] = useState("OpenAI");
   const [matrixModels, setMatrixModels] = useState<AIModel[]>([]);
@@ -90,15 +93,15 @@ export function SettingsPage() {
         providers: aiSettings.providers
           .filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter")
           .map(p => ({
-          provider: p.provider,
-          displayName: p.displayName,
-          enabled: p.enabled,
-          baseUrl: p.baseUrl,
-          apiKey: p.apiKey || "",
-          defaultModel: p.defaultModel,
-        })),
+            provider: p.provider,
+            displayName: p.displayName,
+            enabled: p.enabled,
+            baseUrl: p.baseUrl,
+            apiKey: p.apiKey || "",
+            defaultModel: p.defaultModel,
+          })),
       });
-      setSaved(result.message);
+      setSaved(result.message || "AI settings saved successfully.");
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Failed to save AI settings");
     } finally {
@@ -178,260 +181,146 @@ export function SettingsPage() {
     setTestResults(prev => { const next = { ...prev }; delete next[provider]; return next; });
   };
 
-  const handleSave = () => {
-    setSaved("Settings saved!");
-    setTimeout(() => setSaved(""), 2000);
-  };
-
-  if (!isSuperAdmin) {
+  if (aiLoading && isSuperAdmin) {
     return (
-      <div className="min-h-screen">
-        <Panel title="Settings" subtitle="Manage your preferences">
-          {saved && <Notice>{saved}</Notice>}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label><span>Email</span><input value={auth?.email ?? ""} disabled /></label>
-            <label><span>Name</span><input value={auth?.fullName ?? ""} disabled /></label>
+      <div className="min-h-screen p-7 relative font-sans">
+        <AnimatedBackground />
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+            <span className="text-slate-400 text-sm font-medium">Loading settings...</span>
           </div>
-          <div style={{ marginTop: "1rem" }}>
-            <button onClick={handleSave}>Save Settings</button>
-            <button onClick={logout} style={{ marginLeft: "0.5rem", background: "#dc3545" }}>Logout</button>
-          </div>
-        </Panel>
+        </div>
       </div>
     );
   }
 
-  if (aiLoading) return <LoadingPanel label="Loading settings..." />;
-
   return (
-    <div className="min-h-screen">
-      <Panel title="Settings" subtitle="Manage your preferences">
-        {saved && <Notice>{saved}</Notice>}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label><span>Email</span><input value={auth?.email ?? ""} disabled /></label>
-          <label><span>Name</span><input value={auth?.fullName ?? ""} disabled /></label>
-        </div>
-        <div style={{ marginTop: "1rem" }}>
-          <button onClick={handleSave}>Save Settings</button>
-          <button onClick={logout} style={{ marginLeft: "0.5rem", background: "#dc3545" }}>Logout</button>
-        </div>
-      </Panel>
+    <div className="min-h-screen p-7 relative font-sans">
+      <AnimatedBackground />
 
-      <Panel title="AI Configuration" subtitle="Configure AI providers (SuperAdmin only)" style={{ marginTop: "1.5rem" }}>
-        {aiError && <Notice>{aiError}</Notice>}
-        
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h4 style={{ marginBottom: "0.5rem" }}>Default Provider</h4>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label><span>Provider</span>
-              <select
-                value={aiSettings?.defaultProvider ?? "OpenAI"}
-                onChange={e => setAiSettings(prev => prev ? { ...prev, defaultProvider: e.target.value } : null)}
-              >
-                <option value="OpenAI">OpenAI</option>
-                <option value="OpenRouter">OpenRouter</option>
-              </select>
-            </label>
-            <label><span>Model</span>
-              {aiSettings?.defaultProvider === "OpenRouter" ? (
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <select
-                    value={aiSettings?.defaultModel ?? ""}
-                    onChange={e => setAiSettings(prev => prev ? { ...prev, defaultModel: e.target.value } : null)}
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">Select a model...</option>
-                    {openRouterModels.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={fetchOpenRouterModels}
-                    disabled={loadingModels}
-                    style={{ background: "#6c757d", whiteSpace: "nowrap" }}
-                  >
-                    {loadingModels ? "Loading..." : "Fetch Models"}
-                  </button>
-                </div>
-              ) : (
-                <input
-                  value={aiSettings?.defaultModel ?? ""}
-                  onChange={e => setAiSettings(prev => prev ? { ...prev, defaultModel: e.target.value } : null)}
-                  placeholder="e.g., gpt-4o"
-                />
-              )}
-            </label>
-            <label><span>Risk Threshold</span>
-              <input
-                type="number"
-                min="0"
-                max="1"
-                step="0.1"
-                value={aiSettings?.riskThreshold ?? 0.7}
-                onChange={e => setAiSettings(prev => prev ? { ...prev, riskThreshold: parseFloat(e.target.value) } : null)}
-              />
-            </label>
-          </div>
-        </div>
+      {/* Page Header */}
+      <div className="relative z-10">
+        <PageHeader
+          title="Settings"
+          description="Manage your profile, AI configuration, and provider settings"
+        />
+      </div>
 
-        <h4 style={{ marginBottom: "0.5rem", marginTop: "1.5rem" }}>AI Providers</h4>
-        {aiSettings?.providers.filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter").map(provider => (
-          <div key={provider.provider} style={{ border: "1px solid #ddd", borderRadius: "8px", padding: "1rem", marginBottom: "1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-              <input
-                type="checkbox"
-                id={`${provider.provider}-enabled`}
-                checked={provider.enabled}
-                onChange={e => updateProvider(provider.provider, "enabled", e.target.checked)}
-              />
-              <label htmlFor={`${provider.provider}-enabled`} style={{ fontWeight: "bold" }}>
-                {provider.displayName} ({provider.provider})
-              </label>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label><span>Base URL</span>
-                <input
-                  value={provider.baseUrl}
-                  onChange={e => updateProvider(provider.provider, "baseUrl", e.target.value)}
-                  disabled={!provider.enabled}
-                />
-              </label>
-              <label><span>API Key</span>
-                <input
-                  type="password"
-                  value={provider.apiKey}
-                  onChange={e => updateProvider(provider.provider, "apiKey", e.target.value)}
-                  placeholder={isDev && provider.provider === "OpenRouter" ? "Using dev test key (sk-or-...)" : "Enter API key"}
-                  disabled={!provider.enabled}
-                />
-              </label>
-              <label><span>Model</span>
-                {provider.provider === "OpenRouter" && provider.enabled ? (
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <select
-                      value={provider.defaultModel}
-                      onChange={e => updateProvider(provider.provider, "defaultModel", e.target.value)}
-                      style={{ flex: 1 }}
-                    >
-                      <option value="">Select model...</option>
-                      {openRouterModels.map(m => (
-                        <option key={m.id} value={m.id}>{m.free ? "[free] " : ""}{m.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={fetchOpenRouterModels}
-                      disabled={loadingModels}
-                      style={{ background: "#6c757d", whiteSpace: "nowrap" }}
-                    >
-                      {loadingModels ? "..." : "Reload"}
-                    </button>
-                  </div>
-                ) : (
-                  <input
-                    value={provider.defaultModel}
-                    onChange={e => updateProvider(provider.provider, "defaultModel", e.target.value)}
-                    placeholder={provider.provider === "OpenAI" ? "gpt-4o" : "openai/gpt-4o-mini"}
-                    disabled={!provider.enabled}
-                  />
-                )}
-              </label>
-              <label>
-                <span>&nbsp;</span>
-                <button
-                  onClick={() => testProvider(provider.provider, provider.apiKey, provider.defaultModel)}
-                  disabled={testingProvider === provider.provider || !provider.enabled}
-                  style={{ background: testResults[provider.provider]?.success ? "#28a745" : testResults[provider.provider]?.success === false ? "#dc3545" : "#6c757d" }}
-                >
-                  {testingProvider === provider.provider ? "Testing..." : testResults[provider.provider] ? (testResults[provider.provider].success ? "Connected" : "Failed") : "Test Connection"}
-                </button>
-              </label>
-            </div>
-            {testResults[provider.provider] && (
-              <div style={{ 
-                marginTop: "0.5rem", 
-                padding: "0.5rem", 
-                borderRadius: "4px",
-                background: testResults[provider.provider].success ? "#d4edda" : "#f8d7da",
-                color: testResults[provider.provider].success ? "#155724" : "#721c24"
-              }}>
-                {testResults[provider.provider].message}
-              </div>
-            )}
-
-            <div style={{ marginTop: "1rem" }}>
-              <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "500" }}>Custom Test Prompt</label>
-              <textarea
-                value={customPrompt[provider.provider] || ""}
-                onChange={e => setCustomPrompt(prev => ({ ...prev, [provider.provider]: e.target.value }))}
-                placeholder="Enter a custom prompt to test the AI..."
-                disabled={!provider.enabled}
-                rows={3}
-                style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem", fontFamily: "monospace" }}
-              />
-              <button
-                onClick={() => testCustomPrompt(provider.provider, provider.apiKey, provider.defaultModel)}
-                disabled={testingCustom === provider.provider || !provider.enabled || !customPrompt[provider.provider]?.trim()}
-                style={{ background: "#17a2b8", marginBottom: "0.5rem" }}
-              >
-                {testingCustom === provider.provider ? "Testing..." : "Run Custom Prompt"}
-              </button>
-              {customResponse[provider.provider] && (
-                <div style={{ 
-                  marginTop: "0.5rem", 
-                  padding: "0.5rem", 
-                  borderRadius: "4px",
-                  background: "#2d2d2d",
-                  border: "1px solid #555",
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "monospace",
-                  fontSize: "0.85rem",
-                  maxHeight: "200px",
-                  overflow: "auto",
-                  color: "#e0e0e0"
-                }}>
-                  {customResponse[provider.provider]}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        
-        <div style={{ marginTop: "1rem" }}>
-          <button onClick={handleSaveAI} disabled={aiSaving}>
-            {aiSaving ? "Saving..." : "Save AI Settings"}
+      {/* Message */}
+      {saved && (
+        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
+          <span className="material-symbols-outlined">check_circle</span>
+          {saved}
+          <button
+            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
+            onClick={() => setSaved("")}
+          >
+            <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-      </Panel>
+      )}
 
-      <Panel title="Provider Matrix" subtitle="Discover models, test providers, and steer prompt traffic">
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
-            {matrixProviders.map((item) => (
-              <button key={item.provider} className={classNames(listCardClass, matrixProvider === item.provider && selectedCardClass)} onClick={() => setMatrixProvider(item.provider)}>
-                <strong>{item.displayName}</strong>
-                <span>{item.defaultModel}</span>
-                <small>{item.isConfigured ? "Configured" : "Missing key"}</small>
-              </button>
-            ))}
-          </div>
-          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h4>Model Search</h4><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Search models" /></div>
-            <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
-              {matrixModels.map((item) => (
-                <button key={item.id} className={classNames(listCardClass, selectedModel === item.id && selectedCardClass)} onClick={() => setSelectedModel(item.id)}>
-                  <strong>{item.name}</strong>
-                  <span>{item.id}</span>
-                  <small>{item.contextLength ? `${item.contextLength.toLocaleString()} ctx` : "Context unknown"}</small>
-                </button>
-              ))}
-            </div>
-            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth) return; setTestResult(await api.testAiProvider(auth.token, matrixProvider, selectedModel)); }}>Test Provider</button>
-            {testResult ? <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15 nested"><MetricRow label="Provider" value={testResult.provider} /><MetricRow label="Model" value={testResult.model} /><MetricRow label="Result" value={testResult.success ? "Success" : "Failure"} /><p>{testResult.message}</p>{testResult.rawResponse ? <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-black/70 p-3 text-xs text-emerald-300">{testResult.rawResponse}</pre> : null}</div> : null}
-          </div>
+      {/* Tab Navigation */}
+      <div className="relative z-10 mb-5">
+        <div className="flex gap-2 border-b border-slate-200">
+          <TabButton
+            active={activeTab === "profile"}
+            onClick={() => setActiveTab("profile")}
+            icon="person"
+            label="Profile"
+          />
+          {isSuperAdmin && (
+            <>
+              <TabButton
+                active={activeTab === "ai"}
+                onClick={() => setActiveTab("ai")}
+                icon="smart_toy"
+                label="AI Configuration"
+              />
+              <TabButton
+                active={activeTab === "matrix"}
+                onClick={() => setActiveTab("matrix")}
+                icon="hub"
+                label="Provider Matrix"
+              />
+            </>
+          )}
         </div>
-      </Panel>
+      </div>
+
+      {/* Tab Content */}
+      <div className="relative z-10">
+        {activeTab === "profile" && (
+          <ProfileSettings
+            auth={auth}
+            onSave={() => { setSaved("Profile settings saved!"); setTimeout(() => setSaved(""), 2000); }}
+            onLogout={logout}
+          />
+        )}
+
+        {activeTab === "ai" && isSuperAdmin && (
+          <AIConfiguration
+            aiSettings={aiSettings}
+            aiError={aiError}
+            aiSaving={aiSaving}
+            testResults={testResults}
+            testingProvider={testingProvider}
+            customPrompt={customPrompt}
+            customResponse={customResponse}
+            testingCustom={testingCustom}
+            openRouterModels={openRouterModels}
+            loadingModels={loadingModels}
+            isDev={isDev}
+            onSaveAI={handleSaveAI}
+            onTestProvider={testProvider}
+            onTestCustomPrompt={testCustomPrompt}
+            onFetchModels={fetchOpenRouterModels}
+            onUpdateProvider={updateProvider}
+            onUpdateSettings={setAiSettings}
+            onSetCustomPrompt={setCustomPrompt}
+          />
+        )}
+
+        {activeTab === "matrix" && isSuperAdmin && (
+          <ProviderMatrix
+            matrixProviders={matrixProviders}
+            matrixProvider={matrixProvider}
+            matrixModels={matrixModels}
+            modelSearch={modelSearch}
+            selectedModel={selectedModel}
+            testResult={testResult}
+            auth={auth}
+            onProviderChange={setMatrixProvider}
+            onModelSearchChange={setModelSearch}
+            onModelSelect={setSelectedModel}
+            onTestResult={setTestResult}
+          />
+        )}
+      </div>
     </div>
+  );
+}
+
+function TabButton({ active, onClick, icon, label }: {
+  active: boolean;
+  onClick: () => void;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 flex items-center gap-2
+        ${active
+          ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-[1px]"
+          : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+        }
+      `}
+    >
+      <span className="material-symbols-outlined text-lg">{icon}</span>
+      {label}
+    </button>
   );
 }
