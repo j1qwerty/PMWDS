@@ -36,7 +36,8 @@ public class TaskRepository
     string userId,
     CancellationToken ct = default)
     => await _dbSet
-    .Where(t => t.AssignedToUserId == userId
+    .Where(t => (t.AssignedToUserId == userId ||
+    t.Assignments.Any(a => a.UserId == userId && a.IsActive))
     && t.Status != Domain.Enums.TaskStatus.Completed
     && t.Status != Domain.Enums.TaskStatus.Cancelled)
     .Include(t => t.Project)

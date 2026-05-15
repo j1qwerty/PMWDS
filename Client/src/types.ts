@@ -161,6 +161,7 @@ export interface Task {
   parentTaskId?: string | null;
   assignedToUserId?: string | null;
   assignedToUserName?: string | null;
+  assignees?: TaskAssignee[];
   isEscalated: boolean;
   escalationLevel: number;
   escalatedDate?: string | null;
@@ -640,6 +641,11 @@ export interface AIProviderConfig {
   apiKey: string;
   hasStoredKey: boolean;
   defaultModel: string;
+}
+
+export interface TaskAssignee {
+  userId: string;
+  fullName?: string | null;
 }
 
 export interface AISettingsRequest {

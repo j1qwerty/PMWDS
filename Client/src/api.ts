@@ -232,6 +232,13 @@ export const api = {
       body: { assigneeId, useAIRecommendation },
     });
   },
+  assignTaskMembers(token: string, id: string, assigneeIds: string[]) {
+    return request<Task>(`tasks/${id}/assign`, {
+      token,
+      method: "POST",
+      body: { assigneeIds },
+    });
+  },
   getTaskRecommendation(token: string, id: string) {
     return request<Record<string, unknown>>(`tasks/${id}/ai/recommend-assignee`, { token });
   },

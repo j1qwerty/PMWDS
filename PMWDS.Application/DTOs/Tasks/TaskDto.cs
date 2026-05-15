@@ -20,6 +20,7 @@ public record TaskDto(
     Guid? ParentTaskId,
     string? AssignedToUserId,
     string? AssignedToUserName,
+    List<TaskAssigneeDto> Assignees,
     bool IsEscalated,
     int EscalationLevel,
     DateTime? EscalatedDate,
@@ -51,6 +52,10 @@ public record TaskDto(
         .Where(a => a.IsActive)
         .Select(a => a.User != null ? a.User.FullName : null)
         .FirstOrDefault(n => !string.IsNullOrEmpty(n)),
+        Assignees: t.Assignments
+        .Where(a => a.IsActive)
+        .Select(a => new TaskAssigneeDto(a.UserId, a.User?.FullName))
+        .ToList(),
         IsEscalated: t.IsEscalated,
         EscalationLevel: t.EscalationLevel,
         EscalatedDate: t.EscalatedDate,
@@ -60,6 +65,7 @@ public record TaskDto(
         CreatedDate: t.CreatedDate
         );
     }
+    public record TaskAssigneeDto(string UserId, string? FullName);
     public record TaskSummaryDto(
     Guid Id,
     string Title,
@@ -90,7 +96,8 @@ public record TaskDto(
     Guid? ParentTaskId,
     string? AssignedToUserId,
     Domain.Enums.TaskPriority Priority =
-    Domain.Enums.TaskPriority.Medium);
+    Domain.Enums.TaskPriority.Medium,
+    List<string>? AssignedToUserIds = null);
     public record UpdateTaskDto(
     string Title,
     string? Description,

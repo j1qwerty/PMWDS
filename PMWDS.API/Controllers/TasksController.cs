@@ -104,7 +104,54 @@ public class TasksController : BaseApiController
     [HttpPost("{id:guid}/assign")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Assign(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
-        => Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+    {
+        var assigneeIds = req.AssigneeIds?.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToList();
+        if (assigneeIds is not { Count: > 0 })
+        {
+            if (string.IsNullOrWhiteSpace(req.AssigneeId))
+            {
+                return BadRequest(new { message = "At least one assignee is required." });
+            }
+
+            var assigneeId = req.AssigneeId!;
+            return Ok(await Mediator.Send(new AssignTaskCommand(id, assigneeId, req.UseAIRecommendation), ct));
+        }
+
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
+        {
+            return NotFound();
+        }
+
+        foreach (var userId in assigneeIds)
+        {
+            if (!Guid.TryParse(userId, out var parsedUserId) ||
+                await _uow.Users.GetByIdAsync(parsedUserId, ct) == null)
+            {
+                return BadRequest(new { message = $"Invalid assignee '{userId}'." });
+            }
+        }
+
+        foreach (var active in task.Assignments.Where(a => a.IsActive && !assigneeIds.Contains(a.UserId)))
+        {
+            active.Release();
+        }
+
+        var assignedBy = _currentUser.UserId ?? "system";
+        task.AssignTo(assigneeIds[0], assignedBy);
+
+        foreach (var userId in assigneeIds.Where(userId => task.Assignments.All(a => a.UserId != userId || !a.IsActive)))
+        {
+            await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, userId), ct);
+            await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId, ct);
+        }
+
+        task.SetModified(assignedBy);
+        await _uow.SaveChangesAsync(ct);
+
+        var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        return Ok(TaskDto.FromEntity(refreshed!));
+    }
 
     [HttpGet("{id:guid}/ai/recommend-assignee")]
     [Authorize(Policy = "Manager")]
@@ -323,6 +370,6 @@ public class TasksController : BaseApiController
 }
 
 public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus);
-public record AssignTaskRequest(string AssigneeId, bool UseAIRecommendation = false);
+public record AssignTaskRequest(string? AssigneeId, bool UseAIRecommendation = false, List<string>? AssigneeIds = null);
 public record AddCommentRequest(string Comment);
 public record StartTimerRequest(string Description, bool IsBillable = false);

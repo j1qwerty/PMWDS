@@ -49,16 +49,28 @@ public class CreateTaskCommandHandler
         task.SetCreatedBy(
         _currentUser.UserId ?? "system");
         await _uow.Tasks.AddAsync(task, ct);
-        // Auto-assign if specified
-        if (!string.IsNullOrEmpty(dto.AssignedToUserId))
+        var assigneeIds = (dto.AssignedToUserIds ?? [])
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+        if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) && !assigneeIds.Contains(dto.AssignedToUserId))
+        {
+            assigneeIds.Insert(0, dto.AssignedToUserId);
+        }
+
+        if (assigneeIds.Count > 0)
         {
             task.AssignTo(
-            dto.AssignedToUserId,
+            assigneeIds[0],
             _currentUser.UserId ?? "system");
-            await _notifications
-            .SendTaskAssignmentAlertAsync(
-            task.Id,
-           dto.AssignedToUserId, ct);
+            foreach (var assigneeId in assigneeIds)
+            {
+                await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, assigneeId), ct);
+                await _notifications
+                .SendTaskAssignmentAlertAsync(
+                task.Id,
+                assigneeId, ct);
+            }
         }
         await _uow.SaveChangesAsync(ct);
         var prediction = await _ai

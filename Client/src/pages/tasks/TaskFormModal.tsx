@@ -22,6 +22,7 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
     projectId: initialData?.projectId || "",
     milestoneId: initialData?.milestoneId || "",
     assignedToUserId: initialData?.assignedToUserId || "",
+    assignedToUserIds: initialData?.assignees?.map(item => item.userId) || (initialData?.assignedToUserId ? [initialData.assignedToUserId] : []),
     priority: initialData?.priority || "Medium",
   });
 
@@ -36,6 +37,7 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
         projectId: initialData?.projectId || "",
         milestoneId: initialData?.milestoneId || "",
         assignedToUserId: initialData?.assignedToUserId || "",
+        assignedToUserIds: initialData?.assignees?.map(item => item.userId) || (initialData?.assignedToUserId ? [initialData.assignedToUserId] : []),
         priority: initialData?.priority || "Medium",
       });
     }
@@ -46,7 +48,8 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
     onSubmit({
       ...form,
       milestoneId: form.milestoneId || null,
-      assignedToUserId: form.assignedToUserId || null,
+      assignedToUserId: form.assignedToUserIds[0] || null,
+      assignedToUserIds: form.assignedToUserIds,
     });
   };
 
@@ -105,15 +108,28 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
             ]}
           />
 
-          <SelectF
-            label="Assignee"
-            value={form.assignedToUserId}
-            onChange={(v) => setForm({ ...form, assignedToUserId: v })}
-            options={[
-              { value: "", label: "Unassigned" },
-              ...users.map(u => ({ value: u.id, label: u.fullName })),
-            ]}
-          />
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Assignees</label>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 space-y-1">
+              {users.map(user => (
+                <label key={user.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={form.assignedToUserIds.includes(user.id)}
+                    onChange={() => setForm(current => {
+                      const assignedToUserIds = current.assignedToUserIds.includes(user.id)
+                        ? current.assignedToUserIds.filter(id => id !== user.id)
+                        : [...current.assignedToUserIds, user.id];
+                      return { ...current, assignedToUserIds, assignedToUserId: assignedToUserIds[0] || "" };
+                    })}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                  />
+                  {user.fullName}
+                </label>
+              ))}
+              {users.length === 0 && <div className="px-2 py-3 text-xs text-slate-400">No users available</div>}
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">

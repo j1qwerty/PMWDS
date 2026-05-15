@@ -217,8 +217,14 @@ export function TasksPage() {
   const handleTaskSubmit = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
+      const assigneeIds = Array.isArray(form.assignedToUserIds)
+        ? form.assignedToUserIds.filter((value): value is string => typeof value === "string")
+        : [];
       if (taskModal.editTask) {
         await api.updateTask(auth.token, taskModal.editTask.id, form);
+        if (assigneeIds.length > 0) {
+          await api.assignTaskMembers(auth.token, taskModal.editTask.id, assigneeIds);
+        }
         setMessage("Task updated.");
         addToast("Task updated.");
       } else {
