@@ -7,8 +7,8 @@ import { IntegrationsPage } from "./features/integrations/pages/IntegrationsPage
 import { WebhooksPage } from "./features/integrations/pages/WebhooksPage";
 import { KnowledgePage } from "./features/knowledge/pages/KnowledgePage";
 import { OrganizationsPage } from "./features/organizations/pages/OrganizationsPage";
-import { ProfilesPage } from "./features/profiles/pages/ProfilesPage";
-import { SkillsPage } from "./features/skills/pages/SkillsPage";
+import { ProfilesPage } from "./pages/profiles/ProfilesPage";
+import { SkillsPage } from "./pages/skills/SkillsPage";
 import { Layout } from "./layout";
 import { MilestonesWorkspacePage } from "./features/work-management/pages/MilestonesWorkspacePage";
 import { ProjectsWorkspacePage } from "./features/work-management/pages/ProjectsWorkspacePage";
@@ -51,6 +51,7 @@ function AppRoutes() {
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/departmentsPage" element={<DepartmentsPage />} />
                 <Route path="/milestonesPage" element={<MilestonesPage />} />
+                <Route path="/notificationsPage" element={<NotificationsPage />} />
 
                 <Route path="/milestones" element={<MilestonesWorkspacePage />} />
                 <Route path="/tasks" element={<TasksPage />} />
