@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Project, ProjectHealth, Task } from "../../types";
-import {
-  MetricRow,
-  MetricTile,
-  Panel,
-  formatDate,
-  formatPercent,
-} from "../../ui";
+import { formatPercent, formatDate } from "../../ui";
+import { AnimatedBackground, PageHeader, GlassCard } from "../shared";
+import { StatsCards } from "./StatsCards";
+import { ProjectList } from "./ProjectList";
+import { HealthCard } from "./HealthCard";
+import { RiskPredictionCard } from "./RiskPredictionCard";
+import { TimelinePredictions } from "./TimelinePredictions";
+import { AIRecommendations } from "./AIRecommendations";
+import { BurnoutPanel } from "./BurnoutPanel";
+import { AIChatPanel } from "./AIChatPanel";
+import { NeuralHeatmap } from "./NeuralHeatmap";
+import { AnomalyFeed } from "./AnomalyFeed";
 
 export function AIPage() {
   const { auth } = useAuth();
@@ -16,83 +21,206 @@ export function AIPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
-  const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");
-  const [chatResult, setChatResult] = useState<any>(null);
   const [burnout, setBurnout] = useState<BurnoutRiskRecord[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [delay, setDelay] = useState<any>(null);
   const [provider, setProvider] = useState("OpenAI");
   const [model, setModel] = useState("");
+  const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");
+  const [chatResult, setChatResult] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!auth) return;
-    Promise.all([api.getProjects(auth.token), api.getMyTasks(auth.token), api.getAiBurnoutRisk(auth.token), api.getAISettings(auth.token)]).then(
-      ([projectData, taskData, burnoutData, settings]) => {
-        setProjects(projectData);
-        setTasks(taskData);
-        setBurnout(burnoutData);
-        setProvider(settings.defaultProvider);
-        setModel(settings.defaultModel);
-        if (projectData[0]) setSelectedProjectId(projectData[0].id);
-        if (taskData[0]) setSelectedTaskId(taskData[0].id);
-      },
-    );
+    setLoading(true);
+    Promise.all([
+      api.getProjects(auth.token),
+      api.getMyTasks(auth.token),
+      api.getAiBurnoutRisk(auth.token),
+      api.getAISettings(auth.token),
+    ]).then(([projectData, taskData, burnoutData, settings]) => {
+      setProjects(projectData);
+      setTasks(taskData);
+      setBurnout(burnoutData);
+      setProvider(settings.defaultProvider || "OpenAI");
+      setModel(settings.defaultModel || "");
+      if (projectData[0]) setSelectedProjectId(projectData[0].id);
+      if (taskData[0]) setSelectedTaskId(taskData[0].id);
+    }).finally(() => setLoading(false));
   }, [auth]);
 
   useEffect(() => {
     if (!auth || !selectedProjectId) return;
-    api.getAiProjectHealth(auth.token, selectedProjectId).then(setHealth);
+    api.getAiProjectHealth(auth.token, selectedProjectId).then(setHealth).catch(() => setHealth(null));
   }, [auth, selectedProjectId]);
 
   useEffect(() => {
     if (!auth || !selectedTaskId) return;
-    api.getTaskDelay(auth.token, selectedTaskId).then(setDelay);
+    api.getTaskDelay(auth.token, selectedTaskId).then(setDelay).catch(() => setDelay(null));
   }, [auth, selectedTaskId]);
 
+  const handleChat = async () => {
+    if (!auth) return;
+    try {
+      const result = await api.chat(auth.token, chatPrompt, provider, model);
+      setChatResult(result);
+    } catch (e) {
+      setChatResult({ message: "Failed to get AI response", intent: "error" });
+    }
+  };
+
+  const selectedProject = projects.find(p => p.id === selectedProjectId) ?? null;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-7 relative font-sans">
+        <AnimatedBackground />
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+            <span className="text-slate-400 text-sm font-medium">Loading AI insights...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid  gap-4 content-start">
-      <Panel title="AI Assistant" subtitle="Provider-aware chat against current PMWDS context">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="md:col-span-2"><span>Prompt</span><textarea value={chatPrompt} onChange={(event) => setChatPrompt(event.target.value)} /></label>
-          <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth) return; setChatResult(await api.chat(auth.token, chatPrompt, provider, model)); }}>Run Prompt</button>
-          {chatResult ? <div className="md:col-span-2 rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15"><MetricRow label="Intent" value={chatResult.intent} /><p>{chatResult.message}</p><div className="mt-3 flex flex-wrap gap-2">{(chatResult.suggestedActions ?? []).map((item: string) => (<span className="inline-flex rounded-full bg-sky-300/10 px-2.5 py-1 text-xs font-medium text-sky-200 ring-1 ring-sky-300/15" key={item}>{item}</span>))}</div></div> : null}
-        </div>
-      </Panel>
+    <div className="min-h-screen p-7 relative font-sans">
+      <AnimatedBackground />
 
-      <Panel title="Predictive Signals" subtitle="Project health, burnout pressure, and task delay probability">
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
-            <label>
-              <span>Project</span>
-              <select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>
-                {projects.map((project) => (<option key={project.id} value={project.id}>{project.name}</option>))}
-              </select>
-            </label>
-            {health ? <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><MetricTile label="Overall" value={formatPercent(health.overallHealthScore)} /><MetricTile label="Schedule" value={formatPercent(health.scheduleHealth)} /><MetricTile label="Budget" value={formatPercent(health.budgetHealth)} /><MetricTile label="Team" value={formatPercent(health.teamHealth)} /></div> : null}
-          </div>
-          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
-            <label>
-              <span>Task</span>
-              <select value={selectedTaskId} onChange={(event) => setSelectedTaskId(event.target.value)}>
-                {tasks.map((task) => (<option key={task.id} value={task.id}>{task.title}</option>))}
-              </select>
-            </label>
-            {delay ? <><MetricRow label="Delay Probability" value={formatPercent(delay.delayProbability * 100)} /><MetricRow label="Risk Level" value={delay.riskLevel} /><MetricRow label="Predicted Completion" value={formatDate(delay.predictedCompletionDate)} /><div className="mt-3 flex flex-wrap gap-2">{(delay.contributingFactors ?? []).map((item: string) => (<span className="inline-flex rounded-full bg-sky-300/10 px-2.5 py-1 text-xs font-medium text-sky-200 ring-1 ring-sky-300/15" key={item}>{item}</span>))}</div></> : null}
-          </div>
-        </div>
-      </Panel>
+      {/* Page Header */}
+      <div className="relative z-10">
+        <PageHeader
+          title="AI Insights"
+          description="Neural analysis, predictions, and intelligent recommendations"
+        />
+      </div>
 
-      <Panel title="Burnout Risk" subtitle="AI-flagged capacity pressure across the team">
-        <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
-          {burnout.map((item, index) => (
-            <div className="rounded-md border border-[var(--pmwds-border)] bg-white/[0.035] px-4 py-3 text-left transition hover:border-sky-300/50 hover:bg-white/[0.06]" key={`${item["userId"]}-${index}`}>
-              <strong>{String(item["fullName"] ?? "Unknown")}</strong>
-              <span>Risk {formatPercent(Number(item["burnoutRisk"] ?? 0) * 100)}</span>
-              <small>Workload {formatPercent(Number(item["workloadScore"] ?? 0))}</small>
+      {/* Main Grid Layout */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
+        
+        {/* Left Sidebar: Projects (Agents) */}
+        <div className="flex flex-col gap-5">
+          <ProjectList
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+          />
+          
+          {/* System Load Card */}
+          <GlassCard className="p-4 border border-indigo-100/30">
+            <div className="flex items-center gap-2 mb-3 text-indigo-600">
+              <span className="material-symbols-outlined text-lg">bolt</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider">System Load</span>
             </div>
-          ))}
+            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="w-1/4 h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"></div>
+            </div>
+            <div className="flex justify-between mt-2">
+              <span className="text-[10px] text-slate-400 uppercase">Compute Unit B-12</span>
+              <span className="text-xs font-bold text-indigo-600">24%</span>
+            </div>
+          </GlassCard>
+
+          {/* Anomaly Feed */}
+          <AnomalyFeed />
         </div>
-      </Panel>
+
+        {/* Center: Main Content */}
+        <div className="flex flex-col gap-5">
+          {/* Stats Cards */}
+          <StatsCards health={health} burnout={burnout} delay={delay} />
+
+          {/* Health & Risk Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <HealthCard 
+              project={selectedProject}
+              health={health}
+              // projects={projects}
+              // selectedProjectId={selectedProjectId}
+              // onProjectChange={setSelectedProjectId}
+            />
+            <RiskPredictionCard health={health} />
+          </div>
+
+          {/* Neural Heatmap */}
+          <NeuralHeatmap project={selectedProject} />
+
+          {/* Timeline & Recommendations Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <TimelinePredictions projects={projects} />
+            <AIRecommendations />
+          </div>
+
+          {/* AI Chat */}
+          <AIChatPanel
+            chatPrompt={chatPrompt}
+            setChatPrompt={setChatPrompt}
+            chatResult={chatResult}
+            onChat={handleChat}
+          />
+        </div>
+
+        {/* Right Sidebar: Details & Burnout */}
+        <div className="flex flex-col gap-5">
+          {/* Task Delay Prediction */}
+          {delay && (
+            <GlassCard className="p-5 border border-amber-100/50">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-amber-500">speed</span>
+                <h4 className="text-sm font-bold text-slate-800">Delay Prediction</h4>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Probability</span>
+                    <span className="font-bold text-amber-600">{formatPercent(delay.delayProbability * 100)}</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full" 
+                      style={{ width: `${Math.min(delay.delayProbability * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Risk Level</span>
+                  <span className="font-semibold text-slate-700">{delay.riskLevel || "N/A"}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Predicted Completion</span>
+                  <span className="font-semibold text-slate-700">{formatDate(delay.predictedCompletionDate)}</span>
+                </div>
+                {delay.contributingFactors?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
+                    {delay.contributingFactors.map((factor: string) => (
+                      <span key={factor} className="px-2 py-1 rounded-full text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-100">
+                        {factor}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          )}
+
+          {/* Burnout Risk Panel */}
+          <BurnoutPanel burnout={burnout} />
+
+          {/* Upgrade CTA */}
+          <GlassCard className="p-5 border border-indigo-200/50 bg-gradient-to-br from-indigo-50/50 to-white relative overflow-hidden">
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-indigo-400/20 to-violet-400/20 rounded-full blur-2xl"></div>
+            <h5 className="text-xs font-bold text-slate-800 mb-2 relative">Advance Neural Engine</h5>
+            <p className="text-[10px] text-slate-500 mb-4 leading-relaxed relative">
+              Unlock Tier-3 predictive modeling for enterprise projects.
+            </p>
+            <button className="w-full py-2.5 bg-indigo-600 text-white border border-indigo-600 rounded-xl text-[11px] font-bold hover:bg-indigo-700 transition-all shadow-sm relative">
+              Upgrade Agent
+            </button>
+          </GlassCard>
+        </div>
+      </div>
     </div>
   );
 }
