@@ -344,7 +344,14 @@ public class TasksController : BaseApiController
     [HttpPost("subtasks/{id:guid}/assign")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> AssignSubtask(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
-        => Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+    {
+        if (string.IsNullOrWhiteSpace(req.AssigneeId))
+        {
+            return BadRequest(new { message = "Assignee is required." });
+        }
+
+        return Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+    }
 
     [HttpDelete("subtasks/{id:guid}")]
     [Authorize(Policy = "Manager")]

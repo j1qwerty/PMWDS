@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -10,6 +11,7 @@ namespace PMWDS.API.Services;
 public enum ActiveDatabaseProvider
 {
     SqlServer,
+    MySql,
     Sqlite
 }
 
@@ -30,10 +32,11 @@ public static class DatabaseConnectionService
     {
         var settings = configuration.GetSection("Database").Get<DatabaseSettings>() ?? new DatabaseSettings();
         var sqlServerConnection = configuration.GetConnectionString("Default");
+        var mysqlConnection = configuration.GetConnectionString("MySql") ?? settings.MySqlConnectionString;
         var sqliteConnection = settings.SqliteConnectionString;
         var attempts = new List<string>();
 
-        var selected = SelectProvider(environment, settings, sqlServerConnection, sqliteConnection, attempts);
+        var selected = SelectProvider(environment, settings, sqlServerConnection, mysqlConnection, sqliteConnection, attempts);
 
         services.AddSingleton(selected);
         services.AddDbContext<ApplicationDbContext>(opt =>
@@ -42,6 +45,9 @@ public static class DatabaseConnectionService
             {
                 case ActiveDatabaseProvider.SqlServer:
                     opt.UseSqlServer(sqlServerConnection, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
+                    break;
+                case ActiveDatabaseProvider.MySql:
+                    opt.UseMySQL(mysqlConnection!, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
                     break;
                 case ActiveDatabaseProvider.Sqlite:
                     opt.UseSqlite(sqliteConnection, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
@@ -88,6 +94,7 @@ public static class DatabaseConnectionService
         IWebHostEnvironment environment,
         DatabaseSettings settings,
         string? sqlServerConnection,
+        string? mysqlConnection,
         string sqliteConnection,
         List<string> attempts)
     {
@@ -104,6 +111,14 @@ public static class DatabaseConnectionService
         }
 
         attempts.Add("SQL Server unavailable or not configured.");
+
+        if (settings.EnableMySqlFallback && CanConnectToMySql(mysqlConnection))
+        {
+            attempts.Add("MySQL fallback connection succeeded.");
+            return CreateStatus(ActiveDatabaseProvider.MySql, "MySQL", "ConnectionStrings:MySql", mysqlConnection!, true, attempts);
+        }
+
+        attempts.Add("MySQL unavailable or not configured.");
 
         if (!environment.IsDevelopment() && !settings.EnableSqliteFallback)
         {
@@ -136,6 +151,13 @@ public static class DatabaseConnectionService
             return new SqlConnection(builder.ConnectionString);
         });
 
+    private static bool CanConnectToMySql(string? connectionString)
+        => CanConnect(connectionString, cs =>
+        {
+            var builder = new MySqlConnectionStringBuilder(cs) { ConnectionTimeout = 2 };
+            return new MySqlConnection(builder.ConnectionString);
+        });
+
     private static bool CanConnect(string? connectionString, Func<string, DbConnection> connectionFactory)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -162,6 +184,7 @@ public static class DatabaseConnectionService
             return provider switch
             {
                 ActiveDatabaseProvider.SqlServer => new SqlConnectionStringBuilder(connectionString).DataSource,
+                ActiveDatabaseProvider.MySql => new MySqlConnectionStringBuilder(connectionString).Server,
                 ActiveDatabaseProvider.Sqlite => connectionString.Replace("Data Source=", string.Empty, StringComparison.OrdinalIgnoreCase).Trim(),
                 _ => provider.ToString()
             };
