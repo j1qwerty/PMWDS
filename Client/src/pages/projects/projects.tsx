@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useMemo, type FormEvent } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { Department, Milestone, Project, ProjectHealth, User } from "../../types";
+import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
+import { PageHeader, getDepartmentColor } from "../shared";
 import { 
   ProjectsBoard, 
   ProjectDetailPane, 
@@ -16,13 +17,16 @@ export function ProjectsPage() {
   const { auth, hasRole } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
   const [_milestones, setMilestones] = useState<Milestone[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [_message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -43,19 +47,28 @@ export function ProjectsPage() {
 
   async function loadProjects() {
     if (!auth) return;
-    const [projectData, departmentData, userData] = await Promise.all([
-      api.getProjects(auth.token),
-      api.getDepartments(auth.token),
-      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getUsers(auth.token) : Promise.resolve([]),
-    ]);
-    setProjects(projectData);
-    setDepartments(departmentData);
-    setUsers(userData as User[]);
-    if (!selectedProjectId && projectData[0]) setSelectedProjectId(projectData[0].id);
+    setLoading(true);
+    try {
+      const [projectData, departmentData, orgData, userData] = await Promise.all([
+        api.getProjects(auth.token),
+        api.getDepartments(auth.token),
+        api.getOrganizations(auth.token),
+        hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getUsers(auth.token) : Promise.resolve([]),
+      ]);
+      setProjects(projectData);
+      setDepartments(departmentData);
+      setOrganizations(orgData);
+      setUsers(userData as User[]);
+      if (!selectedProjectId && projectData[0]) setSelectedProjectId(projectData[0].id);
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Failed to load projects.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    void loadProjects().catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load projects."));
+    void loadProjects();
   }, [auth]);
 
   useEffect(() => {
@@ -72,6 +85,30 @@ export function ProjectsPage() {
       if (healthResult.status === "fulfilled") setHealth(healthResult.value as ProjectHealth | null);
     });
   }, [auth, selectedProjectId]);
+
+  // Filtered projects based on org and department selection
+  const filteredProjects = useMemo(() => {
+    let filtered = projects;
+    
+    if (selectedOrgId) {
+      const orgDepartmentIds = departments
+        .filter(d => d.organizationId === selectedOrgId)
+        .map(d => d.id);
+      filtered = filtered.filter(p => orgDepartmentIds.includes(p.departmentId));
+    }
+    
+    if (selectedDepartmentId) {
+      filtered = filtered.filter(p => p.departmentId === selectedDepartmentId);
+    }
+    
+    return filtered;
+  }, [projects, selectedOrgId, selectedDepartmentId, departments]);
+
+  // Filtered departments based on organization selection
+  const filteredDepartments = useMemo(() => {
+    if (!selectedOrgId) return departments;
+    return departments.filter(d => d.organizationId === selectedOrgId);
+  }, [departments, selectedOrgId]);
 
   async function handleCreateProject(event: FormEvent) {
     event.preventDefault();
@@ -123,109 +160,197 @@ export function ProjectsPage() {
     await loadProjects();
   };
 
-  const departmentColors = [
-    { bg: "bg-primary/5", border: "border-primary/30", text: "text-primary", dot: "bg-primary" },
-    { bg: "bg-secondary/5", border: "border-secondary/30", text: "text-secondary", dot: "bg-secondary" },
-    { bg: "bg-tertiary/5", border: "border-tertiary/30", text: "text-tertiary", dot: "bg-tertiary" },
-    { bg: "bg-error/5", border: "border-error/30", text: "text-error", dot: "bg-error" },
-    { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", dot: "bg-amber-500" },
-    { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" },
-    { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "bg-blue-500" },
-    { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", dot: "bg-purple-500" },
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen p-7 relative">
+        <div className="flex items-center justify-center h-96">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+            <span className="text-slate-400 text-sm font-medium">Loading projects...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-4 my-2 flex flex-col gap-4 h-full">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <span className="text-sm font-semibold text-primary uppercase tracking-wider">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-        </span>
+    <div className="p-2 flex flex-col gap-5 min-h-screen">
+      {/* Page Header */}
+      <PageHeader
+        title="Projects"
+        description="Manage and track projects across departments"
+        action={{
+          label: "Create New Project",
+          onClick: () => setShowCreateModal(true),
+          icon: "add_circle",
+        }}
+      />
+
+      {/* Organization Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 items-center">
+        {/* All Organizations Tab */}
         <button
-          onClick={() => setShowCreateModal(true)}
-          className="group px-5 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-on-surface hover:border-primary/50 hover:shadow-md transition-all duration-200 text-sm font-medium flex items-center gap-2"
+          onClick={() => {
+            setSelectedOrgId("");
+            setSelectedDepartmentId("");
+          }}
+          className={`
+            px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
+            ${!selectedOrgId
+              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
+              : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
+            }
+          `}
         >
-          <span className="material-symbols-outlined text-[20px] group-hover:rotate-12 transition-transform">add_circle</span>
-          Create New Project
+          <span className="material-symbols-outlined text-lg">grid_view</span>
+          All Organizations
+          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+            !selectedOrgId ? "bg-emerald-500 text-emerald-100" : "bg-slate-100 text-slate-400"
+          }`}>
+            {projects.length}
+          </span>
         </button>
+
+        {/* Separator */}
+        <div className="w-px h-8 bg-slate-200 self-center mx-1"></div>
+
+        {/* Organization Tabs */}
+        {organizations.map((org, index) => {
+          const orgDeptIds = departments
+            .filter(d => d.organizationId === org.id)
+            .map(d => d.id);
+          const orgProjectCount = projects.filter(p => orgDeptIds.includes(p.departmentId)).length;
+          
+          return (
+            <button
+              key={org.id}
+              onClick={() => {
+                setSelectedOrgId(org.id);
+                setSelectedDepartmentId("");
+              }}
+              className={`
+                px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
+                ${selectedOrgId === org.id
+                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
+                  : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
+                }
+              `}
+            >
+              <span className="material-symbols-outlined text-lg">business</span>
+              {org.name}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                selectedOrgId === org.id ? "bg-indigo-500 text-indigo-100" : "bg-slate-100 text-slate-400"
+              }`}>
+                {orgProjectCount}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Department Cards Section */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-h2 text-h2 text-on-surface font-bold flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">account_balance</span>
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg text-indigo-500">account_tree</span>
             Departments
-          </h2>
-          {selectedDepartmentId && (
+          </h3>
+          {(selectedDepartmentId || selectedOrgId) && (
             <button
-              onClick={() => setSelectedDepartmentId("")}
-              className="text-xs font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1"
+              onClick={() => {
+                setSelectedDepartmentId("");
+                setSelectedOrgId("");
+              }}
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1"
             >
-              <span className="material-symbols-outlined text-[14px]">close</span>
-              Clear Filter
+              <span className="material-symbols-outlined text-sm">close</span>
+              Clear Filters
             </button>
           )}
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-          {/* All Departments Card */}
+
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {/* All Departments Button */}
           <button
             onClick={() => setSelectedDepartmentId("")}
-            className={classNames(
-              "shrink-0 p-4 rounded-xl transition-all duration-200 min-w-50",
-              !selectedDepartmentId
-                ? "border-primary bg-primary/5 shadow-md"
-                : "border-outline-variant/30 bg-surface-container-lowest hover:border-primary/30 hover:shadow-sm"
-            )}
+            className={`
+              shrink-0 p-4 rounded-xl border transition-all duration-200 min-w-[180px]
+              ${!selectedDepartmentId
+                ? "border-indigo-300 bg-indigo-50 shadow-sm"
+                : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+              }
+            `}
           >
-            <div className="flex items-center gap-2 mb-4">
-              <span className="material-symbols-outlined text-primary text-[20px]">grid_view</span>
-              <span className="text-sm font-bold text-on-surface">All Departments</span>
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`material-symbols-outlined text-xl ${!selectedDepartmentId ? "text-indigo-600" : "text-slate-400"}`}>
+                layers
+              </span>
+              <span className={`text-sm font-bold ${!selectedDepartmentId ? "text-indigo-700" : "text-slate-700"}`}>
+                All Departments
+              </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-on-surface">{projects.length}</span>
-              <span className="text-[11px] text-outline">projects</span>
+              <span className={`text-2xl font-bold ${!selectedDepartmentId ? "text-indigo-700" : "text-slate-700"}`}>
+                {filteredProjects.length}
+              </span>
+              <span className="text-[11px] text-slate-400">projects</span>
             </div>
           </button>
 
           {/* Department Cards */}
-          {departments.map((dept, index) => {
-            const deptProjects = projects.filter(p => p.departmentId === dept.id);
-            const colors = departmentColors[index % departmentColors.length];
+          {filteredDepartments.map((dept, index) => {
+            const deptProjects = filteredProjects.filter(p => p.departmentId === dept.id);
+            const colors = getDepartmentColor(index);
             const isSelected = selectedDepartmentId === dept.id;
 
             return (
               <button
                 key={dept.id}
                 onClick={() => setSelectedDepartmentId(isSelected ? "" : dept.id)}
-                className={classNames(
-                  "shrink-0 p-4 rounded-xl border-2 transition-all duration-200 min-w-50",
-                  isSelected
+                className={`
+                  shrink-0 p-4 rounded-xl border-2 transition-all duration-200 min-w-[180px]
+                  ${isSelected
                     ? `${colors.border} ${colors.bg} shadow-md`
-                    : "border-outline-variant/30 bg-surface-container-lowest hover:border-primary/30 hover:shadow-sm"
-                )}
+                    : "border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm"
+                  }
+                `}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                  <span className={`text-sm font-bold ${isSelected ? colors.text : 'text-on-surface'}`}>{dept.name}</span>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
+                  <span className={`text-sm font-bold ${isSelected ? colors.text : 'text-slate-700'}`}>
+                    {dept.name}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className={`text-2xl font-bold ${isSelected ? colors.text : 'text-on-surface'}`}>
+                  <span className={`text-2xl font-bold ${isSelected ? colors.text : 'text-slate-700'}`}>
                     {deptProjects.length}
                   </span>
-                  <span className="text-[11px] text-outline">projects</span>
+                  <span className="text-[11px] text-slate-400">projects</span>
+                </div>
+                {/* Mini progress indicator */}
+                <div className="mt-3 w-full h-1 rounded-full bg-slate-100 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${colors.dot}`}
+                    style={{ width: `${deptProjects.length > 0 ? Math.min((deptProjects.length / projects.length) * 100, 100) : 0}%` }}
+                  />
                 </div>
               </button>
             );
           })}
+
+          {filteredDepartments.length === 0 && selectedOrgId && (
+            <div className="shrink-0 p-4 rounded-xl border border-slate-200 bg-slate-50 min-w-[200px] flex items-center justify-center">
+              <span className="text-sm text-slate-400">No departments in this organization</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Dual Pane Layout */}
-      <div className="flex-1 flex overflow-hidden gap-lg">
+      <div className="flex-1 flex overflow-hidden gap-5 min-h-[500px]">
         {/* LEFT COLUMN: Projects Board */}
         <ProjectsBoard
-          projects={projects}
+          projects={filteredProjects}
           selectedProjectId={selectedProjectId}
           selectedDepartmentId={selectedDepartmentId}
           onSelectProject={setSelectedProjectId}
@@ -251,15 +376,19 @@ export function ProjectsPage() {
             />
           </ProjectDetailPane>
         ) : (
-          <section className="flex-1 glass-card rounded-xl p-lg flex items-center justify-center">
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <span className="material-symbols-outlined text-outline text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-                folder_open
-              </span>
-              <p className="text-on-surface-variant">No project selected</p>
-              <p className="text-sm text-outline mt-1">Choose a project to inspect milestones and AI signals.</p>
+          <div className="flex-1 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-8 flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-slate-400 text-4xl">
+                  folder_open
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-700 mb-2">No project selected</h3>
+              <p className="text-sm text-slate-400 max-w-xs">
+                Choose a project from the board to view details, milestones, and AI insights
+              </p>
             </div>
-          </section>
+          </div>
         )}
       </div>
 
@@ -270,7 +399,7 @@ export function ProjectsPage() {
         onSubmit={handleCreateProject}
         form={form}
         setForm={setForm}
-        departments={departments}
+        departments={filteredDepartments}
         users={users}
       />
 
@@ -281,7 +410,7 @@ export function ProjectsPage() {
         onSubmit={handleEditProject}
         form={form}
         setForm={setForm}
-        departments={departments}
+        departments={filteredDepartments}
         users={users}
       />
 

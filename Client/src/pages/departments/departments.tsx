@@ -11,7 +11,7 @@ import {
   selectedCardClass,
 } from "../../ui";
 
-export function DepartmentsPage() {
+export function Departments() {
   const { auth, hasRole } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

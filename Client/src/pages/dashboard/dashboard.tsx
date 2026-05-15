@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { NotificationItem, Task, Department, User } from "../../types";
@@ -47,35 +47,37 @@ export function DashboardPage() {
       .finally(() => setLoading(false));
   }, [auth]);
 
-  const departmentWorkload: WorkloadItem[] = departments.map((dept) => {
-    const deptUsers = users.filter((u) => u.departmentId === dept.id);
-    const deptTasks = myTasks.filter((t) => {
-      const assignee = users.find((u) => u.id === t.assignedToUserId);
-      return assignee?.departmentId === dept.id;
-    });
-    
-    const totalTasks = deptTasks.length;
-    const completedTasks = deptTasks.filter((t) => t.status === "Completed" || t.progressPercentage === 100).length;
-    const activeTasks = totalTasks - completedTasks;
-    
-    const memberCount = deptUsers.length;
-    const avgWorkload = memberCount > 0 
-      ? deptUsers.reduce((sum, u) => sum + u.aiWorkloadScore, 0) / memberCount 
-      : 0;
-    
-    const workloadScore = memberCount > 0 
-      ? (totalTasks / memberCount) * 10 + avgWorkload 
-      : totalTasks * 10;
+  const departmentWorkload: WorkloadItem[] = useMemo(() => {
+    return departments.map((dept) => {
+      const deptUsers = users.filter((u) => u.departmentId === dept.id);
+      const deptTasks = myTasks.filter((t) => {
+        const assignee = users.find((u) => u.id === t.assignedToUserId);
+        return assignee?.departmentId === dept.id;
+      });
+      
+      const totalTasks = deptTasks.length;
+      const completedTasks = deptTasks.filter((t) => t.status === "Completed" || t.progressPercentage === 100).length;
+      const activeTasks = totalTasks - completedTasks;
+      
+      const memberCount = deptUsers.length;
+      const avgWorkload = memberCount > 0 
+        ? deptUsers.reduce((sum, u) => sum + u.aiWorkloadScore, 0) / memberCount 
+        : 0;
+      
+      const workloadScore = memberCount > 0 
+        ? (totalTasks / memberCount) * 10 + avgWorkload 
+        : totalTasks * 10;
 
-    return {
-      id: dept.id,
-      name: dept.name,
-      score: Math.min(workloadScore, 150),
-      activeTasks,
-      memberCount,
-      workloadScore: Math.round(workloadScore),
-    };
-  });
+      return {
+        id: dept.id,
+        name: dept.name,
+        score: Math.min(workloadScore, 150),
+        activeTasks,
+        memberCount,
+        workloadScore: Math.round(workloadScore),
+      };
+    });
+  }, [departments, users, myTasks]);
 
   if (loading) return <LoadingPanel label="Loading control room..." />;
   if (error) return <ErrorPanel message={error} />;
@@ -207,7 +209,7 @@ export function DashboardPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
               {/* Critical Card */}
-              <div className="glass-panel p-md rounded-xl border border-error-container bg-error-container/10 relative overflow-hidden">
+              <div className="glass-panel p-md rounded-xl border border-error-container bg-error-container-10 relative overflow-hidden">
                 <div className="absolute top-md right-md w-2 h-2 rounded-full bg-error status-pulse"></div>
                 <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">API Gateway Timeout</h3>
                 <p className="font-body-md text-on-surface-variant text-[13px] mb-md">SLA violation risk critical. 45ms latency spike detected in US-East region.</p>
@@ -218,7 +220,7 @@ export function DashboardPage() {
               </div>
 
               {/* Warning Card */}
-              <div className="glass-panel p-md rounded-xl border border-[#F59E0B]/30 bg-[#FEF3C7]/20 relative overflow-hidden">
+              <div className="glass-panel p-md rounded-xl border-[#F59E0B]/30 bg-warning-light-20 relative overflow-hidden">
                 <div className="absolute top-md right-md w-2 h-2 rounded-full bg-[#F59E0B]"></div>
                 <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">Resource Bottleneck</h3>
                 <p className="font-body-md text-on-surface-variant text-[13px] mb-md">Design team allocation exceeding 110% capacity for current sprint.</p>
@@ -237,7 +239,7 @@ export function DashboardPage() {
             </div>
             <div className="flex flex-col gap-sm flex-1">
               {/* Danger Alert */}
-              <div className="p-sm rounded-lg bg-error-container/10 border-l-4 border-error flex flex-col gap-1">
+              <div className="p-sm rounded-lg bg-error-container-10 border-l-4 border-error flex flex-col gap-1">
                 <div className="flex justify-between items-start">
                   <span className="font-body-md font-bold text-error text-[13px]">Server Downtime Risk</span>
                   <span className="text-[10px] text-outline">5m ago</span>

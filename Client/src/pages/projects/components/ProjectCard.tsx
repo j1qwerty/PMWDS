@@ -42,7 +42,7 @@ export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCar
         label: "On Track", dot: "bg-primary", border: "border-outline-variant/30",
         borderSelected: "border-primary",
         progressColor: "stroke-primary", bgHover: "hover:bg-primary/5",
-        bgSelected: "bg-primary/5", textColor: "text-primary",
+        bgSelected: "", textColor: "text-primary",
         shadow: "shadow-sm hover:shadow-md",
       },
       Completed: {

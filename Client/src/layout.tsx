@@ -102,11 +102,11 @@ const sectionThemes: Record<string, {
     dot: "bg-secondary",
   },
   Tools: {
-    active: "bg-tertiary/10 text-tertiary font-semibold",
-    hover: "hover:bg-tertiary/5 hover:text-tertiary",
-    bgHover: "hover:bg-tertiary/5",
+    active: "bg-green-50 text-green-500 font-semibold",
+    hover: "hover:bg-green-50 hover:text-green-500",
+    bgHover: "hover:bg-green-50",
     borderActive: "border-r-[3px] border-tertiary",
-    textActive: "text-tertiary",
+    textActive: "text-green-500",
     textHover: "hover:text-tertiary",
     textDefault: "text-on-surface-variant",
     iconActive: "text-tertiary",
@@ -132,6 +132,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { auth, logout, hasRole } = useAuth();
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [oldUiExpanded, setOldUiExpanded] = useState(false);
 
   useEffect(() => {
     if (!auth) return;
@@ -142,7 +143,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       .catch(() => setUnreadCount(0));
   }, [auth]);
 
-  const navGroups: Array<{
+  const newUiNavGroups: Array<{
     title: string;
     items: Array<{
       path: string;
@@ -165,32 +166,66 @@ function Layout({ children }: { children: React.ReactNode }) {
       {
         title: "Team",
         items: [
-          { path: "/organizations", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          { path: "/organizationStructure", label: "organizationStructure", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          { path: "/departments", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
+          { path: "/organizationStructure", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
+          { path: "/departmentsPage", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/users", label: "People", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
           { path: "/profiles", label: "Profiles", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
-          { path: "/roles", label: "Roles", icon: "roles", roles: ["SuperAdmin"] },
           { path: "/skills", label: "Skills", icon: "skill", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
         ],
       },
       {
         title: "Tools",
         items: [
-          // { path: "/knowledge", label: "Knowledge", icon: "knowledge", roles: [] },
           { path: "/reports", label: "Reports", icon: "reports", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/ai", label: "AI Insights", icon: "ai", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          // { path: "/dashboards", label: "Dashboards", icon: "dashboard", roles: [] },
-          // { path: "/integrations", label: "Integrations", icon: "integration", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          // { path: "/webhooks", label: "Webhooks", icon: "webhook", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
         ],
       },
       {
         title: "System",
         items: [
+          { path: "/roles", label: "Roles", icon: "roles", roles: ["SuperAdmin"] },
           { path: "/activity-logs", label: "Activity Logs", icon: "activity", roles: [] },
-          // { path: "/settings", label: "Settings", icon: "settings", roles: [] },
-          // { path: "/permissions", label: "Permissions", icon: "permissions", roles: ["SuperAdmin"] },
+          { path: "/settings", label: "Settings", icon: "settings", roles: ["SuperAdmin"] },
+        ],
+      },
+    ];
+
+  const oldUiNavGroups: Array<{
+    title: string;
+    items: Array<{
+      path: string;
+      label: string;
+      icon: string;
+      roles: Role[];
+      commented?: boolean;
+    }>;
+  }> = [
+      {
+        title: "Workspace",
+        items: [
+          { path: "/old/projects", label: "Projects (Old)", icon: "projects", roles: [], commented: true },
+          { path: "/old/tasks", label: "Tasks (Old)", icon: "tasks", roles: [], commented: true },
+          { path: "/old/milestones", label: "Milestones (Old)", icon: "milestones", roles: [], commented: true },
+          { path: "/organizations", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
+          { path: "/departments", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
+
+        ],
+      },
+      {
+        title: "Tools",
+        items: [
+          { path: "/old/ai", label: "AI Insights (Old)", icon: "ai", roles: [], commented: true },
+          { path: "/old/reports", label: "Reports (Old)", icon: "reports", roles: [], commented: true },
+          { path: "/knowledge", label: "Knowledge", icon: "knowledge", roles: [], commented: true },
+          { path: "/dashboards", label: "Dashboards", icon: "dashboard", roles: [], commented: true },
+          { path: "/integrations", label: "Integrations", icon: "integration", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"], commented: true },
+          { path: "/webhooks", label: "Webhooks", icon: "webhook", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"], commented: true },
+        ],
+      },
+      {
+        title: "System",
+        items: [
+          { path: "/permissions", label: "Permissions", icon: "permissions", roles: ["SuperAdmin"], commented: true },
         ],
       },
     ];
@@ -202,10 +237,9 @@ function Layout({ children }: { children: React.ReactNode }) {
     return location.pathname.startsWith(path);
   };
 
+  const allItems = [...newUiNavGroups.flatMap((g) => g.items), ...oldUiNavGroups.flatMap((g) => g.items)];
   const pageTitle =
-    navGroups
-      .flatMap((g) => g.items)
-      .find((item) => isActive(item.path))?.label || "PMWDS";
+    allItems.find((item) => isActive(item.path))?.label || "PMWDS";
 
   return (
     <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
@@ -259,9 +293,9 @@ function Layout({ children }: { children: React.ReactNode }) {
             space-y-5
           "
         >
-          {navGroups.map((group, index) => {
+          {newUiNavGroups.map((group, index) => {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
-            
+
             return (
               <div key={group.title} className="space-y-1.5">
                 {/* Show section title for all groups except first (Overview) */}
@@ -279,7 +313,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                     )
                     .map((item) => {
                       const active = isActive(item.path);
-                      
+
                       return (
                         <Link
                           key={item.path}
@@ -318,6 +352,73 @@ function Layout({ children }: { children: React.ReactNode }) {
               </div>
             );
           })}
+
+          {/* Old UI Section - Collapsible */}
+          <div className="space-y-1.5">
+            <button
+              onClick={() => setOldUiExpanded(!oldUiExpanded)}
+              className="flex items-center gap-2 px-3 py-2 w-full text-left text-[10px] uppercase tracking-[0.18em] font-semibold text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <span className="transition-transform duration-200" style={{ transform: oldUiExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+              <span>Old UI Pages</span>
+              <span className="ml-auto text-[9px] text-outline">({oldUiExpanded ? 'hide' : 'show'})</span>
+            </button>
+
+            {oldUiExpanded && (
+              <div className="space-y-[2px]">
+                {oldUiNavGroups.map((group) => (
+                  <div key={group.title}>
+                    <div className="px-3 pb-1 text-[9px] uppercase tracking-[0.15em] text-outline">
+                      {group.title}
+                    </div>
+                    {group.items
+                      .filter(
+                        (item) =>
+                          item.roles.length === 0 || hasRole(...item.roles)
+                      )
+                      .map((item) => {
+                        const active = isActive(item.path);
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={classNames(
+                              "relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200",
+                              active
+                                ? "bg-warning/10 text-warning font-semibold border-r-[3px] border-warning"
+                                : "text-on-surface-variant hover:bg-warning/5 hover:text-warning border-r-[3px] border-transparent",
+                              "group"
+                            )}
+                          >
+                            <span
+                              className={classNames(
+                                "transition-all duration-300",
+                                active
+                                  ? "text-warning scale-110"
+                                  : "text-outline group-hover:scale-110"
+                              )}
+                            >
+                              {iconMap[item.icon]}
+                            </span>
+
+                            <span className="text-[13px] font-medium tracking-[0.01em]">
+                              {item.label}
+                            </span>
+                            {item.commented && (
+                              <span className="ml-1 text-[9px] text-outline italic">(hidden)</span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Logout */}

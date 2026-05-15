@@ -11,25 +11,27 @@ export function NotificationList({
 
   if (!itemsArray.length) {
     return (
-      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20">
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-primary">inbox</span>
+            <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
             <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
           </div>
-          <span className="bg-primary text-on-primary text-[10px] font-bold px-2 py-[2px] rounded-full">0 New</span>
+          <span className="bg-surface-container text-on-surface-variant text-[10px] font-semibold px-2 py-[2px] rounded-full">0 New</span>
         </div>
         <div className="flex flex-col items-center justify-center py-lg text-center">
-          <span className="material-symbols-outlined text-outline text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-            notifications_off
-          </span>
-          <p className="text-on-surface-variant text-sm">No notifications</p>
+          <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mb-sm">
+            <span className="material-symbols-outlined text-outline text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              notifications_off
+            </span>
+          </div>
+          <p className="text-on-surface-variant text-sm font-medium">All caught up!</p>
+          <p className="text-on-surface-variant text-xs mt-1">No new notifications</p>
         </div>
       </div>
     );
   }
 
-  // Map priority to exact reference notification types
   const getNotificationType = (item: NotificationItem) => {
     const priority = item.priority || "Info";
     
@@ -37,10 +39,11 @@ export function NotificationList({
       case "Critical":
         return {
           type: "critical",
-          icon: "priority_high",
-          bg: "bg-error/10",
+          icon: "error",
+          bg: "bg-error-container-10",
           iconColor: "text-error",
           highlightColor: "text-error",
+          badge: "bg-error text-white",
         };
       case "High":
         return {
@@ -49,16 +52,18 @@ export function NotificationList({
           bg: "bg-primary/10",
           iconColor: "text-primary",
           highlightColor: "text-primary",
+          badge: "bg-primary text-white",
         };
       case "Info":
       case "Success":
       default:
         return {
           type: "release",
-          icon: "rocket_launch",
-          bg: "bg-secondary-container/10",
+          icon: "info",
+          bg: "bg-secondary-container-10",
           iconColor: "text-secondary",
           highlightColor: "text-secondary",
+          badge: "bg-secondary text-white",
         };
     }
   };
@@ -80,19 +85,19 @@ export function NotificationList({
   const unreadCount = itemsArray.filter(item => !item.isRead).length;
 
   return (
-    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
+    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20">
       <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
-          <span className="material-symbols-outlined text-primary">inbox</span>
+          <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
           <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
         </div>
         {unreadCount > 0 && (
-          <span className="bg-primary text-on-primary text-[10px] font-bold px-2 py-[2px] rounded-full">
+          <span className="bg-primary text-white text-[10px] font-bold px-2 py-[2px] rounded-full">
             {unreadCount} New
           </span>
         )}
       </div>
-      <div className="flex flex-col gap-md">
+      <div className="flex flex-col gap-sm">
         {itemsArray.map((item) => {
           const config = getNotificationType(item);
           
@@ -113,28 +118,38 @@ export function NotificationList({
           return (
             <div 
               key={item.id} 
-              className="flex gap-md items-start p-sm rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors"
+              className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30"
             >
-              <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center shrink-0`}>
-                <span className={`material-symbols-outlined ${config.iconColor} text-[16px]`}>
+              <div className={`w-9 h-9 rounded-xl ${config.bg} flex items-center justify-center shrink-0 shadow-sm`}>
+                <span className={`material-symbols-outlined ${config.iconColor} text-[18px]`} style={{ fontVariationSettings: "'FILL' 1" }}>
                   {config.icon}
                 </span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[13px] text-on-surface font-medium">
-                  {mainText}
-                  {highlightedText && (
-                    <span className={config.highlightColor}>{highlightedText}</span>
-                  )}
-                </span>
-                {item.message && (
-                  <span className="text-[11px] text-on-surface-variant mt-xs">
-                    {item.message.slice(0, 80)}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] text-on-surface font-semibold truncate">
+                    {mainText}
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${config.badge}`}>
+                    {item.priority}
+                  </span>
+                </div>
+                {highlightedText && (
+                  <span className={`text-[13px] font-medium ${config.highlightColor}`}>
+                    {highlightedText}
                   </span>
                 )}
-                <span className="text-[11px] text-outline mt-1">
-                  {formatTime(item.createdDate)}
-                </span>
+                {item.message && (
+                  <p className="text-[12px] text-on-surface-variant mt-1 line-clamp-2">
+                    {item.message.slice(0, 80)}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] text-outline">{formatTime(item.createdDate)}</span>
+                  {!item.isRead && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  )}
+                </div>
               </div>
             </div>
           );
