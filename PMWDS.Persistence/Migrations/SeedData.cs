@@ -31,6 +31,8 @@ public static class SeedData
         await SeedKnowledgeAsync(context, ct);
         await SeedActivityAsync(context, ct);
         await SeedAiAsync(context, ct);
+        await SeedAiProviderCredentialsAsync(context, ct);
+        await SeedAiProviderCredentialsAsync(context, ct);
     }
 
     private static async Task SeedOrganizationsAsync(ApplicationDbContext context, CancellationToken ct)
@@ -106,7 +108,12 @@ public static class SeedData
             ("KNOWLEDGE.MANAGE", "Manage Knowledge", "Publish articles and lessons learned.", "Knowledge", false),
             ("INTEGRATIONS.MANAGE", "Manage Integrations", "Configure integrations and webhooks.", "Integrations", true),
             ("REPORTS.MANAGE", "Manage Reports", "Generate and schedule reports.", "Reports", false),
-            ("SYSTEM.ADMIN", "System Administration", "Full system administration access.", "System", true)
+            ("SYSTEM.ADMIN", "System Administration", "Full system administration access.", "System", true),
+            ("SYSTEM.DATABASE.VIEW", "View Database Status", "View active database provider and fallback status.", "System", true),
+            ("AI.SETTINGS.MANAGE", "Manage AI Settings", "Manage AI providers, models, and API keys.", "AI", true),
+            ("USERS.PROFILE_PICTURE.MANAGE", "Manage Profile Pictures", "Upload and update user profile pictures.", "Users", false),
+            ("USERS.DEPARTMENTS.MANAGE", "Manage User Departments", "Assign users to departments and organizations.", "Users", false),
+            ("ACTIVITY_LOGS.VIEW", "View Activity Logs", "View user and team activity logs.", "Audit", true)
         };
 
         foreach (var spec in specs)
@@ -129,7 +136,7 @@ public static class SeedData
         var permissions = await context.Permissions.ToDictionaryAsync(p => p.Code, ct);
         var specs = new[]
         {
-            new RoleSpec("SuperAdmin", "Full administrative access.", 100, new[] { "AUTH.MANAGE", "USERS.MANAGE", "ROLES.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "INTEGRATIONS.MANAGE", "REPORTS.MANAGE", "SYSTEM.ADMIN" }),
+            new RoleSpec("SuperAdmin", "Full administrative access.", 100, new[] { "AUTH.MANAGE", "USERS.MANAGE", "ROLES.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "INTEGRATIONS.MANAGE", "REPORTS.MANAGE", "SYSTEM.ADMIN", "SYSTEM.DATABASE.VIEW", "AI.SETTINGS.MANAGE", "USERS.PROFILE_PICTURE.MANAGE", "USERS.DEPARTMENTS.MANAGE", "ACTIVITY_LOGS.VIEW" }),
             new RoleSpec("ProjectManager", "Manages projects and project teams.", 80, new[] { "PROJECTS.MANAGE", "TASKS.MANAGE", "REPORTS.MANAGE", "KNOWLEDGE.MANAGE" }),
             new RoleSpec("DepartmentHead", "Manages department capacity and planning.", 70, new[] { "USERS.MANAGE", "PROJECTS.MANAGE", "REPORTS.MANAGE" }),
             new RoleSpec("TeamLead", "Coordinates delivery for a team.", 60, new[] { "TASKS.MANAGE", "KNOWLEDGE.MANAGE" }),
@@ -695,6 +702,36 @@ public static class SeedData
         await context.SaveChangesAsync(ct);
     }
 
+    private static async Task SeedAiProviderCredentialsAsync(ApplicationDbContext context, CancellationToken ct)
+    {
+        var specs = new[]
+        {
+            new AIProviderCredentialSpec("OpenAI", "OpenAI", true, "https://api.openai.com/v1", "gpt-4o"),
+            new AIProviderCredentialSpec("OpenRouter", "OpenRouter", false, "https://openrouter.ai/api/v1", "openai/gpt-oss-120b:free")
+        };
+
+        foreach (var spec in specs)
+        {
+            if (await context.AIProviderCredentials.AnyAsync(p => p.Provider == spec.Provider, ct))
+            {
+                continue;
+            }
+
+            var credential = AIProviderCredential.Create(
+                spec.Provider,
+                spec.DisplayName,
+                spec.Enabled,
+                useEnvironmentDefault: true,
+                spec.BaseUrl,
+                apiKey: null,
+                spec.DefaultModel);
+            credential.SetCreatedBy(SeedUser);
+            await context.AIProviderCredentials.AddAsync(credential, ct);
+        }
+
+        await context.SaveChangesAsync(ct);
+    }
+
     private static async Task<AIModel> EnsureAiModelAsync(ApplicationDbContext context, string name, string type, CancellationToken ct)
     {
         var model = await context.AIModels.FirstOrDefaultAsync(m => m.Name == name && m.ModelType == type, ct);
@@ -776,15 +813,15 @@ public static class SeedData
         Guid Dept(string code) => departments.FirstOrDefault(d => d.Code == code)?.Id ?? departments.First().Id;
         return new[]
         {
-            new UserSpec("admin@pmwds.com", "System", "Administrator", "ADMIN001", "SuperAdmin", "SuperAdmin", Dept("ENG"), AvailabilityStatus.Available, 100, 92, 26, 0.08),
-            new UserSpec("manager@pmwds.com", "Project", "Manager", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
-            new UserSpec("head@pmwds.com", "Department", "Head", "DH001", "DepartmentHead", "DepartmentHead", Dept("ENG"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
-            new UserSpec("lead@pmwds.com", "Team", "Lead", "TL001", "TeamLead", "TeamLead", Dept("OPS"), AvailabilityStatus.Available, 82, 80, 42, 0.18),
-            new UserSpec("member@pmwds.com", "Team", "Member", "TM001", "TeamMember", "TeamMember", Dept("ENG"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
-            new UserSpec("viewer@pmwds.com", "Read", "Only", "VW001", "Viewer", "Viewer", Dept("STR"), AvailabilityStatus.Available, 100, 60, 18, 0.05),
-            new UserSpec("ava.patel@pmwds.com", "Ava", "Patel", "ENG101", "Senior Engineer", "TeamMember", Dept("ENG"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
-            new UserSpec("noah.chen@northwind-labs.example", "Noah", "Chen", "NDL201", "Delivery Lead", "TeamLead", Dept("OPS"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
-            new UserSpec("mia.roberts@contoso-transform.example", "Mia", "Roberts", "CTO301", "Strategy Analyst", "TeamMember", Dept("STR"), AvailabilityStatus.Available, 92, 76, 35, 0.11)
+            new UserSpec("admin@pmwds.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", Dept("ENG"), AvailabilityStatus.Available, 100, 92, 26, 0.08),
+            new UserSpec("manager@pmwds.com", "Priya", "Menon", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new UserSpec("head@pmwds.com", "Rohan", "Iyer", "DH001", "DepartmentHead", "DepartmentHead", Dept("ENG"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
+            new UserSpec("lead@pmwds.com", "Nisha", "Rao", "TL001", "TeamLead", "TeamLead", Dept("OPS"), AvailabilityStatus.Available, 82, 80, 42, 0.18),
+            new UserSpec("member@pmwds.com", "Karan", "Verma", "TM001", "TeamMember", "TeamMember", Dept("ENG"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
+            new UserSpec("viewer@pmwds.com", "Meera", "Nair", "VW001", "Viewer", "Viewer", Dept("STR"), AvailabilityStatus.Available, 100, 60, 18, 0.05),
+            new UserSpec("ananya.patel@pmwds.com", "Ananya", "Patel", "ENG101", "Senior Engineer", "TeamMember", Dept("ENG"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
+            new UserSpec("vikram.singh@northwind-labs.example", "Vikram", "Singh", "NDL201", "Delivery Lead", "TeamLead", Dept("OPS"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
+            new UserSpec("sneha.kulkarni@contoso-transform.example", "Sneha", "Kulkarni", "CTO301", "Strategy Analyst", "TeamMember", Dept("STR"), AvailabilityStatus.Available, 92, 76, 35, 0.11)
         };
     }
 
@@ -821,7 +858,7 @@ public static class SeedData
     private static async Task AssignDepartmentHeadsAsync(ApplicationDbContext context, CancellationToken ct)
     {
         var head = await context.Users.FirstOrDefaultAsync(u => u.Email == "head@pmwds.com", ct);
-        var lead = await context.Users.FirstOrDefaultAsync(u => u.Email == "noah.chen@northwind-labs.example", ct);
+        var lead = await context.Users.FirstOrDefaultAsync(u => u.Email == "vikram.singh@northwind-labs.example", ct);
         var departments = await context.Departments.ToListAsync(ct);
 
         foreach (var department in departments)
@@ -872,6 +909,7 @@ public static class SeedData
     private sealed record DepartmentSpec(string OrganizationName, string Name, string Code, string Description, int Capacity);
     private sealed record AlertRuleSpec(string Name, string ConditionType, string Expression, string ActionType, object Parameters);
     private sealed record IntegrationSpec(string Type, string Name, object Configuration, bool Enabled);
+    private sealed record AIProviderCredentialSpec(string Provider, string DisplayName, bool Enabled, string BaseUrl, string DefaultModel);
     private sealed record RoleSpec(string Name, string Description, int Level, IReadOnlyCollection<string> PermissionCodes);
     private sealed record UserSpec(string Email, string FirstName, string LastName, string EmployeeCode, string JobTitle, string Role, Guid DepartmentId, AvailabilityStatus Availability, double AvailabilityPercent, double Performance, double Workload, double Burnout);
     private sealed record ProjectSpec(string Name, string Description, string Category, ProjectPriority Priority, Guid DepartmentId, Guid ManagerId, DateTime Start, DateTime End, decimal Budget, decimal ActualCost, string Client, double Progress, double Health, double DelayRisk, double BudgetRisk, string Insight);

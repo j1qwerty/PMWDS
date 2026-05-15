@@ -12,7 +12,6 @@ interface AIConfigurationProps {
   testingCustom: string | null;
   openRouterModels: Array<{ id: string; name: string; free: boolean }>;
   loadingModels: boolean;
-  isDev: boolean;
   onSaveAI: () => void;
   onTestProvider: (provider: string, apiKey: string, model?: string) => void;
   onTestCustomPrompt: (provider: string, apiKey: string, selectedModel?: string) => void;
@@ -33,7 +32,6 @@ export function AIConfiguration({
   testingCustom,
   openRouterModels,
   loadingModels,
-  isDev,
   onSaveAI,
   onTestProvider,
   onTestCustomPrompt,
@@ -157,14 +155,29 @@ export function AIConfiguration({
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">API Key</label>
+                  <label className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={provider.useEnvironmentDefault}
+                      onChange={e => onUpdateProvider(provider.provider, "useEnvironmentDefault", e.target.checked)}
+                      disabled={!provider.enabled}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    Use default key from .env
+                  </label>
                   <input
                     type="password"
                     value={provider.apiKey}
                     onChange={e => onUpdateProvider(provider.provider, "apiKey", e.target.value)}
-                    placeholder={isDev && provider.provider === "OpenRouter" ? "Using dev test key" : "Enter API key"}
-                    disabled={!provider.enabled}
+                    placeholder={provider.hasStoredKey ? "Stored key exists. Enter a new key to replace it." : "Enter API key"}
+                    disabled={!provider.enabled || provider.useEnvironmentDefault}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 transition-all disabled:bg-slate-50"
                   />
+                  {provider.useEnvironmentDefault && (
+                    <p className="mt-1.5 text-xs text-slate-400">
+                      The server will use the API key configured in the backend .env file.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Model</label>
@@ -214,7 +227,7 @@ export function AIConfiguration({
                     {testingProvider === provider.provider 
                       ? "Testing..." 
                       : testResults[provider.provider] 
-                        ? (testResults[provider.provider].success ? "Connected ✓" : "Failed ✗") 
+                        ? (testResults[provider.provider].success ? "Connected" : "Failed") 
                         : "Test Connection"}
                   </button>
                 </div>

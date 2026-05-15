@@ -2,10 +2,12 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Infrastructure.Settings;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.AI.Services;
 
@@ -52,6 +54,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly HttpClient _httpClient;
     private readonly AISettings _settings;
     private readonly IUnitOfWork _uow;
+    private readonly ApplicationDbContext _db;
 
     // In-memory session history (production: use Redis)
     private static readonly Dictionary<string, List<ChatMessagePayload>> Sessions = new();
@@ -59,31 +62,35 @@ public class OpenAICompatibleChatEngine : IChatEngine
     public OpenAICompatibleChatEngine(
         HttpClient httpClient,
         IOptions<AISettings> settings,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        ApplicationDbContext db)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _uow = uow;
+        _db = db;
     }
 
     public bool IsConfigured(string? provider = null)
     {
-        var config = ResolveProvider(provider);
+        var config = ResolveEnvironmentProvider(provider);
         return config.Enabled &&
                !string.IsNullOrWhiteSpace(config.BaseUrl) &&
                !string.IsNullOrWhiteSpace(config.ApiKey);
     }
 
-    public Task<IReadOnlyList<AIProviderInfoDto>> GetProvidersAsync(
+    public async Task<IReadOnlyList<AIProviderInfoDto>> GetProvidersAsync(
         CancellationToken ct = default)
     {
+        var openAi = await ResolveProviderAsync("OpenAI", ct);
+        var openRouter = await ResolveProviderAsync("OpenRouter", ct);
         IReadOnlyList<AIProviderInfoDto> providers =
         [
-            BuildProviderInfo("OpenAI", "OpenAI", ResolveProvider("OpenAI")),
-            BuildProviderInfo("OpenRouter", "OpenRouter", ResolveProvider("OpenRouter"))
+            BuildProviderInfo("OpenAI", "OpenAI", openAi),
+            BuildProviderInfo("OpenRouter", "OpenRouter", openRouter)
         ];
 
-        return Task.FromResult(providers);
+        return providers;
     }
 
     public async Task<IReadOnlyList<AIModelInfoDto>> SearchModelsAsync(
@@ -92,7 +99,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         int limit = 25,
         CancellationToken ct = default)
     {
-        var config = ResolveProvider(provider);
+        var config = await ResolveProviderAsync(provider, ct);
         var response = await SendAsync(
             HttpMethod.Get,
             config,
@@ -127,7 +134,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? prompt = null,
         CancellationToken ct = default)
     {
-        var resolvedProvider = ResolveProvider(provider);
+        var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
         var testPrompt = string.IsNullOrWhiteSpace(prompt)
             ? "Reply with exactly: provider test ok"
@@ -193,7 +200,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
                 $"System Context: {JsonSerializer.Serialize(contextData, JsonOptions)}"));
         }
 
-        var resolvedProvider = ResolveProvider(provider);
+        var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
         var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, Sessions[userId], ct);
 
@@ -226,7 +233,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return "AI summary not available.";
         }
 
-        var resolvedProvider = ResolveProvider(provider);
+        var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
 
         return await CompleteChatAsync(
@@ -296,7 +303,35 @@ public class OpenAICompatibleChatEngine : IChatEngine
         return await _httpClient.SendAsync(request, ct);
     }
 
-    private ResolvedProviderConfig ResolveProvider(string? provider)
+    private async Task<ResolvedProviderConfig> ResolveProviderAsync(string? provider, CancellationToken ct)
+    {
+        var environmentProvider = ResolveEnvironmentProvider(provider);
+        var stored = await _db.AIProviderCredentials
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Provider == environmentProvider.ProviderId, ct);
+
+        if (stored == null)
+        {
+            return environmentProvider;
+        }
+
+        return stored.UseEnvironmentDefault
+            ? environmentProvider with
+            {
+                Enabled = stored.Enabled,
+                BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
+                DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
+            }
+            : environmentProvider with
+            {
+                Enabled = stored.Enabled,
+                ApiKey = string.IsNullOrWhiteSpace(stored.ApiKey) ? environmentProvider.ApiKey : stored.ApiKey,
+                BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
+                DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
+            };
+    }
+
+    private ResolvedProviderConfig ResolveEnvironmentProvider(string? provider)
     {
         var providerId = string.IsNullOrWhiteSpace(provider)
             ? _settings.DefaultProvider

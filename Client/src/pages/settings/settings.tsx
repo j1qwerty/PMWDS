@@ -1,24 +1,25 @@
 import { useEffect, useState, useDeferredValue } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { AIModel, AIProvider, AISettingsResponse } from "../../types";
+import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "../../types";
 import { 
   AnimatedBackground, 
-  GlassCard, 
-  GradientButton, 
   PageHeader,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
 import { AIConfiguration } from "./AIConfiguration";
 import { ProviderMatrix } from "./ProviderMatrix";
+import { DatabaseStatusSection } from "./DatabaseStatusSection";
 
 export function SettingsPage() {
   const { logout, auth, hasRole } = useAuth();
   const isSuperAdmin = hasRole("SuperAdmin");
-  const isDev = import.meta.env.DEV;
 
   const [saved, setSaved] = useState("");
-  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database">("profile");
+  const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
+  const [databaseLoading, setDatabaseLoading] = useState(false);
+  const [databaseError, setDatabaseError] = useState("");
 
   // AI Settings State
   const [aiSettings, setAiSettings] = useState<AISettingsResponse | null>(null);
@@ -60,6 +61,23 @@ export function SettingsPage() {
       .finally(() => setAiLoading(false));
   }, [auth, isSuperAdmin]);
 
+  const fetchDatabaseStatus = async () => {
+    if (!auth || !isSuperAdmin) return;
+    setDatabaseLoading(true);
+    setDatabaseError("");
+    try {
+      setDatabaseStatus(await api.getDatabaseStatus(auth.token));
+    } catch (e) {
+      setDatabaseError(e instanceof Error ? e.message : "Failed to load database status");
+    } finally {
+      setDatabaseLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDatabaseStatus();
+  }, [auth, isSuperAdmin]);
+
   useEffect(() => {
     if (aiSettings?.defaultProvider === "OpenRouter" && !openRouterModels.length) {
       fetchOpenRouterModels();
@@ -99,6 +117,7 @@ export function SettingsPage() {
             baseUrl: p.baseUrl,
             apiKey: p.apiKey || "",
             defaultModel: p.defaultModel,
+            useEnvironmentDefault: p.useEnvironmentDefault,
           })),
       });
       setSaved(result.message || "AI settings saved successfully.");
@@ -110,7 +129,8 @@ export function SettingsPage() {
   };
 
   const testProvider = async (provider: string, apiKey: string, model?: string) => {
-    if (!apiKey && !(isDev && provider === "OpenRouter")) {
+    const providerConfig = aiSettings?.providers.find(p => p.provider === provider);
+    if (!providerConfig?.useEnvironmentDefault && !apiKey && !providerConfig?.hasStoredKey) {
       setTestResults(prev => ({ ...prev, [provider]: { success: false, message: "API key required" } }));
       return;
     }
@@ -244,6 +264,12 @@ export function SettingsPage() {
                 icon="hub"
                 label="Provider Matrix"
               />
+              <TabButton
+                active={activeTab === "database"}
+                onClick={() => setActiveTab("database")}
+                icon="database"
+                label="Database"
+              />
             </>
           )}
         </div>
@@ -271,7 +297,6 @@ export function SettingsPage() {
             testingCustom={testingCustom}
             openRouterModels={openRouterModels}
             loadingModels={loadingModels}
-            isDev={isDev}
             onSaveAI={handleSaveAI}
             onTestProvider={testProvider}
             onTestCustomPrompt={testCustomPrompt}
@@ -295,6 +320,15 @@ export function SettingsPage() {
             onModelSearchChange={setModelSearch}
             onModelSelect={setSelectedModel}
             onTestResult={setTestResult}
+          />
+        )}
+
+        {activeTab === "database" && isSuperAdmin && (
+          <DatabaseStatusSection
+            status={databaseStatus}
+            loading={databaseLoading}
+            error={databaseError}
+            onRetry={fetchDatabaseStatus}
           />
         )}
       </div>

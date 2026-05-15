@@ -44,6 +44,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<LessonLearned> LessonsLearned { get; set; }
     public DbSet<ActivityLog> ActivityLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<AIProviderCredential> AIProviderCredentials { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)

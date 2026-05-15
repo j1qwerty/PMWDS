@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Features.AI.Commands;
 using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Projects.Queries;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Settings;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
@@ -14,35 +17,33 @@ public class AIController : BaseApiController
 {
     private readonly IAIService _ai;
     private readonly AISettings _aiSettings;
-    private readonly IConfiguration _configuration;
-    private readonly string _settingsFilePath;
+    private readonly ApplicationDbContext _db;
 
-    public AIController(IAIService ai, IOptions<AISettings> aiSettings, IConfiguration configuration)
+    public AIController(IAIService ai, IOptions<AISettings> aiSettings, ApplicationDbContext db)
     {
         _ai = ai;
         _aiSettings = aiSettings.Value;
-        _configuration = configuration;
-        _settingsFilePath = Path.Combine(AppContext.BaseDirectory, "ai-settings.json");
+        _db = db;
     }
 
     [HttpGet("settings")]
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> GetAISettings(CancellationToken ct)
     {
-        var loadedSettings = LoadSettingsFromFile();
-        var settings = loadedSettings ?? _aiSettings;
+        var stored = (await _db.AIProviderCredentials.AsNoTracking().ToListAsync(ct))
+            .ToDictionary(p => p.Provider, StringComparer.OrdinalIgnoreCase);
         
         return Ok(new AISettingsDto
         {
-            DefaultProvider = settings.DefaultProvider,
-            DefaultModel = settings.DefaultModel,
-            RiskThreshold = settings.RiskThreshold,
-            UseLocalModel = settings.UseLocalModel,
-            MLModelPath = settings.MLModelPath,
+            DefaultProvider = _aiSettings.DefaultProvider,
+            DefaultModel = _aiSettings.DefaultModel,
+            RiskThreshold = _aiSettings.RiskThreshold,
+            UseLocalModel = _aiSettings.UseLocalModel,
+            MLModelPath = _aiSettings.MLModelPath,
             Providers = new List<AIProviderSettingsDto>
             {
-                new() { Provider = "OpenAI", DisplayName = "OpenAI", Enabled = settings.OpenAI.Enabled, BaseUrl = settings.OpenAI.BaseUrl, ApiKey = "", DefaultModel = settings.OpenAI.DefaultModel },
-                new() { Provider = "OpenRouter", DisplayName = "OpenRouter", Enabled = settings.OpenRouter.Enabled, BaseUrl = settings.OpenRouter.BaseUrl, ApiKey = "", DefaultModel = settings.OpenRouter.DefaultModel }
+                CreateProviderDto("OpenAI", "OpenAI", _aiSettings.OpenAI, stored),
+                CreateProviderDto("OpenRouter", "OpenRouter", _aiSettings.OpenRouter, stored)
             }
         });
     }
@@ -51,64 +52,86 @@ public class AIController : BaseApiController
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> SaveAISettings([FromBody] AISettingsDto dto, CancellationToken ct)
     {
-        var openAI = FindProvider(dto, "OpenAI");
-        var openRouter = FindProvider(dto, "OpenRouter");
-        var settings = new Dictionary<string, object>
+        if (dto.Providers.Count == 0)
         {
-            ["AI"] = new
+            return BadRequest(new { message = "At least one AI provider is required." });
+        }
+
+        foreach (var provider in dto.Providers)
+        {
+            if (string.IsNullOrWhiteSpace(provider.Provider))
             {
-                DefaultProvider = dto.DefaultProvider,
-                DefaultModel = dto.DefaultModel,
-                RiskThreshold = dto.RiskThreshold,
-                UseLocalModel = dto.UseLocalModel,
-                MLModelPath = dto.MLModelPath,
-                OpenAI = CreateProviderSettings(openAI, "https://api.openai.com/v1", "gpt-4o"),
-                OpenRouter = CreateProviderSettings(openRouter, "https://openrouter.ai/api/v1", "openai/gpt-4o-mini")
+                return BadRequest(new { message = "Provider code is required." });
             }
-        };
 
-        var json = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        await System.IO.File.WriteAllTextAsync(_settingsFilePath, json, ct);
+            if (provider.Enabled && string.IsNullOrWhiteSpace(provider.BaseUrl))
+            {
+                return BadRequest(new { message = $"{provider.Provider} base URL is required when enabled." });
+            }
 
-        return Ok(new { success = true, message = "AI settings saved successfully. Restart the application for changes to take effect." });
-    }
+            var existing = await _db.AIProviderCredentials.FirstOrDefaultAsync(
+                p => p.Provider == provider.Provider,
+                ct);
 
-    private AISettings? LoadSettingsFromFile()
-    {
-        if (!System.IO.File.Exists(_settingsFilePath)) return null;
-        try
-        {
-            var json = System.IO.File.ReadAllText(_settingsFilePath);
-            return System.Text.Json.JsonSerializer.Deserialize<AISettings>(json);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static AIProviderSettingsDto? FindProvider(AISettingsDto dto, string provider)
-        => dto.Providers.FirstOrDefault(p => p.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase));
-
-    private static Dictionary<string, object> CreateProviderSettings(
-        AIProviderSettingsDto? provider,
-        string defaultBaseUrl,
-        string defaultModel)
-    {
-        var values = new Dictionary<string, object>
-        {
-            ["Enabled"] = provider?.Enabled ?? false,
-            ["BaseUrl"] = string.IsNullOrWhiteSpace(provider?.BaseUrl) ? defaultBaseUrl : provider.BaseUrl,
-            ["DefaultModel"] = string.IsNullOrWhiteSpace(provider?.DefaultModel) ? defaultModel : provider.DefaultModel
-        };
-
-        if (!string.IsNullOrWhiteSpace(provider?.ApiKey))
-        {
-            values["ApiKey"] = provider.ApiKey;
+            if (existing == null)
+            {
+                existing = AIProviderCredential.Create(
+                    provider.Provider,
+                    provider.DisplayName,
+                    provider.Enabled,
+                    provider.UseEnvironmentDefault,
+                    provider.BaseUrl,
+                    provider.ApiKey,
+                    provider.DefaultModel);
+                existing.SetCreatedBy(User.Identity?.Name ?? "system");
+                await _db.AIProviderCredentials.AddAsync(existing, ct);
+            }
+            else
+            {
+                existing.Update(
+                    provider.Provider,
+                    provider.DisplayName,
+                    provider.Enabled,
+                    provider.UseEnvironmentDefault,
+                    provider.BaseUrl,
+                    provider.ApiKey,
+                    provider.DefaultModel);
+            }
         }
 
-        return values;
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { success = true, message = "AI provider settings saved to the database." });
     }
+
+    private static AIProviderSettingsDto CreateProviderDto(
+        string provider,
+        string displayName,
+        AIProviderOptions options,
+        IReadOnlyDictionary<string, AIProviderCredential> stored)
+        => stored.TryGetValue(provider, out var credential)
+            ? new AIProviderSettingsDto
+            {
+                Provider = credential.Provider,
+                DisplayName = credential.DisplayName,
+                Enabled = credential.Enabled,
+                UseEnvironmentDefault = credential.UseEnvironmentDefault,
+                BaseUrl = credential.BaseUrl,
+                ApiKey = "",
+                HasStoredKey = !string.IsNullOrWhiteSpace(credential.ApiKey),
+                DefaultModel = credential.DefaultModel
+            }
+            : new AIProviderSettingsDto
+            {
+                Provider = provider,
+                DisplayName = displayName,
+                Enabled = options.Enabled,
+                UseEnvironmentDefault = true,
+                BaseUrl = options.BaseUrl,
+                ApiKey = "",
+                HasStoredKey = !string.IsNullOrWhiteSpace(options.ApiKey),
+                DefaultModel = options.DefaultModel
+            };
 
     [HttpGet("recommend-assignee/{taskId:guid}")]
     [Authorize(Policy = "Manager")]
@@ -310,7 +333,9 @@ public record AIProviderSettingsDto
     public string Provider { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public bool Enabled { get; set; }
+    public bool UseEnvironmentDefault { get; set; } = true;
     public string BaseUrl { get; set; } = "";
     public string ApiKey { get; set; } = "";
+    public bool HasStoredKey { get; set; }
     public string DefaultModel { get; set; } = "";
 }

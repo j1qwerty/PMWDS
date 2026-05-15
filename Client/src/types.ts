@@ -624,8 +624,10 @@ export interface AIProviderConfig {
   provider: string;
   displayName: string;
   enabled: boolean;
+  useEnvironmentDefault: boolean;
   baseUrl: string;
   apiKey: string;
+  hasStoredKey: boolean;
   defaultModel: string;
 }
 
@@ -642,7 +644,17 @@ export interface AIProviderConfigRequest {
   provider: string;
   displayName: string;
   enabled: boolean;
+  useEnvironmentDefault: boolean;
   baseUrl: string;
   apiKey: string;
   defaultModel: string;
+}
+
+export interface DatabaseStatus {
+  provider: string;
+  providerKey: string;
+  connectionName: string;
+  dataSource: string;
+  isFallback: boolean;
+  attempts: string[];
 }

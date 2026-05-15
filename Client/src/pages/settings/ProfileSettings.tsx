@@ -46,7 +46,7 @@ export function ProfileSettings({ auth, onSave, onLogout }: ProfileSettingsProps
           <div>
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">User ID</label>
             <input
-              value={auth?.id ?? ""}
+              value={auth?.userId ?? ""}
               disabled
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 text-slate-500 font-mono outline-none"
             />

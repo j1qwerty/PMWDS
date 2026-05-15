@@ -9,7 +9,7 @@ import {
 import { api } from "./api";
 import type { AuthResponse, Role } from "./types";
 
-type AuthState = {
+export type AuthState = {
   token: string;
   expiry: string;
   userId: string;

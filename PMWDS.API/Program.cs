@@ -18,12 +18,12 @@ using PMWDS.Persistence.Context;
 using PMWDS.Persistence.Migrations;
 using PMWDS.Persistence.Repositories;
 using Serilog;
-using Microsoft.Data.SqlClient;
 using System.Text;
-using System.Data.Common;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+EnvFileLoader.Load(builder.Environment.ContentRootPath);
+builder.Configuration.AddEnvironmentVariables();
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -45,40 +45,7 @@ builder.Services.Configure<HangfireSettings>(
 builder.Services.Configure<DatabaseSettings>(
     builder.Configuration.GetSection("Database"));
 
-var databaseSettings = builder.Configuration
-    .GetSection("Database")
-    .Get<DatabaseSettings>() ?? new DatabaseSettings();
-var sqlServerConnection = builder.Configuration.GetConnectionString("Default");
-var sqliteConnection = databaseSettings.SqliteConnectionString;
-var useSqlite = builder.Environment.IsDevelopment() &&
-    (databaseSettings.ForceSqlite ||
-     (databaseSettings.EnableSqliteFallback &&
-      !CanConnectToSqlServer(sqlServerConnection)));
-
-if (useSqlite)
-{
-    Console.WriteLine($"[PMWDS] Development: Using SQLite database ({Path.GetFileName(sqliteConnection)})");
-}
-else
-{
-    Console.WriteLine("[PMWDS] Using SQL Server database.");
-}
-
-builder.Services.AddDbContext<ApplicationDbContext>(opt =>
-{
-    if (useSqlite)
-    {
-        opt.UseSqlite(
-            sqliteConnection,
-            sql => sql.MigrationsAssembly("PMWDS.Persistence"));
-    }
-    else
-    {
-        opt.UseSqlServer(
-            sqlServerConnection,
-            sql => sql.MigrationsAssembly("PMWDS.Persistence"));
-    }
-});
+var databaseStatus = builder.Services.AddApplicationDatabase(builder.Configuration, builder.Environment);
 
 var jwt = builder.Configuration
     .GetSection("Jwt")
@@ -158,7 +125,7 @@ builder.Services.AddStackExchangeRedisCache(opt =>
     opt.InstanceName = "PMWDS:";
 });
 
-if (!useSqlite)
+if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
 {
     builder.Services.AddHangfire(cfg =>
         cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -205,7 +172,7 @@ app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
 app.UseAuthentication();
 app.UseAuthorization();
-if (!useSqlite)
+if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
 {
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
@@ -220,23 +187,10 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (useSqlite)
-    {
-        var sqlitePath = sqliteConnection.Replace("Data Source=", string.Empty).Trim();
-        var sqliteDirectory = Path.GetDirectoryName(sqlitePath);
-        if (!string.IsNullOrWhiteSpace(sqliteDirectory))
-        {
-            Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, sqliteDirectory));
-        }
-        await EnsureSqliteDevelopmentDatabaseAsync(db);
-    }
-    else
-    {
-        await db.Database.MigrateAsync();
-    }
+    await DatabaseConnectionService.PrepareDatabaseAsync(db, databaseStatus, builder.Environment);
     await SeedData.SeedAsync(db);
 
-    if (!useSqlite)
+    if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
     {
         RecurringJob.AddOrUpdate<IDeadlineCheckerJob>(
             "deadline-checker",
@@ -258,106 +212,3 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
-
-static bool CanConnectToSqlServer(string? connectionString)
-{
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        return false;
-    }
-
-    try
-    {
-        var builder = new SqlConnectionStringBuilder(connectionString)
-        {
-            ConnectTimeout = 2
-        };
-        using var connection = new SqlConnection(builder.ConnectionString);
-        connection.Open();
-        return true;
-    }
-    catch
-    {
-        return false;
-    }
-}
-
-static async Task EnsureSqliteDevelopmentDatabaseAsync(ApplicationDbContext db)
-{
-    try
-    {
-        if (!await HasExpectedSqliteSchemaAsync(db))
-        {
-            await db.Database.EnsureDeletedAsync();
-            await db.Database.EnsureCreatedAsync();
-        }
-    }
-    catch
-    {
-        await db.Database.EnsureDeletedAsync();
-        await db.Database.EnsureCreatedAsync();
-    }
-}
-
-static async Task<bool> HasExpectedSqliteSchemaAsync(ApplicationDbContext db)
-{
-    if (!await db.Database.CanConnectAsync())
-    {
-        return false;
-    }
-
-    var expectedTables = new[]
-    {
-        "Organizations",
-        "Roles",
-        "AIModels",
-        "PredictionResults",
-        "TrainingDataPoints",
-        "AllocationRecommendations",
-        "DelayPredictions",
-        "NotificationTemplates",
-        "Dashboards",
-        "Reports",
-        "Integrations",
-        "KnowledgeArticles",
-        "ActivityLogs"
-    };
-
-    var connection = db.Database.GetDbConnection();
-    var shouldClose = connection.State != System.Data.ConnectionState.Open;
-    if (shouldClose)
-    {
-        await connection.OpenAsync();
-    }
-
-    try
-    {
-        foreach (var table in expectedTables)
-        {
-            await using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'";
-            var result = await command.ExecuteScalarAsync();
-            if (result == null || result == DBNull.Value)
-            {
-                return false;
-            }
-        }
-
-        return !await HasSqliteIndexAsync(connection, "IX_Departments_Code");
-    }
-    finally
-    {
-        if (shouldClose)
-        {
-            await connection.CloseAsync();
-        }
-    }
-}
-
-static async Task<bool> HasSqliteIndexAsync(DbConnection connection, string indexName)
-{
-    await using var command = connection.CreateCommand();
-    command.CommandText = $"SELECT name FROM sqlite_master WHERE type='index' AND name='{indexName}'";
-    var result = await command.ExecuteScalarAsync();
-    return result != null && result != DBNull.Value;
-}

@@ -11,6 +11,7 @@ import type {
   BurnoutRiskRecord,
   ChatResponse,
   DashboardData,
+  DatabaseStatus,
   DashboardRecord,
   DelayPrediction,
   DelayPredictionRecord,
@@ -840,6 +841,9 @@ export const api = {
   },
   getAISettings(token: string) {
     return request<AISettingsResponse>("ai/settings", { token });
+  },
+  getDatabaseStatus(token: string) {
+    return request<DatabaseStatus>("system/database", { token });
   },
   saveAISettings(token: string, settings: AISettingsRequest) {
     return request<{ success: boolean; message: string }>("ai/settings", {

@@ -66,6 +66,7 @@ export function SettingsPage() {
             baseUrl: p.baseUrl,
             apiKey: p.apiKey || "",
             defaultModel: p.defaultModel,
+            useEnvironmentDefault: p.useEnvironmentDefault,
           })),
       });
       setMessage(result.message);
@@ -165,7 +166,7 @@ export function SettingsPage() {
   return (
     <div className="grid gap-4 content-start">
       {message ? <Notice>{message}</Notice> : null}
-      {aiError ? <Notice tone="error">{aiError}</Notice> : null}
+      {aiError ? <ErrorPanel message={aiError} /> : null}
 
       <Panel title="AI Configuration" subtitle="Configure AI providers and default model settings (SuperAdmin only)">
         <div className="space-y-6">

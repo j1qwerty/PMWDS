@@ -4,6 +4,7 @@
     <ProjectReference Include="..\PMWDS.Application\PMWDS.Application.csproj" />
     <ProjectReference Include="..\PMWDS.Domain\PMWDS.Domain.csproj" />
     <ProjectReference Include="..\PMWDS.Infrastructure\PMWDS.Infrastructure.csproj" />
+    <ProjectReference Include="..\PMWDS.Persistence\PMWDS.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>
