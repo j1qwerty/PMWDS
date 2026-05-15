@@ -233,7 +233,9 @@ public static class DatabaseConnectionService
             "Reports",
             "Integrations",
             "KnowledgeArticles",
-            "ActivityLogs"
+            "ActivityLogs",
+            "AIProviderCredentials",
+            "UserDepartments"
         };
 
         var connection = db.Database.GetDbConnection();

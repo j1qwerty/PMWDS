@@ -207,7 +207,11 @@ public static class SeedData
 
         foreach (var spec in specs)
         {
-            var user = await context.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Email == spec.Email, ct);
+            var user = await context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(
+                    u => u.Email == spec.Email || u.EmployeeCode == spec.EmployeeCode,
+                    ct);
             if (user == null)
             {
                 user = ApplicationUser.Create(spec.Email, spec.FirstName, spec.LastName, spec.EmployeeCode, spec.JobTitle, spec.DepartmentId);
@@ -216,6 +220,17 @@ public static class SeedData
                 user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
                 await context.Users.AddAsync(user, ct);
+            }
+            else
+            {
+                user.UpdateProfile(
+                    spec.FirstName,
+                    spec.LastName,
+                    user.PhoneNumber,
+                    spec.JobTitle,
+                    user.ProfilePictureUrl);
+                user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
+                user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
             }
 
             user.UpdateProfile(
