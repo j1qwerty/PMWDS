@@ -45,7 +45,7 @@ export function ActivityList({ logs, users }: ActivityListProps) {
   };
 
   return (
-    <GlassCard className="overflow-hidden flex flex-col max-h-[calc(100vh-400px)]">
+    <GlassCard className="overflow-hidden flex flex-col max-h-[calc(100vh-335px)]">
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-slate-800">Activity Feed</h3>

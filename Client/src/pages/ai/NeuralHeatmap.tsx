@@ -66,8 +66,8 @@ export function NeuralHeatmap({ project }: NeuralHeatmapProps) {
       </p>
 
       {/* Bar Chart */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 relative" style={{ minHeight: "220px" }}>
-        <div className="flex items-end h-44 px-5 pb-8 gap-4">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl pt-5 pb-2 relative" style={{ minHeight: "220px" }}>
+        <div className="flex items-end h-50 px-8  gap-4">
           {heatmapData.map((dept) => {
             const heightPx = (dept.value / 100) * 176;
             
