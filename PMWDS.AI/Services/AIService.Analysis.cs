@@ -94,10 +94,17 @@ public partial class AIService
 
         if (_chat.IsConfigured())
         {
-            var summary = await _chat.GenerateSummaryAsync(
-                $"Summarize project health: Name={project.Name}, Progress={project.ProgressPercentage}%, Delays={project.GetDelayDays()} days, Budget variance={project.GetBudgetVariance():C}",
-                ct: ct);
-            insights.Add($"AI Summary: {summary}");
+            try
+            {
+                var summary = await _chat.GenerateSummaryAsync(
+                    $"Summarize project health: Name={project.Name}, Progress={project.ProgressPercentage}%, Delays={project.GetDelayDays()} days, Budget variance={project.GetBudgetVariance():C}",
+                    ct: ct);
+                insights.Add($"AI Summary: {summary}");
+            }
+            catch
+            {
+                // AI summary unavailable, skip gracefully
+            }
         }
 
         return insights;
