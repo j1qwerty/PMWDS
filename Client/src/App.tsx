@@ -28,6 +28,7 @@ import { LoginPage } from "./pages/login/login";
 import { OrganizationStructurePage } from "./pages/oraganisations/OrganizationStructurePage";
 import { PermissionsPage } from "./features/access-control/pages/PermissionsPage";
 import { DepartmentsPage } from "./pages/departments/DepartmentsPage";
+import { MilestonesPage } from "./pages/milestones/MilestonesPage";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -49,6 +50,7 @@ function AppRoutes() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/departmentsPage" element={<DepartmentsPage />} />
+                <Route path="/milestonesPage" element={<MilestonesPage />} />
 
                 <Route path="/milestones" element={<MilestonesWorkspacePage />} />
                 <Route path="/tasks" element={<TasksPage />} />

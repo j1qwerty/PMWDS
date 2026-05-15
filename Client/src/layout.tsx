@@ -157,10 +157,11 @@ function Layout({ children }: { children: React.ReactNode }) {
         items: [
           { path: "/", label: "Dashboard", icon: "home", roles: [] },
           { path: "/projects", label: "Projects", icon: "projects", roles: [] },
-          { path: "/milestones", label: "Milestones", icon: "milestones", roles: [] },
+          { path: "/milestonesPage", label: "Milestones", icon: "milestones", roles: [] },
           { path: "/tasks", label: "Tasks", icon: "tasks", roles: [] },
           { path: "/notifications", label: "Notifications", icon: "inbox", roles: [] },
           { path: "/chat", label: "Chats", icon: "chat", roles: [] },
+          { path: "/milestones", label: "Milestones", icon: "milestones", roles: [] },
         ],
       },
       {
