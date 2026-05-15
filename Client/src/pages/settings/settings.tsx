@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
+import { useDeferredValue } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { AISettingsResponse } from "../../types";
+import type { AIModel, AIProvider, AISettingsResponse } from "../../types";
 import {
   LoadingPanel,
   Notice,
   Panel,
+  classNames,
+  listCardClass,
+  selectedCardClass,
+  MetricRow,
 } from "../../ui";
 
 export function SettingsPage() {
@@ -25,6 +30,14 @@ export function SettingsPage() {
   const [testingCustom, setTestingCustom] = useState<string | null>(null);
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name: string; free: boolean }>>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+
+  const [matrixProviders, setMatrixProviders] = useState<AIProvider[]>([]);
+  const [matrixProvider, setMatrixProvider] = useState("OpenAI");
+  const [matrixModels, setMatrixModels] = useState<AIModel[]>([]);
+  const [modelSearch, setModelSearch] = useState("");
+  const deferredSearch = useDeferredValue(modelSearch);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [testResult, setTestResult] = useState<{ provider: string; model: string; success: boolean; message: string; rawResponse?: string } | null>(null);
 
   useEffect(() => {
     if (!isSuperAdmin || !auth) return;
@@ -49,6 +62,19 @@ export function SettingsPage() {
       fetchOpenRouterModels();
     }
   }, [aiSettings?.defaultProvider]);
+
+  useEffect(() => {
+    if (!auth) return;
+    api.getAiProviders(auth.token).then(setMatrixProviders);
+  }, [auth]);
+
+  useEffect(() => {
+    if (!auth || !matrixProvider) return;
+    api.searchAiModels(auth.token, matrixProvider, deferredSearch).then((data) => {
+      setMatrixModels(data);
+      if (data[0]) setSelectedModel(data[0].id);
+    });
+  }, [auth, matrixProvider, deferredSearch]);
 
   const handleSaveAI = async () => {
     if (!aiSettings || !auth) return;
@@ -376,6 +402,34 @@ export function SettingsPage() {
           <button onClick={handleSaveAI} disabled={aiSaving}>
             {aiSaving ? "Saving..." : "Save AI Settings"}
           </button>
+        </div>
+      </Panel>
+
+      <Panel title="Provider Matrix" subtitle="Discover models, test providers, and steer prompt traffic">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
+            {matrixProviders.map((item) => (
+              <button key={item.provider} className={classNames(listCardClass, matrixProvider === item.provider && selectedCardClass)} onClick={() => setMatrixProvider(item.provider)}>
+                <strong>{item.displayName}</strong>
+                <span>{item.defaultModel}</span>
+                <small>{item.isConfigured ? "Configured" : "Missing key"}</small>
+              </button>
+            ))}
+          </div>
+          <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h4>Model Search</h4><input value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} placeholder="Search models" /></div>
+            <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
+              {matrixModels.map((item) => (
+                <button key={item.id} className={classNames(listCardClass, selectedModel === item.id && selectedCardClass)} onClick={() => setSelectedModel(item.id)}>
+                  <strong>{item.name}</strong>
+                  <span>{item.id}</span>
+                  <small>{item.contextLength ? `${item.contextLength.toLocaleString()} ctx` : "Context unknown"}</small>
+                </button>
+              ))}
+            </div>
+            <button className="rounded-md border border-sky-300/60 bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50" onClick={async () => { if (!auth) return; setTestResult(await api.testAiProvider(auth.token, matrixProvider, selectedModel)); }}>Test Provider</button>
+            {testResult ? <div className="rounded-lg border border-[var(--pmwds-border)] bg-[var(--pmwds-surface-2)]/86 p-5 shadow-xl shadow-black/15 nested"><MetricRow label="Provider" value={testResult.provider} /><MetricRow label="Model" value={testResult.model} /><MetricRow label="Result" value={testResult.success ? "Success" : "Failure"} /><p>{testResult.message}</p>{testResult.rawResponse ? <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-black/70 p-3 text-xs text-emerald-300">{testResult.rawResponse}</pre> : null}</div> : null}
+          </div>
         </div>
       </Panel>
     </div>
