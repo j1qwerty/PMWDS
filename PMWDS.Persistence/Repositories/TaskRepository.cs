@@ -17,7 +17,9 @@ public class TaskRepository
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
     .Include(t => t.Assignments)
+        .ThenInclude(a => a.User)
     .Include(t => t.TimeEntries)
+        .ThenInclude(e => e.User)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
     .FirstOrDefaultAsync(t => t.Id == taskId, ct);

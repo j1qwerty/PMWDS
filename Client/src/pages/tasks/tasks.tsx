@@ -191,6 +191,25 @@ export function TasksPage() {
     return result;
   }, [tasks, selectedProjectId, selectedOrgId, selectedMilestoneId, filters, departments, projects]);
 
+  const getProject = (projectId: string) => projects.find(p => p.id === projectId);
+
+  const searchResults = useMemo(() => {
+    if (!filters.search.trim()) return [];
+    const query = filters.search.toLowerCase();
+    return tasks
+      .filter(t => {
+        const proj = getProject(t.projectId);
+        const dept = proj ? departments.find(d => d.id === proj.departmentId) : null;
+        return (
+          t.title.toLowerCase().includes(query) ||
+          (t.description && t.description.toLowerCase().includes(query)) ||
+          (proj && proj.name.toLowerCase().includes(query)) ||
+          (dept && dept.name.toLowerCase().includes(query))
+        );
+      })
+      .slice(0, 10);
+  }, [tasks, filters.search, projects, departments]);
+
   const selectedTask = tasks.find(t => t.id === selectedTaskId) ?? null;
   const selectedMilestone = milestones.find(m => m.id === selectedMilestoneId) ?? null;
   const selectedProject = projects.find(p => p.id === selectedProjectId);
@@ -393,13 +412,13 @@ export function TasksPage() {
             ))}
           </select>
 
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[280px]">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
               search
             </span>
             <input
               type="text"
-              placeholder="Search tasks..."
+              placeholder="Search tasks by title, project, or department..."
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               className="w-full h-10 pl-10 pr-10 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
@@ -411,6 +430,44 @@ export function TasksPage() {
               >
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
+            )}
+            {filters.search && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/50 max-h-72 overflow-y-auto z-50">
+                {searchResults.map((task) => {
+                  const dept = departments.find(d => d.id === getProject(task.projectId)?.departmentId);
+                  const proj = getProject(task.projectId);
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => {
+                        setSelectedTaskId(task.id);
+                        setSelectedProjectId(task.projectId);
+                        setFilters({ ...filters, search: "" });
+                      }}
+                      className="w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusColor(task.status).dot}`} />
+                        <span className="text-sm font-medium text-slate-800 truncate">{task.title}</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500 ml-4">
+                        {proj && (
+                          <span className="flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[10px]">folder</span>
+                            {proj.name}
+                          </span>
+                        )}
+                        {dept && (
+                          <span className="flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[10px]">business</span>
+                            {dept.name}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -634,6 +691,8 @@ export function TasksPage() {
         const assignedUser = task.assignedToUserId 
           ? users.find(u => u.id === task.assignedToUserId)
           : null;
+        const proj = getProject(task.projectId);
+        const dept = proj ? departments.find(d => d.id === proj.departmentId) : null;
 
         return (
           <button
@@ -659,6 +718,21 @@ export function TasksPage() {
                   {task.isOverdue && (
                     <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1 py-0.5 rounded shrink-0">
                       Due
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-500">
+                  {proj && (
+                    <span className="flex items-center gap-0.5 truncate">
+                      <span className="material-symbols-outlined text-[10px]">folder</span>
+                      {proj.name}
+                    </span>
+                  )}
+                  {dept && (
+                    <span className="flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[10px]">business</span>
+                      {dept.name}
                     </span>
                   )}
                 </div>
@@ -736,6 +810,7 @@ export function TasksPage() {
       <TaskDetail
         task={selectedTask}
         users={users}
+        allTasks={tasks}
         project={projects.find(p => p.id === selectedTask.projectId)}
         milestone={milestones.find(m => m.id === selectedTask.milestoneId)}
         recommendation={recommendation}

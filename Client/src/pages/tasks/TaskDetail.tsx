@@ -5,10 +5,12 @@ import { useAuth } from "../../auth";
 import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
 import { GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
+import { DependencyManagement } from "./DependencyManagement";
 
 interface TaskDetailProps {
   task: Task;
   users: User[];
+  allTasks?: Task[];
   project?: Project | null;
   milestone?: Milestone | null;
   recommendation?: any;
@@ -27,6 +29,7 @@ interface TaskDetailProps {
 export function TaskDetail({
   task,
   users,
+  allTasks = [],
   project,
   milestone,
   recommendation,
@@ -362,6 +365,16 @@ export function TaskDetail({
           )
         )}
       </GlassCard>
+
+      {/* Dependencies Section */}
+      {allTasks.length > 0 && (
+        <DependencyManagement
+          task={task}
+          allTasks={allTasks}
+          onRefresh={onRefresh}
+          onMessage={onMessage}
+        />
+      )}
 
       {/* Update Progress Card */}
       {isAdmin && (

@@ -37,6 +37,7 @@ import type {
   StoredReportDetailRecord,
   StoredReportRecord,
   Task,
+  TaskDependency,
   TrainingDataPointRecord,
   ActivityLogRecord,
   UserProfileRecord,
@@ -308,6 +309,18 @@ export const api = {
   },
   deleteSubtask(token: string, id: string) {
     return request<void>(`tasks/subtasks/${id}`, { token, method: "DELETE" });
+  },
+  getTaskDependencies(token: string, taskId: string) {
+    return request<TaskDependency[]>(`tasks/${taskId}/dependencies`, { token });
+  },
+  createTaskDependency(token: string, taskId: string, payload: { predecessorTaskId: string; successorTaskId: string; type: string; lagDays: number }) {
+    return request<TaskDependency>(`tasks/${taskId}/dependencies`, { token, method: "POST", body: payload });
+  },
+  updateTaskDependency(token: string, depId: string, payload: { type: string; lagDays: number }) {
+    return request<TaskDependency>(`tasks/dependencies/${depId}`, { token, method: "PUT", body: payload });
+  },
+  deleteTaskDependency(token: string, depId: string) {
+    return request<void>(`tasks/dependencies/${depId}`, { token, method: "DELETE" });
   },
   getUsers(token: string, departmentId?: string | null) {
     return request<User[]>("users", {

@@ -29,4 +29,6 @@ public class TaskDependency : BaseEntity
     }
     public void UpdateLag(int newLagDays)
     => LagDays = newLagDays;
+    public void UpdateType(DependencyType newType)
+    => Type = newType;
 }

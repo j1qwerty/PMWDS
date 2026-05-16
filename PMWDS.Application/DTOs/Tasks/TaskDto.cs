@@ -1,4 +1,5 @@
 using PMWDS.Domain.Entities;
+using PMWDS.Domain.Enums;
 namespace PMWDS.Application.DTOs.Tasks;
 
 public record TaskDto(
@@ -27,7 +28,14 @@ public record TaskDto(
     double AIDelayProbability,
     string? AIRiskFactors,
     bool IsOverdue,
-    DateTime CreatedDate)
+    DateTime CreatedDate,
+    List<TaskDependencyDto> Dependencies,
+    List<TaskCommentDto> Comments,
+    List<TaskAttachmentDto> Attachments,
+    List<TaskTimeEntryDto> TimeEntries,
+    double AIOptimalAssigneeScore,
+    DateTime? AIPredictedCompletionDate,
+    string? AIRecommendedAssigneeId)
     {
         public static TaskDto FromEntity(ProjectTask t)
         => new(
@@ -62,10 +70,111 @@ public record TaskDto(
         AIDelayProbability: t.AIDelayProbability,
         AIRiskFactors: t.AIRiskFactors,
         IsOverdue: t.IsOverdue(),
-        CreatedDate: t.CreatedDate
+        CreatedDate: t.CreatedDate,
+        Dependencies: t.Dependencies
+        .Select(d => TaskDependencyDto.FromEntity(d))
+        .ToList(),
+        Comments: t.Comments
+        .Select(c => TaskCommentDto.FromEntity(c))
+        .ToList(),
+        Attachments: t.Attachments
+        .Select(a => TaskAttachmentDto.FromEntity(a))
+        .ToList(),
+        TimeEntries: t.TimeEntries
+        .Select(e => TaskTimeEntryDto.FromEntity(e))
+        .ToList(),
+        AIOptimalAssigneeScore: t.AIOptimalAssigneeScore,
+        AIPredictedCompletionDate: t.AIPredictedCompletionDate,
+        AIRecommendedAssigneeId: t.AIRecommendedAssigneeId
         );
     }
     public record TaskAssigneeDto(string UserId, string? FullName);
+    public record TaskDependencyDto(
+        Guid Id,
+        Guid PredecessorTaskId,
+        string? PredecessorTaskTitle,
+        Guid SuccessorTaskId,
+        string? SuccessorTaskTitle,
+        string Type,
+        int LagDays)
+    {
+        public static TaskDependencyDto FromEntity(TaskDependency d)
+        => new(
+            Id: d.Id,
+            PredecessorTaskId: d.PredecessorTaskId,
+            PredecessorTaskTitle: d.PredecessorTask?.Title,
+            SuccessorTaskId: d.SuccessorTaskId,
+            SuccessorTaskTitle: d.SuccessorTask?.Title,
+            Type: d.Type.ToString(),
+            LagDays: d.LagDays
+        );
+    }
+    public record TaskCommentDto(
+        Guid Id,
+        Guid TaskId,
+        string UserId,
+        string Content,
+        bool IsSystemGenerated,
+        Guid? ParentCommentId,
+        DateTime CreatedDate)
+    {
+        public static TaskCommentDto FromEntity(TaskComment c)
+        => new(
+            Id: c.Id,
+            TaskId: c.TaskId,
+            UserId: c.UserId,
+            Content: c.Content,
+            IsSystemGenerated: c.IsSystemGenerated,
+            ParentCommentId: c.ParentCommentId,
+            CreatedDate: c.CreatedDate
+        );
+    }
+    public record TaskAttachmentDto(
+        Guid Id,
+        Guid TaskId,
+        string FileName,
+        string FilePath,
+        string ContentType,
+        long FileSizeBytes,
+        string UploadedByUserId,
+        DateTime CreatedDate)
+    {
+        public static TaskAttachmentDto FromEntity(TaskAttachment a)
+        => new(
+            Id: a.Id,
+            TaskId: a.TaskId,
+            FileName: a.FileName,
+            FilePath: a.FilePath,
+            ContentType: a.ContentType,
+            FileSizeBytes: a.FileSizeBytes,
+            UploadedByUserId: a.UploadedByUserId,
+            CreatedDate: a.CreatedDate
+        );
+    }
+    public record TaskTimeEntryDto(
+        Guid Id,
+        Guid TaskId,
+        string UserId,
+        string? UserName,
+        string? Description,
+        DateTime StartTime,
+        DateTime? EndTime,
+        double DurationMinutes,
+        bool IsBillable)
+    {
+        public static TaskTimeEntryDto FromEntity(TimeEntry e)
+        => new(
+            Id: e.Id,
+            TaskId: e.TaskId,
+            UserId: e.UserId,
+            UserName: e.User?.FullName,
+            Description: e.Description,
+            StartTime: e.StartTime,
+            EndTime: e.EndTime,
+            DurationMinutes: e.Duration.TotalMinutes,
+            IsBillable: e.IsBillable
+        );
+    }
     public record TaskSummaryDto(
     Guid Id,
     string Title,
@@ -109,3 +218,11 @@ public record TaskDto(
     public record UpdateTaskProgressDto(
     double ProgressPercentage,
     string? Notes = null);
+    public record CreateDependencyDto(
+        Guid PredecessorTaskId,
+        Guid SuccessorTaskId,
+        DependencyType Type = DependencyType.FinishToStart,
+        int LagDays = 0);
+    public record UpdateDependencyDto(
+        DependencyType Type,
+        int LagDays);

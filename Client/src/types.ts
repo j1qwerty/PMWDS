@@ -169,6 +169,13 @@ export interface Task {
   aiRiskFactors?: string | null;
   isOverdue: boolean;
   createdDate: string;
+  dependencies?: TaskDependency[];
+  comments?: TaskComment[];
+  attachments?: TaskAttachment[];
+  timeEntries?: TaskTimeEntry[];
+  aiOptimalAssigneeScore?: number;
+  aiPredictedCompletionDate?: string | null;
+  aiRecommendedAssigneeId?: string | null;
 }
 
 export interface NotificationItem {
@@ -646,6 +653,49 @@ export interface AIProviderConfig {
 export interface TaskAssignee {
   userId: string;
   fullName?: string | null;
+}
+
+export interface TaskDependency {
+  id: string;
+  predecessorTaskId: string;
+  predecessorTaskTitle?: string | null;
+  successorTaskId: string;
+  successorTaskTitle?: string | null;
+  type: string;
+  lagDays: number;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
+  isSystemGenerated: boolean;
+  parentCommentId?: string | null;
+  createdDate: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  fileName: string;
+  filePath: string;
+  contentType: string;
+  fileSizeBytes: number;
+  uploadedByUserId: string;
+  createdDate: string;
+}
+
+export interface TaskTimeEntry {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName?: string | null;
+  description?: string | null;
+  startTime: string;
+  endTime?: string | null;
+  durationMinutes: number;
+  isBillable: boolean;
 }
 
 export interface AISettingsRequest {

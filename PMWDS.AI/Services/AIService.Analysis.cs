@@ -16,8 +16,8 @@ public partial class AIService
         var overdue = tasks.Count(t => t.IsOverdue());
         var highRisk = tasks.Count(t => t.AIDelayProbability >= _settings.RiskThreshold);
         var health = totalTasks == 0
-            ? 100.0
-            : Math.Max(0, 100 - (overdue * 10) - (highRisk * 5) - (project.GetDelayDays() * 2) - (project.IsOverBudget() ? 15 : 0));
+            ? 1.0
+            : Math.Max(0, Math.Min(1, (100 - (overdue * 10) - (highRisk * 5) - (project.GetDelayDays() * 2) - (project.IsOverBudget() ? 15 : 0)) / 100.0));
         var delayRisk = totalTasks == 0 ? 0 : (double)overdue / totalTasks;
         var budgetRisk = project.PlannedBudget == 0 ? 0 : Math.Min(1, (double)project.ActualCost / (double)project.PlannedBudget);
         var insights = await GenerateProjectInsightsAsync(projectId, ct);
@@ -38,7 +38,7 @@ public partial class AIService
         }
 
         project.UpdateAIAnalysis(
-            Math.Round(health, 2),
+            Math.Round(health * 100, 2),
             Math.Round(delayRisk, 4),
             Math.Round(Math.Min(1, budgetRisk), 4),
             string.Join(" ", insights));
@@ -49,14 +49,14 @@ public partial class AIService
             projectId,
             project.Name,
             health,
-            Math.Max(0, 100 - (delayRisk * 100)),
-            Math.Max(0, 100 - (budgetRisk * 100)),
-            Math.Max(0, 100 - (highRisk * 10.0)),
-            totalTasks == 0 ? 100 : (completed / (double)totalTasks) * 100,
-            health >= 75 ? "Healthy" : health >= 50 ? "At Risk" : "Critical",
+            Math.Max(0, 1 - delayRisk),
+            Math.Max(0, 1 - budgetRisk),
+            Math.Max(0, 1 - (highRisk * 0.1)),
+            totalTasks == 0 ? 1.0 : completed / (double)totalTasks,
+            health >= 0.75 ? "Healthy" : health >= 0.5 ? "At Risk" : "Critical",
             strengths,
             weaknesses.Concat(insights).ToList(),
-            GetRecommendations(health, delayRisk, budgetRisk),
+            GetRecommendations(health * 100, delayRisk, budgetRisk),
             BuildRiskFactors(project, overdue, highRisk),
             DateTime.UtcNow);
     }

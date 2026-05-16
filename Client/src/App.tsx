@@ -28,19 +28,11 @@ import { SettingsPage } from "./pages/settings/settings";
 
 // Old UI
 import { LoginPage } from "./pages/login/login";
-import { MilestonesWorkspacePage } from "./features/work-management/pages/MilestonesWorkspacePage";
-import { ProjectsWorkspacePage } from "./features/work-management/pages/ProjectsWorkspacePage";
-import { TasksWorkspacePage } from "./features/work-management/pages/TasksWorkspacePage";
-import { AIPage } from "./features/ai/pages/AIPage";
-import { ReportsPage } from "./features/reports/pages/ReportsPage";
-import { DashboardsPage } from "./features/dashboards/pages/DashboardsPage";
-import { IntegrationsPage } from "./features/integrations/pages/IntegrationsPage";
-import { WebhooksPage } from "./features/integrations/pages/WebhooksPage";
-import { KnowledgePage } from "./features/knowledge/pages/KnowledgePage";
-import { OrganizationsPage } from "./features/organizations/pages/OrganizationsPage";
+import { DashboardsPage } from "./old/features/dashboards/pages/DashboardsPage";
+import { IntegrationsPage } from "./old/features/integrations/pages/IntegrationsPage";
+import { WebhooksPage } from "./old/features/integrations/pages/WebhooksPage";
+import { KnowledgePage } from "./old/features/knowledge/pages/KnowledgePage";
 import { Departments } from "./pages/departments/departments";
-import { PermissionsPage } from "./features/access-control/pages/PermissionsPage";
-
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
   return auth ? <>{children}</> : <Navigate to="/login" />;
@@ -81,20 +73,7 @@ function AppRoutes() {
                 <Route path="/activity-logs" element={<ActivityLogsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
 
-                {/* Old UI */}
-                <Route path="/milestones" element={<MilestonesWorkspacePage />} />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/organizations" element={<OrganizationsPage />} />
-                <Route path="/departments" element={<Departments />} />
-                <Route path="/old/projects" element={<ProjectsWorkspacePage />} />
-                <Route path="/old/tasks" element={<TasksWorkspacePage />} />
-                <Route path="/old/ai" element={<AIPage />} />
-                <Route path="/old/reports" element={<ReportsPage />} />
-                <Route path="/dashboards" element={<DashboardsPage />} />
-                <Route path="/integrations" element={<IntegrationsPage />} />
-                <Route path="/webhooks" element={<WebhooksPage />} />
-                <Route path="/knowledge" element={<KnowledgePage />} />
-                <Route path="/permissions" element={<PermissionsPage />} />
+              
               </Routes>
             </Layout>
           </PrivateRoute>

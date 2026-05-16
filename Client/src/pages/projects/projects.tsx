@@ -384,7 +384,7 @@ export function ProjectsPage() {
                 </span>
               </div>
               <h3 className="text-lg font-semibold text-slate-700 mb-2">No project selected</h3>
-              <p className="text-sm text-slate-400 max-w-xs">
+              <p className="text-sm text-slate-400 ">
                 Choose a project from the board to view details, milestones, and AI insights
               </p>
             </div>

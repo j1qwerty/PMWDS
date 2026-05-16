@@ -37,6 +37,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.TaskAssignment> TaskAssignments { get; }
     IRepository<Domain.Entities.TaskComment> TaskComments { get; }
     IRepository<Domain.Entities.TaskAttachment> TaskAttachments { get; }
+    IRepository<Domain.Entities.TaskDependency> TaskDependencies { get; }
     IRepository<Domain.Entities.TimeEntry> TimeEntries { get; }
     Task<int> SaveChangesAsync(
     CancellationToken ct = default);

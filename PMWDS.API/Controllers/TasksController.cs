@@ -6,6 +6,7 @@ using PMWDS.Application.Features.Tasks.Commands;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
+using TaskDependency = PMWDS.Domain.Entities.TaskDependency;
 
 namespace PMWDS.API.Controllers;
 
@@ -371,6 +372,63 @@ public class TasksController : BaseApiController
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _uow.Tasks.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/dependencies")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetDependencies(Guid id, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        return task == null ? NotFound() : Ok(task.Dependencies.Select(TaskDependencyDto.FromEntity));
+    }
+
+    [HttpPost("{id:guid}/dependencies")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> CreateDependency(Guid id, [FromBody] CreateDependencyDto dto, CancellationToken ct)
+    {
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null)
+            return NotFound();
+
+        var predecessor = await _uow.Tasks.GetByIdAsync(dto.PredecessorTaskId, ct);
+        if (predecessor == null)
+            return BadRequest(new { message = "Predecessor task not found." });
+
+        var successor = await _uow.Tasks.GetByIdAsync(dto.SuccessorTaskId, ct);
+        if (successor == null)
+            return BadRequest(new { message = "Successor task not found." });
+
+        var dependency = TaskDependency.Create(dto.PredecessorTaskId, dto.SuccessorTaskId, dto.Type, dto.LagDays);
+        await _uow.TaskDependencies.AddAsync(dependency, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDependencyDto.FromEntity(dependency));
+    }
+
+    [HttpPut("dependencies/{depId:guid}")]
+    [Authorize(Policy = "TeamLead")]
+    public async Task<IActionResult> UpdateDependency(Guid depId, [FromBody] UpdateDependencyDto dto, CancellationToken ct)
+    {
+        var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
+        if (dependency == null)
+            return NotFound();
+
+        dependency.UpdateType(dto.Type);
+        dependency.UpdateLag(dto.LagDays);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(TaskDependencyDto.FromEntity(dependency));
+    }
+
+    [HttpDelete("dependencies/{depId:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> DeleteDependency(Guid depId, CancellationToken ct)
+    {
+        var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
+        if (dependency == null)
+            return NotFound();
+
+        await _uow.TaskDependencies.DeleteAsync(depId, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }

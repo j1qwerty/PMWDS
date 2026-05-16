@@ -46,6 +46,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<TaskAssignment> TaskAssignments { get; }
     public IRepository<TaskComment> TaskComments { get; }
     public IRepository<TaskAttachment> TaskAttachments { get; }
+    public IRepository<TaskDependency> TaskDependencies { get; }
     public IRepository<TimeEntry> TimeEntries { get; }
 
     public UnitOfWork(ApplicationDbContext context)
@@ -87,6 +88,7 @@ public class UnitOfWork : IUnitOfWork
         TaskAssignments = new BaseRepository<TaskAssignment>(context);
         TaskComments = new BaseRepository<TaskComment>(context);
         TaskAttachments = new BaseRepository<TaskAttachment>(context);
+        TaskDependencies = new BaseRepository<TaskDependency>(context);
         TimeEntries = new BaseRepository<TimeEntry>(context);
     }
 
