@@ -15,6 +15,9 @@ export { WorkloadBars } from "./WorkloadBars";
 export { TaskList } from "./TaskList";
 export { SimpleProjectList } from "./SimpleProjectList";
 export { useToast } from "./Toast";
+export { StatusButtons, StatusBadge } from "./StatusBadge";
+export { PriorityButtons, PriorityBadge } from "./PriorityBadge";
+export { FilterButtons } from "./FilterButtons";
 export { 
   departmentColorPalette, 
   statusColorPalette, 

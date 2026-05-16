@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import type { Milestone, Task } from "../../types";
+import { StatusBadge } from "./StatusBadge";
+import { PriorityBadge } from "./PriorityBadge";
 
 interface MilestonesTabProps {
   projectId: string;
@@ -178,22 +180,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                         }}>
                           {milestone.name}
                         </h3>
-                        <span style={{
-                          fontSize: "12px",
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          backgroundColor: isCompleted ? "#f7f9fb" : "#e1e0ff",
-                          color: isCompleted ? "#767586" : "#4648d4",
-                          border: isCompleted ? "1px solid #e0e3e5" : "none",
-                          fontWeight: isCompleted ? 400 : 500,
-                          whiteSpace: "nowrap",
-                        }}>
-                          {isCompleted
-                            ? `Completed ${milestone.completedDate
-                                ? new Date(milestone.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                : ''}`
-                            : "In Progress"}
-                        </span>
+                        <StatusBadge status={milestone.status} />
                       </div>
 
                       {milestone.description && (
@@ -212,9 +199,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                             {milestoneTasks.map((task) => {
                               const taskDone = task.status === "Completed";
-                              const priorityColor = 
-                                task.priority === "Critical" || task.priority === "High" ? "#F59E0B" :
-                                task.priority === "Medium" ? "#10B981" : "#767586";
 
                               return taskDone ? (
                                 // Completed task
@@ -279,17 +263,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                                         {task.title}
                                       </span>
                                     </div>
-                                    <span style={{
-                                      fontSize: "10px",
-                                      fontWeight: 600,
-                                      letterSpacing: "0.08em",
-                                      padding: "2px 6px",
-                                      borderRadius: "4px",
-                                      border: `1px solid ${priorityColor}`,
-                                      color: priorityColor,
-                                    }}>
-                                      {(task.priority || "LOW").toUpperCase()}
-                                    </span>
+                                    <PriorityBadge priority={task.priority} />
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: "24px" }}>
                                     <div style={{
@@ -363,14 +337,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {tasks.map((task) => {
                 const parentMilestone = milestones.find(m => m.id === task.milestoneId);
-                const statusBg = 
-                  task.status === "Completed" ? "#dcfce7" :
-                  task.status === "InProgress" ? "#fef9c3" :
-                  task.status === "Delayed" ? "#fee2e2" : "#f1f5f9";
-                const statusColor = 
-                  task.status === "Completed" ? "#15803d" :
-                  task.status === "InProgress" ? "#a16207" :
-                  task.status === "Delayed" ? "#b91c1c" : "#475569";
 
                 return (
                   <div key={task.id} style={{
@@ -405,15 +371,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                         </p>
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: "12px",
-                      padding: "2px 8px",
-                      borderRadius: "9999px",
-                      backgroundColor: statusBg,
-                      color: statusColor,
-                    }}>
-                      {task.status === "Completed" ? "Done" : task.status === "InProgress" ? "In Progress" : task.status}
-                    </span>
+                    <StatusBadge status={task.status} />
                   </div>
                 );
               })}

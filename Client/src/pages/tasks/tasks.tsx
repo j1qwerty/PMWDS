@@ -9,8 +9,10 @@ import {
   GradientButton, 
   PageHeader,
   getStatusColor,
-  getPriorityColor,
   useToast,
+  StatusBadge,
+  PriorityBadge,
+  FilterButtons,
 } from "../shared";
 import { TaskDetail } from "./TaskDetail";
 import { TaskFormModal } from "./TaskFormModal";
@@ -447,7 +449,7 @@ export function TasksPage() {
                       className="w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusColor(task.status).dot}`} />
+                        <StatusBadge status={task.status} />
                         <span className="text-sm font-medium text-slate-800 truncate">{task.title}</span>
                       </div>
                       <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500 ml-4">
@@ -473,38 +475,33 @@ export function TasksPage() {
         </div>
 
         {/* Status & Priority Filters */}
-        <div className="flex gap-2 flex-wrap">
-          {["", "NotStarted", "InProgress", "Completed", "Delayed"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilters({ ...filters, status: filters.status === status ? "" : status })}
-              className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
-                ${filters.status === status
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-slate-500 border border-slate-200 hover:border-indigo-200"
-                }
-              `}
-            >
-              {status || "All Status"}
-            </button>
-          ))}
-          <div className="w-px h-6 bg-slate-200 self-center mx-1"></div>
-          {["", "Low", "Medium", "High", "Critical"].map((priority) => (
-            <button
-              key={priority}
-              onClick={() => setFilters({ ...filters, priority: filters.priority === priority ? "" : priority })}
-              className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
-                ${filters.priority === priority
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-slate-500 border border-slate-200 hover:border-indigo-200"
-                }
-              `}
-            >
-              {priority || "All Priority"}
-            </button>
-          ))}
+        <div className="flex gap-4 flex-wrap items-center">
+          <FilterButtons
+            options={["NotStarted", "InProgress", "Completed", "Delayed", "OnHold", "Cancelled"]}
+            selected={filters.status}
+            onChange={(status) => setFilters({ ...filters, status })}
+            allLabel="All Status"
+            colorMap={{
+              NotStarted: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
+              InProgress: { bg: "bg-primary/10", text: "text-primary", dot: "bg-primary" },
+              Completed: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+              Delayed: { bg: "bg-error-container", text: "text-error", dot: "bg-error" },
+              OnHold: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+              Cancelled: { bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" },
+            }}
+          />
+          <FilterButtons
+            options={["Low", "Medium", "High", "Critical"]}
+            selected={filters.priority}
+            onChange={(priority) => setFilters({ ...filters, priority })}
+            allLabel="All Priority"
+            colorMap={{
+              Low: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
+              Medium: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
+              High: { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
+              Critical: { bg: "bg-error-container", text: "text-error", dot: "bg-error" },
+            }}
+          />
         </div>
       </div>
 
@@ -561,7 +558,6 @@ export function TasksPage() {
       {filteredMilestones.map((milestone) => {
         const mTasks = filteredTasks.filter(t => t.milestoneId === milestone.id);
         const isSelected = selectedMilestoneId === milestone.id;
-        const statusColors = getStatusColor(milestone.status);
         const progress = milestone.progressPercentage || 0;
 
         return (
@@ -600,11 +596,7 @@ export function TasksPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-            statusColors.bg
-          } ${statusColors.text}`}>
-            {milestone.status}
-          </span>
+          <StatusBadge status={milestone.status} />
           {milestone.dueDate && (
             <span className="text-[9px] text-slate-400 flex items-center gap-0.5">
               <span className="material-symbols-outlined text-[10px]">calendar_today</span>
@@ -687,7 +679,6 @@ export function TasksPage() {
       ).map((task, index) => {
         const isSelected = selectedTaskId === task.id;
         const statusColors = getStatusColor(task.status);
-        const priorityColors = getPriorityColor(task.priority);
         const assignedUser = task.assignedToUserId 
           ? users.find(u => u.id === task.assignedToUserId)
           : null;
@@ -738,12 +729,8 @@ export function TasksPage() {
                 </div>
 
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className={`text-[9px] font-medium uppercase ${priorityColors.text}`}>
-                    {task.priority}
-                  </span>
-                  <span className={`text-[9px] font-medium uppercase ${statusColors.text}`}>
-                    {task.status}
-                  </span>
+                  <PriorityBadge priority={task.priority} />
+                  <StatusBadge status={task.status} />
                 </div>
 
                 <div className="flex items-center gap-2 mb-1.5">
@@ -816,6 +803,7 @@ export function TasksPage() {
         recommendation={recommendation}
         delay={delay}
         isAdmin={isAdmin}
+        hasRole={hasRole}
         onStatusChange={(status) => handleStatusChange(selectedTask.id, status)}
         onEdit={() => setTaskModal({ open: true, editTask: selectedTask })}
         onUpdateProgress={async (progress, notes) => {

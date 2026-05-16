@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import type { Milestone, Project, Task, User } from "../../types";
+import type { Milestone, Project, Task, User, Role } from "../../types";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
-import { GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
+import { GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { DependencyManagement } from "./DependencyManagement";
 
 interface TaskDetailProps {
@@ -16,6 +16,7 @@ interface TaskDetailProps {
   recommendation?: any;
   delay?: any;
   isAdmin: boolean;
+  hasRole: (...roles: Role[]) => boolean;
   onStatusChange: (status: string) => void;
   onEdit: () => void;
   onUpdateProgress: (progress: number, notes: string) => void;
@@ -35,6 +36,7 @@ export function TaskDetail({
   recommendation,
   delay,
   isAdmin,
+  hasRole,
   onStatusChange,
   onEdit,
   onUpdateProgress,
@@ -47,7 +49,6 @@ export function TaskDetail({
   const { auth } = useAuth();
   const { addToast } = useToast();
   const statusColors = getStatusColor(task.status);
-  const priorityColors = getPriorityColor(task.priority);
   const assignedUser = task.assignedToUserId ? users.find(u => u.id === task.assignedToUserId) : null;
   
   const [progressForm, setProgressForm] = useState({ progressPercentage: task.progressPercentage || 0, notes: "" });
@@ -102,8 +103,6 @@ export function TaskDetail({
     onMessage?.("Subtask deleted.");
   };
 
-  const statuses = ["NotStarted", "Assigned", "InProgress", "Completed", "Delayed", "OnHold"];
-
   return (
     <div className="flex flex-col gap-5 max-h-[calc(100vh-220px)] overflow-y-auto">
       {/* Task Info Card */}
@@ -112,12 +111,8 @@ export function TaskDetail({
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-bold text-slate-900 mb-2">{task.title}</h3>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${statusColors.bg} ${statusColors.text}`}>
-                {task.status}
-              </span>
-              <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${priorityColors.bg} ${priorityColors.text}`}>
-                {task.priority}
-              </span>
+              <StatusBadge status={task.status} />
+              <PriorityBadge priority={task.priority} />
               {task.isOverdue && (
                 <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-red-50 text-red-600">
                   Overdue
@@ -160,23 +155,12 @@ export function TaskDetail({
         </div>
 
         {/* Status Buttons */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {statuses.map((status) => (
-            <button
-              key={status}
-              onClick={() => onStatusChange(status)}
-              className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                ${task.status === status
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200"
-                }
-              `}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
+        <StatusButtons
+          currentStatus={task.status}
+          hasRole={hasRole}
+          onStatusChange={onStatusChange}
+          variant="task"
+        />
 
         {delay && (
           <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 mb-4">
@@ -277,7 +261,6 @@ export function TaskDetail({
           <div className="space-y-2">
             {subtasks.map((subtask) => {
               const subStatusColors = getStatusColor(subtask.status);
-              const subPriorityColors = getPriorityColor(subtask.priority);
               const subAssignee = subtask.assignedToUserId ? users.find(u => u.id === subtask.assignedToUserId) : null;
 
               return (
@@ -289,9 +272,7 @@ export function TaskDetail({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-semibold text-slate-800 truncate">{subtask.title}</span>
-                        <span className={`text-[9px] font-medium uppercase ${subPriorityColors.text}`}>
-                          {subtask.priority}
-                        </span>
+                        <PriorityBadge priority={subtask.priority} />
                       </div>
                       <div className="flex items-center gap-3 text-xs text-slate-500">
                         {subAssignee && (
@@ -334,22 +315,13 @@ export function TaskDetail({
                     <span className="text-[10px] font-semibold text-slate-400">{subtask.progressPercentage || 0}%</span>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {statuses.map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => handleSubtaskStatusChange(subtask.id, status)}
-                        className={`
-                          px-2 py-0.5 rounded text-[9px] font-medium transition-all
-                          ${subtask.status === status
-                            ? "bg-indigo-600 text-white"
-                            : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                          }
-                        `}
-                      >
-                        {status}
-                      </button>
-                    ))}
+                  <div className="mt-2">
+                    <StatusButtons
+                      currentStatus={subtask.status}
+                      hasRole={hasRole}
+                      onStatusChange={(status) => handleSubtaskStatusChange(subtask.id, status)}
+                      variant="task"
+                    />
                   </div>
                 </div>
               );

@@ -1,4 +1,5 @@
 import type { Task } from "../../types";
+import { StatusBadge } from "./StatusBadge";
 
 export function TaskList({
   tasks,
@@ -29,23 +30,6 @@ export function TaskList({
     );
   }
 
-  const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
-    NotStarted: { bg: "bg-surface-container-high", text: "text-on-surface-variant", dot: "bg-outline" },
-    Assigned: { bg: "bg-primary/10", text: "text-primary", dot: "bg-primary" },
-    InProgress: { bg: "bg-[#F59E0B]/10", text: "text-[#F59E0B]", dot: "bg-[#F59E0B]" },
-    Completed: { bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
-    Delayed: { bg: "bg-error-container", text: "text-error", dot: "bg-error" },
-    OnHold: { bg: "bg-surface-container-high", text: "text-on-surface-variant", dot: "bg-outline" },
-    Cancelled: { bg: "bg-surface-container-high", text: "text-outline", dot: "bg-outline" },
-  };
-
-  const priorityConfig: Record<string, { icon: string; color: string }> = {
-    Critical: { icon: "priority_high", color: "text-error" },
-    High: { icon: "arrow_upward", color: "text-error" },
-    Medium: { icon: "remove", color: "text-[#F59E0B]" },
-    Low: { icon: "arrow_downward", color: "text-on-surface-variant" },
-  };
-
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "No due date";
     const date = new Date(dateStr);
@@ -63,8 +47,6 @@ export function TaskList({
       </div>
       <div className="flex flex-col">
         {tasks.map((task) => {
-          const config = statusConfig[task.status] || statusConfig.NotStarted;
-          const priority = priorityConfig[task.priority] || priorityConfig.Medium;
           const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Completed";
 
           return (
@@ -102,10 +84,7 @@ export function TaskList({
                     <span className="w-1 h-1 rounded-full bg-error"></span> Overdue
                   </span>
                 )}
-                <span className={`px-sm py-[2px] rounded-full text-[11px] font-medium flex items-center gap-xs ${config.bg} ${config.text}`}>
-                  <span className={`w-1 h-1 rounded-full ${config.dot}`}></span> 
-                  {task.status}
-                </span>
+                <StatusBadge status={task.status} />
               </div>
             </div>
           );

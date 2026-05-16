@@ -289,7 +289,7 @@ export function MilestonesPage() {
                     </select>
 
                     {/* Search */}
-                    <div className="relative flex-1 max-w-md">
+                    <div className="relative flex-1 max-w-[300px]">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
                             search
                         </span>

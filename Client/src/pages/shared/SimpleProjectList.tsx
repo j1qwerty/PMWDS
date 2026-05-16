@@ -1,3 +1,5 @@
+import { StatusBadge } from "./StatusBadge";
+
 export function SimpleProjectList({
   projects,
   title = "Projects",
@@ -31,39 +33,6 @@ export function SimpleProjectList({
     );
   }
 
-  const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
-    NotStarted: { 
-      bg: "bg-surface-container-high", 
-      text: "text-on-surface-variant", 
-      dot: "bg-outline" 
-    },
-    InProgress: { 
-      bg: "bg-primary/10", 
-      text: "text-primary", 
-      dot: "bg-primary" 
-    },
-    OnHold: { 
-      bg: "bg-amber-500/10", 
-      text: "text-amber-400", 
-      dot: "bg-amber-400" 
-    },
-    Completed: { 
-      bg: "bg-emerald-500/10", 
-      text: "text-emerald-400", 
-      dot: "bg-emerald-400" 
-    },
-    Cancelled: { 
-      bg: "bg-surface-container-high", 
-      text: "text-outline", 
-      dot: "bg-outline" 
-    },
-    Delayed: { 
-      bg: "bg-error-container", 
-      text: "text-error", 
-      dot: "bg-error" 
-    },
-  };
-
   const getHealthIcon = (project: { status: string; progressPercentage?: number }) => {
     if (project.status === 'Delayed') return 'report';
     if (project.status === 'OnHold') return 'warning';
@@ -89,7 +58,6 @@ export function SimpleProjectList({
       </div>
       <div className="flex flex-col gap-xs">
         {projectList.map((project) => {
-          const config = statusConfig[project.status] || statusConfig.NotStarted;
           const healthIcon = getHealthIcon(project);
           const healthColor = getHealthColor(project);
           
@@ -105,9 +73,7 @@ export function SimpleProjectList({
                 </a>
               </div>
               <div className="w-1/4 flex justify-center">
-                <span className={`px-sm py-[2px] rounded-full text-[11px] font-medium flex items-center gap-xs ${config.bg} ${config.text}`}>
-                  <span className={`w-1 h-1 rounded-full ${config.dot}`}></span> {project.status}
-                </span>
+                <StatusBadge status={project.status} />
               </div>
               <div className="w-1/4 px-md">
                 <div className="flex flex-col gap-xs">

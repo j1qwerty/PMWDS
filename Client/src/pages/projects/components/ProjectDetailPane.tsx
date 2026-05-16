@@ -1,6 +1,5 @@
-import { classNames } from "../../../ui";
-import { projectStatuses } from "../../constants";
 import type { Project, ProjectHealth, Role } from "../../../types";
+import { StatusButtons } from "../../shared";
 
 interface ProjectDetailPaneProps {
   project: Project | null;
@@ -110,60 +109,6 @@ export function ProjectDetailPane({
 
 {children}
     </section>
-  );
-}
-
-function StatusButtons({ 
-  currentStatus, 
-  hasRole, 
-  onStatusChange 
-}: { 
-  currentStatus: string; 
-  hasRole: (...roles: Role[]) => boolean;
-  onStatusChange: (status: string) => void;
-}) {
-  const statusStyles: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-    NotStarted: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-300", dot: "bg-slate-400" },
-    Assigned: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", dot: "bg-blue-500" },
-    InProgress: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
-    Completed: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
-    Delayed: { bg: "bg-error-container", text: "text-error", border: "border-error/30", dot: "bg-error" },
-    OnHold: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500" },
-    Cancelled: { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200", dot: "bg-slate-400" },
-  };
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {projectStatuses.map((status) => {
-        const canUpdate = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-        const styles = statusStyles[status] || statusStyles.NotStarted;
-        const isActive = currentStatus === status;
-
-        return (
-          <button
-            key={status}
-            onClick={canUpdate ? () => onStatusChange(status) : undefined}
-            disabled={!canUpdate}
-            className={classNames(
-              "px-3 py-1.5 text-xs font-bold rounded-full border transition-all flex items-center gap-1.5",
-              styles.bg,
-              styles.text,
-              isActive ? `${styles.border} ring-2 ring-offset-1 ${styles.border}` : "border-transparent",
-              canUpdate
-                ? "cursor-pointer hover:shadow-md hover:scale-105"
-                : "cursor-default opacity-90"
-            )}
-            title={canUpdate ? `Change status to ${status}` : `Status: ${status}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`}></span>
-            {status}
-            {isActive && (
-              <span className="material-symbols-outlined text-[14px]">check</span>
-            )}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
