@@ -1,3 +1,5 @@
+import { AvatarStack } from "../shared";
+
 export function ActiveObjectives({
   objectives,
   title = "Active Objectives",
@@ -7,7 +9,7 @@ export function ActiveObjectives({
     category: string;
     title: string;
     progressPercentage: number;
-    assignees?: Array<{ avatar: string; name: string }>;
+    assignees?: Array<{ id?: string; userId?: string; fullName?: string; name?: string; profilePictureUrl?: string | null }>;
   }>;
   title?: string;
 }) {
@@ -91,21 +93,7 @@ export function ActiveObjectives({
                 </div>
                 <div className="flex items-center gap-sm">
                   {obj.assignees && obj.assignees.length > 0 && (
-                    <div className="flex -space-x-2 mr-1">
-                      {obj.assignees.slice(0, 2).map((assignee, i) => (
-                        <img
-                          key={i}
-                          alt={assignee.name || "User"}
-                          className="w-5 h-5 rounded-full border border-surface-container-low"
-                          src={assignee.avatar}
-                        />
-                      ))}
-                      {obj.assignees.length > 2 && (
-                        <div className="w-5 h-5 rounded-full bg-surface-variant border border-surface-container-low flex items-center justify-center text-[8px] text-on-surface-variant font-bold">
-                          +{obj.assignees.length - 2}
-                        </div>
-                      )}
-                    </div>
+                    <AvatarStack people={obj.assignees} limit={2} size="xs" className="mr-1" />
                   )}
                   <span className="text-numeric text-[12px] text-on-surface-variant">
                     {obj.progressPercentage}%

@@ -1,5 +1,6 @@
 import { classNames } from "../../../ui";
 import type { Project } from "../../../types";
+import { AvatarStack } from "../../shared";
 
 interface ProjectCardProps {
   project: Project;
@@ -78,6 +79,13 @@ export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCar
   };
 
   const statusStyle = getStatusStyles(project.status);
+  const projectPeople = project.projectManagerId || project.projectManagerName
+    ? [{
+      id: project.projectManagerId || project.id,
+      fullName: project.projectManagerName || "Project Manager",
+      userId: project.projectManagerId,
+    }]
+    : [];
   const getHealthColor = (score: number) => {
     if (score >= 80) return "bg-green-100 text-green-700";
     if (score >= 50) return "bg-orange-100 text-orange-700";
@@ -140,11 +148,11 @@ export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCar
       </div>
 
       <div className="flex items-center justify-between border-t border-outline-variant/10 pt-3">
-        <div className="flex -space-x-2">
-          <img className="size-7 rounded-full border-2 border-white" src="https://ui-avatars.com/api/?name=User+1&background=6063ee&color=fff" alt="" />
-          <img className="size-7 rounded-full border-2 border-white" src="https://ui-avatars.com/api/?name=User+2&background=9c48ea&color=fff" alt="" />
-          <div className="size-7 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold border-2 border-white">+2</div>
-        </div>
+        {projectPeople.length > 0 ? (
+          <AvatarStack people={projectPeople} limit={3} size="sm" />
+        ) : (
+          <span className="text-[10px] font-semibold text-outline">No manager</span>
+        )}
 
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-outline">Health</span>

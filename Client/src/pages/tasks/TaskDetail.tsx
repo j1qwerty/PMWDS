@@ -4,7 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
-import { GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
+import { Avatar, GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { DependencyManagement } from "./DependencyManagement";
 
 interface TaskDetailProps {
@@ -277,11 +277,7 @@ export function TaskDetail({
                       <div className="flex items-center gap-3 text-xs text-slate-500">
                         {subAssignee && (
                           <span className="flex items-center gap-1">
-                            <img
-                              className="size-3.5 rounded-full"
-                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(subAssignee.fullName)}&background=e0e7ff&color=4f46e5&size=14`}
-                              alt={subAssignee.fullName}
-                            />
+                            <Avatar person={subAssignee} size="xs" className="shadow-none ring-0" />
                             {subAssignee.fullName}
                           </span>
                         )}
@@ -476,13 +472,7 @@ function DetailItem({ icon, label, value, avatar }: { icon: string; label: strin
       <div className="min-w-0">
         <div className="text-[10px] font-semibold text-slate-400 uppercase">{label}</div>
         <div className="text-sm font-medium text-slate-700 flex items-center gap-1.5 truncate">
-          {avatar && (
-            <img
-              className="size-4 rounded-full"
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(avatar.fullName)}&background=e0e7ff&color=4f46e5&size=16`}
-              alt={avatar.fullName}
-            />
-          )}
+          {avatar && <Avatar person={avatar} size="xs" className="shadow-none ring-0" />}
           {value}
         </div>
       </div>

@@ -164,27 +164,21 @@ export function DashboardPage() {
         {/* Active Objectives - Full Width */}
         <div className="">
           <ActiveObjectives
-            objectives={myTasks.slice(0, 3).map((task, index) => ({
-              id: task.id,
-              category: task.projectName || "General",
-              title: task.title,
-              progressPercentage: task.progressPercentage,
-              // Temporary assignees since they don't exist in the data yet
-              assignees: [
-                {
-                  avatar: `https://ui-avatars.com/api/?name=User+${index + 1}&background=6063ee&color=fff&size=40`,
-                  name: `Team Lead ${index + 1}`,
-                },
-                {
-                  avatar: `https://ui-avatars.com/api/?name=Dev+${index + 1}&background=9c48ea&color=fff&size=40`,
-                  name: `Developer ${index + 1}`,
-                },
-                {
-                  avatar: `https://ui-avatars.com/api/?name=QA+${index + 1}&background=545c72&color=fff&size=40`,
-                  name: `QA Engineer ${index + 1}`,
-                },
-              ],
-            }))}
+            objectives={myTasks.slice(0, 3).map((task) => {
+              const assignedUser = task.assignedToUserId ? users.find((user) => user.id === task.assignedToUserId) : null;
+
+              return {
+                id: task.id,
+                category: task.projectName || "General",
+                title: task.title,
+                progressPercentage: task.progressPercentage,
+                assignees: assignedUser
+                  ? [assignedUser]
+                  : task.assignedToUserName
+                    ? [{ fullName: task.assignedToUserName }]
+                    : [],
+              };
+            })}
             title="Active Objectives"
           />
           </div>

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Department, User } from "../../types";
-import { GlassCard } from "../shared";
+import { Avatar, GlassCard } from "../shared";
 
 interface DepartmentListProps {
   departments: Department[];
@@ -188,11 +188,7 @@ function DepartmentListItem({
           {/* Department Head */}
           {departmentHead && (
             <div className="flex items-center gap-1.5">
-              <img
-                className="size-4 rounded-full ring-2 ring-white"
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(departmentHead.fullName)}&background=e0e7ff&color=4f46e5&size=16`}
-                alt={departmentHead.fullName}
-              />
+              <Avatar person={departmentHead} size="xs" />
               <span className="text-[10px] text-slate-400 truncate font-medium">
                 {departmentHead.fullName}
               </span>

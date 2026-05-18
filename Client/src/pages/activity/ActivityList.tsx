@@ -1,5 +1,5 @@
 import type { ActivityLogRecord, User } from "../../types";
-import { GlassCard } from "../shared";
+import { Avatar, GlassCard } from "../shared";
 
 interface ActivityListProps {
   logs: ActivityLogRecord[];
@@ -106,11 +106,7 @@ export function ActivityList({ logs, users }: ActivityListProps) {
                       {/* User Info */}
                       {user && (
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <img
-                            className="size-4 rounded-full"
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=e2e8f0&color=475569&size=16`}
-                            alt={user.fullName}
-                          />
+                          <Avatar person={user} size="xs" className="shadow-none ring-0" />
                           <span className="text-[10px] text-slate-400">{user.fullName}</span>
                         </div>
                       )}

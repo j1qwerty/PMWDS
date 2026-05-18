@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { SkillRecord, User } from "../../types";
-import { GlassCard, GradientButton } from "../shared";
+import { Avatar, GlassCard, GradientButton } from "../shared";
 
 interface UserSkillsPanelProps {
   users: User[];
@@ -109,11 +109,7 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
         {/* Selected User Info */}
         {selectedUserData && (
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-            <img
-              className="size-10 rounded-lg ring-2 ring-white shadow-sm"
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUserData.fullName)}&background=4f46e5&color=fff&size=40`}
-              alt={selectedUserData.fullName}
-            />
+            <Avatar person={selectedUserData} size="lg" className="rounded-lg" />
             <div>
               <p className="text-sm font-semibold text-slate-700">{selectedUserData.fullName}</p>
               <p className="text-xs text-slate-400">{selectedUserData.email}</p>

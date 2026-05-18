@@ -1,5 +1,6 @@
 import type { Department, User } from "../../types";
 import { formatPercent } from "../../ui";
+import { Avatar, AvatarStack } from "../shared";
 
 interface DepartmentCardProps {
   department: Department;
@@ -35,7 +36,6 @@ export function DepartmentCard({
     { bg: "bg-teal-100", text: "text-teal-600", bar: "bg-teal-500" },
   ];
   const color = colors[index % colors.length];
-  const displayMembers = teamMembers.slice(0, 3);
   const extraCount = Math.max(0, teamMembers.length - 3);
   const capacityPercent = Math.min((department.capacityUtilization || 0) * 100, 100);
 
@@ -120,24 +120,8 @@ export function DepartmentCard({
       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
         <div className="flex items-center gap-3">
           {/* Team Member Avatars */}
-          {teamMembers.length > 0 && (
-            <div className="flex -space-x-2">
-              {displayMembers.map((member) => (
-                <img
-                  key={member.id}
-                  className="size-7 rounded-full border-2 border-white shadow-sm"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=${color.text.replace('text-', '')}&color=fff&size=28`}
-                  alt={member.fullName}
-                  title={member.fullName}
-                />
-              ))}
-              {extraCount > 0 && (
-                <div className="size-7 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-sm">
-                  +{extraCount}
-                </div>
-              )}
-            </div>
-          )}
+          {teamMembers.length > 0 && <AvatarStack people={teamMembers} limit={3} size="sm" />}
+          {extraCount > 0 && <span className="sr-only">{extraCount} more team members</span>}
           
           {teamMembers.length === 0 && (
             <span className="text-[11px] text-slate-400 italic">No team members</span>
@@ -148,12 +132,7 @@ export function DepartmentCard({
         {departmentHead && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-slate-400 font-medium">Head</span>
-            <img
-              className="size-6 rounded-full border-2 border-white shadow-sm"
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(departmentHead.fullName)}&background=4f46e5&color=fff&size=24`}
-              alt={departmentHead.fullName}
-              title={departmentHead.fullName}
-            />
+            <Avatar person={departmentHead} size="sm" />
             <span className="text-[11px] font-medium text-slate-600">{departmentHead.fullName}</span>
           </div>
         )}

@@ -1,5 +1,6 @@
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
+import { Avatar, AvatarStack } from "../shared";
 
 interface DepartmentDetailCardProps {
   department: Department;
@@ -25,7 +26,6 @@ export function DepartmentDetailCard({
   const teamMembersCount = teamMembers.length || Number(dashboard?.["teamMembers"] ?? 0);
   const avgWorkload = Math.round(Number(dashboard?.["averageWorkload"] ?? 0));
   const capacityPercent = Math.min((department.capacityUtilization || 0) * 100, 100);
-  const displayMembers = teamMembers.slice(0, 4);
   const extraCount = Math.max(0, teamMembers.length - 4);
 
   return (
@@ -103,11 +103,7 @@ export function DepartmentDetailCard({
             <div className="text-sm font-medium text-slate-700 flex items-center gap-2">
               {departmentHead ? (
                 <>
-                  <img
-                    className="size-5 rounded-full"
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(departmentHead.fullName)}&background=4f46e5&color=fff&size=20`}
-                    alt={departmentHead.fullName}
-                  />
+                  <Avatar person={departmentHead} size="sm" className="shadow-none ring-0" />
                   {departmentHead.fullName}
                 </>
               ) : (
@@ -153,31 +149,12 @@ export function DepartmentDetailCard({
             <span className="text-xs text-slate-400">{teamMembers.length} members</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {displayMembers.map((member) => (
-                <img
-                  key={member.id}
-                  className="size-8 rounded-full border-2 border-white shadow-sm"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=4f46e5&color=fff&size=32`}
-                  alt={member.fullName}
-                  title={member.fullName}
-                />
-              ))}
-              {extraCount > 0 && (
-                <div className="size-8 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600 shadow-sm">
-                  +{extraCount}
-                </div>
-              )}
-            </div>
+            <AvatarStack people={teamMembers} limit={4} size="md" />
+            {extraCount > 0 && <span className="sr-only">{extraCount} more team members</span>}
             {departmentHead && (
               <div className="flex items-center gap-2 ml-4 pl-4 border-l border-slate-200">
                 <span className="text-[10px] text-slate-400 font-medium">Head:</span>
-                <img
-                  className="size-8 rounded-full border-2 border-indigo-200 shadow-sm ring-2 ring-indigo-100"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(departmentHead.fullName)}&background=4f46e5&color=fff&size=32`}
-                  alt={departmentHead.fullName}
-                  title={`Department Head: ${departmentHead.fullName}`}
-                />
+                <Avatar person={departmentHead} size="md" />
               </div>
             )}
           </div>

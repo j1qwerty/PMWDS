@@ -1,6 +1,6 @@
 import type { Milestone, Project, Task, User } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
+import { Avatar, GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
 
 interface MilestoneDetailProps {
   milestone: Milestone;
@@ -207,11 +207,7 @@ export function MilestoneDetail({
                   <div className="flex items-center justify-between mb-2">
                     {assignedUser ? (
                       <div className="flex items-center gap-1.5">
-                        <img
-                          className="size-5 rounded-full ring-1 ring-white"
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(assignedUser.fullName)}&background=e0e7ff&color=4f46e5&size=20`}
-                          alt={assignedUser.fullName}
-                        />
+                        <Avatar person={assignedUser} size="xs" />
                         <span className="text-[10px] text-slate-500 font-medium">{assignedUser.fullName}</span>
                       </div>
                     ) : (

@@ -1,5 +1,6 @@
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
+import { Avatar, AvatarStack } from "../shared";
 
 interface DepartmentDetailCardProps {
   department: Department;
@@ -112,31 +113,12 @@ export function DepartmentDetailCard({
             <span className="text-xs text-slate-400">{teamMembers.length} members</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {displayMembers.map((member) => (
-                <img
-                  key={member.id}
-                  className="size-9 rounded-full border-2 border-white shadow-sm ring-2 ring-slate-50"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.fullName)}&background=4f46e5&color=fff&size=36`}
-                  alt={member.fullName}
-                  title={member.fullName}
-                />
-              ))}
-              {extraCount > 0 && (
-                <div className="size-9 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600 shadow-sm ring-2 ring-slate-50">
-                  +{extraCount}
-                </div>
-              )}
-            </div>
+            <AvatarStack people={displayMembers} limit={5} size="md" />
+            {extraCount > 0 && <span className="sr-only">{extraCount} more team members</span>}
             {departmentHead && (
               <div className="flex items-center gap-2 ml-4 pl-4 border-l-2 border-slate-200">
                 <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Head</span>
-                <img
-                  className="size-9 rounded-full border-2 border-indigo-300 shadow-sm ring-2 ring-indigo-100"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(departmentHead.fullName)}&background=4f46e5&color=fff&size=36`}
-                  alt={departmentHead.fullName}
-                  title={`Department Head: ${departmentHead.fullName}`}
-                />
+                <Avatar person={departmentHead} size="md" className="border-2 border-indigo-300 ring-indigo-100" />
               </div>
             )}
           </div>
@@ -186,11 +168,7 @@ function DetailItem({ icon, label, value, avatar }: {
         <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
         <div className="text-sm font-medium text-slate-700 flex items-center gap-2 mt-0.5">
           {avatar && (
-            <img
-              className="size-5 rounded-full"
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(avatar.fullName)}&background=e0e7ff&color=4f46e5&size=20`}
-              alt={avatar.fullName}
-            />
+            <Avatar person={avatar} size="xs" />
           )}
           <span className="truncate">{value}</span>
         </div>

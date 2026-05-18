@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import type { User, UserProfileRecord } from "../../types";
+import { Avatar } from "../shared";
 
 interface ProfileFormModalProps {
   user: User;
@@ -41,11 +42,7 @@ export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileF
     <div className="bg-white rounded-2xl p-8 w-[600px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <img
-          className="size-12 rounded-xl"
-          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=4f46e5&color=fff&size=48`}
-          alt={user.fullName}
-        />
+        <Avatar person={user} size="lg" className="rounded-xl" />
         <div>
           <h2 className="text-xl font-bold text-slate-900">
             Edit Profile · {user.fullName}

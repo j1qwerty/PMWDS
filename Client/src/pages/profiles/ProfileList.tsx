@@ -1,5 +1,5 @@
 import type { User } from "../../types";
-import { GlassCard } from "../shared";
+import { Avatar, GlassCard } from "../shared";
 
 interface ProfileListProps {
   users: User[];
@@ -59,11 +59,7 @@ export function ProfileList({ users, selectedUserId, onSelect, searchTerm, onSea
               style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}
             >
               {/* Avatar */}
-              <img
-                className="size-9 rounded-full ring-2 ring-white shadow-sm shrink-0"
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=${isSelected ? '4f46e5' : 'e2e8f0'}&color=${isSelected ? 'fff' : '475569'}&size=36`}
-                alt={user.fullName}
-              />
+              <Avatar person={user} size="md" className="shrink-0" />
               
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-sm text-slate-800 truncate">

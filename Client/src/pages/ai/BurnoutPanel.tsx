@@ -1,6 +1,6 @@
 import type { BurnoutRiskRecord } from "../../types";
 import { formatPercent } from "../../ui";
-import { GlassCard } from "../shared";
+import { Avatar, GlassCard } from "../shared";
 
 interface BurnoutPanelProps {
   burnout: BurnoutRiskRecord[];
@@ -42,11 +42,7 @@ export function BurnoutPanel({ burnout }: BurnoutPanelProps) {
 
           return (
             <div key={`${item.userId}-${index}`} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
-              <img
-                className="size-8 rounded-full ring-2 ring-white shadow-sm"
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(String(item.fullName || "Unknown"))}&background=e2e8f0&color=475569&size=32`}
-                alt={String(item.fullName)}
-              />
+              <Avatar person={{ userId: item.userId, fullName: item.fullName }} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
                   <span className="text-xs font-semibold text-slate-700 truncate">{String(item.fullName)}</span>
