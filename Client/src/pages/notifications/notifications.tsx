@@ -11,6 +11,7 @@ import {
   AnimatedBackground, 
   GlassCard, 
   GradientButton, 
+  LoadingPage,
   PageHeader,
   ModalOverlay,
   getStatusColor,
@@ -27,7 +28,8 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 export function NotificationsPage() {
   const { auth, hasRole } = useAuth();
   const canManage = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const canWrite = hasRole("SuperAdmin");
+  const canBroadcast = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const canConfigure = hasRole("SuperAdmin", "ProjectManager");
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
@@ -55,7 +57,7 @@ export function NotificationsPage() {
       api.getNotifications(auth.token),
       canManage ? api.getNotificationTemplates(auth.token) : Promise.resolve([]),
       canManage ? api.getAlertRules(auth.token) : Promise.resolve([]),
-      canWrite ? api.getDepartments(auth.token) : Promise.resolve([]),
+      canBroadcast ? api.getDepartments(auth.token) : Promise.resolve([]),
     ])
       .then(([notificationData, templateData, ruleData, departmentData]) => {
         setItems(notificationData);
@@ -135,19 +137,7 @@ export function NotificationsPage() {
     loadData();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-7 relative font-sans">
-        <AnimatedBackground />
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading notifications...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingPage label="Loading notifications..." />;
 
   return (
     <div className="min-h-screen p-7 relative font-sans">
@@ -158,7 +148,7 @@ export function NotificationsPage() {
         <PageHeader
           title="Notifications"
           description="Manage inbox, templates, and alert rules"
-          action={canWrite ? {
+          action={canBroadcast ? {
             label: "Broadcast",
             onClick: () => setBroadcastOpen(true),
             icon: "campaign",
@@ -229,7 +219,7 @@ export function NotificationsPage() {
             onMarkAllRead={handleMarkAllRead}
             onDelete={handleDeleteNotification}
             onBroadcast={() => setBroadcastOpen(true)}
-            canWrite={canWrite}
+            canWrite={canBroadcast}
           />
         )}
 
@@ -239,7 +229,7 @@ export function NotificationsPage() {
             onEdit={(template) => setTemplateModal({ open: true, editTemplate: template })}
             onDelete={(template) => setDeleteConfirm({ open: true, type: "template", id: template.id, name: template.templateType })}
             onCreate={() => setTemplateModal({ open: true })}
-            canWrite={canWrite}
+            canWrite={canConfigure}
           />
         )}
 
@@ -249,7 +239,7 @@ export function NotificationsPage() {
             onEdit={(rule) => setRuleModal({ open: true, editRule: rule })}
             onDelete={(rule) => setDeleteConfirm({ open: true, type: "rule", id: rule.id, name: rule.name })}
             onCreate={() => setRuleModal({ open: true })}
-            canWrite={canWrite}
+            canWrite={canConfigure}
           />
         )}
       </div>

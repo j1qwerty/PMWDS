@@ -12,14 +12,16 @@ import {
     PageHeader,
     getDepartmentColor,
     getStatusColor,
+    useRoleAccess,
 } from "../shared";
 import { MilestoneDetail } from "./MilestoneDetail";
 // import { MilestoneList } from "./MilestoneList";
 import { MilestoneFormModal } from "./MilestoneFormModal";
 
 export function MilestonesPage() {
-    const { auth, hasRole } = useAuth();
-    const isAdmin = hasRole("SuperAdmin", "ProjectManager");
+    const { auth } = useAuth();
+    const access = useRoleAccess();
+    const isAdmin = access.canManageMilestones;
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

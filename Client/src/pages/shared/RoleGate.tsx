@@ -28,6 +28,7 @@ export function useRoleAccess() {
   return {
     roles,
     isAdmin: canUseRole(roles, ["SuperAdmin"]),
+    canManageDepartments: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead"]),
     canManageProjects: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead"]),
     canManageMilestones: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"]),
     canManageTasks: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"]),

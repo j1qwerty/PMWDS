@@ -11,6 +11,7 @@ import {
     ModalOverlay,
     DeleteConfirmationModal,
     DeptFormModal,
+    useRoleAccess,
 } from "../shared";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
 import { DepartmentList } from "./DepartmentList";
@@ -18,8 +19,10 @@ import { getDepartmentColor } from "../shared";
 
 
 export function DepartmentsPage() {
-    const { auth, hasRole } = useAuth();
-    const isAdmin = hasRole("SuperAdmin");
+    const { auth } = useAuth();
+    const access = useRoleAccess();
+    const canManageDepartments = access.canManageDepartments;
+    const canDeleteDepartments = access.isAdmin;
 
     const [departments, setDepartments] = useState<Department[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -43,7 +46,7 @@ export function DepartmentsPage() {
         Promise.all([
             api.getDepartments(auth.token),
             api.getOrganizations(auth.token),
-            isAdmin || hasRole("ProjectManager", "DepartmentHead") ? api.getUsers(auth.token) : Promise.resolve([]),
+            access.canViewManagementData ? api.getUsers(auth.token) : Promise.resolve([]),
         ]).then(([deptData, orgData, userData]) => {
             setDepartments(deptData);
             setOrganizations(orgData);
@@ -60,9 +63,9 @@ export function DepartmentsPage() {
 
     // Load dashboard for selected department
     useEffect(() => {
-        if (!auth || !selectedDeptId || !hasRole("SuperAdmin", "ProjectManager", "DepartmentHead")) return;
+        if (!auth || !selectedDeptId || !access.canViewManagementData) return;
         api.getDepartmentDashboard(auth.token, selectedDeptId).then(setDashboard).catch(() => setDashboard(null));
-    }, [auth, selectedDeptId]);
+    }, [auth, selectedDeptId, access.canViewManagementData]);
 
     const filteredDepartments = useMemo(() => {
         if (!selectedOrgId) return departments; // Show all departments when "All" is selected
@@ -124,7 +127,7 @@ export function DepartmentsPage() {
                 <PageHeader
                     title="Departments"
                     description="Manage departments across all organizations"
-                    action={isAdmin ? {
+                    action={canManageDepartments ? {
                         label: "New Department",
                         onClick: () => setDeptModal({ open: true }),
                         icon: "add",
@@ -227,7 +230,7 @@ export function DepartmentsPage() {
                         <>
 
                             {/* Admin Actions */}
-                            {isAdmin && (
+                            {canManageDepartments && (
                                 <GlassCard className="p-4">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -242,17 +245,19 @@ export function DepartmentsPage() {
                                                 <span className="material-symbols-outlined text-base">edit</span>
                                                 Edit
                                             </GradientButton>
-                                            <GradientButton
-                                                variant="danger"
-                                                onClick={() => setDeleteConfirm({
-                                                    open: true,
-                                                    id: selectedDepartment.id,
-                                                    name: selectedDepartment.name,
-                                                })}
-                                            >
-                                                <span className="material-symbols-outlined text-base">delete</span>
-                                                Delete
-                                            </GradientButton>
+                                            {canDeleteDepartments && (
+                                                <GradientButton
+                                                    variant="danger"
+                                                    onClick={() => setDeleteConfirm({
+                                                        open: true,
+                                                        id: selectedDepartment.id,
+                                                        name: selectedDepartment.name,
+                                                    })}
+                                                >
+                                                    <span className="material-symbols-outlined text-base">delete</span>
+                                                    Delete
+                                                </GradientButton>
+                                            )}
                                         </div>
                                     </div>
                                 </GlassCard>

@@ -16,7 +16,7 @@ import { SkillFormModal } from "./SkillFormModal";
 export function SkillsPage() {
   const { auth, hasRole } = useAuth();
   const canManage = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const canWrite = hasRole("SuperAdmin", "ProjectManager");
+  const canWrite = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
 
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [message, setMessage] = useState("");

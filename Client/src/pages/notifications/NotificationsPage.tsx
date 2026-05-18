@@ -27,7 +27,8 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 export function NotificationsPage() {
   const { auth, hasRole } = useAuth();
   const canManage = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const canWrite = hasRole("SuperAdmin");
+  const canBroadcast = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const canConfigure = hasRole("SuperAdmin", "ProjectManager");
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
@@ -55,7 +56,7 @@ export function NotificationsPage() {
       api.getNotifications(auth.token),
       canManage ? api.getNotificationTemplates(auth.token) : Promise.resolve([]),
       canManage ? api.getAlertRules(auth.token) : Promise.resolve([]),
-      canWrite ? api.getDepartments(auth.token) : Promise.resolve([]),
+      canBroadcast ? api.getDepartments(auth.token) : Promise.resolve([]),
     ])
       .then(([notificationData, templateData, ruleData, departmentData]) => {
         setItems(notificationData);
@@ -146,7 +147,7 @@ export function NotificationsPage() {
         <PageHeader
           title="Notifications"
           description="Manage inbox, templates, and alert rules"
-          action={canWrite ? {
+          action={canBroadcast ? {
             label: "Broadcast",
             onClick: () => setBroadcastOpen(true),
             icon: "campaign",
@@ -217,7 +218,7 @@ export function NotificationsPage() {
             onMarkAllRead={handleMarkAllRead}
             onDelete={handleDeleteNotification}
             onBroadcast={() => setBroadcastOpen(true)}
-            canWrite={canWrite}
+            canWrite={canBroadcast}
           />
         )}
 
@@ -227,7 +228,7 @@ export function NotificationsPage() {
             onEdit={(template) => setTemplateModal({ open: true, editTemplate: template })}
             onDelete={(template) => setDeleteConfirm({ open: true, type: "template", id: template.id, name: template.templateType })}
             onCreate={() => setTemplateModal({ open: true })}
-            canWrite={canWrite}
+            canWrite={canConfigure}
           />
         )}
 
@@ -237,7 +238,7 @@ export function NotificationsPage() {
             onEdit={(rule) => setRuleModal({ open: true, editRule: rule })}
             onDelete={(rule) => setDeleteConfirm({ open: true, type: "rule", id: rule.id, name: rule.name })}
             onCreate={() => setRuleModal({ open: true })}
-            canWrite={canWrite}
+            canWrite={canConfigure}
           />
         )}
       </div>

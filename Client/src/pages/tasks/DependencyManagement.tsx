@@ -42,7 +42,12 @@ export function DependencyManagement({ task, allTasks, onRefresh, onMessage }: D
   const [editingDep, setEditingDep] = useState<TaskDependency | null>(null);
   const [form, setForm] = useState({ predecessorTaskId: "", successorTaskId: "", type: "FinishToStart", lagDays: 0 });
 
-  const isAdmin = auth?.roles?.includes("SuperAdmin") || auth?.roles?.includes("ProjectManager") || auth?.roles?.includes("Manager");
+  const isAdmin =
+    auth?.roles?.includes("SuperAdmin") ||
+    auth?.roles?.includes("ProjectManager") ||
+    auth?.roles?.includes("DepartmentHead") ||
+    auth?.roles?.includes("TeamLead") ||
+    auth?.roles?.includes("Manager");
 
   useEffect(() => {
     if (!auth) return;
