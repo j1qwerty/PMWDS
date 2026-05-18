@@ -20,6 +20,8 @@ public class UserConfiguration
         .HasMaxLength(50);
         b.Property(e => e.TimeZone)
         .HasMaxLength(100);
+        b.Property(e => e.PasswordResetTokenHash)
+        .HasMaxLength(128);
         b.Property(e => e.AvailabilityStatus)
         .HasConversion<string>().HasMaxLength(30);
         b.Property(e => e.AvailabilityPercentage)

@@ -5,6 +5,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using PMWDS.API.Hubs;
 using PMWDS.API.Middleware;
@@ -168,6 +169,16 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+var storageSettings = builder.Configuration.GetSection("AzureStorage").Get<AzureStorageSettings>() ?? new AzureStorageSettings();
+var localFilesRoot = string.IsNullOrWhiteSpace(storageSettings.LocalUploadPath)
+    ? Path.Combine(AppContext.BaseDirectory, "App_Data", "Files")
+    : Directory.GetParent(storageSettings.LocalUploadPath)?.FullName ?? storageSettings.LocalUploadPath;
+Directory.CreateDirectory(localFilesRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(localFilesRoot),
+    RequestPath = storageSettings.LocalBaseUrl ?? "/files"
+});
 app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
 app.UseAuthentication();

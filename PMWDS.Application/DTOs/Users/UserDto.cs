@@ -135,7 +135,7 @@ public record RegisterUserDto(
  string? JobTitle,
  Guid? DepartmentId,
  List<Guid>? DepartmentIds,
- string Role = "TeamMember");
+ string Role = "Viewer");
 public record UpdateUserDto(
  string FirstName,
  string LastName,
@@ -143,7 +143,9 @@ public record UpdateUserDto(
  string? PhoneNumber,
  Guid? DepartmentId,
  List<Guid>? DepartmentIds,
- double AvailabilityPercentage);
+ double AvailabilityPercentage,
+ PMWDS.Domain.Enums.AvailabilityStatus? AvailabilityStatus,
+ List<string>? RoleNames);
 public record WorkloadDistributionDto(
  Guid? DepartmentId,
  int TotalMembers,

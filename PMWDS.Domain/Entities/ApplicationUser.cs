@@ -13,6 +13,8 @@ public class ApplicationUser : AuditableEntity
     public string? ProfilePictureUrl { get; private set; }
     public string TimeZone { get; private set; } = "UTC";
     public string? PasswordHash { get; private set; }
+    public string? PasswordResetTokenHash { get; private set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
     // Organization
     public Guid? DepartmentId { get; private set; }
     public string JobTitle { get; private set; } = string.Empty;
@@ -95,7 +97,19 @@ public class ApplicationUser : AuditableEntity
     public void SetPassword(string passwordHash)
     {
         PasswordHash = passwordHash;
+        PasswordResetTokenHash = null;
+        PasswordResetTokenExpiresAt = null;
     }
+    public void SetPasswordResetToken(string tokenHash, DateTime expiresAtUtc)
+    {
+        PasswordResetTokenHash = tokenHash;
+        PasswordResetTokenExpiresAt = expiresAtUtc;
+    }
+    public bool IsPasswordResetTokenValid(string tokenHash)
+        => !string.IsNullOrWhiteSpace(PasswordResetTokenHash)
+        && PasswordResetTokenHash == tokenHash
+        && PasswordResetTokenExpiresAt.HasValue
+        && PasswordResetTokenExpiresAt.Value >= DateTime.UtcNow;
     public void SetProfile(UserProfile profile)
     {
         Profile = profile;

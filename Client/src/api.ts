@@ -117,6 +117,21 @@ export const api = {
       body: { email, password },
     });
   },
+  signup(payload: Record<string, unknown>) {
+    return request<User>("auth/signup", { method: "POST", body: payload });
+  },
+  forgotPassword(email: string) {
+    return request<{ message: string }>("auth/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
+  },
+  resetPassword(email: string, token: string, newPassword: string) {
+    return request<{ message: string }>("auth/reset-password", {
+      method: "POST",
+      body: { email, token, newPassword },
+    });
+  },
   refresh(token: string) {
     return request<{ token: string; expiry: string }>("auth/refresh", {
       method: "POST",
@@ -342,6 +357,9 @@ export const api = {
   },
   registerUser(token: string, payload: Record<string, unknown>) {
     return request<User>("users/register", { token, method: "POST", body: payload });
+  },
+  updateUser(token: string, id: string, payload: Record<string, unknown>) {
+    return request<User>(`users/${id}`, { token, method: "PUT", body: payload });
   },
   assignUserDepartments(token: string, id: string, departmentIds: string[], primaryDepartmentId?: string | null) {
     return request<User>(`users/${id}/departments`, {

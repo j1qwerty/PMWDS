@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 interface ProfilePictureUploaderProps {
   userId: string;
@@ -7,35 +7,63 @@ interface ProfilePictureUploaderProps {
   onUpload: (file: File) => Promise<void>;
 }
 
-export function ProfilePictureUploader({
-  userId,
-  token,
-  disabled,
-  onUpload,
-}: ProfilePictureUploaderProps) {
+type EditorState = {
+  file: File;
+  url: string;
+  zoom: number;
+  rotate: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+export function ProfilePictureUploader({ userId, token, disabled, onUpload }: ProfilePictureUploaderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [editor, setEditor] = useState<EditorState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFile = async (file: File | undefined) => {
+  useEffect(() => {
+    return () => {
+      if (editor?.url) URL.revokeObjectURL(editor.url);
+    };
+  }, [editor?.url]);
+
+  const openEditor = (file: File | undefined) => {
     if (!file || disabled || !token || !userId) return;
     setError("");
     if (!file.type.startsWith("image/")) {
       setError("Select an image file.");
       return;
     }
+    if (editor?.url) URL.revokeObjectURL(editor.url);
+    setEditor({
+      file,
+      url: URL.createObjectURL(file),
+      zoom: 1,
+      rotate: 0,
+      offsetX: 0,
+      offsetY: 0,
+    });
+    if (inputRef.current) inputRef.current.value = "";
+  };
 
+  const closeEditor = () => {
+    if (editor?.url) URL.revokeObjectURL(editor.url);
+    setEditor(null);
+    setBusy(false);
+  };
+
+  const save = async () => {
+    if (!editor) return;
     setBusy(true);
+    setError("");
     try {
-      const compressed = await cropAndCompress(file);
+      const compressed = await cropAndCompress(editor);
       await onUpload(compressed);
+      closeEditor();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Failed to upload image.");
-    } finally {
       setBusy(false);
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
     }
   };
 
@@ -46,7 +74,7 @@ export function ProfilePictureUploader({
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
-        onChange={event => void handleFile(event.target.files?.[0])}
+        onChange={(event) => openEditor(event.target.files?.[0])}
       />
       <button
         type="button"
@@ -54,35 +82,146 @@ export function ProfilePictureUploader({
         onClick={() => inputRef.current?.click()}
         className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
       >
-        {busy ? "Uploading..." : "Upload"}
+        Upload
       </button>
-      {error && <span className="text-[10px] text-red-500">{error}</span>}
+      {error && <span className="max-w-40 text-[10px] text-red-500">{error}</span>}
+
+      {editor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Edit profile picture</h3>
+                <p className="text-xs text-slate-400">Crop, rotate, zoom, then upload a compressed image.</p>
+              </div>
+              <button type="button" onClick={closeEditor} className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="mx-auto grid size-72 place-items-center overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-inner ring-1 ring-slate-200">
+                <img
+                  src={editor.url}
+                  alt="Crop preview"
+                  className="max-w-none select-none"
+                  style={{
+                    width: `${editor.zoom * 100}%`,
+                    transform: `translate(${editor.offsetX}px, ${editor.offsetY}px) rotate(${editor.rotate}deg)`,
+                  }}
+                  draggable={false}
+                />
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <Control label="Zoom" value={`${editor.zoom.toFixed(2)}x`}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.05"
+                    value={editor.zoom}
+                    onChange={(event) => setEditor((current) => current && { ...current, zoom: Number(event.target.value) })}
+                    className="w-full accent-indigo-600"
+                  />
+                </Control>
+                <Control label="Horizontal" value={`${editor.offsetX}px`}>
+                  <input
+                    type="range"
+                    min="-120"
+                    max="120"
+                    step="1"
+                    value={editor.offsetX}
+                    onChange={(event) => setEditor((current) => current && { ...current, offsetX: Number(event.target.value) })}
+                    className="w-full accent-indigo-600"
+                  />
+                </Control>
+                <Control label="Vertical" value={`${editor.offsetY}px`}>
+                  <input
+                    type="range"
+                    min="-120"
+                    max="120"
+                    step="1"
+                    value={editor.offsetY}
+                    onChange={(event) => setEditor((current) => current && { ...current, offsetY: Number(event.target.value) })}
+                    className="w-full accent-indigo-600"
+                  />
+                </Control>
+                <Control label="Rotate" value={`${editor.rotate}deg`}>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setEditor((current) => current && { ...current, rotate: current.rotate - 90 })} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50">
+                      <span className="material-symbols-outlined text-lg">rotate_left</span>
+                    </button>
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      step="1"
+                      value={editor.rotate}
+                      onChange={(event) => setEditor((current) => current && { ...current, rotate: Number(event.target.value) })}
+                      className="w-full accent-indigo-600"
+                    />
+                    <button type="button" onClick={() => setEditor((current) => current && { ...current, rotate: current.rotate + 90 })} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50">
+                      <span className="material-symbols-outlined text-lg">rotate_right</span>
+                    </button>
+                  </div>
+                </Control>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+              <button type="button" onClick={closeEditor} disabled={busy} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                Cancel
+              </button>
+              <button type="button" onClick={save} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+                {busy && <span className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
+                Save picture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-async function cropAndCompress(file: File): Promise<File> {
-  const image = await loadImage(file);
-  const size = Math.min(image.width, image.height);
-  const sourceX = Math.floor((image.width - size) / 2);
-  const sourceY = Math.floor((image.height - size) / 2);
+function Control({ label, value, children }: { label: string; value: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="flex items-center justify-between text-xs font-semibold text-slate-600">
+        {label}
+        <span className="font-mono text-[11px] text-slate-400">{value}</span>
+      </span>
+      {children}
+    </label>
+  );
+}
+
+async function cropAndCompress(editor: EditorState): Promise<File> {
+  const image = await loadImage(editor.file);
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 512;
   const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Image processing is not available.");
-  }
+  if (!context) throw new Error("Image processing is not available.");
 
-  context.drawImage(image, sourceX, sourceY, size, size, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise<Blob | null>(resolve =>
-    canvas.toBlob(resolve, "image/webp", 0.82)
-  );
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.save();
+  context.beginPath();
+  context.arc(256, 256, 256, 0, Math.PI * 2);
+  context.clip();
+  context.translate(256 + editor.offsetX, 256 + editor.offsetY);
+  context.rotate((editor.rotate * Math.PI) / 180);
 
-  if (!blob) {
-    throw new Error("Could not process image.");
-  }
+  const base = Math.max(canvas.width / image.width, canvas.height / image.height) * editor.zoom;
+  const drawWidth = image.width * base;
+  const drawHeight = image.height * base;
+  context.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+  context.restore();
 
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
+  if (!blob) throw new Error("Could not process image.");
   return new File([blob], "profile-picture.webp", { type: "image/webp" });
 }
 

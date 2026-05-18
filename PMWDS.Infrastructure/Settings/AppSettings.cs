@@ -9,6 +9,8 @@ public class EmailSettings
     public string SenderEmail { get; set; } = string.Empty;
     public string SenderName { get; set; } = string.Empty;
     public bool UseSsl { get; set; } = true;
+    public string ClientBaseUrl { get; set; } = "http://localhost:5173";
+    public int PasswordResetMinutes { get; set; } = 30;
 }
 
 public class AzureStorageSettings

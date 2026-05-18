@@ -112,7 +112,21 @@ public class UsersController : BaseApiController
             user.SetProfile(profile);
         }
 
-        user.UpdateAvailability(user.AvailabilityStatus, dto.AvailabilityPercentage);
+        user.UpdateAvailability(dto.AvailabilityStatus ?? user.AvailabilityStatus, dto.AvailabilityPercentage);
+        if (User.IsInRole("SuperAdmin") && dto.RoleNames is { Count: > 0 })
+        {
+            var requestedRoles = dto.RoleNames
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Select(role => role.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var roles = await _uow.Roles.FindAsync(r => requestedRoles.Contains(r.Name), ct);
+            user.Roles.Clear();
+            foreach (var role in roles)
+            {
+                user.Roles.Add(role);
+            }
+        }
         user.SetModified(_currentUser.UserId ?? "system");
 
         await _uow.Users.UpdateAsync(user, ct);
@@ -134,10 +148,11 @@ public class UsersController : BaseApiController
             return Conflict(new { message = $"A user with email '{dto.Email}' already exists." });
         }
 
-        var role = (await _uow.Roles.FindAsync(r => r.Name == dto.Role, ct)).FirstOrDefault();
+        var roleName = string.IsNullOrWhiteSpace(dto.Role) ? "Viewer" : dto.Role.Trim();
+        var role = (await _uow.Roles.FindAsync(r => r.Name == roleName, ct)).FirstOrDefault();
         if (role == null)
         {
-            return BadRequest(new { message = $"Role '{dto.Role}' was not found." });
+            return BadRequest(new { message = $"Role '{roleName}' was not found." });
         }
 
         var user = ApplicationUser.Create(
@@ -145,7 +160,7 @@ public class UsersController : BaseApiController
             dto.FirstName,
             dto.LastName,
             Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
-            dto.JobTitle ?? dto.Role,
+            dto.JobTitle ?? roleName,
             dto.DepartmentId);
         user.SetCreatedBy(_currentUser.UserId ?? "system");
         user.Roles.Add(role);
@@ -162,7 +177,7 @@ public class UsersController : BaseApiController
         var profile = UserProfile.Create(
             user.Id,
             null,
-            dto.JobTitle ?? dto.Role,
+            dto.JobTitle ?? roleName,
             null,
             null,
             null,

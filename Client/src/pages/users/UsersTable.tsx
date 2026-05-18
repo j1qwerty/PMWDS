@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
 import { api } from "../../api";
-import { GlassCard } from "../shared";
+import { Avatar, GlassCard } from "../shared";
 import { ProfilePictureUploader } from "./ProfilePictureUploader";
 
 interface UsersTableProps {
@@ -11,7 +11,10 @@ interface UsersTableProps {
   organizations: OrganizationRecord[];
   token: string;
   canUploadPictures: boolean;
+  canManageUsers?: boolean;
   onPictureUploaded: (user: User) => void;
+  onEditUser?: (user: User) => void;
+  onDeleteUser?: (user: User) => void;
 }
 
 export function UsersTable({
@@ -20,7 +23,10 @@ export function UsersTable({
   organizations,
   token,
   canUploadPictures,
+  canManageUsers = false,
   onPictureUploaded,
+  onEditUser,
+  onDeleteUser,
 }: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrg, setSelectedOrg] = useState("");
@@ -100,6 +106,7 @@ export function UsersTable({
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Status</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Workload</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Burnout Risk</th>
+              {canManageUsers && <th className="text-right px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -119,11 +126,7 @@ export function UsersTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col items-center gap-1">
-                        <img
-                          className="size-9 rounded-full ring-2 ring-white shadow-sm object-cover"
-                          src={user.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=e2e8f0&color=475569&size=36`}
-                          alt={user.fullName}
-                        />
+                        <Avatar person={user} size="md" />
                         {canUploadPictures && (
                           <ProfilePictureUploader
                             userId={user.id}
@@ -177,6 +180,28 @@ export function UsersTable({
                       {formatPercent(burnoutPercent)}
                     </span>
                   </td>
+                  {canManageUsers && (
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onEditUser?.(user)}
+                          className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"
+                          title="Edit user"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteUser?.(user)}
+                          className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
+                          title="Deactivate user"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -1,4 +1,5 @@
 export { AnimatedBackground } from "./AnimatedBackground";
+export { Avatar, AvatarStack, getAvatarUrl } from "./Avatar";
 export { GlassCard } from "./GlassCard";
 export { GradientButton } from "./GradientButton";
 export { InfoTile } from "./InfoTile";
@@ -9,6 +10,8 @@ export { SelectF } from "./SelectF";
 export { OrgFormModal } from "./OrgFormModal";
 export { DeptFormModal } from "./DeptFormModal";
 export { PageHeader } from "./PageHeader";
+export { RoleGate, canUseRole, useRoleAccess } from "./RoleGate";
+export { PageSkeleton, Skeleton } from "./Skeleton";
 export { NotificationList } from "./NotificationList";
 export { MilestonesTab } from "./MilestonesTab";
 export { WorkloadBars } from "./WorkloadBars";

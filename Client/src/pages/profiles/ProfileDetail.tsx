@@ -1,5 +1,5 @@
 import type { User, UserProfileRecord } from "../../types";
-import { GlassCard, GradientButton } from "../shared";
+import { Avatar, GlassCard, GradientButton } from "../shared";
 
 interface ProfileDetailProps {
   user: User;
@@ -23,11 +23,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit }: ProfileDetailP
         <div className="flex flex-col sm:flex-row items-start gap-6">
           {/* Avatar */}
           <div className="relative">
-            <img
-              className="size-20 rounded-2xl ring-4 ring-white shadow-lg"
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=4f46e5&color=fff&size=80`}
-              alt={user.fullName}
-            />
+            <Avatar person={user} size="xl" className="rounded-2xl ring-4" />
             {user.isActive !== false && (
               <span className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-white" />
             )}
@@ -65,9 +61,26 @@ export function ProfileDetail({ user, profile, canEdit, onEdit }: ProfileDetailP
           <span className="material-symbols-outlined text-indigo-500">description</span>
           About
         </h3>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          {bio || "No bio available."}
-        </p>
+        <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            {bio || "No bio available."}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <MiniMetric label="Availability" value={`${Math.round(user.availabilityPercentage ?? 0)}%`} />
+            <MiniMetric label="Status" value={user.availabilityStatus || "Available"} />
+            <MiniMetric label="Workload" value={`${Math.round(user.aiWorkloadScore || 0)}%`} />
+            <MiniMetric label="Active Tasks" value={String(user.activeTaskCount ?? 0)} />
+          </div>
+        </div>
+        {user.skills?.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {user.skills.map((skill) => (
+              <span key={skill} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
       </GlassCard>
 
       {/* Details Grid */}
@@ -180,6 +193,15 @@ function DetailItem({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="mt-1 text-sm font-bold text-slate-700">{value}</div>
     </div>
   );
 }
