@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Project, ProjectHealth, Task } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { AnimatedBackground, PageHeader, GlassCard } from "../shared";
+import { AnimatedBackground, PageHeader, GlassCard, LoadingPage } from "../shared";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -71,19 +71,7 @@ export function AIPage() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) ?? null;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-7 relative font-sans">
-        <AnimatedBackground />
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading AI insights...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingPage label="Loading AI insights..." />;
 
   return (
     <div className="min-h-screen p-7 relative font-sans">

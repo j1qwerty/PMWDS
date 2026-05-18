@@ -5,6 +5,7 @@ import type { PermissionRecord, RoleRecord } from "../../types";
 import { 
   AnimatedBackground, 
   GlassCard, 
+  LoadingPage,
   PageHeader,
   ModalOverlay,
   DeleteConfirmationModal,
@@ -101,19 +102,7 @@ export function RolesPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-7 relative font-sans">
-        <AnimatedBackground />
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading roles & permissions...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingPage label="Loading roles and permissions..." />;
 
   return (
     <div className="min-h-screen p-7 relative font-sans">

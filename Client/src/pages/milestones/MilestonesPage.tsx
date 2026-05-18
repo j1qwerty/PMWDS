@@ -8,6 +8,7 @@ import {
     AnimatedBackground,
     GlassCard,
     GradientButton,
+    LoadingPage,
     PageHeader,
     getDepartmentColor,
     getStatusColor,
@@ -187,19 +188,7 @@ export function MilestonesPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen p-7 relative font-sans">
-                <AnimatedBackground />
-                <div className="flex items-center justify-center h-96">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-                        <span className="text-slate-400 text-sm font-medium">Loading milestones...</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <LoadingPage label="Loading milestones..." />;
 
     return (
         <div className="min-h-screen p-7 relative font-sans">

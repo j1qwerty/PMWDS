@@ -4,7 +4,7 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
-import { PageHeader, getDepartmentColor } from "../shared";
+import { LoadingPage, PageHeader, getDepartmentColor, useRoleAccess } from "../shared";
 import { 
   ProjectsBoard, 
   ProjectDetailPane, 
@@ -15,6 +15,7 @@ import {
 
 export function ProjectsPage() {
   const { auth, hasRole } = useAuth();
+  const access = useRoleAccess();
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -53,7 +54,7 @@ export function ProjectsPage() {
         api.getProjects(auth.token),
         api.getDepartments(auth.token),
         api.getOrganizations(auth.token),
-        hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getUsers(auth.token) : Promise.resolve([]),
+        access.canManageProjects ? api.getUsers(auth.token) : Promise.resolve([]),
       ]);
       setProjects(projectData);
       setDepartments(departmentData);
@@ -76,7 +77,7 @@ export function ProjectsPage() {
     Promise.allSettled([
       api.getMilestonesByProject(auth.token, selectedProjectId),
       api.getProjectInsights(auth.token, selectedProjectId),
-      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead")
+      access.canManageProjects
         ? api.getProjectHealth(auth.token, selectedProjectId)
         : Promise.resolve(null),
     ]).then(([milestoneResult, insightResult, healthResult]) => {
@@ -160,18 +161,7 @@ export function ProjectsPage() {
     await loadProjects();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-7 relative">
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading projects...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingPage label="Loading projects..." />;
 
   return (
     <div className="p-2 flex flex-col gap-5 min-h-screen">
@@ -179,11 +169,11 @@ export function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="Manage and track projects across departments"
-        action={{
+        action={access.canManageProjects ? {
           label: "Create New Project",
           onClick: () => setShowCreateModal(true),
           icon: "add_circle",
-        }}
+        } : undefined}
       />
 
       {/* Organization Tabs */}
@@ -365,8 +355,8 @@ export function ProjectsPage() {
             hasRole={hasRole}
             canUpdateProject={() => {}}
             onStatusChange={handleStatusChange}
-            onEdit={openEditModal}
-            onDelete={() => setShowDeleteConfirm(true)}
+            onEdit={access.canManageProjects ? openEditModal : undefined}
+            onDelete={access.isAdmin ? () => setShowDeleteConfirm(true) : undefined}
             formatMoney={formatMoney}
           >
             <MilestonesTab

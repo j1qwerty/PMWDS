@@ -8,8 +8,8 @@ interface ProjectDetailPaneProps {
   hasRole: (...roles: Role[]) => boolean;
   canUpdateProject: () => void;
   onStatusChange: (status: string) => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   formatMoney: (amount: number) => string;
   children?: React.ReactNode;
 }
@@ -61,7 +61,7 @@ export function ProjectDetailPane({
           </p>
         </div>
         <div className="flex gap-2">
-          {hasRole("SuperAdmin") && (
+          {hasRole("SuperAdmin") && onDelete && (
             <>
               <button
                 onClick={onDelete}
@@ -71,12 +71,14 @@ export function ProjectDetailPane({
               </button>
             </>
           )}
-          <button
-            onClick={onEdit}
-            className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors"
-          >
-            <span className="material-symbols-outlined text-on-surface-variant">edit</span>
-          </button>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="size-10 rounded-lg flex items-center justify-center bg-white border border-outline-variant/30 hover:bg-surface-container transition-colors"
+            >
+              <span className="material-symbols-outlined text-on-surface-variant">edit</span>
+            </button>
+          )}
         </div>
       </div>
 

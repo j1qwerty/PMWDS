@@ -36,3 +36,12 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+export function LoadingPage({ label = "Loading..." }: { label?: string }) {
+  return (
+    <div className="min-h-screen p-7 relative font-sans">
+      <PageSkeleton />
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}

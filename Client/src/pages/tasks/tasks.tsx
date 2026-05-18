@@ -4,10 +4,12 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, Task, User } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
 import { 
-  AnimatedBackground, 
   GlassCard, 
   GradientButton, 
   PageHeader,
+  LoadingPage,
+  Avatar,
+  useRoleAccess,
   getStatusColor,
   useToast,
   StatusBadge,
@@ -19,8 +21,9 @@ import { TaskFormModal } from "./TaskFormModal";
 
 export function TasksPage() {
   const { auth, hasRole } = useAuth();
+  const access = useRoleAccess();
   const { addToast } = useToast();
-  const isAdmin = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead");
+  const isAdmin = access.canManageTasks;
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -284,19 +287,7 @@ export function TasksPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-7 relative font-sans">
-        <AnimatedBackground />
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading tasks...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingPage label="Loading tasks..." />;
 
   return (
     <div className="min-h-screen p-7 relative font-sans">
@@ -748,11 +739,7 @@ export function TasksPage() {
                 <div className="flex items-center justify-between">
                   {assignedUser ? (
                     <div className="flex items-center gap-1">
-                      <img
-                        className="size-4 rounded-full ring-1 ring-white"
-                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(assignedUser.fullName)}&background=e0e7ff&color=4f46e5&size=16`}
-                        alt={assignedUser.fullName}
-                      />
+                      <Avatar person={assignedUser} size="xs" />
                       <span className="text-[9px] text-slate-500 truncate max-w-[80px]">{assignedUser.fullName}</span>
                     </div>
                   ) : (

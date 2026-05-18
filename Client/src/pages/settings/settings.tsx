@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "../../types";
 import { 
   AnimatedBackground, 
+  LoadingPage,
   PageHeader,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
@@ -201,19 +202,7 @@ export function SettingsPage() {
     setTestResults(prev => { const next = { ...prev }; delete next[provider]; return next; });
   };
 
-  if (aiLoading && isSuperAdmin) {
-    return (
-      <div className="min-h-screen p-7 relative font-sans">
-        <AnimatedBackground />
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading settings...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (aiLoading && isSuperAdmin) return <LoadingPage label="Loading settings..." />;
 
   return (
     <div className="min-h-screen p-7 relative font-sans">

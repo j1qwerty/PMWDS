@@ -11,7 +11,7 @@ export { OrgFormModal } from "./OrgFormModal";
 export { DeptFormModal } from "./DeptFormModal";
 export { PageHeader } from "./PageHeader";
 export { RoleGate, canUseRole, useRoleAccess } from "./RoleGate";
-export { PageSkeleton, Skeleton } from "./Skeleton";
+export { LoadingPage, PageSkeleton, Skeleton } from "./Skeleton";
 export { NotificationList } from "./NotificationList";
 export { MilestonesTab } from "./MilestonesTab";
 export { WorkloadBars } from "./WorkloadBars";

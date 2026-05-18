@@ -11,6 +11,7 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
+import { LoadingPage } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth, hasRole } = useAuth();
@@ -118,19 +119,7 @@ export function OrganizationStructurePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen p-7 relative font-sans">
-        <AnimatedBackground />
-        <div className="flex items-center justify-center h-96">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-slate-400 text-sm font-medium">Loading organizations...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingPage label="Loading organizations..." />;
 
   return (
     <div className="min-h-screen p-7 relative font-sans">
