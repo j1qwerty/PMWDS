@@ -204,11 +204,14 @@ public static class DatabaseConnectionService
                 await db.Database.EnsureDeletedAsync(ct);
                 await db.Database.EnsureCreatedAsync(ct);
             }
+
+            await EnsureSqliteCompatibilityColumnsAsync(db, ct);
         }
         catch
         {
             await db.Database.EnsureDeletedAsync(ct);
             await db.Database.EnsureCreatedAsync(ct);
+            await EnsureSqliteCompatibilityColumnsAsync(db, ct);
         }
     }
 
@@ -275,5 +278,58 @@ public static class DatabaseConnectionService
         command.CommandText = $"SELECT name FROM sqlite_master WHERE type='index' AND name='{indexName}'";
         var result = await command.ExecuteScalarAsync(ct);
         return result != null && result != DBNull.Value;
+    }
+
+    private static async Task EnsureSqliteCompatibilityColumnsAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            if (!await HasSqliteColumnAsync(connection, "Users", "PasswordResetTokenExpiresAt", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"PasswordResetTokenExpiresAt\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "PasswordResetTokenHash", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"PasswordResetTokenHash\" TEXT NULL", ct);
+            }
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task<bool> HasSqliteColumnAsync(DbConnection connection, string tableName, string columnName, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info(\"{tableName}\")";
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            if (string.Equals(reader["name"]?.ToString(), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task ExecuteSqliteAsync(DbConnection connection, string sql, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync(ct);
     }
 }
