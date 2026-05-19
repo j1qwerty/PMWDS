@@ -9,6 +9,7 @@ import {
   PageHeader,
   LoadingPage,
   Avatar,
+  AvatarStack,
   useRoleAccess,
   getStatusColor,
   useToast,
@@ -17,6 +18,7 @@ import {
   FilterButtons,
   AnimatedBackground,
 } from "../shared";
+import { useUserOrganization } from "../shared/useUserOrganization";
 import { TaskDetail } from "./TaskDetail";
 import { TaskFormModal } from "./TaskFormModal";
 
@@ -32,6 +34,8 @@ export function TasksPage() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+
+  const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
   
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedDeptId, setSelectedDeptId] = useState("");
@@ -96,6 +100,12 @@ export function TasksPage() {
 
   useEffect(() => { loadData(); }, [auth]);
 
+  useEffect(() => {
+    if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
+      setSelectedOrgId(userOrganizationId);
+    }
+  }, [shouldFilterByOrg, userOrganizationId]);
+
   // Load AI insights for selected task
   useEffect(() => {
     if (!auth || !selectedTaskId || !isAdmin) return;
@@ -112,15 +122,32 @@ export function TasksPage() {
   }, [auth, selectedTaskId]);
 
   // Filtered data
-  const filteredOrganizations = useMemo(() => organizations, [organizations]);
+  const filteredOrganizations = useMemo(() => {
+    if (shouldFilterByOrg && userOrganizationId) {
+      return organizations.filter(o => o.id === userOrganizationId);
+    }
+    return organizations;
+  }, [organizations, shouldFilterByOrg, userOrganizationId]);
   
   const filteredDepartments = useMemo(() => {
-    if (!selectedOrgId) return departments;
-    return departments.filter(d => d.organizationId === selectedOrgId);
-  }, [departments, selectedOrgId]);
+    let filtered = departments;
+    if (shouldFilterByOrg && userOrganizationId) {
+      filtered = filtered.filter(d => d.organizationId === userOrganizationId);
+    }
+    if (selectedOrgId) {
+      filtered = filtered.filter(d => d.organizationId === selectedOrgId);
+    }
+    return filtered;
+  }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
 
   const filteredProjects = useMemo(() => {
     let filtered = projects;
+    if (shouldFilterByOrg && userOrganizationId) {
+      const orgDeptIds = departments
+        .filter(d => d.organizationId === userOrganizationId)
+        .map(d => d.id);
+      filtered = filtered.filter(p => orgDeptIds.includes(p.departmentId));
+    }
     if (selectedOrgId) {
       const orgDeptIds = departments
         .filter(d => d.organizationId === selectedOrgId)
@@ -131,7 +158,7 @@ export function TasksPage() {
       filtered = filtered.filter(p => p.departmentId === selectedDeptId);
     }
     return filtered;
-  }, [projects, selectedOrgId, selectedDeptId, departments]);
+  }, [projects, selectedOrgId, selectedDeptId, departments, shouldFilterByOrg, userOrganizationId]);
 
   const filteredMilestones = useMemo(() => {
     let result = milestones;
@@ -151,9 +178,20 @@ export function TasksPage() {
         const milestoneProjectId = (m as any).projectId || m.projectId;
         return orgProjectIds.includes(milestoneProjectId);
       });
+    } else if (shouldFilterByOrg && userOrganizationId) {
+      const orgDeptIds = departments
+        .filter(d => d.organizationId === userOrganizationId)
+        .map(d => d.id);
+      const orgProjectIds = projects
+        .filter(p => orgDeptIds.includes(p.departmentId))
+        .map(p => p.id);
+      result = result.filter(m => {
+        const milestoneProjectId = (m as any).projectId || m.projectId;
+        return orgProjectIds.includes(milestoneProjectId);
+      });
     }
     return result;
-  }, [milestones, selectedProjectId, selectedOrgId, departments, projects]);
+  }, [milestones, selectedProjectId, selectedOrgId, departments, projects, shouldFilterByOrg, userOrganizationId]);
 
   const filteredTasks = useMemo(() => {
     let result = tasks.filter(t => !t.parentTaskId);
@@ -164,6 +202,14 @@ export function TasksPage() {
     } else if (selectedOrgId) {
       const orgDeptIds = departments
         .filter(d => d.organizationId === selectedOrgId)
+        .map(d => d.id);
+      const orgProjectIds = projects
+        .filter(p => orgDeptIds.includes(p.departmentId))
+        .map(p => p.id);
+      result = result.filter(t => orgProjectIds.includes(t.projectId));
+    } else if (shouldFilterByOrg && userOrganizationId) {
+      const orgDeptIds = departments
+        .filter(d => d.organizationId === userOrganizationId)
         .map(d => d.id);
       const orgProjectIds = projects
         .filter(p => orgDeptIds.includes(p.departmentId))
@@ -195,7 +241,7 @@ export function TasksPage() {
     }
 
     return result;
-  }, [tasks, selectedProjectId, selectedOrgId, selectedMilestoneId, filters, departments, projects]);
+  }, [tasks, selectedProjectId, selectedOrgId, selectedMilestoneId, filters, departments, projects, shouldFilterByOrg, userOrganizationId]);
 
   const getProject = (projectId: string) => projects.find(p => p.id === projectId);
 
@@ -331,7 +377,8 @@ export function TasksPage() {
 
       {/* Filters Section */}
       <div className="relative z-10 mb-5 space-y-3">
-        {/* Organization Tabs */}
+        {/* Organization Tabs - only for admin users */}
+        {isOrgAdmin && (
         <div className="flex gap-2 overflow-x-auto pb-2 items-center">
           <button
             onClick={() => {
@@ -374,6 +421,7 @@ export function TasksPage() {
             </button>
           ))}
         </div>
+        )}
 
         {/* Department, Project & Search Row */}
         <div className="flex gap-3 items-center flex-wrap">
@@ -671,9 +719,17 @@ export function TasksPage() {
       ).map((task, index) => {
         const isSelected = selectedTaskId === task.id;
         const statusColors = getStatusColor(task.status);
-        const assignedUser = task.assignedToUserId 
-          ? users.find(u => u.id === task.assignedToUserId)
-          : null;
+        const assignedUsers = (task.assignees && task.assignees.length > 0)
+          ? task.assignees.map(a => ({ id: a.userId, fullName: a.fullName ?? undefined }))
+          : (task.assignedToUserId ? [{ id: task.assignedToUserId, fullName: task.assignedToUserName ?? undefined }] : []);
+        const assignedUsersResolved = assignedUsers.map(u => {
+          const matchedUser = users.find(usr => usr.id === u.id);
+          return {
+            id: u.id,
+            fullName: u.fullName || (matchedUser?.fullName ?? undefined),
+            profilePictureUrl: matchedUser?.profilePictureUrl ?? null,
+          };
+        });
         const proj = getProject(task.projectId);
         const dept = proj ? departments.find(d => d.id === proj.departmentId) : null;
 
@@ -738,11 +794,8 @@ export function TasksPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  {assignedUser ? (
-                    <div className="flex items-center gap-1">
-                      <Avatar person={assignedUser} size="xs" />
-                      <span className="text-[9px] text-slate-500 truncate max-w-[80px]">{assignedUser.fullName}</span>
-                    </div>
+                  {assignedUsersResolved.length > 0 ? (
+                    <AvatarStack people={assignedUsersResolved} size="xs" />
                   ) : (
                     <span className="text-[9px] text-slate-400 italic">Unassigned</span>
                   )}

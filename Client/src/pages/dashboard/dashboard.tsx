@@ -8,7 +8,8 @@ import { TaskList } from "../shared/TaskList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
-import { formatMoney, formatPercent, ErrorPanel, LoadingPanel } from "../../ui";
+import { formatMoney, formatPercent } from "../../ui";
+import { PageSkeleton } from "../shared";
 import { KpiCard } from "./kpiCard";
 
 export function DashboardPage() {
@@ -79,8 +80,8 @@ export function DashboardPage() {
     });
   }, [departments, users, myTasks]);
 
-  if (loading) return <LoadingPanel label="Loading control room..." />;
-  if (error) return <ErrorPanel message={error} />;
+  if (loading) return <PageSkeleton />;
+  if (error) return <div className="mx-4 my-2"><div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600">{error}</div></div>;
 
   return (
     <div className=" mx-4 my-2 gap-6">

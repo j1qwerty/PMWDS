@@ -3,7 +3,7 @@ import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
 import { api } from "../../api";
 import { Avatar, GlassCard } from "../shared";
-import { ProfilePictureUploader } from "./ProfilePictureUploader";
+import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
 
 interface UsersTableProps {
   users: User[];

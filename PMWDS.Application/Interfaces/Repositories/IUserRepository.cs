@@ -10,6 +10,11 @@ public interface IUserRepository : IRepository<ApplicationUser>
     Task<IEnumerable<ApplicationUser>> GetByDepartmentAsync(
     Guid departmentId,
     CancellationToken ct = default);
+    Task<IEnumerable<ApplicationUser>> GetAllWithSkillsAsync(
+    CancellationToken ct = default);
+    Task<IEnumerable<ApplicationUser>> GetByDepartmentWithSkillsAsync(
+    Guid departmentId,
+    CancellationToken ct = default);
     Task<IEnumerable<ApplicationUser>> GetAvailableUsersAsync(
     CancellationToken ct = default);
     Task<IEnumerable<ApplicationUser>> GetUsersBySkillAsync(

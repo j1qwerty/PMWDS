@@ -13,6 +13,7 @@ import {
     DeptFormModal,
     useRoleAccess,
 } from "../shared";
+import { useUserOrganization } from "../shared/useUserOrganization";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
 import { DepartmentList } from "./DepartmentList";
 import { getDepartmentColor } from "../shared";
@@ -40,6 +41,8 @@ export function DepartmentsPage() {
         name: string;
     }>({ open: false, id: "", name: "" });
 
+    const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+
     const loadData = () => {
         if (!auth) return;
         setLoading(true);
@@ -61,6 +64,12 @@ export function DepartmentsPage() {
 
     useEffect(() => { loadData(); }, [auth]);
 
+    useEffect(() => {
+        if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
+            setSelectedOrgId(userOrganizationId);
+        }
+    }, [shouldFilterByOrg, userOrganizationId]);
+
     // Load dashboard for selected department
     useEffect(() => {
         if (!auth || !selectedDeptId || !access.canViewManagementData) return;
@@ -68,9 +77,15 @@ export function DepartmentsPage() {
     }, [auth, selectedDeptId, access.canViewManagementData]);
 
     const filteredDepartments = useMemo(() => {
-        if (!selectedOrgId) return departments; // Show all departments when "All" is selected
-        return departments.filter((d) => d.organizationId === selectedOrgId);
-    }, [departments, selectedOrgId]);
+        let filtered = departments;
+        if (shouldFilterByOrg && userOrganizationId) {
+            filtered = filtered.filter(d => d.organizationId === userOrganizationId);
+        }
+        if (selectedOrgId) {
+            filtered = filtered.filter(d => d.organizationId === selectedOrgId);
+        }
+        return filtered;
+    }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
 
     const selectedDepartment = departments.find((d) => d.id === selectedDeptId) ?? null;
     const selectedOrganization = organizations.find((o) => o.id === selectedOrgId);
@@ -149,7 +164,8 @@ export function DepartmentsPage() {
                 </div>
             )}
 
-            {/* Organization Tabs */}
+            {/* Organization Tabs - only for admin users */}
+            {isOrgAdmin && (
             <div className="relative z-10 mb-5">
                 <div className="flex gap-2 overflow-x-auto pb-2 items-center">
                     {/* All Tab */}
@@ -210,6 +226,7 @@ export function DepartmentsPage() {
                     })}
                 </div>
             </div>
+            )}
 
             {/* Main Layout */}
             <div className="grid grid-cols-[320px_1fr] gap-6 relative z-10">

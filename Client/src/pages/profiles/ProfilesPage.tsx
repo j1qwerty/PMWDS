@@ -157,7 +157,7 @@ export function ProfilesPage() {
               <span className="material-symbols-outlined text-4xl text-slate-400">person</span>
             </div>
             <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Profile</h3>
-            <p className="text-sm text-slate-400 max-w-xs">
+            <p className="text-sm text-slate-400 ">
               Choose a user from the left panel to view their profile details
             </p>
           </GlassCard>

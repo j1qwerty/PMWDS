@@ -5,6 +5,7 @@ import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth,
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
 import { LoadingPage, PageHeader, getDepartmentColor, useRoleAccess } from "../shared";
+import { useUserOrganization } from "../shared/useUserOrganization";
 import { 
   ProjectsBoard, 
   ProjectDetailPane, 
@@ -44,6 +45,8 @@ export function ProjectsPage() {
     priority: "Medium",
   });
 
+  const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
 
   async function loadProjects() {
@@ -73,6 +76,12 @@ export function ProjectsPage() {
   }, [auth]);
 
   useEffect(() => {
+    if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
+      setSelectedOrgId(userOrganizationId);
+    }
+  }, [shouldFilterByOrg, userOrganizationId]);
+
+  useEffect(() => {
     if (!auth || !selectedProjectId) return;
     Promise.allSettled([
       api.getMilestonesByProject(auth.token, selectedProjectId),
@@ -91,6 +100,13 @@ export function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     let filtered = projects;
     
+    if (shouldFilterByOrg && userOrganizationId) {
+      const orgDepartmentIds = departments
+        .filter(d => d.organizationId === userOrganizationId)
+        .map(d => d.id);
+      filtered = filtered.filter(p => orgDepartmentIds.includes(p.departmentId));
+    }
+
     if (selectedOrgId) {
       const orgDepartmentIds = departments
         .filter(d => d.organizationId === selectedOrgId)
@@ -103,13 +119,19 @@ export function ProjectsPage() {
     }
     
     return filtered;
-  }, [projects, selectedOrgId, selectedDepartmentId, departments]);
+  }, [projects, selectedOrgId, selectedDepartmentId, departments, shouldFilterByOrg, userOrganizationId]);
 
   // Filtered departments based on organization selection
   const filteredDepartments = useMemo(() => {
-    if (!selectedOrgId) return departments;
-    return departments.filter(d => d.organizationId === selectedOrgId);
-  }, [departments, selectedOrgId]);
+    let filtered = departments;
+    if (shouldFilterByOrg && userOrganizationId) {
+      filtered = filtered.filter(d => d.organizationId === userOrganizationId);
+    }
+    if (selectedOrgId) {
+      filtered = filtered.filter(d => d.organizationId === selectedOrgId);
+    }
+    return filtered;
+  }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
 
   async function handleCreateProject(event: FormEvent) {
     event.preventDefault();
@@ -176,7 +198,8 @@ export function ProjectsPage() {
         } : undefined}
       />
 
-      {/* Organization Tabs */}
+      {/* Organization Tabs - only for admin users */}
+      {isOrgAdmin && (
       <div className="flex gap-2 overflow-x-auto pb-2 items-center">
         {/* All Organizations Tab */}
         <button
@@ -237,6 +260,7 @@ export function ProjectsPage() {
           );
         })}
       </div>
+      )}
 
       {/* Department Cards Section */}
       <div className="flex flex-col gap-3">

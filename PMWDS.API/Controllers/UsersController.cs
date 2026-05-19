@@ -37,10 +37,10 @@ public class UsersController : BaseApiController
         CancellationToken ct)
     {
         var users = departmentId.HasValue
-            ? await _uow.Users.GetByDepartmentAsync(departmentId.Value, ct)
-            : await _uow.Users.GetAllAsync(ct);
+            ? await _uow.Users.GetByDepartmentWithSkillsAsync(departmentId.Value, ct)
+            : await _uow.Users.GetAllWithSkillsAsync(ct);
 
-        return Ok(users.Select(u => UserDto.FromEntity(u, UserRoleResolver.Resolve(u))));
+        return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))));
     }
 
     [HttpGet("{id}")]
@@ -92,7 +92,8 @@ public class UsersController : BaseApiController
             dto.FirstName,
             dto.LastName,
             dto.PhoneNumber ?? string.Empty,
-            dto.JobTitle ?? string.Empty);
+            dto.JobTitle ?? string.Empty,
+            dto.ProfilePictureUrl);
 
         await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, ct);
 

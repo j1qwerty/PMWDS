@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, Role, User } from "../../types";
+import { Avatar } from "../shared";
 
 const roleOptions: Role[] = ["Viewer", "TeamMember", "TeamLead", "DepartmentHead", "ProjectManager", "SuperAdmin"];
 const availabilityOptions = ["Available", "Busy", "Away", "InMeeting", "Offline", "DeepWork"];
@@ -24,6 +25,7 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
   const [roles, setRoles] = useState<string[]>(user.roles?.length ? user.roles : ["Viewer"]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [profilePictureUrl] = useState(user.profilePictureUrl ?? "");
 
   const departmentsByOrg = useMemo(
     () =>
@@ -69,6 +71,7 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
         roleNames: roles,
         availabilityStatus,
         availabilityPercentage,
+        profilePictureUrl: profilePictureUrl || null,
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Failed to update user.");
@@ -80,9 +83,12 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
       <form onSubmit={submit} className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-800">Edit user</h3>
-            <p className="text-xs text-slate-400">{user.fullName}</p>
+          <div className="flex items-center gap-4">
+            <Avatar person={user} size="lg" src={user.profilePictureUrl ?? undefined} />
+            <div>
+              <h3 className="text-base font-bold text-slate-800">Edit user</h3>
+              <p className="text-xs text-slate-400">{user.fullName}</p>
+            </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
             <span className="material-symbols-outlined text-xl">close</span>

@@ -69,7 +69,10 @@ public class ApplicationUser : AuditableEntity
         LastName = lastName;
         PhoneNumber = phoneNumber;
         JobTitle = jobTitle;
-        ProfilePictureUrl = profilePictureUrl;
+        if (profilePictureUrl != null)
+        {
+            ProfilePictureUrl = profilePictureUrl;
+        }
     }
     public void AssignToDepartment(Guid departmentId) => DepartmentId = departmentId;
     public void ClearPrimaryDepartment() => DepartmentId = null;

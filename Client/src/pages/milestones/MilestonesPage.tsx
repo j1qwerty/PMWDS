@@ -10,10 +10,13 @@ import {
     GradientButton,
     LoadingPage,
     PageHeader,
+    ModalOverlay,
+    DeleteConfirmationModal,
     getDepartmentColor,
     getStatusColor,
     useRoleAccess,
 } from "../shared";
+import { useUserOrganization } from "../shared/useUserOrganization";
 import { MilestoneDetail } from "./MilestoneDetail";
 // import { MilestoneList } from "./MilestoneList";
 import { MilestoneFormModal } from "./MilestoneFormModal";
@@ -31,6 +34,8 @@ export function MilestonesPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [taskModal, setTaskModal] = useState<{ open: boolean }>({ open: false });
 
+    const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+
     const [selectedOrgId, setSelectedOrgId] = useState("");
     const [selectedDeptId, setSelectedDeptId] = useState("");
     const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -40,6 +45,7 @@ export function MilestonesPage() {
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(true);
     const [milestoneModal, setMilestoneModal] = useState<{ open: boolean; editMilestone?: Milestone }>({ open: false });
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; milestone: Milestone | null }>({ open: false, milestone: null });
 
     const loadData = () => {
         if (!auth) return;
@@ -79,6 +85,12 @@ export function MilestonesPage() {
 
     useEffect(() => { loadData(); }, [auth]);
 
+    useEffect(() => {
+        if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
+            setSelectedOrgId(userOrganizationId);
+        }
+    }, [shouldFilterByOrg, userOrganizationId]);
+
     // Load milestones when project changes
     useEffect(() => {
         if (!auth || !selectedProjectId) {
@@ -99,15 +111,33 @@ export function MilestonesPage() {
     }, [auth, selectedProjectId]);
 
     // Filtered data
-    const filteredOrganizations = useMemo(() => organizations, [organizations]);
+    const filteredOrganizations = useMemo(() => {
+        if (shouldFilterByOrg && userOrganizationId) {
+            return organizations.filter(o => o.id === userOrganizationId);
+        }
+        return organizations;
+    }, [organizations, shouldFilterByOrg, userOrganizationId]);
 
     const filteredDepartments = useMemo(() => {
-        if (!selectedOrgId) return departments;
-        return departments.filter(d => d.organizationId === selectedOrgId);
-    }, [departments, selectedOrgId]);
+        let filtered = departments;
+        if (shouldFilterByOrg && userOrganizationId) {
+            filtered = filtered.filter(d => d.organizationId === userOrganizationId);
+        }
+        if (selectedOrgId) {
+            filtered = filtered.filter(d => d.organizationId === selectedOrgId);
+        }
+        return filtered;
+    }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
 
     const filteredProjects = useMemo(() => {
         let filtered = projects;
+
+        if (shouldFilterByOrg && userOrganizationId) {
+            const orgDeptIds = departments
+                .filter(d => d.organizationId === userOrganizationId)
+                .map(d => d.id);
+            filtered = filtered.filter(p => orgDeptIds.includes(p.departmentId));
+        }
 
         if (selectedOrgId) {
             const orgDeptIds = departments
@@ -129,7 +159,7 @@ export function MilestonesPage() {
         }
 
         return filtered;
-    }, [projects, selectedOrgId, selectedDeptId, searchTerm, departments]);
+    }, [projects, selectedOrgId, selectedDeptId, searchTerm, departments, shouldFilterByOrg, userOrganizationId]);
 
     const selectedProject = projects.find(p => p.id === selectedProjectId) ?? null;
     const selectedMilestone = milestones.find(m => m.id === selectedMilestoneId) ?? null;
@@ -177,17 +207,19 @@ export function MilestonesPage() {
         }
     };
 
-    const handleDeleteMilestone = async (milestoneId: string) => {
-        if (!auth) return;
+    const handleDeleteMilestone = (milestone: Milestone) => {
+        setDeleteConfirm({ open: true, milestone });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!auth || !deleteConfirm.milestone) return;
+        const milestoneId = deleteConfirm.milestone.id;
         const taskCount = tasks.filter(t => t.milestoneId === milestoneId).length;
-        const warning = taskCount > 0
-            ? `Delete this milestone and ${taskCount} task${taskCount === 1 ? "" : "s"} inside it? This cannot be undone.`
-            : "Delete this milestone? This cannot be undone.";
-        if (!confirm(warning)) return;
         try {
             await api.deleteMilestone(auth.token, milestoneId);
             setMessage("Milestone deleted.");
             if (selectedMilestoneId === milestoneId) setSelectedMilestoneId("");
+            setDeleteConfirm({ open: false, milestone: null });
             const milestoneData = await api.getMilestonesByProject(auth.token, selectedProjectId);
             setMilestones(milestoneData);
         } catch (e) {
@@ -230,7 +262,8 @@ export function MilestonesPage() {
 
             {/* Filters Section */}
             <div className="relative z-10 mb-5 space-y-3">
-                {/* Organization Tabs */}
+                {/* Organization Tabs - only for admin users */}
+                {isOrgAdmin && (
                 <div className="flex gap-2 overflow-x-auto pb-2 items-center">
                     <button
                         onClick={() => {
@@ -269,6 +302,7 @@ export function MilestonesPage() {
                         </button>
                     ))}
                 </div>
+                )}
 
                 {/* Department & Search Row */}
                 <div className="flex gap-3 items-center">
@@ -482,7 +516,7 @@ export function MilestonesPage() {
                             users={users}
                             onComplete={() => handleCompleteMilestone(selectedMilestone.id)}
                             onEdit={() => setMilestoneModal({ open: true, editMilestone: selectedMilestone })}
-                            onDelete={() => handleDeleteMilestone(selectedMilestone.id)}
+                            onDelete={() => handleDeleteMilestone(selectedMilestone)}
                             onAddTask={() => setTaskModal({ open: true })}
                             isAdmin={isAdmin}
                         />
@@ -501,7 +535,7 @@ export function MilestonesPage() {
                                     <span className="material-symbols-outlined text-4xl text-slate-400">flag</span>
                                 </div>
                                 <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Milestone</h3>
-                                <p className="text-sm text-slate-400 max-w-xs mx-auto">
+                                <p className="text-sm text-slate-400  mx-auto">
                                     Choose a milestone from the left panel to view its details and associated tasks
                                 </p>
                             </div>
@@ -542,6 +576,22 @@ export function MilestonesPage() {
                     onSubmit={handleTaskSubmit}
                     onClose={() => setTaskModal({ open: false })}
                 />
+            )}
+
+            {deleteConfirm.open && deleteConfirm.milestone && (
+                <ModalOverlay onClose={() => setDeleteConfirm({ open: false, milestone: null })}>
+                    <DeleteConfirmationModal
+                        name={deleteConfirm.milestone.name}
+                        warning={(() => {
+                            const taskCount = tasks.filter(t => t.milestoneId === deleteConfirm.milestone!.id).length;
+                            return taskCount > 0
+                                ? `This milestone has ${taskCount} task${taskCount === 1 ? "" : "s"} associated with it. Deleting it will also remove all associated tasks.`
+                                : undefined;
+                        })()}
+                        onConfirm={handleConfirmDelete}
+                        onCancel={() => setDeleteConfirm({ open: false, milestone: null })}
+                    />
+                </ModalOverlay>
             )}
         </div>
     );

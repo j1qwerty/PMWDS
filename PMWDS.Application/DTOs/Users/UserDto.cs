@@ -145,7 +145,8 @@ public record UpdateUserDto(
  List<Guid>? DepartmentIds,
  double AvailabilityPercentage,
  PMWDS.Domain.Enums.AvailabilityStatus? AvailabilityStatus,
- List<string>? RoleNames);
+ List<string>? RoleNames,
+ string? ProfilePictureUrl);
 public record WorkloadDistributionDto(
  Guid? DepartmentId,
  int TotalMembers,

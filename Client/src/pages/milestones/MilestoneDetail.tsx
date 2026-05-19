@@ -1,6 +1,6 @@
 import type { Milestone, Project, Task, User } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { Avatar, GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
+import { Avatar, AvatarStack, GlassCard, GradientButton, getStatusColor, getPriorityColor } from "../shared";
 
 interface MilestoneDetailProps {
   milestone: Milestone;
@@ -67,10 +67,10 @@ export function MilestoneDetail({
           </div>
           {isAdmin && (
             <div className="flex gap-2 flex-wrap">
-              <GradientButton onClick={onAddTask}>
-                <span className="material-symbols-outlined text-base">add_task</span>
-                Add Task
-              </GradientButton>
+              <GradientButton variant="ghost" onClick={onAddTask}>
+              <span className="material-symbols-outlined text-base">add</span>
+              Add Task
+            </GradientButton>
               {!isCompleted && (
                 <GradientButton onClick={onComplete}>
                   <span className="material-symbols-outlined text-base">check</span>
@@ -170,9 +170,17 @@ export function MilestoneDetail({
             {tasks.map((task) => {
               const taskStatusColors = getStatusColor(task.status);
               const taskPriorityColors = getPriorityColor(task.priority);
-              const assignedUser = task.assignedToUserId 
-                ? users.find(u => u.id === task.assignedToUserId)
-                : null;
+              const assignedUsers = (task.assignees && task.assignees.length > 0)
+                ? task.assignees.map(a => ({ id: a.userId, fullName: a.fullName ?? undefined }))
+                : (task.assignedToUserId ? [{ id: task.assignedToUserId, fullName: task.assignedToUserName ?? undefined }] : []);
+              const assignedUsersResolved = assignedUsers.map(u => {
+                const matchedUser = users.find(usr => usr.id === u.id);
+                return {
+                  id: u.id,
+                  fullName: u.fullName || (matchedUser?.fullName ?? undefined),
+                  profilePictureUrl: matchedUser?.profilePictureUrl ?? null,
+                };
+              });
 
               return (
                 <div 
@@ -205,11 +213,8 @@ export function MilestoneDetail({
 
                   {/* Task Meta */}
                   <div className="flex items-center justify-between mb-2">
-                    {assignedUser ? (
-                      <div className="flex items-center gap-1.5">
-                        <Avatar person={assignedUser} size="xs" />
-                        <span className="text-[10px] text-slate-500 font-medium">{assignedUser.fullName}</span>
-                      </div>
+                    {assignedUsersResolved.length > 0 ? (
+                      <AvatarStack people={assignedUsersResolved} size="xs" />
                     ) : (
                       <span className="text-[10px] text-slate-400 italic">Unassigned</span>
                     )}

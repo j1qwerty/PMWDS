@@ -204,6 +204,7 @@ public static class SeedData
         var departments = await context.Departments.ToListAsync(ct);
         var roles = await context.Roles.ToDictionaryAsync(r => r.Name, ct);
         var specs = BuildUserSpecs(departments);
+        var imagePaths = await SeedProfileImagesAsync(ct);
 
         foreach (var spec in specs)
         {
@@ -233,12 +234,16 @@ public static class SeedData
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
             }
 
+            var profilePicUrl = imagePaths.TryGetValue(spec.EmployeeCode, out var path)
+                ? path
+                : $"https://api.dicebear.com/9.x/initials/svg?seed={user.EmployeeCode}";
+
             user.UpdateProfile(
                 user.FirstName,
                 user.LastName,
                 user.PhoneNumber,
                 user.JobTitle,
-                $"https://api.dicebear.com/9.x/initials/svg?seed={user.EmployeeCode}");
+                profilePicUrl);
 
             if (roles.TryGetValue(spec.Role, out var role) && user.Roles.All(r => r.Id != role.Id))
             {
@@ -249,6 +254,42 @@ public static class SeedData
         await context.SaveChangesAsync(ct);
         await SeedUserDepartmentsAsync(context, ct);
         await AssignDepartmentHeadsAsync(context, ct);
+    }
+
+    private static async Task<Dictionary<string, string>> SeedProfileImagesAsync(CancellationToken ct)
+    {
+        var result = new Dictionary<string, string>();
+        var seedImagesDir = Path.Combine(AppContext.BaseDirectory, "SeedData", "Images");
+        if (!Directory.Exists(seedImagesDir))
+        {
+            return result;
+        }
+
+        var storageBase = Path.Combine(AppContext.BaseDirectory, "App_Data", "Files", "pmwds-files");
+        Directory.CreateDirectory(storageBase);
+
+        var extensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        var files = Directory.GetFiles(seedImagesDir)
+            .Where(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
+
+        foreach (var file in files)
+        {
+            var employeeCode = Path.GetFileNameWithoutExtension(file).ToUpperInvariant();
+            var ext = Path.GetExtension(file);
+            var folderName = employeeCode[..Math.Min(4, employeeCode.Length)];
+            var destFolder = Path.Combine(storageBase, folderName);
+            Directory.CreateDirectory(destFolder);
+            var destFile = Path.Combine(destFolder, $"{employeeCode.ToLowerInvariant()}{ext}");
+
+            if (!File.Exists(destFile))
+            {
+                File.Copy(file, destFile, overwrite: false);
+            }
+
+            result[employeeCode] = $"/files/pmwds-files/{folderName}/{employeeCode.ToLowerInvariant()}{ext}";
+        }
+
+        return result;
     }
 
     private static async Task SeedUserDepartmentsAsync(ApplicationDbContext context, CancellationToken ct)

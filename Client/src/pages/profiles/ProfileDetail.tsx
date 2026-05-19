@@ -1,6 +1,6 @@
 import type { User, UserProfileRecord } from "../../types";
 import { Avatar, GlassCard, GradientButton } from "../shared";
-import { ProfilePictureUploader } from "../users/ProfilePictureUploader";
+import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
 
 interface ProfileDetailProps {
   user: User;
@@ -12,7 +12,8 @@ interface ProfileDetailProps {
 }
 
 export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUpload }: ProfileDetailProps) {
-  const bio = profile?.bio || user.bio;
+  const rawBio = profile?.bio || user.bio;
+  const bio = rawBio?.replace(/^Delivery profile for\s*/i, "").trim() || "";
   const jobTitle = profile?.jobTitle || user.jobTitle;
   const dateOfBirth = profile?.dateOfBirth;
   const address = profile?.address;
@@ -31,7 +32,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
               <span className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-white" />
             )}
             {onImageUpload && (
-              <div className="mt-3">
+              <div className="mt-3 self-center">
                 <ProfilePictureUploader userId={user.id} token={token} onUpload={onImageUpload} />
               </div>
             )}

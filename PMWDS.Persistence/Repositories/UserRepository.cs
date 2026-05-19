@@ -40,6 +40,22 @@ public class UserRepository : BaseRepository<ApplicationUser>, IUserRepository
             .Where(u => (u.DepartmentId == departmentId ||
                          u.DepartmentAssignments.Any(d => d.DepartmentId == departmentId)) &&
                         u.IsActive)
+            .ToListAsync(ct);
+
+    public async Task<IEnumerable<ApplicationUser>> GetAllWithSkillsAsync(
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Include(u => u.Skills)
+            .ThenInclude(s => s.Skill)
+            .ToListAsync(ct);
+
+    public async Task<IEnumerable<ApplicationUser>> GetByDepartmentWithSkillsAsync(
+        Guid departmentId,
+        CancellationToken ct = default)
+        => await IncludeIdentityGraph()
+            .Where(u => (u.DepartmentId == departmentId ||
+                         u.DepartmentAssignments.Any(d => d.DepartmentId == departmentId)) &&
+                        u.IsActive)
             .Include(u => u.Skills)
             .ThenInclude(s => s.Skill)
             .ToListAsync(ct);

@@ -4,7 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
-import { Avatar, GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
+import { Avatar, AvatarStack, GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { DependencyManagement } from "./DependencyManagement";
 
 interface TaskDetailProps {
@@ -49,7 +49,17 @@ export function TaskDetail({
   const { auth } = useAuth();
   const { addToast } = useToast();
   const statusColors = getStatusColor(task.status);
-  const assignedUser = task.assignedToUserId ? users.find(u => u.id === task.assignedToUserId) : null;
+  const assignedUsers = (task.assignees && task.assignees.length > 0)
+    ? task.assignees.map(a => ({ id: a.userId, fullName: a.fullName ?? undefined }))
+    : (task.assignedToUserId ? [{ id: task.assignedToUserId, fullName: task.assignedToUserName ?? undefined }] : []);
+  const assignedUsersResolved = assignedUsers.map(u => {
+    const matchedUser = users.find(usr => usr.id === u.id);
+    return {
+      id: u.id,
+      fullName: u.fullName || (matchedUser?.fullName ?? undefined),
+      profilePictureUrl: matchedUser?.profilePictureUrl ?? null,
+    };
+  });
   
   const [progressForm, setProgressForm] = useState({ progressPercentage: task.progressPercentage || 0, notes: "" });
   const [comment, setComment] = useState("");
@@ -162,7 +172,7 @@ export function TaskDetail({
         <div className="grid grid-cols-2 gap-3 mb-4">
           <DetailItem icon="rocket_launch" label="Project" value={project?.name || task.projectName || "N/A"} />
           <DetailItem icon="flag" label="Milestone" value={milestone?.name || "None"} />
-          <DetailItem icon="person" label="Assignee" value={assignedUser?.fullName || task.assignedToUserName || "Unassigned"} avatar={assignedUser} />
+          <DetailItem icon="person" label="Assignee" value={assignedUsersResolved.length > 0 ? assignedUsersResolved.map(u => u.fullName).join(", ") : "Unassigned"} avatars={assignedUsersResolved} />
           <DetailItem icon="calendar_today" label="Due Date" value={task.dueDate ? formatDate(task.dueDate) : "Not set"} />
         </div>
 
@@ -310,7 +320,17 @@ export function TaskDetail({
           <div className="space-y-2">
             {subtasks.map((subtask) => {
               const subStatusColors = getStatusColor(subtask.status);
-              const subAssignee = subtask.assignedToUserId ? users.find(u => u.id === subtask.assignedToUserId) : null;
+              const subAssignedUsers = (subtask.assignees && subtask.assignees.length > 0)
+                ? subtask.assignees.map(a => ({ id: a.userId, fullName: a.fullName ?? undefined }))
+                : (subtask.assignedToUserId ? [{ id: subtask.assignedToUserId, fullName: subtask.assignedToUserName ?? undefined }] : []);
+              const subAssignedUsersResolved = subAssignedUsers.map(u => {
+                const matchedUser = users.find(usr => usr.id === u.id);
+                return {
+                  id: u.id,
+                  fullName: u.fullName || (matchedUser?.fullName ?? undefined),
+                  profilePictureUrl: matchedUser?.profilePictureUrl ?? null,
+                };
+              });
 
               return (
                 <div
@@ -324,10 +344,9 @@ export function TaskDetail({
                         <PriorityBadge priority={subtask.priority} />
                       </div>
                       <div className="flex items-center gap-3 text-xs text-slate-500">
-                        {subAssignee && (
+                        {subAssignedUsersResolved.length > 0 && (
                           <span className="flex items-center gap-1">
-                            <Avatar person={subAssignee} size="xs" className="shadow-none ring-0" />
-                            {subAssignee.fullName}
+                            <AvatarStack people={subAssignedUsersResolved} size="xs" />
                           </span>
                         )}
                         {subtask.dueDate && (
@@ -514,15 +533,15 @@ export function TaskDetail({
   );
 }
 
-function DetailItem({ icon, label, value, avatar }: { icon: string; label: string; value: string; avatar?: User | null }) {
+function DetailItem({ icon, label, value, avatars }: { icon: string; label: string; value: string; avatars?: { id?: string; fullName?: string | null }[] | null }) {
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg">
-      <span className="material-symbols-outlined text-slate-400 text-lg">{icon}</span>
-      <div className="min-w-0">
+    <div className="flex items-start gap-2 p-2 rounded-lg">
+      <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">{icon}</span>
+      <div className="min-w-0 flex-1">
         <div className="text-[10px] font-semibold text-slate-400 uppercase">{label}</div>
-        <div className="text-sm font-medium text-slate-700 flex items-center gap-1.5 truncate">
-          {avatar && <Avatar person={avatar} size="xs" className="shadow-none ring-0" />}
-          {value}
+        <div className="text-sm font-medium text-slate-700 flex items-start gap-1.5">
+          {avatars && avatars.length > 0 && <AvatarStack people={avatars} size="xs" />}
+          <span className="break-words">{value}</span>
         </div>
       </div>
     </div>

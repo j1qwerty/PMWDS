@@ -59,17 +59,27 @@ export function AvatarStack({ people, limit = 4, size = "sm" }: { people: Avatar
   const extra = Math.max(people.length - visible.length, 0);
 
   return (
-    <div className="flex -space-x-2">
-      {visible.map((person, index) => (
-        <Avatar
-          key={person.id || person.userId || `${person.fullName || person.name || "user"}-${index}`}
-          person={person}
-          size={size}
-          className="border border-white"
-        />
-      ))}
+    <div className="flex items-center gap-1.5">
+      {visible.map((person, index) => {
+        const name = person.fullName || person.name || person.email || "User";
+        return (
+          <div
+            key={person.id || person.userId || `${person.fullName || person.name || "user"}-${index}`}
+            title={name}
+            className="relative group"
+          >
+            <Avatar
+              person={person}
+              size={size}
+            />
+          </div>
+        );
+      })}
       {extra > 0 && (
-        <span className={`${sizeClass[size ?? "sm"]} grid place-items-center rounded-full border border-white bg-slate-100 font-semibold text-slate-500 ring-2 ring-white`}>
+        <span
+          title={people.slice(limit).map(p => p.fullName || p.name || p.email || "User").join(", ")}
+          className={`${sizeClass[size ?? "sm"]} grid place-items-center rounded-full bg-slate-100 font-semibold text-slate-500 cursor-default`}
+        >
           +{extra}
         </span>
       )}
