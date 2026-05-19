@@ -179,6 +179,11 @@ export function MilestonesPage() {
 
     const handleDeleteMilestone = async (milestoneId: string) => {
         if (!auth) return;
+        const taskCount = tasks.filter(t => t.milestoneId === milestoneId).length;
+        const warning = taskCount > 0
+            ? `Delete this milestone and ${taskCount} task${taskCount === 1 ? "" : "s"} inside it? This cannot be undone.`
+            : "Delete this milestone? This cannot be undone.";
+        if (!confirm(warning)) return;
         try {
             await api.deleteMilestone(auth.token, milestoneId);
             setMessage("Milestone deleted.");
@@ -532,10 +537,8 @@ export function MilestonesPage() {
                     projects={projects.filter(p => p.id === selectedProjectId)}
                     milestones={milestones.filter(m => m.id === selectedMilestoneId)}
                     users={users}
-                    initialData={{
-                        projectId: selectedProjectId,
-                        milestoneId: selectedMilestoneId,
-                    } as any}
+                    defaultProjectId={selectedProjectId}
+                    defaultMilestoneId={selectedMilestoneId}
                     onSubmit={handleTaskSubmit}
                     onClose={() => setTaskModal({ open: false })}
                 />

@@ -4,7 +4,7 @@ public record CreateSubtaskDto(
     string Title,
     string? Description,
     DateTime StartDate,
-    DateTime DueDate,
+    DateTime? DueDate,
     float EstimatedHours,
     Guid ProjectId,
     Guid? MilestoneId,

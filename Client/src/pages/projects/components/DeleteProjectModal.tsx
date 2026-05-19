@@ -1,4 +1,4 @@
-import type { Project } from "../../types";
+import type { Project } from "../../../types";
 
 interface DeleteProjectModalProps {
   show: boolean;
@@ -16,8 +16,8 @@ export function DeleteProjectModal({
   if (!show || !project) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-surface-container-lowest rounded-xl p-lg w-full max-w-md shadow-xl ambient-glow">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm w-full">
+      <div className="bg-surface-container-lowest rounded-xl p-lg  w-100 shadow-xl ambient-glow">
         <div className="flex flex-col items-center text-center mb-md">
           <div className="size-16 rounded-full bg-error-container flex items-center justify-center mb-md">
             <span className="material-symbols-outlined text-error text-3xl">warning</span>

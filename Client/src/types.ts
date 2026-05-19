@@ -12,6 +12,7 @@ export interface AuthResponse {
   userId: string;
   fullName: string;
   email: string;
+  profilePictureUrl?: string | null;
   roles: Role[];
 }
 
@@ -173,6 +174,7 @@ export interface Task {
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
   timeEntries?: TaskTimeEntry[];
+  subTasks?: Task[];
   aiOptimalAssigneeScore?: number;
   aiPredictedCompletionDate?: string | null;
   aiRecommendedAssigneeId?: string | null;

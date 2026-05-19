@@ -9,7 +9,7 @@ public class DelayPrediction : AuditableEntity
     public Guid ModelId { get; private set; }
     public double DelayProbability { get; private set; }
     public int ExpectedDelayDays { get; private set; }
-    public DateTime PredictedCompletionDate { get; private set; }
+    public DateTime? PredictedCompletionDate { get; private set; }
     public string ContributingFactorsJson { get; private set; } = "[]";
     public string FactorWeightsJson { get; private set; } = "{}";
 
@@ -23,7 +23,7 @@ public class DelayPrediction : AuditableEntity
         Guid modelId,
         double delayProbability,
         int expectedDelayDays,
-        DateTime predictedCompletionDate,
+        DateTime? predictedCompletionDate,
         IEnumerable<string>? contributingFactors,
         IDictionary<string, double>? factorWeights)
     {

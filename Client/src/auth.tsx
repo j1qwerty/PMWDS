@@ -15,6 +15,7 @@ export type AuthState = {
   userId: string;
   fullName: string;
   email: string;
+  profilePictureUrl?: string | null;
   roles: Role[];
 };
 
@@ -23,6 +24,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
+  updateCurrentUser: (patch: Partial<Pick<AuthState, "fullName" | "email" | "profilePictureUrl">>) => void;
   hasRole: (...roles: Role[]) => boolean;
 };
 
@@ -36,6 +38,7 @@ function mapAuth(response: AuthResponse): AuthState {
     userId: response.userId,
     fullName: response.fullName,
     email: response.email,
+    profilePictureUrl: response.profilePictureUrl,
     roles: response.roles,
   };
 }
@@ -105,6 +108,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         token: refreshed.token,
         expiry: refreshed.expiry,
       });
+    },
+    updateCurrentUser(patch) {
+      setAuth((current) => current ? { ...current, ...patch } : current);
     },
     hasRole(...roles) {
       if (!auth) return false;

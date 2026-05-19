@@ -66,7 +66,18 @@ public class ProjectTask : AuditableEntity
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyList<IDomainEvent> DomainEvents =>
     _domainEvents.AsReadOnly();
-    protected ProjectTask() { }
+    protected ProjectTask()
+    {
+        _subTasks = new();
+        _dependencies = new();
+        _comments = new();
+        _attachments = new();
+        _assignments = new();
+        _timeEntries = new();
+        _domainEvents = new();
+        AllocationRecommendations = new List<AllocationRecommendation>();
+        DelayPredictions = new List<DelayPrediction>();
+    }
     public static ProjectTask Create(
     Guid projectId,
     string title,

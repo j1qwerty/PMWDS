@@ -77,7 +77,7 @@ public class CreateTaskCommandHandler
         .PredictTaskDelayAsync(task.Id, ct);
         task.UpdateAIPrediction(
         prediction.DelayProbability,
-        prediction.PredictedCompletionDate,
+        prediction.PredictedCompletionDate ?? task.DueDate,
         string.Join("; ",
         prediction.ContributingFactors));
         await _uow.Tasks.UpdateAsync(task, ct);

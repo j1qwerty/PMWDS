@@ -81,6 +81,13 @@ public class MilestonesController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
+        if (milestone == null)
+        {
+            return NotFound();
+        }
+
+        await _uow.Tasks.DeleteTasksByMilestoneAsync(id, ct);
         await _uow.Milestones.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();

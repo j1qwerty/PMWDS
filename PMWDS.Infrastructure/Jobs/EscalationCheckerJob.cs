@@ -46,7 +46,7 @@ public class EscalationCheckerJob : IEscalationCheckerJob
                     task.Escalate();
                     task.UpdateAIPrediction(
                     prediction.DelayProbability,
-                    prediction.PredictedCompletionDate,
+                    prediction.PredictedCompletionDate ?? task.DueDate,
                     string.Join("; ",
                     prediction.ContributingFactors),
                     task.AIRecommendedAssigneeId);

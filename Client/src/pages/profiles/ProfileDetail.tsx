@@ -1,14 +1,17 @@
 import type { User, UserProfileRecord } from "../../types";
 import { Avatar, GlassCard, GradientButton } from "../shared";
+import { ProfilePictureUploader } from "../users/ProfilePictureUploader";
 
 interface ProfileDetailProps {
   user: User;
   profile: UserProfileRecord | null;
   canEdit: boolean;
   onEdit: () => void;
+  token: string;
+  onImageUpload?: (file: File) => Promise<void>;
 }
 
-export function ProfileDetail({ user, profile, canEdit, onEdit }: ProfileDetailProps) {
+export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUpload }: ProfileDetailProps) {
   const bio = profile?.bio || user.bio;
   const jobTitle = profile?.jobTitle || user.jobTitle;
   const dateOfBirth = profile?.dateOfBirth;
@@ -21,11 +24,16 @@ export function ProfileDetail({ user, profile, canEdit, onEdit }: ProfileDetailP
       {/* Profile Header Card */}
       <GlassCard className="p-8">
         <div className="flex flex-col sm:flex-row items-start gap-6">
-          {/* Avatar */}
+          {/* Avatar with Upload */}
           <div className="relative">
             <Avatar person={user} size="xl" className="rounded-2xl ring-4" />
             {user.isActive !== false && (
               <span className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-white" />
+            )}
+            {onImageUpload && (
+              <div className="mt-3">
+                <ProfilePictureUploader userId={user.id} token={token} onUpload={onImageUpload} />
+              </div>
             )}
           </div>
 

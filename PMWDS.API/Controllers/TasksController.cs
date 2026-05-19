@@ -49,8 +49,15 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
-        return task == null ? NotFound() : Ok(TaskDto.FromEntity(task));
+        try
+        {
+            var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+            return task == null ? NotFound() : Ok(TaskDto.FromEntity(task));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to load task", error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [HttpPost]
@@ -268,19 +275,33 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetSubtasks(Guid id, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
-        return task == null ? NotFound() : Ok(task.SubTasks.Select(TaskDto.FromEntity));
+        try
+        {
+            var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
+            if (parentTask == null) return NotFound();
+            var subtasks = await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct);
+            return Ok(subtasks.Select(TaskDto.FromEntity));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to load subtasks", error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [HttpPost("{id:guid}/subtasks")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> CreateSubtask(Guid id, [FromBody] CreateSubtaskDto dto, CancellationToken ct)
     {
+        var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (parentTask == null)
+            return NotFound();
+
+        var dueDate = dto.DueDate ?? DateTime.UtcNow.AddDays(7);
         var createDto = new CreateTaskDto(
             dto.Title,
             dto.Description ?? string.Empty,
             dto.StartDate,
-            dto.DueDate,
+            dueDate,
             dto.EstimatedHours,
             dto.ProjectId,
             dto.MilestoneId,
@@ -362,7 +383,7 @@ public class TasksController : BaseApiController
         if (task == null || task.ParentTaskId == null)
             return NotFound();
 
-        await _uow.Tasks.DeleteAsync(id, ct);
+        await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -371,7 +392,9 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        await _uow.Tasks.DeleteAsync(id, ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null) return NotFound();
+        await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -380,8 +403,19 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependencies(Guid id, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
-        return task == null ? NotFound() : Ok(task.Dependencies.Select(TaskDependencyDto.FromEntity));
+        try
+        {
+            var task = await _uow.Tasks.GetByIdAsync(id, ct);
+            if (task == null) return NotFound();
+            var dependencies = (await _uow.Tasks.GetDependenciesForTaskAsync(id, ct))
+                .Select(TaskDependencyDto.FromEntity)
+                .ToList();
+            return Ok(dependencies);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to load dependencies", error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [HttpPost("{id:guid}/dependencies")]

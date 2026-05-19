@@ -133,6 +133,13 @@ public class ProjectsController : BaseApiController
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var project = await _uow.Projects.GetByIdAsync(id, ct);
+        if (project == null)
+        {
+            return NotFound();
+        }
+
+        await _uow.Tasks.DeleteTasksByProjectAsync(id, ct);
         await _uow.Projects.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();

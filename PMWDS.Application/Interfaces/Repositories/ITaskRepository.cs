@@ -22,6 +22,21 @@ public interface ITaskRepository : IRepository<ProjectTask>
    Task<IEnumerable<ProjectTask>> GetHighRiskTasksAsync(
    double threshold = 0.7,
    CancellationToken ct = default);
-   Task<IEnumerable<ProjectTask>> GetEscalatedTasksAsync(
-   CancellationToken ct = default);
+    Task<IEnumerable<ProjectTask>> GetEscalatedTasksAsync(
+    CancellationToken ct = default);
+    Task<IEnumerable<ProjectTask>> GetSubtasksByParentIdAsync(
+    Guid parentTaskId,
+    CancellationToken ct = default);
+    Task<IEnumerable<TaskDependency>> GetDependenciesForTaskAsync(
+    Guid taskId,
+    CancellationToken ct = default);
+    Task DeleteTaskGraphAsync(
+    Guid taskId,
+    CancellationToken ct = default);
+    Task DeleteTasksByMilestoneAsync(
+    Guid milestoneId,
+    CancellationToken ct = default);
+    Task DeleteTasksByProjectAsync(
+    Guid projectId,
+    CancellationToken ct = default);
 }

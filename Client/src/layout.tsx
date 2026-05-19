@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { useAuth } from "./auth";
 import type { Role } from "./types";
+import { Avatar } from "./pages/shared";
 
 import {
   HiOutlineHome,
@@ -169,7 +170,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           { path: "/organizationStructure", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/departmentsPage", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
           { path: "/users", label: "People", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
-          { path: "/profiles", label: "Profiles", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
+          { path: "/profiles", label: "Profiles", icon: "users", roles: [] },
           { path: "/skills", label: "Skills", icon: "skill", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
         ],
       },
@@ -267,12 +268,14 @@ function Layout({ children }: { children: React.ReactNode }) {
         {/* User */}
         <div className="mx-3 mb-4 rounded-2xl bg-surface-container-low px-3 py-3">
           <div className="flex items-center gap-3">
-            <img
-              alt={auth?.fullName || "User"}
-              className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/20"
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                auth?.fullName || "U"
-              )}&background=4648d4&color=fff`}
+            <Avatar
+              person={{
+                id: auth?.userId,
+                fullName: auth?.fullName || "User",
+                profilePictureUrl: auth?.profilePictureUrl,
+              }}
+              size="sm"
+              className="ring-2 ring-primary/20"
             />
 
             <div className="flex min-w-0 flex-col">

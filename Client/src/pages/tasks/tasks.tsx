@@ -15,6 +15,7 @@ import {
   StatusBadge,
   PriorityBadge,
   FilterButtons,
+  AnimatedBackground,
 } from "../shared";
 import { TaskDetail } from "./TaskDetail";
 import { TaskFormModal } from "./TaskFormModal";
@@ -155,7 +156,7 @@ export function TasksPage() {
   }, [milestones, selectedProjectId, selectedOrgId, departments, projects]);
 
   const filteredTasks = useMemo(() => {
-    let result = tasks;
+    let result = tasks.filter(t => !t.parentTaskId);
 
     // Filter by project
     if (selectedProjectId) {

@@ -5,6 +5,8 @@ import { ModalOverlay, InputF, SelectF } from "../shared";
 interface TaskFormModalProps {
   open: boolean;
   initialData?: Task;
+  defaultProjectId?: string;
+  defaultMilestoneId?: string;
   projects: Project[];
   milestones: Milestone[];
   users: User[];
@@ -12,15 +14,15 @@ interface TaskFormModalProps {
   onClose: () => void;
 }
 
-export function TaskFormModal({ open, initialData, projects, milestones, users, onSubmit, onClose }: TaskFormModalProps) {
+export function TaskFormModal({ open, initialData, defaultProjectId = "", defaultMilestoneId = "", projects, milestones, users, onSubmit, onClose }: TaskFormModalProps) {
   const [form, setForm] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
     startDate: initialData?.startDate?.slice(0, 10) || "",
     dueDate: initialData?.dueDate?.slice(0, 10) || "",
     estimatedHours: initialData?.estimatedHours || 8,
-    projectId: initialData?.projectId || "",
-    milestoneId: initialData?.milestoneId || "",
+    projectId: initialData?.projectId || defaultProjectId,
+    milestoneId: initialData?.milestoneId || defaultMilestoneId,
     assignedToUserId: initialData?.assignedToUserId || "",
     assignedToUserIds: initialData?.assignees?.map(item => item.userId) || (initialData?.assignedToUserId ? [initialData.assignedToUserId] : []),
     priority: initialData?.priority || "Medium",
@@ -34,14 +36,14 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
         startDate: initialData?.startDate?.slice(0, 10) || "",
         dueDate: initialData?.dueDate?.slice(0, 10) || "",
         estimatedHours: initialData?.estimatedHours || 8,
-        projectId: initialData?.projectId || "",
-        milestoneId: initialData?.milestoneId || "",
+        projectId: initialData?.projectId || defaultProjectId,
+        milestoneId: initialData?.milestoneId || defaultMilestoneId,
         assignedToUserId: initialData?.assignedToUserId || "",
         assignedToUserIds: initialData?.assignees?.map(item => item.userId) || (initialData?.assignedToUserId ? [initialData.assignedToUserId] : []),
         priority: initialData?.priority || "Medium",
       });
     }
-  }, [open, initialData]);
+  }, [open, initialData, defaultProjectId, defaultMilestoneId]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl p-8 w-[920px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-indigo-600 text-2xl">
@@ -73,16 +75,17 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <InputF label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <InputF label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
+            </div>
+            <InputF label="Est. Hours" type="number" value={form.estimatedHours} onChange={(v) => setForm({ ...form, estimatedHours: Number(v) })} />
+          </div>
           <InputF label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <InputF label="Start Date" type="date" value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} />
             <InputF label="Due Date" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <InputF label="Est. Hours" type="number" value={form.estimatedHours} onChange={(v) => setForm({ ...form, estimatedHours: Number(v) })} />
             <SelectF
               label="Priority"
               value={form.priority}
@@ -91,22 +94,24 @@ export function TaskFormModal({ open, initialData, projects, milestones, users, 
             />
           </div>
 
-          <SelectF
-            label="Project"
-            value={form.projectId}
-            onChange={(v) => setForm({ ...form, projectId: v, milestoneId: "" })}
-            options={projects.map(p => ({ value: p.id, label: p.name }))}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SelectF
+              label="Project"
+              value={form.projectId}
+              onChange={(v) => setForm({ ...form, projectId: v, milestoneId: "" })}
+              options={projects.map(p => ({ value: p.id, label: p.name }))}
+            />
 
-          <SelectF
-            label="Milestone"
-            value={form.milestoneId}
-            onChange={(v) => setForm({ ...form, milestoneId: v })}
-            options={[
-              { value: "", label: "None" },
-              ...milestones.map(m => ({ value: m.id, label: m.name })),
-            ]}
-          />
+            <SelectF
+              label="Milestone"
+              value={form.milestoneId}
+              onChange={(v) => setForm({ ...form, milestoneId: v })}
+              options={[
+                { value: "", label: "None" },
+                ...milestones.map(m => ({ value: m.id, label: m.name })),
+              ]}
+            />
+          </div>
 
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Assignees</label>

@@ -13,15 +13,24 @@ public class TaskRepository
     Guid taskId, CancellationToken ct = default)
     => await _dbSet
     .Include(t => t.SubTasks)
+        .ThenInclude(st => st.Assignments)
+    .Include(t => t.SubTasks)
+        .ThenInclude(st => st.Comments)
+    .Include(t => t.SubTasks)
+        .ThenInclude(st => st.Attachments)
+    .Include(t => t.SubTasks)
+        .ThenInclude(st => st.Dependencies)
+    .Include(t => t.SubTasks)
+        .ThenInclude(st => st.TimeEntries)
     .Include(t => t.Comments)
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
+        .ThenInclude(d => d.PredecessorTask)
     .Include(t => t.Assignments)
-        .ThenInclude(a => a.User)
     .Include(t => t.TimeEntries)
-        .ThenInclude(e => e.User)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .FirstOrDefaultAsync(t => t.Id == taskId, ct);
     public async Task<IEnumerable<ProjectTask>>
     GetByProjectAsync(
@@ -31,6 +40,12 @@ public class TaskRepository
     .Where(t => t.ProjectId == projectId)
     .Include(t => t.Assignments)
     .Include(t => t.SubTasks)
+    .Include(t => t.Comments)
+    .Include(t => t.Attachments)
+    .Include(t => t.Dependencies)
+    .Include(t => t.TimeEntries)
+    .Include(t => t.Project)
+    .Include(t => t.Milestone)
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -42,7 +57,13 @@ public class TaskRepository
     t.Assignments.Any(a => a.UserId == userId && a.IsActive))
     && t.Status != Domain.Enums.TaskStatus.Completed
     && t.Status != Domain.Enums.TaskStatus.Cancelled)
+    .Include(t => t.Assignments)
+    .Include(t => t.Comments)
+    .Include(t => t.Attachments)
+    .Include(t => t.Dependencies)
+    .Include(t => t.TimeEntries)
     .Include(t => t.Project)
+    .Include(t => t.Milestone)
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -91,4 +112,101 @@ public class TaskRepository
     .Include(t => t.Project)
     .OrderByDescending(t => t.EscalationLevel)
     .ToListAsync(ct);
+    public async Task<IEnumerable<ProjectTask>>
+    GetSubtasksByParentIdAsync(
+    Guid parentTaskId,
+    CancellationToken ct = default)
+    => await _dbSet
+    .Where(t => t.ParentTaskId == parentTaskId)
+    .Include(t => t.Assignments)
+    .Include(t => t.Comments)
+    .Include(t => t.Attachments)
+    .Include(t => t.Dependencies)
+        .ThenInclude(d => d.PredecessorTask)
+    .Include(t => t.TimeEntries)
+    .Include(t => t.Project)
+    .Include(t => t.Milestone)
+    .OrderBy(t => t.DueDate)
+    .ToListAsync(ct);
+
+    public async Task<IEnumerable<TaskDependency>> GetDependenciesForTaskAsync(
+    Guid taskId,
+    CancellationToken ct = default)
+    => await _context.TaskDependencies
+    .Where(d => d.PredecessorTaskId == taskId || d.SuccessorTaskId == taskId)
+    .Include(d => d.PredecessorTask)
+    .Include(d => d.SuccessorTask)
+    .OrderBy(d => d.CreatedDate)
+    .ToListAsync(ct);
+
+    public async Task DeleteTaskGraphAsync(
+    Guid taskId,
+    CancellationToken ct = default)
+    {
+        var taskIds = await GetTaskGraphIdsAsync(new[] { taskId }, ct);
+        if (taskIds.Count == 0) return;
+        await DeleteTaskGraphsByIdsAsync(taskIds, ct);
+    }
+
+    public async Task DeleteTasksByMilestoneAsync(
+    Guid milestoneId,
+    CancellationToken ct = default)
+    {
+        var rootIds = await _dbSet
+        .Where(t => t.MilestoneId == milestoneId)
+        .Select(t => t.Id)
+        .ToListAsync(ct);
+        var taskIds = await GetTaskGraphIdsAsync(rootIds, ct);
+        await DeleteTaskGraphsByIdsAsync(taskIds, ct);
+    }
+
+    public async Task DeleteTasksByProjectAsync(
+    Guid projectId,
+    CancellationToken ct = default)
+    {
+        var rootIds = await _dbSet
+        .Where(t => t.ProjectId == projectId)
+        .Select(t => t.Id)
+        .ToListAsync(ct);
+        var taskIds = await GetTaskGraphIdsAsync(rootIds, ct);
+        await DeleteTaskGraphsByIdsAsync(taskIds, ct);
+    }
+
+    private async Task<HashSet<Guid>> GetTaskGraphIdsAsync(
+    IEnumerable<Guid> rootIds,
+    CancellationToken ct)
+    {
+        var taskIds = rootIds.Where(id => id != Guid.Empty).ToHashSet();
+        var frontier = taskIds.ToList();
+
+        while (frontier.Count > 0)
+        {
+            var children = await _dbSet
+            .Where(t => t.ParentTaskId.HasValue && frontier.Contains(t.ParentTaskId.Value))
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+
+            frontier = children.Where(taskIds.Add).ToList();
+        }
+
+        return taskIds;
+    }
+
+    private async Task DeleteTaskGraphsByIdsAsync(
+    HashSet<Guid> taskIds,
+    CancellationToken ct)
+    {
+        if (taskIds.Count == 0) return;
+
+        var dependencies = await _context.TaskDependencies
+        .Where(d => taskIds.Contains(d.PredecessorTaskId) || taskIds.Contains(d.SuccessorTaskId))
+        .ToListAsync(ct);
+        _context.TaskDependencies.RemoveRange(dependencies);
+
+        var tasks = await _dbSet
+        .Where(t => taskIds.Contains(t.Id))
+        .OrderByDescending(t => t.ParentTaskId.HasValue)
+        .ToListAsync(ct);
+        _dbSet.RemoveRange(tasks);
+    }
 }

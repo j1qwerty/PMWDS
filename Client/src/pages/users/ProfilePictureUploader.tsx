@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Cropper, { type Area } from "react-easy-crop";
 
 interface ProfilePictureUploaderProps {
   userId: string;
@@ -12,8 +13,8 @@ type EditorState = {
   url: string;
   zoom: number;
   rotate: number;
-  offsetX: number;
-  offsetY: number;
+  crop: { x: number; y: number };
+  croppedAreaPixels: Area | null;
 };
 
 export function ProfilePictureUploader({ userId, token, disabled, onUpload }: ProfilePictureUploaderProps) {
@@ -41,8 +42,8 @@ export function ProfilePictureUploader({ userId, token, disabled, onUpload }: Pr
       url: URL.createObjectURL(file),
       zoom: 1,
       rotate: 0,
-      offsetX: 0,
-      offsetY: 0,
+      crop: { x: 0, y: 0 },
+      croppedAreaPixels: null,
     });
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -100,16 +101,19 @@ export function ProfilePictureUploader({ userId, token, disabled, onUpload }: Pr
             </div>
 
             <div className="p-5">
-              <div className="mx-auto grid size-72 place-items-center overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-inner ring-1 ring-slate-200">
-                <img
-                  src={editor.url}
-                  alt="Crop preview"
-                  className="max-w-none select-none"
-                  style={{
-                    width: `${editor.zoom * 100}%`,
-                    transform: `translate(${editor.offsetX}px, ${editor.offsetY}px) rotate(${editor.rotate}deg)`,
-                  }}
-                  draggable={false}
+              <div className="relative mx-auto size-80 overflow-hidden rounded-2xl bg-slate-100 shadow-inner ring-1 ring-slate-200">
+                <Cropper
+                  image={editor.url}
+                  crop={editor.crop}
+                  zoom={editor.zoom}
+                  rotation={editor.rotate}
+                  aspect={1}
+                  cropShape="round"
+                  showGrid={false}
+                  onCropChange={(crop) => setEditor((current) => current && { ...current, crop })}
+                  onZoomChange={(zoom) => setEditor((current) => current && { ...current, zoom })}
+                  onRotationChange={(rotate) => setEditor((current) => current && { ...current, rotate })}
+                  onCropComplete={(_, croppedAreaPixels) => setEditor((current) => current && { ...current, croppedAreaPixels })}
                 />
               </div>
 
@@ -122,28 +126,6 @@ export function ProfilePictureUploader({ userId, token, disabled, onUpload }: Pr
                     step="0.05"
                     value={editor.zoom}
                     onChange={(event) => setEditor((current) => current && { ...current, zoom: Number(event.target.value) })}
-                    className="w-full accent-indigo-600"
-                  />
-                </Control>
-                <Control label="Horizontal" value={`${editor.offsetX}px`}>
-                  <input
-                    type="range"
-                    min="-120"
-                    max="120"
-                    step="1"
-                    value={editor.offsetX}
-                    onChange={(event) => setEditor((current) => current && { ...current, offsetX: Number(event.target.value) })}
-                    className="w-full accent-indigo-600"
-                  />
-                </Control>
-                <Control label="Vertical" value={`${editor.offsetY}px`}>
-                  <input
-                    type="range"
-                    min="-120"
-                    max="120"
-                    step="1"
-                    value={editor.offsetY}
-                    onChange={(event) => setEditor((current) => current && { ...current, offsetY: Number(event.target.value) })}
                     className="w-full accent-indigo-600"
                   />
                 </Control>
@@ -205,24 +187,54 @@ async function cropAndCompress(editor: EditorState): Promise<File> {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Image processing is not available.");
 
+  const crop = editor.croppedAreaPixels ?? {
+    x: 0,
+    y: 0,
+    width: image.width,
+    height: image.height,
+  };
+
+  const rotated = await createRotatedImage(image, editor.rotate);
+
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.beginPath();
   context.arc(256, 256, 256, 0, Math.PI * 2);
   context.clip();
-  context.translate(256 + editor.offsetX, 256 + editor.offsetY);
-  context.rotate((editor.rotate * Math.PI) / 180);
-
-  const base = Math.max(canvas.width / image.width, canvas.height / image.height) * editor.zoom;
-  const drawWidth = image.width * base;
-  const drawHeight = image.height * base;
-  context.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+  context.drawImage(
+    rotated,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
   context.restore();
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
   if (!blob) throw new Error("Could not process image.");
   return new File([blob], "profile-picture.webp", { type: "image/webp" });
+}
+
+async function createRotatedImage(image: HTMLImageElement, rotation: number): Promise<HTMLCanvasElement> {
+  const radians = (rotation * Math.PI) / 180;
+  const sin = Math.abs(Math.sin(radians));
+  const cos = Math.abs(Math.cos(radians));
+  const width = image.width;
+  const height = image.height;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(width * cos + height * sin);
+  canvas.height = Math.round(width * sin + height * cos);
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image processing is not available.");
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate(radians);
+  context.drawImage(image, -width / 2, -height / 2);
+  return canvas;
 }
 
 function loadImage(file: File): Promise<HTMLImageElement> {

@@ -9,14 +9,17 @@ import {
   LoadingPage,
   PageHeader,
   ModalOverlay,
+  useToast,
 } from "../shared";
 import { ProfileList } from "./ProfileList";
 import { ProfileDetail } from "./ProfileDetail";
 import { ProfileFormModal } from "./ProfileFormModal";
 
 export function ProfilesPage() {
-  const { auth, hasRole } = useAuth();
-  const canEdit = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const { auth, hasRole, updateCurrentUser } = useAuth();
+  const { addToast } = useToast();
+  const canManageProfiles = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const isOwnProfile = !hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
 
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -33,7 +36,10 @@ export function ProfilesPage() {
     api.getUsers(auth.token)
       .then((userData) => {
         setUsers(userData);
-        if (!selectedUser && userData.length > 0) {
+        if (isOwnProfile) {
+          const me = userData.find(u => u.id === auth.userId);
+          setSelectedUser(me || userData[0]);
+        } else if (!selectedUser && userData.length > 0) {
           setSelectedUser(userData[0]);
         }
       })
@@ -63,6 +69,21 @@ export function ProfilesPage() {
     }
   };
 
+  const handleImageUpload = async (file: File) => {
+    if (!auth || !selectedUser) return;
+    const result = await api.uploadUserProfilePicture(auth.token, selectedUser.id, file);
+    setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, ...result.user } : u));
+    setSelectedUser(prev => prev ? { ...prev, ...result.user } : null);
+    if (selectedUser.id === auth.userId) {
+      updateCurrentUser({
+        fullName: result.user.fullName,
+        email: result.user.email,
+        profilePictureUrl: result.user.profilePictureUrl,
+      });
+    }
+    addToast("Profile picture updated.");
+  };
+
   // Filter users
   const filteredUsers = users.filter(user => {
     if (!searchTerm) return true;
@@ -83,9 +104,9 @@ export function ProfilesPage() {
       {/* Page Header */}
       <div className="relative z-10">
         <PageHeader
-          title="Profiles"
-          description="View and manage user profiles and details"
-          action={canEdit && selectedUser ? {
+          title={isOwnProfile ? "My Profile" : "Profiles"}
+          description={isOwnProfile ? "View and manage your profile details" : "View and manage user profiles and details"}
+          action={(canManageProfiles || selectedUser?.id === auth?.userId) && selectedUser ? {
             label: "Edit Profile",
             onClick: () => setProfileModal(true),
             icon: "edit",
@@ -108,23 +129,27 @@ export function ProfilesPage() {
       )}
 
       {/* Main Layout */}
-      <div className="relative z-10 grid grid-cols-[320px_1fr] gap-6">
-        {/* Left Panel: Profile List */}
-        <ProfileList
-          users={filteredUsers}
-          selectedUserId={selectedUser?.id || ""}
-          onSelect={setSelectedUser}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-        />
+      <div className={`relative z-10 grid gap-6 ${isOwnProfile ? "grid-cols-1" : "grid-cols-[320px_1fr]"}`}>
+        {/* Left Panel: Profile List - hidden for own profile view */}
+        {!isOwnProfile && (
+          <ProfileList
+            users={filteredUsers}
+            selectedUserId={selectedUser?.id || ""}
+            onSelect={setSelectedUser}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
+        )}
 
         {/* Right Panel: Profile Detail */}
         {selectedUser ? (
           <ProfileDetail
             user={selectedUser}
             profile={profile}
-            canEdit={canEdit}
+            canEdit={canManageProfiles || selectedUser.id === auth?.userId}
             onEdit={() => setProfileModal(true)}
+            token={auth?.token ?? ""}
+            onImageUpload={handleImageUpload}
           />
         ) : (
           <GlassCard className="p-16 text-center flex flex-col items-center justify-center flex-1 min-h-96">

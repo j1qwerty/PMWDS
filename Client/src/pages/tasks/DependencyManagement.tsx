@@ -37,7 +37,7 @@ function getDependencyTypeDescription(type: string): string {
 export function DependencyManagement({ task, allTasks, onRefresh, onMessage }: DependencyManagementProps) {
   const { auth } = useAuth();
   const { addToast } = useToast();
-  const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
+  const [dependencies, setDependencies] = useState<TaskDependency[]>(task.dependencies || []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingDep, setEditingDep] = useState<TaskDependency | null>(null);
   const [form, setForm] = useState({ predecessorTaskId: "", successorTaskId: "", type: "FinishToStart", lagDays: 0 });
@@ -50,11 +50,8 @@ export function DependencyManagement({ task, allTasks, onRefresh, onMessage }: D
     auth?.roles?.includes("Manager");
 
   useEffect(() => {
-    if (!auth) return;
-    api.getTaskDependencies(auth.token, task.id)
-      .then(setDependencies)
-      .catch(() => setDependencies([]));
-  }, [auth, task.id]);
+    setDependencies(task.dependencies || []);
+  }, [task.id, task.dependencies]);
 
   const predecessorTasks = allTasks.filter(t => t.id !== task.id && !t.parentTaskId);
   const successorTasks = allTasks.filter(t => t.id !== task.id && !t.parentTaskId);
@@ -73,8 +70,6 @@ export function DependencyManagement({ task, allTasks, onRefresh, onMessage }: D
     });
     setForm({ predecessorTaskId: "", successorTaskId: "", type: "FinishToStart", lagDays: 0 });
     setShowAddForm(false);
-    const updated = await api.getTaskDependencies(auth.token, task.id);
-    setDependencies(updated);
     onRefresh();
     addToast("Dependency created.");
     onMessage?.("Dependency created.");
@@ -87,8 +82,6 @@ export function DependencyManagement({ task, allTasks, onRefresh, onMessage }: D
       lagDays: editingDep.lagDays,
     });
     setEditingDep(null);
-    const updated = await api.getTaskDependencies(auth.token, task.id);
-    setDependencies(updated);
     onRefresh();
     addToast("Dependency updated.");
     onMessage?.("Dependency updated.");

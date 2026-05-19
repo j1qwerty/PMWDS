@@ -56,30 +56,25 @@ export function TaskDetail({
   const [timerDescription, setTimerDescription] = useState("Focused execution block");
   const [attachment, setAttachment] = useState<File | null>(null);
 
-  const [subtasks, setSubtasks] = useState<Task[]>([]);
+  const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks || []);
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
   const [subtaskForm, setSubtaskForm] = useState({ title: "", description: "", priority: "Medium", dueDate: "", estimatedHours: 0, assignedToUserId: "" });
 
   useEffect(() => {
-    if (!auth) return;
-    api.getSubtasks(auth.token, task.id)
-      .then(setSubtasks)
-      .catch(() => setSubtasks([]));
-  }, [auth, task.id]);
+    setSubtasks(task.subTasks || []);
+  }, [task.id, task.subTasks]);
 
   const handleCreateSubtask = async () => {
     if (!auth || !subtaskForm.title) return;
-    await api.createSubtask(auth.token, task.id, {
+    const newSubtask = await api.createSubtask(auth.token, task.id, {
       ...subtaskForm,
       projectId: task.projectId,
       milestoneId: task.milestoneId,
       startDate: new Date().toISOString(),
     });
+    setSubtasks(prev => [...prev, newSubtask]);
     setSubtaskForm({ title: "", description: "", priority: "Medium", dueDate: "", estimatedHours: 0, assignedToUserId: "" });
     setShowSubtaskForm(false);
-    const updated = await api.getSubtasks(auth.token, task.id);
-    setSubtasks(updated);
-    onRefresh();
     addToast("Subtask created.");
     onMessage?.("Subtask created.");
   };
@@ -87,9 +82,7 @@ export function TaskDetail({
   const handleSubtaskStatusChange = async (subtaskId: string, status: string) => {
     if (!auth) return;
     await api.updateSubtaskStatus(auth.token, subtaskId, status);
-    const updated = await api.getSubtasks(auth.token, task.id);
-    setSubtasks(updated);
-    onRefresh();
+    setSubtasks(prev => prev.map(s => s.id === subtaskId ? { ...s, status } : s));
     addToast("Subtask status updated.");
     onMessage?.("Subtask status updated.");
   };
@@ -98,9 +91,33 @@ export function TaskDetail({
     if (!auth) return;
     await api.deleteSubtask(auth.token, subtaskId);
     setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
-    onRefresh();
     addToast("Subtask deleted.");
     onMessage?.("Subtask deleted.");
+  };
+
+  const handleEscalate = async () => {
+    if (!auth) return;
+    try {
+      await api.escalateTask(auth.token, task.id);
+      addToast("Task escalated.");
+      onMessage?.("Task escalated.");
+      onRefresh();
+    } catch {
+      addToast("Failed to escalate task.", "error");
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!auth) return;
+    if (!confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
+    try {
+      await api.deleteTask(auth.token, task.id);
+      addToast("Task deleted.");
+      onMessage?.("Task deleted.");
+      onRefresh();
+    } catch {
+      addToast("Failed to delete task.", "error");
+    }
   };
 
   return (
@@ -121,10 +138,19 @@ export function TaskDetail({
             </div>
           </div>
           {isAdmin && (
-            <GradientButton variant="ghost" onClick={onEdit}>
-              <span className="material-symbols-outlined text-base">edit</span>
-              Edit
-            </GradientButton>
+            <div className="flex items-center gap-2">
+              <GradientButton variant="ghost" onClick={onEdit}>
+                <span className="material-symbols-outlined text-base">edit</span>
+                Edit
+              </GradientButton>
+              <button
+                onClick={handleDeleteTask}
+                className="px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+                Delete
+              </button>
+            </div>
           )}
         </div>
 
@@ -161,6 +187,29 @@ export function TaskDetail({
           onStatusChange={onStatusChange}
           variant="task"
         />
+
+        {/* Escalation */}
+        {isAdmin && !task.isEscalated && (
+          <button
+            onClick={handleEscalate}
+            className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">warning</span>
+            Escalate Task
+          </button>
+        )}
+        {task.isEscalated && (
+          <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-red-500 text-lg">warning</span>
+              <span className="text-sm font-semibold text-red-700">Escalated</span>
+              <span className="ml-auto text-xs text-red-500">Level {task.escalationLevel}</span>
+            </div>
+            {task.escalatedDate && (
+              <p className="text-xs text-red-500 mt-1">Since {formatDate(task.escalatedDate)}</p>
+            )}
+          </div>
+        )}
 
         {delay && (
           <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 mb-4">

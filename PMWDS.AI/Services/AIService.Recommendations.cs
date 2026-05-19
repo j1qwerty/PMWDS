@@ -8,7 +8,16 @@ namespace PMWDS.AI.Services;
 public partial class AIService
 {
     public async Task<AssigneeRecommendationDto> GetOptimalAssigneeAsync(Guid taskId, CancellationToken ct = default)
-        => ToAssigneeRecommendationDto(await GenerateRecommendationAsync(taskId, ct));
+    {
+        try
+        {
+            return ToAssigneeRecommendationDto(await GenerateRecommendationAsync(taskId, ct));
+        }
+        catch
+        {
+            return new AssigneeRecommendationDto(taskId, string.Empty, string.Empty, 0, new List<string>(), new List<AlternativeAssignee>(), new Dictionary<string, double>(), DateTime.UtcNow);
+        }
+    }
 
     public async Task<AllocationRecommendationRecordDto> GenerateRecommendationAsync(Guid taskId, CancellationToken ct = default)
     {

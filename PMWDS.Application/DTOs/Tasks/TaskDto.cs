@@ -33,60 +33,73 @@ public record TaskDto(
     List<TaskCommentDto> Comments,
     List<TaskAttachmentDto> Attachments,
     List<TaskTimeEntryDto> TimeEntries,
+    List<TaskDto> SubTasks,
     double AIOptimalAssigneeScore,
     DateTime? AIPredictedCompletionDate,
     string? AIRecommendedAssigneeId)
     {
         public static TaskDto FromEntity(ProjectTask t)
-        => new(
-        Id: t.Id,
-        Title: t.Title,
-        Description: t.Description,
-        Status: t.Status.ToString(),
-        Priority: t.Priority.ToString(),
-        StartDate: t.StartDate,
-        DueDate: t.DueDate,
-        CompletedDate: t.CompletedDate,
-        EstimatedHours: t.EstimatedHours,
-        ActualHours: t.ActualHours,
-        ProgressPercentage: t.ProgressPercentage,
-        ProjectId: t.ProjectId,
-        ProjectName: t.Project?.Name,
-        MilestoneId: t.MilestoneId,
-        MilestoneName: t.Milestone?.Name,
-        ParentTaskId: t.ParentTaskId,
-        AssignedToUserId: t.AssignedToUserId,
-        AssignedToUserName: t.Assignments
-        .Where(a => a.IsActive)
-        .Select(a => a.User != null ? a.User.FullName : null)
-        .FirstOrDefault(n => !string.IsNullOrEmpty(n)),
-        Assignees: t.Assignments
-        .Where(a => a.IsActive)
-        .Select(a => new TaskAssigneeDto(a.UserId, a.User?.FullName))
-        .ToList(),
-        IsEscalated: t.IsEscalated,
-        EscalationLevel: t.EscalationLevel,
-        EscalatedDate: t.EscalatedDate,
-        AIDelayProbability: t.AIDelayProbability,
-        AIRiskFactors: t.AIRiskFactors,
-        IsOverdue: t.IsOverdue(),
-        CreatedDate: t.CreatedDate,
-        Dependencies: t.Dependencies
-        .Select(d => TaskDependencyDto.FromEntity(d))
-        .ToList(),
-        Comments: t.Comments
-        .Select(c => TaskCommentDto.FromEntity(c))
-        .ToList(),
-        Attachments: t.Attachments
-        .Select(a => TaskAttachmentDto.FromEntity(a))
-        .ToList(),
-        TimeEntries: t.TimeEntries
-        .Select(e => TaskTimeEntryDto.FromEntity(e))
-        .ToList(),
-        AIOptimalAssigneeScore: t.AIOptimalAssigneeScore,
-        AIPredictedCompletionDate: t.AIPredictedCompletionDate,
-        AIRecommendedAssigneeId: t.AIRecommendedAssigneeId
-        );
+        {
+            var assignments = t.Assignments ?? new List<TaskAssignment>();
+            var dependencies = t.Dependencies ?? new List<TaskDependency>();
+            var comments = t.Comments ?? new List<TaskComment>();
+            var attachments = t.Attachments ?? new List<TaskAttachment>();
+            var timeEntries = t.TimeEntries ?? new List<TimeEntry>();
+            var subTasks = t.SubTasks ?? new List<ProjectTask>();
+
+            return new(
+            Id: t.Id,
+            Title: t.Title,
+            Description: t.Description,
+            Status: t.Status.ToString(),
+            Priority: t.Priority.ToString(),
+            StartDate: t.StartDate,
+            DueDate: t.DueDate,
+            CompletedDate: t.CompletedDate,
+            EstimatedHours: t.EstimatedHours,
+            ActualHours: t.ActualHours,
+            ProgressPercentage: t.ProgressPercentage,
+            ProjectId: t.ProjectId,
+            ProjectName: t.Project?.Name,
+            MilestoneId: t.MilestoneId,
+            MilestoneName: t.Milestone?.Name,
+            ParentTaskId: t.ParentTaskId,
+            AssignedToUserId: t.AssignedToUserId,
+            AssignedToUserName: assignments
+            .Where(a => a.IsActive)
+            .Select(a => a.User != null ? a.User.FullName : null)
+            .FirstOrDefault(n => !string.IsNullOrEmpty(n)),
+            Assignees: assignments
+            .Where(a => a.IsActive)
+            .Select(a => new TaskAssigneeDto(a.UserId, a.User?.FullName))
+            .ToList(),
+            IsEscalated: t.IsEscalated,
+            EscalationLevel: t.EscalationLevel,
+            EscalatedDate: t.EscalatedDate,
+            AIDelayProbability: t.AIDelayProbability,
+            AIRiskFactors: t.AIRiskFactors,
+            IsOverdue: t.IsOverdue(),
+            CreatedDate: t.CreatedDate,
+            Dependencies: dependencies
+            .Select(d => TaskDependencyDto.FromEntity(d))
+            .ToList(),
+            Comments: comments
+            .Select(c => TaskCommentDto.FromEntity(c))
+            .ToList(),
+            Attachments: attachments
+            .Select(a => TaskAttachmentDto.FromEntity(a))
+            .ToList(),
+            TimeEntries: timeEntries
+            .Select(e => TaskTimeEntryDto.FromEntity(e))
+            .ToList(),
+            SubTasks: subTasks
+            .Select(st => FromEntity(st))
+            .ToList(),
+            AIOptimalAssigneeScore: t.AIOptimalAssigneeScore,
+            AIPredictedCompletionDate: t.AIPredictedCompletionDate,
+            AIRecommendedAssigneeId: t.AIRecommendedAssigneeId
+            );
+        }
     }
     public record TaskAssigneeDto(string UserId, string? FullName);
     public record TaskDependencyDto(

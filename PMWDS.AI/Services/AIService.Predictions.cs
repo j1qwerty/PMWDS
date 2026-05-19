@@ -9,16 +9,23 @@ public partial class AIService
 {
     public async Task<DelayPredictionDto> PredictTaskDelayAsync(Guid taskId, CancellationToken ct = default)
     {
-        var record = await GenerateDelayPredictionAsync(taskId, ct);
-        return new DelayPredictionDto(
-            record.TaskId,
-            record.DelayProbability,
-            record.ExpectedDelayDays,
-            record.PredictedCompletionDate,
-            record.RiskLevel,
-            record.ContributingFactors,
-            record.MitigationStrategies,
-            record.ShouldEscalate);
+        try
+        {
+            var record = await GenerateDelayPredictionAsync(taskId, ct);
+            return new DelayPredictionDto(
+                record.TaskId,
+                record.DelayProbability,
+                record.ExpectedDelayDays,
+                record.PredictedCompletionDate,
+                record.RiskLevel,
+                record.ContributingFactors,
+                record.MitigationStrategies,
+                record.ShouldEscalate);
+        }
+        catch
+        {
+            return new DelayPredictionDto(taskId, 0, 0, null, "Low", new List<string>(), new List<string>(), false);
+        }
     }
 
     public async Task<DelayPredictionRecordDto> GenerateDelayPredictionAsync(Guid taskId, CancellationToken ct = default)
@@ -58,7 +65,7 @@ public partial class AIService
 
         task.UpdateAIPrediction(
             prediction.DelayProbability,
-            prediction.PredictedCompletionDate,
+            prediction.PredictedCompletionDate ?? DateTime.UtcNow.AddDays(prediction.ExpectedDelayDays),
             JsonSerializer.Serialize(prediction.ContributingFactors),
             task.AIRecommendedAssigneeId);
         await _uow.Tasks.UpdateAsync(task, ct);
