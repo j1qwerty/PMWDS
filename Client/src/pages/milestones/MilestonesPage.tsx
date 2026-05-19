@@ -60,6 +60,8 @@ export function MilestonesPage() {
             setOrganizations(orgData);
             setDepartments(deptData);
             setUsers(userData as User[]);
+        }).catch((cause) => {
+            setMessage(cause instanceof Error ? cause.message : "Failed to load data.");
         }).finally(() => setLoading(false));
     };
 
@@ -107,6 +109,8 @@ export function MilestonesPage() {
             if (!selectedMilestoneId && milestoneData.length) {
                 setSelectedMilestoneId(milestoneData[0].id);
             }
+        }).catch((cause) => {
+            setMessage(cause instanceof Error ? cause.message : "Failed to load milestones.");
         });
     }, [auth, selectedProjectId]);
 

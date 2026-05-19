@@ -33,19 +33,26 @@ export function ProfilesPage() {
   useEffect(() => {
     if (!auth) return;
     setLoading(true);
-    api.getUsers(auth.token)
-      .then((userData) => {
-        setUsers(userData);
-        if (isOwnProfile) {
-          const me = userData.find(u => u.id === auth.userId);
-          setSelectedUser(me || userData[0]);
-        } else if (!selectedUser && userData.length > 0) {
-          setSelectedUser(userData[0]);
-        }
-      })
-      .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load profiles."))
-      .finally(() => setLoading(false));
-  }, [auth]);
+    if (isOwnProfile) {
+      api.getMe(auth.token)
+        .then((me) => {
+          setUsers([me]);
+          setSelectedUser(me);
+        })
+        .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load profile."))
+        .finally(() => setLoading(false));
+    } else {
+      api.getUsers(auth.token)
+        .then((userData) => {
+          setUsers(userData);
+          if (!selectedUser && userData.length > 0) {
+            setSelectedUser(userData[0]);
+          }
+        })
+        .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load profiles."))
+        .finally(() => setLoading(false));
+    }
+  }, [auth, isOwnProfile]);
 
   useEffect(() => {
     if (!auth || !selectedUser) {

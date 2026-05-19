@@ -31,7 +31,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         CancellationToken ct)

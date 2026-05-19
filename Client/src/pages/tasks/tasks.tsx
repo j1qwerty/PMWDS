@@ -63,7 +63,7 @@ export function TasksPage() {
       api.getProjects(auth.token),
       api.getOrganizations(auth.token),
       api.getDepartments(auth.token),
-      isAdmin ? api.getUsers(auth.token) : Promise.resolve([]),
+      api.getUsers(auth.token),
     ]).then(([projectData, orgData, deptData, userData]) => {
       setProjects(projectData);
       setOrganizations(orgData);
@@ -73,6 +73,8 @@ export function TasksPage() {
       if (projectData.length > 0) {
         loadAllTasks(projectData);
       }
+    }).catch((cause) => {
+      setMessage(cause instanceof Error ? cause.message : "Failed to load data.");
     }).finally(() => setLoading(false));
   };
 

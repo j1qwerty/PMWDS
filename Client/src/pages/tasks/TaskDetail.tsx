@@ -60,6 +60,7 @@ export function TaskDetail({
       profilePictureUrl: matchedUser?.profilePictureUrl ?? null,
     };
   });
+  const isAssignee = auth ? assignedUsers.some(a => a.id === auth.userId) : false;
   
   const [progressForm, setProgressForm] = useState({ progressPercentage: task.progressPercentage || 0, notes: "" });
   const [comment, setComment] = useState("");
@@ -413,7 +414,7 @@ export function TaskDetail({
       )}
 
       {/* Update Progress Card */}
-      {isAdmin && (
+      {(isAdmin || isAssignee) && (
         <GlassCard className="p-5">
           <h4 className="text-sm font-bold text-slate-800 mb-3">Update Progress</h4>
           <form onSubmit={(e) => { e.preventDefault(); onUpdateProgress(progressForm.progressPercentage, progressForm.notes); }}>
@@ -447,7 +448,7 @@ export function TaskDetail({
       )}
 
       {/* Comment Card */}
-      {isAdmin && (
+      {(isAdmin || isAssignee) && (
         <GlassCard className="p-5">
           <h4 className="text-sm font-bold text-slate-800 mb-3">Add Comment</h4>
           <form onSubmit={(e) => { e.preventDefault(); onAddComment(comment); setComment(""); }}>
@@ -466,7 +467,7 @@ export function TaskDetail({
       )}
 
       {/* Timer Card */}
-      {isAdmin && (
+      {(isAdmin || isAssignee) && (
         <GlassCard className="p-5">
           <h4 className="text-sm font-bold text-slate-800 mb-3">Start Timer</h4>
           <div className="flex gap-2">
@@ -488,7 +489,7 @@ export function TaskDetail({
       )}
 
       {/* Attachment Card */}
-      {isAdmin && (
+      {(isAdmin || isAssignee) && (
         <GlassCard className="p-5">
           <h4 className="text-sm font-bold text-slate-800 mb-3">Upload Attachment</h4>
           <div className="flex gap-2">
