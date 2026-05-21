@@ -274,7 +274,7 @@ function TabButton({ active, onClick, icon, label, count }: {
       className={`
         px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 flex items-center gap-2
         ${active
-          ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-[1px]"
+          ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-px"
           : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
         }
       `}

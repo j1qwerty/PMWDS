@@ -34,7 +34,13 @@ const apiOrigin = (() => {
 export function getAvatarUrl(person?: AvatarPerson | null, nameOverride?: string | null, srcOverride?: string | null) {
   const source = srcOverride || person?.profilePictureUrl || "";
   if (source) {
-    return source.startsWith("/") ? `${apiOrigin}${source}` : source;
+    if (source.startsWith("/")) {
+      return `${apiOrigin}${source}`;
+    }
+    if (source.startsWith("avatars/") || source.startsWith("documents/")) {
+      return `${apiOrigin}/${source}`;
+    }
+    return source;
   }
 
   const label = nameOverride || person?.fullName || person?.name || person?.email || "User";

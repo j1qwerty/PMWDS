@@ -20,7 +20,7 @@ export function LoginPage() {
 
   const validateForm = () => {
     const errors: { email?: string; password?: string } = {};
-    
+
     if (!email.trim()) {
       errors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -41,9 +41,9 @@ export function LoginPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
-    
+
     if (mode === "signin" && !validateForm()) return;
-    
+
     setLoading(true);
     try {
       if (mode === "signin") {
@@ -62,7 +62,7 @@ export function LoginPage() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
-      
+
       if (message.toLowerCase().includes("invalid credentials") || message.toLowerCase().includes("unauthorized")) {
         setError("Invalid email or password. Please try again.");
       } else if (message.toLowerCase().includes("network")) {
@@ -87,7 +87,7 @@ export function LoginPage() {
 
       {/* Login Card */}
       <div className="w-full max-w-[420px] rounded-2xl border border-[rgba(224,227,229,0.8)] bg-white/85 backdrop-blur-[20px] p-10 shadow-[0_20px_60px_rgba(70,72,212,0.08),0_0_0_1px_rgba(255,255,255,0.5)] relative z-[1]">
-        
+
         {/* Logo & Header */}
         <div className="text-center mb-8">
           <div className="text-[28px] font-extrabold text-[#4648d4] tracking-[0.15em] uppercase mb-2">
@@ -190,8 +190,8 @@ export function LoginPage() {
                 disabled={loading}
                 className={`
                   w-full h-11 pl-10 pr-3.5 rounded-[10px] text-sm text-[#191c1e] outline-none transition-all duration-200 box-border
-                  ${fieldErrors.email 
-                    ? "border-[1.5px] border-[#ba1a1a]" 
+                  ${fieldErrors.email
+                    ? "border-[1.5px] border-[#ba1a1a]"
                     : "border border-[#e0e3e5] focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
                   }
                   ${loading ? "bg-[#f2f4f6]" : "bg-white"}
@@ -259,8 +259,8 @@ export function LoginPage() {
                 disabled={loading}
                 className={`
                   w-full h-11 pl-10 pr-11 rounded-[10px] text-sm text-[#191c1e] outline-none transition-all duration-200 box-border
-                  ${fieldErrors.password 
-                    ? "border-[1.5px] border-[#ba1a1a]" 
+                  ${fieldErrors.password
+                    ? "border-[1.5px] border-[#ba1a1a]"
                     : "border border-[#e0e3e5] focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
                   }
                   ${loading ? "bg-[#f2f4f6]" : "bg-white"}
@@ -290,13 +290,13 @@ export function LoginPage() {
             type="submit"
             disabled={loading}
             className={`
-              w-full h-11 text-sm font-semibold tracking-[0.5px] border-none rounded-[10px] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300
-              ${loading 
-                ? "bg-gradient-to-br from-[#a5a6d6] to-[#b893df] cursor-not-allowed" 
-                : "bg-gradient-to-br from-[#4648d4] to-[#8127cf] hover:shadow-[0_6px_20px_rgba(70,72,212,0.4)] hover:-translate-y-px shadow-[0_4px_15px_rgba(70,72,212,0.3)]"
+    w-full h-11 text-sm font-semibold tracking-[0.5px] border-none rounded-[10px] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300
+    ${loading
+                ? "bg-indigo-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-px shadow-md shadow-indigo-500/25"
               }
-              text-white
-            `}
+    text-white
+  `}
           >
             {loading ? (
               <>

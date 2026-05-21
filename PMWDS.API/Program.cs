@@ -182,6 +182,16 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(localFilesRoot),
     RequestPath = storageSettings.LocalBaseUrl ?? "/files"
 });
+var fileStorageSettings = builder.Configuration.GetSection("FileStorage").Get<LocalFileStorageSettings>() ?? new LocalFileStorageSettings();
+var avatarsRoot = string.IsNullOrWhiteSpace(fileStorageSettings.BasePath)
+    ? Path.Combine(AppContext.BaseDirectory, "App_Data", "avatars")
+    : Path.Combine(fileStorageSettings.BasePath, "avatars");
+Directory.CreateDirectory(avatarsRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(avatarsRoot),
+    RequestPath = "/avatars"
+});
 app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
 app.UseAuthentication();
