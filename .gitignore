@@ -91,6 +91,8 @@ logs/
 *.db
 App_Data/
 PMWDS.API/App_Data/
+Data/
+PMWDS.API/Data/
 
 # OS generated files
 .DS_Store

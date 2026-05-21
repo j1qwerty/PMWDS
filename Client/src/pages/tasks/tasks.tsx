@@ -866,12 +866,6 @@ export function TasksPage() {
           setMessage("Timer started.");
           addToast("Timer started.");
         }}
-        onUploadAttachment={async (file) => {
-          if (!auth) return;
-          await api.uploadTaskAttachment(auth.token, selectedTask.id, file);
-          setMessage("Attachment uploaded.");
-          addToast("Attachment uploaded.");
-        }}
         onRefresh={loadData}
         onMessage={setMessage}
       />

@@ -1,5 +1,6 @@
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
+using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Application.DTOs.Tasks;
 
 public record TaskDto(
@@ -47,6 +48,10 @@ public record TaskDto(
             var timeEntries = t.TimeEntries ?? new List<TimeEntry>();
             var subTasks = t.SubTasks ?? new List<ProjectTask>();
 
+            var progress = subTasks.Count > 0
+                ? Math.Round((subTasks.Count(st => st.Status == TaskStatus.Completed) / (double)subTasks.Count) * 100, 1)
+                : t.ProgressPercentage;
+
             return new(
             Id: t.Id,
             Title: t.Title,
@@ -58,7 +63,7 @@ public record TaskDto(
             CompletedDate: t.CompletedDate,
             EstimatedHours: t.EstimatedHours,
             ActualHours: t.ActualHours,
-            ProgressPercentage: t.ProgressPercentage,
+            ProgressPercentage: progress,
             ProjectId: t.ProjectId,
             ProjectName: t.Project?.Name,
             MilestoneId: t.MilestoneId,

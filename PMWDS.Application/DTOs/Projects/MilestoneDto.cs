@@ -13,15 +13,18 @@ public record MilestoneDto(
  double ProgressPercentage)
 {
  public static MilestoneDto FromEntity(Milestone m)
- => new(
- m.Id,
- m.ProjectId,
- m.Name,
- m.Description,
- m.Order,
- m.DueDate,
- m.CompletedDate,
- m.Status.ToString(),
- m.IsCritical,
- m.ProgressPercentage);
+ {
+     var progress = m.CalculateProgressFromTasks();
+     return new(
+     m.Id,
+     m.ProjectId,
+     m.Name,
+     m.Description,
+     m.Order,
+     m.DueDate,
+     m.CompletedDate,
+     m.Status.ToString(),
+     m.IsCritical,
+     progress);
+ }
 }

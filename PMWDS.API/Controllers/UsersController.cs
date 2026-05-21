@@ -16,18 +16,18 @@ public class UsersController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly ApplicationDbContext _db;
-    private readonly IFileStorageService _files;
+    private readonly ILocalFileStorageService _localFiles;
 
     public UsersController(
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         ApplicationDbContext db,
-        IFileStorageService files)
+        ILocalFileStorageService localFiles)
     {
         _uow = uow;
         _currentUser = currentUser;
         _db = db;
-        _files = files;
+        _localFiles = localFiles;
     }
 
     [HttpGet]
@@ -254,7 +254,7 @@ public class UsersController : BaseApiController
 
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
-        var url = await _files.UploadAsync(stream, $"profile-{parsedId:N}{extension}", file.ContentType, ct);
+        var url = await _localFiles.UploadAvatarAsync(stream, user.EmployeeCode, extension, ct);
         user.UpdateProfile(user.FirstName, user.LastName, user.PhoneNumber, user.JobTitle, url);
         user.SetModified(_currentUser.UserId ?? "system");
         await _uow.Users.UpdateAsync(user, ct);

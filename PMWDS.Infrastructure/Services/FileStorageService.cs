@@ -39,7 +39,7 @@ public class AzureBlobStorageService : IFileStorageService
             _client = new BlobServiceClient(connStr);
             _azureAvailable = true;
             _basePath = string.IsNullOrWhiteSpace(settings.Value.LocalUploadPath)
-                ? Path.Combine(AppContext.BaseDirectory, "App_Data", "Files", _containerName)
+                ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"))
                 : settings.Value.LocalUploadPath;
             Directory.CreateDirectory(_basePath);
             _baseUrl = settings.Value.LocalBaseUrl ?? "/files";
@@ -51,7 +51,7 @@ public class AzureBlobStorageService : IFileStorageService
         {
             _azureAvailable = false;
             _basePath = string.IsNullOrWhiteSpace(settings.Value.LocalUploadPath)
-                ? Path.Combine(AppContext.BaseDirectory, "App_Data", "Files", _containerName)
+                ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"))
                 : settings.Value.LocalUploadPath;
             Directory.CreateDirectory(_basePath);
             _baseUrl = settings.Value.LocalBaseUrl ?? "/files";
@@ -190,7 +190,13 @@ public class AzureBlobStorageService : IFileStorageService
     {
         if (filePath.StartsWith(_baseUrl, StringComparison.OrdinalIgnoreCase))
         {
-            return filePath.Replace(_baseUrl, _basePath, StringComparison.OrdinalIgnoreCase);
+            var relativePath = filePath.Substring(_baseUrl.Length).TrimStart('/', '\\');
+            if (relativePath.StartsWith(_containerName + "/", StringComparison.OrdinalIgnoreCase)
+                || relativePath.StartsWith(_containerName + "\\", StringComparison.OrdinalIgnoreCase))
+            {
+                relativePath = relativePath.Substring(_containerName.Length + 1);
+            }
+            return Path.Combine(_basePath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         }
         if (Uri.TryCreate(filePath, UriKind.Absolute, out _))
         {

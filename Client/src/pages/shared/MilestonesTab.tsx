@@ -1,7 +1,7 @@
 // components/MilestonesTab.tsx
 import { useEffect, useState } from "react";
 import { api } from "../../api";
-import type { Milestone, Task } from "../../types";
+import type { Milestone, Task, ProjectDocument } from "../../types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
 
@@ -15,8 +15,10 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const fetchData = () => {
     if (!authToken || !projectId) return;
@@ -25,12 +27,16 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     Promise.allSettled([
       api.getMilestonesByProject(authToken, projectId),
       api.getTasksByProject(authToken, projectId),
-    ]).then(([milestoneResult, taskResult]) => {
+      api.getProjectDocuments(authToken, projectId),
+    ]).then(([milestoneResult, taskResult, docResult]) => {
       if (milestoneResult.status === "fulfilled") {
         setMilestones(milestoneResult.value);
       }
       if (taskResult.status === "fulfilled") {
         setTasks(taskResult.value);
+      }
+      if (docResult.status === "fulfilled") {
+        setDocuments(docResult.value);
       }
       setLoading(false);
     });
@@ -51,8 +57,32 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const handleFileUpload = async () => {
     if (!authToken || !uploadFile) return;
     await api.uploadProjectDocument(authToken, projectId, uploadFile);
-    setMessage("Document uploaded successfully.");
     setUploadFile(null);
+    fetchData();
+  };
+
+  const handleDownload = async (doc: ProjectDocument) => {
+    if (!authToken) return;
+    setDownloadingId(doc.id);
+    try {
+      const blob = await api.downloadProjectDocument(authToken, projectId, doc.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.title;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -471,7 +501,71 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
               </div>
             )}
 
-            {!uploadFile && !message && (
+            {documents.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    style={{
+                      backgroundColor: "rgba(242,244,246,0.5)",
+                      border: "1px solid rgba(224,227,229,0.3)",
+                      borderRadius: "8px",
+                      padding: "12px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
+                      <span className="material-symbols-outlined" style={{ color: "#4648d4", fontSize: "20px" }}>
+                        description
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "14px", fontWeight: 500, color: "#191c1e", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {doc.title}
+                        </p>
+                        <p style={{ fontSize: "10px", color: "#767586", margin: "2px 0 0 0" }}>
+                          {formatFileSize(doc.fileSizeBytes)} · {new Date(doc.createdDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDownload(doc)}
+                      disabled={downloadingId === doc.id}
+                      style={{
+                        padding: "6px",
+                        backgroundColor: "transparent",
+                        border: "1px solid rgba(224,227,229,0.5)",
+                        borderRadius: "6px",
+                        cursor: downloadingId === doc.id ? "not-allowed" : "pointer",
+                        opacity: downloadingId === doc.id ? 0.5 : 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (downloadingId !== doc.id) {
+                          e.currentTarget.style.backgroundColor = "rgba(70,72,212,0.05)";
+                          e.currentTarget.style.borderColor = "rgba(70,72,212,0.3)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.borderColor = "rgba(224,227,229,0.5)";
+                      }}
+                      title="Download"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#4648d4" }}>
+                        {downloadingId === doc.id ? "hourglass_top" : "download"}
+                      </span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!uploadFile && !message && documents.length === 0 && (
               <div style={{ textAlign: "center", padding: "48px 0", color: "#767586" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: "36px", marginBottom: "12px", fontVariationSettings: "'FILL' 1" }}>
                   folder_open

@@ -15,18 +15,18 @@ public class ProjectsController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly IAIService _ai;
     private readonly ICurrentUserService _currentUser;
-    private readonly IFileStorageService _files;
+    private readonly ILocalFileStorageService _localFiles;
 
     public ProjectsController(
         IUnitOfWork uow,
         IAIService ai,
         ICurrentUserService currentUser,
-        IFileStorageService files)
+        ILocalFileStorageService localFiles)
     {
         _uow = uow;
         _ai = ai;
         _currentUser = currentUser;
-        _files = files;
+        _localFiles = localFiles;
     }
 
     [HttpGet("dashboard")]
@@ -114,7 +114,8 @@ public class ProjectsController : BaseApiController
             return NotFound();
 
         await using var stream = file.OpenReadStream();
-        var filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
+        var extension = Path.GetExtension(file.FileName);
+        var filePath = await _localFiles.UploadDocumentAsync(stream, project.ProjectCode, project.Name, extension, file.ContentType, ct);
 
         var doc = ProjectDocument.Create(
             id,
@@ -127,6 +128,43 @@ public class ProjectsController : BaseApiController
         await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok();
+    }
+
+    [HttpGet("{id:guid}/documents")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
+    {
+        var project = await _uow.Projects.GetByIdAsync(id, ct);
+        if (project == null)
+            return NotFound();
+
+        var docs = await _uow.ProjectDocuments.FindAsync(d => d.ProjectId == id);
+        return Ok(docs.Select(d => new
+        {
+            d.Id,
+            d.ProjectId,
+            d.Title,
+            d.FilePath,
+            d.ContentType,
+            d.FileSizeBytes,
+            d.UploadedByUserId,
+            d.Description,
+            d.Version,
+            d.CreatedDate
+        }));
+    }
+
+    [HttpGet("{id:guid}/documents/{docId:guid}/download")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
+    {
+        var docs = await _uow.ProjectDocuments.FindAsync(d => d.Id == docId && d.ProjectId == id);
+        var doc = docs.FirstOrDefault();
+        if (doc == null)
+            return NotFound();
+
+        var stream = await _localFiles.DownloadFileAsync(doc.FilePath, ct);
+        return File(stream, doc.ContentType, doc.Title);
     }
 
     [HttpDelete("{id:guid}")]

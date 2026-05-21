@@ -688,6 +688,19 @@ export interface TaskAttachment {
   createdDate: string;
 }
 
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  title: string;
+  filePath: string;
+  contentType: string;
+  fileSizeBytes: number;
+  uploadedByUserId: string;
+  description?: string | null;
+  version: string;
+  createdDate: string;
+}
+
 export interface TaskTimeEntry {
   id: string;
   taskId: string;

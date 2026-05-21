@@ -58,6 +58,7 @@ public class TaskRepository
     && t.Status != Domain.Enums.TaskStatus.Completed
     && t.Status != Domain.Enums.TaskStatus.Cancelled)
     .Include(t => t.Assignments)
+    .Include(t => t.SubTasks)
     .Include(t => t.Comments)
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)

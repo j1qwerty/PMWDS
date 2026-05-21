@@ -1,25 +1,32 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
 public class MilestonesController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
+    private readonly ApplicationDbContext _db;
 
-    public MilestonesController(IUnitOfWork uow)
+    public MilestonesController(IUnitOfWork uow, ApplicationDbContext db)
     {
         _uow = uow;
+        _db = db;
     }
 
     [HttpGet("by-project/{projectId:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
-        var milestones = await _uow.Milestones.FindAsync(m => m.ProjectId == projectId, ct);
+        var milestones = await _db.Milestones
+            .Include(m => m.Tasks)
+            .Where(m => m.ProjectId == projectId)
+            .ToListAsync(ct);
         return Ok(milestones.Select(MilestoneDto.FromEntity));
     }
 
@@ -27,7 +34,9 @@ public class MilestonesController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
+        var milestone = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
         return milestone == null ? NotFound() : Ok(MilestoneDto.FromEntity(milestone));
     }
 

@@ -27,6 +27,7 @@ import type {
   OrganizationRecord,
   PermissionRecord,
   Project,
+  ProjectDocument,
   ProjectHealth,
   PredictionResultRecord,
   ReportScheduleRecord,
@@ -185,6 +186,12 @@ export const api = {
     const form = new FormData();
     form.set("file", file);
     return request<void>(`projects/${id}/documents`, { token, method: "POST", body: form });
+  },
+  getProjectDocuments(token: string, id: string) {
+    return request<ProjectDocument[]>(`projects/${id}/documents`, { token });
+  },
+  downloadProjectDocument(token: string, id: string, docId: string) {
+    return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
   },
   deleteProject(token: string, id: string) {
     return request<void>(`projects/${id}`, { token, method: "DELETE" });

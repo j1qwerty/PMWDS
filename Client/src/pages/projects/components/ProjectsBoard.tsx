@@ -1,5 +1,6 @@
 import { ProjectCard } from "./ProjectCard";
 import type { Project } from "../../../types";
+import { GlassCard } from "../../shared";
 
 interface ProjectsBoardProps {
   projects: Project[];
@@ -19,7 +20,7 @@ export function ProjectsBoard({
     : projects;
 
   return (
-    <section className="w-2/5 min-w-[380px] flex flex-col gap-md overflow-y-auto custom-scrollbar pr-2">
+    <GlassCard className="w-1/3 min-w-[380px] flex flex-col gap-md overflow-y-auto custom-scrollbar py-4 px-2">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-h2 text-h2 text-on-surface font-bold">Projects Board</h2>
         <div className="flex items-center gap-3">
@@ -61,6 +62,6 @@ export function ProjectsBoard({
           </p>
         </div>
       )}
-    </section>
+    </GlassCard>
   );
 }

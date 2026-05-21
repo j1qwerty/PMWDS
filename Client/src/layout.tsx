@@ -259,6 +259,11 @@ function Layout({ children }: { children: React.ReactNode }) {
         >
           {newUiNavGroups.map((group, index) => {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
+            const visibleItems = group.items.filter(
+              (item) =>
+                item.roles.length === 0 || hasRole(...item.roles)
+            );
+            if (visibleItems.length === 0) return null;
 
             return (
               <div key={group.title} className="space-y-1.5">
@@ -270,12 +275,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 )}
 
                 <div className="space-y-[2px]">
-                  {group.items
-                    .filter(
-                      (item) =>
-                        item.roles.length === 0 || hasRole(...item.roles)
-                    )
-                    .map((item) => {
+                  {visibleItems.map((item) => {
                       const active = isActive(item.path);
 
                       return (

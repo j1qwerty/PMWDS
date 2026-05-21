@@ -1,5 +1,6 @@
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Enums;
+using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Domain.Entities;
 
 public class Milestone : AuditableEntity
@@ -59,6 +60,15 @@ public class Milestone : AuditableEntity
     {
         ProgressPercentage = Math.Clamp(percentage, 0, 100);
         if (percentage >= 100) MarkComplete();
+    }
+    public double CalculateProgressFromTasks()
+    {
+        if (_tasks.Count == 0) return ProgressPercentage;
+        var completed = _tasks.Count(t => t.Status == TaskStatus.Completed);
+        var calculated = (completed / (double)_tasks.Count) * 100;
+        ProgressPercentage = Math.Round(calculated, 1);
+        if (completed == _tasks.Count && _tasks.Count > 0) MarkComplete();
+        return ProgressPercentage;
     }
     public bool IsOverdue() => Status != MilestoneStatus.Completed
     && DateTime.UtcNow > DueDate;

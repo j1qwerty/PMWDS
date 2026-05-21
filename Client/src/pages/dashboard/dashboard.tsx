@@ -20,6 +20,7 @@ export function DashboardPage() {
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -33,14 +34,16 @@ export function DashboardPage() {
       api.getDepartments(auth.token),
       api.getUsers(auth.token),
       hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
+      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, overdueResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
         if (notificationsResult.status === "fulfilled") setUnread(notificationsResult.value);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
         if (usersResult.status === "fulfilled") setUsers(usersResult.value);
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
+        if (escalatedResult.status === "fulfilled") setEscalatedTasks(escalatedResult.value as Task[]);
         if (dashboardResult.status === "rejected") {
           setError(dashboardResult.reason instanceof Error ? dashboardResult.reason.message : "Dashboard unavailable");
         }
@@ -200,10 +203,30 @@ export function DashboardPage() {
             <div className="flex items-center gap-sm mb-xs">
               <span className="material-symbols-outlined text-error">warning</span>
               <h2 className="font-h2 text-h2 text-on-surface">High-Risk Interventions</h2>
+              {escalatedTasks.length > 0 && (
+                <span className="px-xs py-[2px] rounded-full bg-red-100 text-red-600 text-[10px] font-bold">{escalatedTasks.length} escalated</span>
+              )}
               <span className="px-xs py-[2px] border border-outline rounded text-[10px] text-outline font-label-caps uppercase ml-sm">Admin Only</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-              {/* Critical Card */}
+              {/* Escalated Tasks */}
+              {escalatedTasks.slice(0, 2).map((t) => (
+                <div key={t.id} className="glass-panel p-md rounded-xl border border-error-container bg-error-container-10 relative overflow-hidden">
+                  <div className="absolute top-md right-md w-2 h-2 rounded-full bg-error status-pulse"></div>
+                  <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs truncate">{t.title}</h3>
+                  <p className="font-body-md text-on-surface-variant text-[13px] mb-md">
+                    Escalation level {t.escalationLevel}{t.projectName ? ` • ${t.projectName}` : ""}{t.assignedToUserName ? ` • ${t.assignedToUserName}` : ""}
+                  </p>
+                  <div className="flex gap-sm">
+                    <span className="px-sm py-xs rounded text-[11px] font-bold uppercase bg-red-100 text-red-700">Level {t.escalationLevel}</span>
+                    {t.priority && (
+                      <span className="px-sm py-xs rounded text-[11px] font-bold uppercase border border-outline-variant text-on-surface">{t.priority}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Critical Card - Static */}
               <div className="glass-panel p-md rounded-xl border border-error-container bg-error-container-10 relative overflow-hidden">
                 <div className="absolute top-md right-md w-2 h-2 rounded-full bg-error status-pulse"></div>
                 <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">API Gateway Timeout</h3>
@@ -214,7 +237,7 @@ export function DashboardPage() {
                 </div>
               </div>
 
-              {/* Warning Card */}
+              {/* Warning Card - Static */}
               <div className="glass-panel p-md rounded-xl border-[#F59E0B]/30 bg-warning-light-20 relative overflow-hidden">
                 <div className="absolute top-md right-md w-2 h-2 rounded-full bg-[#F59E0B]"></div>
                 <h3 className="font-body-lg text-body-lg font-semibold text-on-surface mb-xs">Resource Bottleneck</h3>
@@ -233,35 +256,49 @@ export function DashboardPage() {
               <h2 className="font-h2 text-h2 text-on-surface">Urgent Escalations</h2>
             </div>
             <div className="flex flex-col gap-sm flex-1">
-              {/* Danger Alert */}
-              <div className="p-sm rounded-lg bg-error-container-10 border-l-4 border-error flex flex-col gap-1">
-                <div className="flex justify-between items-start">
-                  <span className="font-body-md font-bold text-error text-[13px]">Server Downtime Risk</span>
-                  <span className="text-[10px] text-outline">5m ago</span>
+              {escalatedTasks.length > 0 ? escalatedTasks.slice(0, 4).map((t) => (
+                <div key={t.id} className="p-sm rounded-lg bg-error-container-10 border-l-4 border-error flex flex-col gap-1">
+                  <div className="flex justify-between items-start">
+                    <span className="font-body-md font-bold text-error text-[13px] truncate">{t.title}</span>
+                    <span className="text-[10px] text-outline shrink-0 ml-2">{t.escalatedDate ? new Date(t.escalatedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  </div>
+                  <p className="text-[12px] text-on-surface-variant leading-tight">
+                    Level {t.escalationLevel}{t.projectName ? ` • ${t.projectName}` : ""}{t.assignedToUserName ? ` • Assigned: ${t.assignedToUserName}` : ""}
+                  </p>
                 </div>
-                <p className="text-[12px] text-on-surface-variant leading-tight">Database migration failed on production cluster #4. Data integrity check required.</p>
-                <button className="mt-2 w-full py-1 bg-error text-on-error rounded text-[10px] font-bold uppercase tracking-wider hover:bg-on-error-container transition-colors">Execute Recovery</button>
-              </div>
+              )) : (
+                <>
+                  {/* Danger Alert - Static */}
+                  <div className="p-sm rounded-lg bg-error-container-10 border-l-4 border-error flex flex-col gap-1">
+                    <div className="flex justify-between items-start">
+                      <span className="font-body-md font-bold text-error text-[13px]">Server Downtime Risk</span>
+                      <span className="text-[10px] text-outline">5m ago</span>
+                    </div>
+                    <p className="text-[12px] text-on-surface-variant leading-tight">Database migration failed on production cluster #4. Data integrity check required.</p>
+                    <button className="mt-2 w-full py-1 bg-error text-on-error rounded text-[10px] font-bold uppercase tracking-wider hover:bg-on-error-container transition-colors">Execute Recovery</button>
+                  </div>
 
-              {/* Warning Alert */}
-              <div className="p-sm rounded-lg bg-[#FEF3C7]/20 border-l-4 border-[#F59E0B] flex flex-col gap-1">
-                <div className="flex justify-between items-start">
-                  <span className="font-body-md font-bold text-[#D97706] text-[13px]">Security Policy Breach</span>
-                  <span className="text-[10px] text-outline">18m ago</span>
-                </div>
-                <p className="text-[12px] text-on-surface-variant leading-tight">Unauthorized access attempt detected from unknown IP in 'Staging'.</p>
-                <div className="flex gap-2 mt-2">
-                  <button className="flex-1 py-1 border border-[#F59E0B] text-[#D97706] rounded text-[10px] font-bold uppercase hover:bg-[#F59E0B]/10 transition-colors">Investigate</button>
-                  <button className="flex-1 py-1 bg-[#F59E0B] text-white rounded text-[10px] font-bold uppercase hover:bg-[#D97706] transition-colors">Block IP</button>
-                </div>
-              </div>
+                  {/* Warning Alert - Static */}
+                  <div className="p-sm rounded-lg bg-[#FEF3C7]/20 border-l-4 border-[#F59E0B] flex flex-col gap-1">
+                    <div className="flex justify-between items-start">
+                      <span className="font-body-md font-bold text-[#D97706] text-[13px]">Security Policy Breach</span>
+                      <span className="text-[10px] text-outline">18m ago</span>
+                    </div>
+                    <p className="text-[12px] text-on-surface-variant leading-tight">Unauthorized access attempt detected from unknown IP in 'Staging'.</p>
+                    <div className="flex gap-2 mt-2">
+                      <button className="flex-1 py-1 border border-[#F59E0B] text-[#D97706] rounded text-[10px] font-bold uppercase hover:bg-[#F59E0B]/10 transition-colors">Investigate</button>
+                      <button className="flex-1 py-1 bg-[#F59E0B] text-white rounded text-[10px] font-bold uppercase hover:bg-[#D97706] transition-colors">Block IP</button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </section>
 
         {/* Row 3: My Work Queue + Workload Distribution */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-lg">
-          <TaskList tasks={myTasks.slice(0, 6)} title="My Work Queue" subtitle={`${myTasks.length} Tasks Pending`} />
+          <TaskList tasks={myTasks.slice(0, 6)} title="Work Queue" subtitle={`${myTasks.length} Tasks Pending`} />
           <WorkloadBars 
             items={departmentWorkload} 
             title="Workload Distribution" 

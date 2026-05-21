@@ -45,6 +45,8 @@ builder.Services.Configure<HangfireSettings>(
     builder.Configuration.GetSection("Hangfire"));
 builder.Services.Configure<DatabaseSettings>(
     builder.Configuration.GetSection("Database"));
+builder.Services.Configure<LocalFileStorageSettings>(
+    builder.Configuration.GetSection("FileStorage"));
 
 var databaseStatus = builder.Services.AddApplicationDatabase(builder.Configuration, builder.Environment);
 
@@ -96,6 +98,7 @@ builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserSer
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.INotificationService, NotificationService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IEmailService, EmailService>();
 builder.Services.AddScoped<PMWDS.Infrastructure.Services.IFileStorageService, AzureBlobStorageService>();
+builder.Services.AddScoped<PMWDS.Infrastructure.Services.ILocalFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<PMWDS.Infrastructure.Services.AuditService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IAuditService>(sp =>
     sp.GetRequiredService<PMWDS.Infrastructure.Services.AuditService>());
@@ -171,7 +174,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 var storageSettings = builder.Configuration.GetSection("AzureStorage").Get<AzureStorageSettings>() ?? new AzureStorageSettings();
 var localFilesRoot = string.IsNullOrWhiteSpace(storageSettings.LocalUploadPath)
-    ? Path.Combine(AppContext.BaseDirectory, "App_Data", "Files")
+    ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"))
     : Directory.GetParent(storageSettings.LocalUploadPath)?.FullName ?? storageSettings.LocalUploadPath;
 Directory.CreateDirectory(localFilesRoot);
 app.UseStaticFiles(new StaticFileOptions

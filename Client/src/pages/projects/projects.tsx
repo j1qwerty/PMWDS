@@ -4,7 +4,7 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
-import { LoadingPage, PageHeader, getDepartmentColor, useRoleAccess } from "../shared";
+import { GlassCard, LoadingPage, PageHeader, getDepartmentColor, useRoleAccess } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { 
   ProjectsBoard, 
@@ -57,7 +57,7 @@ export function ProjectsPage() {
         api.getProjects(auth.token),
         api.getDepartments(auth.token),
         api.getOrganizations(auth.token),
-        access.canManageProjects ? api.getUsers(auth.token) : Promise.resolve([]),
+        api.getUsers(auth.token),
       ]);
       setProjects(projectData);
       setDepartments(departmentData);
@@ -371,6 +371,7 @@ export function ProjectsPage() {
         />
 
         {/* RIGHT COLUMN: Project Detail Pane */}
+        <GlassCard className="w-2/3">
         {selectedProject ? (
           <ProjectDetailPane
             project={selectedProject}
@@ -389,6 +390,7 @@ export function ProjectsPage() {
               authToken={auth?.token}
             />
           </ProjectDetailPane>
+          
         ) : (
           <div className="flex-1 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-8 flex items-center justify-center">
             <div className="flex flex-col items-center justify-center text-center">
@@ -404,7 +406,9 @@ export function ProjectsPage() {
             </div>
           </div>
         )}
+        </GlassCard>
       </div>
+      
 
       {/* Modals */}
       <CreateProjectModal

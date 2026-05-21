@@ -79,3 +79,16 @@ public class DatabaseSettings
     public string MySqlConnectionString { get; set; } = string.Empty;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
 }
+
+public class LocalFileStorageSettings
+{
+    public string BasePath { get; set; } = string.Empty;
+    public string AvatarsPath { get; set; } = "avatars";
+    public string DocumentsPath { get; set; } = "documents";
+    public string FullAvatarsPath => string.IsNullOrWhiteSpace(BasePath)
+        ? Path.Combine(AppContext.BaseDirectory, "App_Data", AvatarsPath)
+        : Path.Combine(BasePath, AvatarsPath);
+    public string FullDocumentsPath => string.IsNullOrWhiteSpace(BasePath)
+        ? Path.Combine(AppContext.BaseDirectory, "App_Data", DocumentsPath)
+        : Path.Combine(BasePath, DocumentsPath);
+}

@@ -22,7 +22,6 @@ interface TaskDetailProps {
   onUpdateProgress: (progress: number, notes: string) => void;
   onAddComment: (comment: string) => void;
   onStartTimer: (description: string) => void;
-  onUploadAttachment: (file: File) => void;
   onRefresh: () => void;
   onMessage?: (message: string) => void;
 }
@@ -42,7 +41,6 @@ export function TaskDetail({
   onUpdateProgress,
   onAddComment,
   onStartTimer,
-  onUploadAttachment,
   onRefresh,
   onMessage,
 }: TaskDetailProps) {
@@ -65,7 +63,6 @@ export function TaskDetail({
   const [progressForm, setProgressForm] = useState({ progressPercentage: task.progressPercentage || 0, notes: "" });
   const [comment, setComment] = useState("");
   const [timerDescription, setTimerDescription] = useState("Focused execution block");
-  const [attachment, setAttachment] = useState<File | null>(null);
 
   const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks || []);
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
@@ -161,6 +158,15 @@ export function TaskDetail({
                 <span className="material-symbols-outlined text-base">delete</span>
                 Delete
               </button>
+              {!task.isEscalated && (
+                <button
+                  onClick={handleEscalate}
+                  className="px-2 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">warning</span>
+                  Escalate
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -199,16 +205,6 @@ export function TaskDetail({
           variant="task"
         />
 
-        {/* Escalation */}
-        {isAdmin && !task.isEscalated && (
-          <button
-            onClick={handleEscalate}
-            className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors"
-          >
-            <span className="material-symbols-outlined text-lg">warning</span>
-            Escalate Task
-          </button>
-        )}
         {task.isEscalated && (
           <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200">
             <div className="flex items-center gap-2">
@@ -488,27 +484,6 @@ export function TaskDetail({
         </GlassCard>
       )}
 
-      {/* Attachment Card */}
-      {(isAdmin || isAssignee) && (
-        <GlassCard className="p-5">
-          <h4 className="text-sm font-bold text-slate-800 mb-3">Upload Attachment</h4>
-          <div className="flex gap-2">
-            <input
-              type="file"
-              onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
-              className="flex-1 text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-            />
-            <button
-              onClick={() => attachment && onUploadAttachment(attachment)}
-              disabled={!attachment}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Upload
-            </button>
-          </div>
-        </GlassCard>
-      )}
-
       {/* AI Recommendations */}
       {recommendation && (
         <GlassCard className="p-5 border-indigo-200 bg-indigo-50/50">
@@ -542,7 +517,7 @@ function DetailItem({ icon, label, value, avatars }: { icon: string; label: stri
         <div className="text-[10px] font-semibold text-slate-400 uppercase">{label}</div>
         <div className="text-sm font-medium text-slate-700 flex items-start gap-1.5">
           {avatars && avatars.length > 0 && <AvatarStack people={avatars} size="xs" />}
-          <span className="break-words">{value}</span>
+          <span className="wrap-break-word">{value}</span>
         </div>
       </div>
     </div>

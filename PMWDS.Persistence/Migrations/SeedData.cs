@@ -265,7 +265,7 @@ public static class SeedData
             return result;
         }
 
-        var storageBase = Path.Combine(AppContext.BaseDirectory, "App_Data", "Files", "pmwds-files");
+        var storageBase = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"));
         Directory.CreateDirectory(storageBase);
 
         var extensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
