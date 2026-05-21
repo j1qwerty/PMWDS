@@ -1,4 +1,6 @@
-import type { Project, ProjectHealth, Role } from "../../../types";
+import { useEffect, useState } from "react";
+import type { ActivityLogRecord, Project, ProjectHealth, Role } from "../../../types";
+import { api } from "../../../api";
 import { StatusButtons } from "../../shared";
 
 interface ProjectDetailPaneProps {
@@ -12,6 +14,7 @@ interface ProjectDetailPaneProps {
   onDelete?: () => void;
   formatMoney: (amount: number) => string;
   children?: React.ReactNode;
+  authToken?: string | null;
 }
 
 export function ProjectDetailPane({
@@ -24,6 +27,7 @@ export function ProjectDetailPane({
   onDelete,
   formatMoney,
   children,
+  authToken,
 }: ProjectDetailPaneProps) {
   if (!project) {
     return (
@@ -106,7 +110,7 @@ export function ProjectDetailPane({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-lg">
         <ProjectHealthMatrix health={health} project={project} />
-        <RecentActivity />
+        {project && authToken && <RecentActivity projectId={project.id} authToken={authToken} />}
       </div>
 
 {children}
@@ -350,7 +354,68 @@ function ProjectHealthMatrix({ health, project }: { health: ProjectHealth | null
   );
 }
 
-function RecentActivity() {
+function RecentActivity({ projectId, authToken }: { projectId: string; authToken: string }) {
+  const [activities, setActivities] = useState<ActivityLogRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authToken || !projectId) return;
+    setLoading(true);
+    api.getProjectActivityLogs(authToken, projectId, 10)
+      .then(logs => setActivities(logs))
+      .catch(() => setActivities([]))
+      .finally(() => setLoading(false));
+  }, [authToken, projectId]);
+
+  const formatTimestamp = (ts: string) => {
+    const date = new Date(ts);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const getActivityColor = (type: string) => {
+    if (type.includes("created")) return "bg-primary";
+    if (type.includes("completed")) return "bg-green-500";
+    if (type.includes("updated") || type.includes("changed")) return "bg-surface-container-highest";
+    return "bg-surface-container-highest";
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-md">
+        <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">timeline</span>
+          Recent Activity
+        </h3>
+        <div className="flex items-center justify-center py-8">
+          <span className="material-symbols-outlined text-outline animate-spin">progress_activity</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="flex flex-col gap-md">
+        <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">timeline</span>
+          Recent Activity
+        </h3>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <span className="material-symbols-outlined text-outline text-3xl mb-2">inbox</span>
+          <p className="text-sm text-outline">No activity yet for this project</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-md">
       <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
@@ -358,27 +423,15 @@ function RecentActivity() {
         Recent Activity
       </h3>
       <div className="flex flex-col gap-sm">
-        <div className="flex gap-3">
-          <div className="h-10 w-1 bg-primary rounded-full"></div>
-          <div className="flex flex-col">
-            <p className="text-sm font-medium text-on-surface">Infrastructure blueprint approved by architecture lead.</p>
-            <span className="text-[10px] text-outline">Yesterday, 4:30 PM • Ishani Gupta</span>
+        {activities.slice(0, 5).map((activity) => (
+          <div key={activity.id} className="flex gap-3">
+            <div className={`h-10 w-1 ${getActivityColor(activity.activityType)} rounded-full`}></div>
+            <div className="flex flex-col">
+              <p className="text-sm font-medium text-on-surface">{activity.description}</p>
+              <span className="text-[10px] text-outline">{formatTimestamp(activity.timestamp)}</span>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <div className="h-10 w-1 bg-surface-container-highest rounded-full"></div>
-          <div className="flex flex-col opacity-60">
-            <p className="text-sm font-medium text-on-surface">Database migration script finalized for staging.</p>
-            <span className="text-[10px] text-outline">Oct 24, 11:20 AM • Aarav Sharma</span>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <div className="h-10 w-1 bg-surface-container-highest rounded-full"></div>
-          <div className="flex flex-col opacity-40">
-            <p className="text-sm font-medium text-on-surface">Initial security audit completed for cloud infrastructure.</p>
-            <span className="text-[10px] text-outline">Oct 22, 3:15 PM • Vihaan Malhotra</span>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

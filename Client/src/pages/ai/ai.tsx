@@ -89,7 +89,7 @@ export function AIPage() {
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         
         {/* Left Sidebar: Projects (Agents) */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 max-h-150">
           <ProjectList
             projects={projects}
             selectedProjectId={selectedProjectId}

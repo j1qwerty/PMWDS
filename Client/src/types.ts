@@ -354,6 +354,7 @@ export interface LessonLearnedRecord {
 export interface ActivityLogRecord {
   id: string;
   userId: string;
+  projectId?: string | null;
   activityType: string;
   description: string;
   timestamp: string;

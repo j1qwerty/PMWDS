@@ -897,6 +897,12 @@ export const api = {
       query: { count },
     });
   },
+  getProjectActivityLogs(token: string, projectId: string, count = 50) {
+    return request<ActivityLogRecord[]>(`activitylogs/project/${projectId}`, {
+      token,
+      query: { count },
+    });
+  },
   createActivityLog(token: string, payload: Record<string, unknown>) {
     return request<ActivityLogRecord>("activitylogs", { token, method: "POST", body: payload });
   },

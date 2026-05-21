@@ -70,6 +70,14 @@ public class ActivityLogsController : BaseApiController
         return Ok(logs.OrderByDescending(a => a.Timestamp).Take(count).Select(MapLog));
     }
 
+    [HttpGet("project/{projectId:guid}")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetByProject(Guid projectId, [FromQuery] int count = 50, CancellationToken ct = default)
+    {
+        var logs = await _uow.ActivityLogs.FindAsync(a => a.ProjectId == projectId, ct);
+        return Ok(logs.OrderByDescending(a => a.Timestamp).Take(count).Select(MapLog));
+    }
+
     [HttpPost]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest req, CancellationToken ct)
@@ -79,7 +87,7 @@ public class ActivityLogsController : BaseApiController
             return Unauthorized();
         }
 
-        var log = ActivityLog.Create(userId, req.ActivityType, req.Description, req.Metadata);
+        var log = ActivityLog.Create(userId, req.ActivityType, req.Description, req.Metadata, req.ProjectId);
         log.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.ActivityLogs.AddAsync(log, ct);
         await _uow.SaveChangesAsync(ct);
@@ -90,11 +98,12 @@ public class ActivityLogsController : BaseApiController
         => new(
             log.Id,
             log.UserId,
+            log.ProjectId,
             log.ActivityType,
             log.Description,
             log.Timestamp,
             JsonSerializer.Deserialize<Dictionary<string, object>>(log.MetadataJson) ?? new());
 }
 
-public record ActivityLogResponse(Guid Id, Guid UserId, string ActivityType, string Description, DateTime Timestamp, Dictionary<string, object> Metadata);
-public record CreateActivityLogRequest(string ActivityType, string Description, Dictionary<string, object> Metadata);
+public record ActivityLogResponse(Guid Id, Guid UserId, Guid? ProjectId, string ActivityType, string Description, DateTime Timestamp, Dictionary<string, object> Metadata);
+public record CreateActivityLogRequest(string ActivityType, string Description, Dictionary<string, object> Metadata, Guid? ProjectId = null);

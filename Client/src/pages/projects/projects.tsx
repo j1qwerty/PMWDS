@@ -383,6 +383,7 @@ export function ProjectsPage() {
             onEdit={access.canManageProjects ? openEditModal : undefined}
             onDelete={access.isAdmin ? () => setShowDeleteConfirm(true) : undefined}
             formatMoney={formatMoney}
+            authToken={auth?.token}
           >
             <MilestonesTab
               key={selectedProject.id}

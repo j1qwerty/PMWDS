@@ -125,7 +125,7 @@ export function PermissionsTable({ permissions, onEdit, onDelete, onCreate, isAd
         <span className="material-symbols-outlined text-3xl text-slate-400">lock</span>
       </div>
       <h4 className="text-sm font-semibold text-slate-700 mb-2">No permissions defined</h4>
-      <p className="text-xs text-slate-400 max-w-xs mx-auto">
+      <p className="text-xs text-slate-400 mx-auto">
         Create permissions to define granular access controls
       </p>
       {isAdmin && (

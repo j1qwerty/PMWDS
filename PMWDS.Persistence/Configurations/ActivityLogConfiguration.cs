@@ -14,5 +14,6 @@ public class ActivityLogConfiguration : IEntityTypeConfiguration<ActivityLog>
         b.Property(e => e.Description).HasMaxLength(2000).IsRequired();
         b.HasIndex(e => e.UserId);
         b.HasIndex(e => e.Timestamp);
+        b.HasIndex(e => e.ProjectId);
     }
 }
