@@ -9,11 +9,12 @@ type UserEditModalProps = {
   user: User;
   departments: Department[];
   organizations: OrganizationRecord[];
+  canSelectSuperAdminRole: boolean;
   onClose: () => void;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 };
 
-export function UserEditModal({ user, departments, organizations, onClose, onSubmit }: UserEditModalProps) {
+export function UserEditModal({ user, departments, organizations, canSelectSuperAdminRole, onClose, onSubmit }: UserEditModalProps) {
   const initialOrganizationId =
     user.organizationId ??
     user.departments?.find((item) => item.organizationId)?.organizationId ??
@@ -32,6 +33,7 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [profilePictureUrl] = useState(user.profilePictureUrl ?? "");
+  const visibleRoleOptions = canSelectSuperAdminRole ? roleOptions : roleOptions.filter((role) => role !== "SuperAdmin");
 
   const departmentsByOrg = useMemo(
     () =>
@@ -138,7 +140,7 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
               <p className="text-xs text-slate-400">Viewer is the default role for newly registered users.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {roleOptions.map((role) => (
+              {visibleRoleOptions.map((role) => (
                 <button key={role} type="button" onClick={() => toggleRole(role)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${roles.includes(role) ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                   {role}
                 </button>

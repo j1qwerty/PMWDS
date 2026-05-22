@@ -19,7 +19,7 @@ interface SelectedSkill {
 
 export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkillsPanelProps) {
   const { auth, hasRole } = useAuth();
-  const canDeactivate = hasRole("SuperAdmin", "Director");
+  const canToggleActivation = hasRole("SuperAdmin", "Director");
   const [selectedUser, setSelectedUser] = useState(users[0]?.id || "");
   const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
   const [availabilityStatus, setAvailabilityStatus] = useState("");
@@ -80,8 +80,15 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
   const handleDeactivate = async () => {
     if (!auth || !selectedUser) return;
     try {
-      await api.deactivateUser(auth.token, selectedUser);
-      onMessage("User deactivated.");
+      const selected = users.find((user) => user.id === selectedUser);
+      if (!selected) return;
+      if (selected.isActive !== false) {
+        await api.deactivateUser(auth.token, selectedUser);
+        onMessage("User deactivated.");
+      } else {
+        await api.reactivateUser(auth.token, selectedUser);
+        onMessage("User reactivated.");
+      }
       onUpdate();
     } catch (e) {
       onMessage(`Error: ${e instanceof Error ? e.message : "Deactivation failed"}`);
@@ -117,20 +124,26 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
             {users.map((user) => (
-              <option key={user.id} value={user.id}>{user.fullName}</option>
+              <option key={user.id} value={user.id}>
+                {user.fullName}{user.isActive === false ? " (Inactive)" : ""}
+              </option>
             ))}
           </select>
         </div>
 
         {/* Selected User Info */}
         {selectedUserData && (
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-            <Avatar person={selectedUserData} size="lg" className="rounded-lg" />
-            <div>
-              <p className="text-sm font-semibold text-slate-700">{selectedUserData.fullName}</p>
-              <p className="text-xs text-slate-400">{selectedUserData.email}</p>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+              <Avatar person={selectedUserData} size="lg" className="rounded-lg" />
+              <div>
+                <p className="text-sm font-semibold text-slate-700">{selectedUserData.fullName}</p>
+                <p className="text-xs text-slate-400">{selectedUserData.email}</p>
+                <p className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium ${selectedUserData.isActive === false ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${selectedUserData.isActive === false ? "bg-slate-400" : "bg-emerald-500"}`} />
+                  {selectedUserData.isActive === false ? "Inactive" : "Active"}
+                </p>
+              </div>
             </div>
-          </div>
         )}
 
         {/* Availability */}
@@ -266,10 +279,10 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
             <span className="material-symbols-outlined text-sm">add</span>
             Save {selectedSkills.length > 0 ? `${selectedSkills.length} Skill(s)` : "Skills"}
           </GradientButton>
-          {canDeactivate && (
-            <GradientButton variant="danger" onClick={handleDeactivate}>
-              <span className="material-symbols-outlined text-sm">person_off</span>
-              Deactivate User
+          {canToggleActivation && (
+            <GradientButton variant={selectedUserData?.isActive === false ? "ghost" : "danger"} onClick={handleDeactivate}>
+              <span className="material-symbols-outlined text-sm">{selectedUserData?.isActive === false ? "restart_alt" : "person_off"}</span>
+              {selectedUserData?.isActive === false ? "Reactivate User" : "Deactivate User"}
             </GradientButton>
           )}
         </div>

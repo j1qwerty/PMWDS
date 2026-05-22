@@ -300,6 +300,16 @@ public static class DatabaseConnectionService
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"PasswordResetTokenHash\" TEXT NULL", ct);
             }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "OrganizationId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Skills", "OrganizationId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Skills\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
+            }
         }
         finally
         {

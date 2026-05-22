@@ -31,6 +31,19 @@ export function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
+  const handleToggleUserActive = async (user: User) => {
+    if (!auth) return;
+    if (user.isActive === false) {
+      const updated = await api.reactivateUser(auth.token, user.id);
+      setUsers((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setMessage("User reactivated.");
+      void loadData();
+      return;
+    }
+
+    setDeletingUser(user);
+  };
+
   const loadData = () => {
     if (!auth) return;
     setLoading(true);
@@ -144,11 +157,11 @@ export function UsersPage() {
             departments={departments}
             organizations={organizations}
             token={auth?.token ?? ""}
-          canUploadPictures={isAdmin}
-          showOrganizationFilter={isAdmin}
+            canUploadPictures={isAdmin}
+            showOrganizationFilter={isAdmin}
             canManageUsers={canManageUsers}
             onEditUser={setEditingUser}
-            onDeleteUser={setDeletingUser}
+            onToggleUserActive={handleToggleUserActive}
             onPictureUploaded={(updated) => {
               setUsers(current => current.map(user => user.id === updated.id ? updated : user));
               setMessage("Profile picture updated.");
@@ -180,6 +193,7 @@ export function UsersPage() {
       departments={departments}
       organizations={organizations}
       lockedOrganizationId={isAdmin ? undefined : organizations[0]?.id}
+      canSelectSuperAdminRole={isAdmin}
       onSubmit={async (form) => {
         if (!auth) return;
         await api.registerUser(auth.token, form);
@@ -202,6 +216,7 @@ export function UsersPage() {
           user={editingUser}
           departments={departments}
           organizations={organizations}
+          canSelectSuperAdminRole={isAdmin}
           onClose={() => setEditingUser(null)}
           onSubmit={async (payload) => {
             const updated = await api.updateUser(auth.token, editingUser.id, payload);
@@ -213,26 +228,26 @@ export function UsersPage() {
         />
       )}
 
-     {deletingUser && auth && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-    <DeleteConfirmationModal
-      name={deletingUser.fullName}
-      warning="The user remains in the database and can be audited later."
-      onConfirm={async () => {
-        await api.deactivateUser(auth.token, deletingUser.id);
-        setUsers((current) => 
-          current.map((user) => 
-            user.id === deletingUser.id ? { ...user, isActive: false } : user
-          )
-        );
-        setDeletingUser(null);
-        setMessage("User deactivated.");
-        void loadData();
-      }}
-      onCancel={() => setDeletingUser(null)}
-    />
-  </div>
-)}
+      {deletingUser && auth && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <DeleteConfirmationModal
+            name={deletingUser.fullName}
+            warning="The user remains in the database and can be audited later."
+            onConfirm={async () => {
+              await api.deactivateUser(auth.token, deletingUser.id);
+              setUsers((current) =>
+                current.map((user) =>
+                  user.id === deletingUser.id ? { ...user, isActive: false } : user
+                )
+              );
+              setDeletingUser(null);
+              setMessage("User deactivated.");
+              void loadData();
+            }}
+            onCancel={() => setDeletingUser(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }

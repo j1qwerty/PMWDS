@@ -401,6 +401,9 @@ export const api = {
   deactivateUser(token: string, id: string) {
     return request<void>(`users/${id}/deactivate`, { token, method: "PATCH" });
   },
+  reactivateUser(token: string, id: string) {
+    return request<User>(`users/${id}/reactivate`, { token, method: "PATCH" });
+  },
   getDepartments(token: string) {
     return request<Department[]>("departments", { token });
   },

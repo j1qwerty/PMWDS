@@ -6,10 +6,14 @@ interface RegisterUserFormProps {
   departments: Department[];
   organizations: OrganizationRecord[];
   lockedOrganizationId?: string;
+  canSelectSuperAdminRole: boolean;
   onSubmit: (form: Record<string, unknown>) => void;
 }
 
-export function RegisterUserForm({ departments, organizations, lockedOrganizationId, onSubmit }: RegisterUserFormProps) {
+export function RegisterUserForm({ departments, organizations, lockedOrganizationId, canSelectSuperAdminRole, onSubmit }: RegisterUserFormProps) {
+  const roleOptions = canSelectSuperAdminRole
+    ? ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember", "Viewer"]
+    : ["Director", "ProjectManager", "DepartmentHead", "TeamMember", "Viewer"];
   const organizationOptions = lockedOrganizationId
     ? organizations.filter((organization) => organization.id === lockedOrganizationId)
     : organizations;
@@ -114,12 +118,9 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
             onChange={(e) => setForm({ ...form, role: e.target.value })}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
-            <option>SuperAdmin</option>
-            <option>Director</option>
-            <option>ProjectManager</option>
-            <option>DepartmentHead</option>
-            <option>TeamMember</option>
-            <option>Viewer</option>
+            {roleOptions.map((role) => (
+              <option key={role}>{role}</option>
+            ))}
           </select>
         </div>
         <div>

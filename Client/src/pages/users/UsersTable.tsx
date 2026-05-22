@@ -15,7 +15,7 @@ interface UsersTableProps {
   canManageUsers?: boolean;
   onPictureUploaded: (user: User) => void;
   onEditUser?: (user: User) => void;
-  onDeleteUser?: (user: User) => void;
+  onToggleUserActive?: (user: User) => void;
 }
 
 export function UsersTable({
@@ -28,7 +28,7 @@ export function UsersTable({
   canManageUsers = false,
   onPictureUploaded,
   onEditUser,
-  onDeleteUser,
+  onToggleUserActive,
 }: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrg, setSelectedOrg] = useState("");
@@ -161,7 +161,10 @@ export function UsersTable({
                     {org && <div className="text-[10px] text-slate-400 mt-1">{org.name}</div>}
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={user.availabilityStatus || "Available"} />
+                    <div className="space-y-1.5">
+                      <StatusBadge status={user.availabilityStatus || "Available"} />
+                      <AccountStatusBadge isActive={user.isActive !== false} />
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -198,11 +201,17 @@ export function UsersTable({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDeleteUser?.(user)}
-                          className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
-                          title="Deactivate user"
+                          onClick={() => onToggleUserActive?.(user)}
+                          className={`grid size-9 place-items-center rounded-lg transition-colors ${
+                            user.isActive !== false
+                              ? "text-slate-500 hover:bg-red-50 hover:text-red-600"
+                              : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
+                          }`}
+                          title={user.isActive !== false ? "Deactivate user" : "Reactivate user"}
                         >
-                          <span className="material-symbols-outlined text-lg">delete</span>
+                          <span className="material-symbols-outlined text-lg">
+                            {user.isActive !== false ? "person_off" : "restart_alt"}
+                          </span>
                         </button>
                       </div>
                     </td>
@@ -242,6 +251,15 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${colors.bg} ${colors.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`}></span>
       {status}
+    </span>
+  );
+}
+
+function AccountStatusBadge({ isActive }: { isActive: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+      {isActive ? "Active" : "Inactive"}
     </span>
   );
 }

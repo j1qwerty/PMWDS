@@ -149,13 +149,28 @@ public class UsersController : BaseApiController
         }
 
         user.UpdateAvailability(dto.AvailabilityStatus ?? user.AvailabilityStatus, dto.AvailabilityPercentage);
-        if (User.IsInRole("SuperAdmin") && dto.RoleNames is { Count: > 0 })
+        if (dto.RoleNames is { Count: > 0 } && (User.IsInRole("SuperAdmin") || User.IsInRole("Director")))
         {
             var requestedRoles = dto.RoleNames
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Select(role => role.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            if (!User.IsInRole("SuperAdmin") && requestedRoles.Any(role => role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+            {
+                return Forbid();
+            }
+
+            requestedRoles = requestedRoles
+                .Where(role => !role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (requestedRoles.Count == 0)
+            {
+                requestedRoles.Add("Viewer");
+            }
+
             var roles = await _uow.Roles.FindAsync(r => requestedRoles.Contains(r.Name), ct);
             user.Roles.Clear();
             foreach (var role in roles)
@@ -546,6 +561,32 @@ public class UsersController : BaseApiController
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok();
+    }
+
+    [HttpPatch("{id}/reactivate")]
+    [Authorize(Policy = "Director")]
+    public async Task<IActionResult> Reactivate(string id, CancellationToken ct)
+    {
+        if (!Guid.TryParse(id, out var parsedId))
+        {
+            return BadRequest("Invalid user id.");
+        }
+
+        var user = await _uow.Users.GetByIdAsync(parsedId, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
+        }
+
+        user.Activate();
+        await _uow.Users.UpdateAsync(user, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     private async Task AssignDepartmentsAsync(
