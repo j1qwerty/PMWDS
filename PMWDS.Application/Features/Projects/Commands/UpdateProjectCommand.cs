@@ -43,7 +43,9 @@ public class UpdateProjectCommandHandler
         dto.PlannedStartDate,
         dto.PlannedEndDate,
         dto.PlannedBudget,
-        dto.Priority);
+        dto.Priority,
+        dto.DepartmentId,
+        dto.ProjectManagerId);
         project.SetModified(
         _currentUser.UserId ?? "system");
         await _uow.Projects.UpdateAsync(project, ct);

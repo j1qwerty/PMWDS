@@ -142,4 +142,6 @@ public record UpdateProjectDto(
  DateTime PlannedStartDate,
  DateTime PlannedEndDate,
  decimal PlannedBudget,
+ Guid DepartmentId,
+ string ProjectManagerId,
  Domain.Enums.ProjectPriority Priority);

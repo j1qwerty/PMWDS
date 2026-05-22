@@ -113,11 +113,15 @@ public class Project : AuditableEntity
    DateTime plannedStartDate,
    DateTime plannedEndDate,
    decimal plannedBudget,
-   ProjectPriority priority)
+   ProjectPriority priority,
+   Guid departmentId,
+   string projectManagerId)
    {
       Name = name;
       Description = description;
       Category = category;
+      DepartmentId = departmentId;
+      ProjectManagerId = projectManagerId;
       PlannedStartDate = plannedStartDate;
       PlannedEndDate = plannedEndDate;
       PlannedBudget = plannedBudget;

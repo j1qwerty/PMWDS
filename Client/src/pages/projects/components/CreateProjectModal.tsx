@@ -1,5 +1,5 @@
 import { priorities } from "../../constants";
-import type { Department, User } from "../../../types";
+import type { Department, OrganizationRecord, User } from "../../../types";
 import { ScopedUserSelect } from "../../shared";
 
 type ProjectFormState = {
@@ -10,6 +10,7 @@ type ProjectFormState = {
   plannedStartDate: string;
   plannedEndDate: string;
   plannedBudget: number;
+  organizationId: string;
   departmentId: string;
   projectManagerId: string;
   priority: string;
@@ -22,6 +23,8 @@ interface CreateProjectModalProps {
   form: ProjectFormState;
   setForm: React.Dispatch<React.SetStateAction<ProjectFormState>>;
   departments: Department[];
+  organizations: OrganizationRecord[];
+  showOrganizationFilter?: boolean;
   users: User[];
 }
 
@@ -32,9 +35,14 @@ export function CreateProjectModal({
   form,
   setForm,
   departments,
+  organizations,
+  showOrganizationFilter = false,
   users,
 }: CreateProjectModalProps) {
   if (!show) return null;
+  const filteredDepartments = form.organizationId
+    ? departments.filter((department) => department.organizationId === form.organizationId)
+    : departments;
   const selectedDepartment = departments.find((department) => department.id === form.departmentId);
 
   return (
@@ -81,11 +89,26 @@ export function CreateProjectModal({
             <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Budget</span>
             <input type="number" value={form.plannedBudget} onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })} className="border border-outline-variant rounded-lg p-2 text-sm" />
           </label>
+          {showOrganizationFilter && (
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Organization</span>
+              <select
+                value={form.organizationId}
+                onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "", projectManagerId: "" })}
+                className="border border-outline-variant rounded-lg p-2 text-sm"
+              >
+                <option value="">Choose</option>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Department</span>
             <select value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm">
               <option value="">Choose</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {filteredDepartments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </label>
           <div className="md:col-span-2">

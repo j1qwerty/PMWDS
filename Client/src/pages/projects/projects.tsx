@@ -42,6 +42,7 @@ export function ProjectsPage() {
     plannedStartDate: "",
     plannedEndDate: "",
     plannedBudget: 25000,
+    organizationId: "",
     departmentId: "",
     projectManagerId: "",
     priority: "Medium",
@@ -172,6 +173,7 @@ export function ProjectsPage() {
       plannedStartDate: selectedProject.plannedStartDate ? selectedProject.plannedStartDate.split('T')[0] : "",
       plannedEndDate: selectedProject.plannedEndDate ? selectedProject.plannedEndDate.split('T')[0] : "",
       plannedBudget: selectedProject.plannedBudget || 0,
+      organizationId: departments.find((department) => department.id === selectedProject.departmentId)?.organizationId || "",
       departmentId: selectedProject.departmentId || "",
       projectManagerId: selectedProject.projectManagerId || "",
       priority: selectedProject.priority || "Medium",
@@ -247,9 +249,10 @@ export function ProjectsPage() {
               canUpdateProject={() => { }}
               onStatusChange={handleStatusChange}
               onEdit={access.canManageProjects ? openEditModal : undefined}
-              onDelete={access.isAdmin ? () => setShowDeleteConfirm(true) : undefined}
+              onDelete={access.canManageProjects ? () => setShowDeleteConfirm(true) : undefined}
               formatMoney={formatMoney}
               authToken={auth?.token}
+              users={users}
             >
               <MilestonesTab
                 key={selectedProject.id}
@@ -284,7 +287,9 @@ export function ProjectsPage() {
         onSubmit={handleCreateProject}
         form={form}
         setForm={setForm}
-        departments={filteredDepartments}
+        departments={access.isAdmin ? departments : filteredDepartments}
+        organizations={organizations}
+        showOrganizationFilter={access.isAdmin}
         users={users}
       />
 
@@ -295,7 +300,9 @@ export function ProjectsPage() {
         onSubmit={handleEditProject}
         form={form}
         setForm={setForm}
-        departments={filteredDepartments}
+        departments={access.isAdmin ? departments : filteredDepartments}
+        organizations={organizations}
+        showOrganizationFilter={access.isAdmin}
         users={users}
       />
 

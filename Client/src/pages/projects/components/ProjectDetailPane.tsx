@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { ActivityLogRecord, Project, ProjectHealth, Role } from "../../../types";
+import type { ActivityLogRecord, Project, ProjectHealth, Role, User } from "../../../types";
 import { api } from "../../../api";
-import { StatusButtons } from "../../shared";
+import { Avatar, StatusButtons } from "../../shared";
 
 interface ProjectDetailPaneProps {
   project: Project | null;
@@ -15,6 +15,7 @@ interface ProjectDetailPaneProps {
   formatMoney: (amount: number) => string;
   children?: React.ReactNode;
   authToken?: string | null;
+  users?: User[];
 }
 
 export function ProjectDetailPane({
@@ -28,6 +29,7 @@ export function ProjectDetailPane({
   formatMoney,
   children,
   authToken,
+  users = [],
 }: ProjectDetailPaneProps) {
   if (!project) {
     return (
@@ -43,9 +45,10 @@ export function ProjectDetailPane({
     );
   }
 
-  const healthScore = project.aiHealthScore != null ? Math.round(project.aiHealthScore * 100) : null;
+  const healthScore = normalizePercent(project.aiHealthScore);
   const progress = project.progressPercentage || 0;
-  const delayRisk = project.aiDelayRiskScore != null ? Math.round(project.aiDelayRiskScore * 100) : null;
+  const delayRisk = normalizePercent(project.aiDelayRiskScore);
+  const manager = users.find((user) => user.id === project.projectManagerId);
 
   return (
     <section className="flex-1 glass-card rounded-xl p-lg flex flex-col gap-lg overflow-y-auto custom-scrollbar">
@@ -65,7 +68,7 @@ export function ProjectDetailPane({
           </p>
         </div>
         <div className="flex gap-2">
-          {hasRole("SuperAdmin") && onDelete && (
+          {onDelete && (
             <>
               <button
                 onClick={onDelete}
@@ -97,6 +100,7 @@ export function ProjectDetailPane({
         healthScore={healthScore}
         delayRisk={delayRisk}
         formatMoney={formatMoney}
+        manager={manager}
       />
 
       <OverallProgress 
@@ -122,15 +126,17 @@ function MetricsGrid({
   project, 
   healthScore, 
   delayRisk,
-  formatMoney 
+  formatMoney,
+  manager,
 }: { 
   project: Project;
   healthScore: number | null;
   delayRisk: number | null;
   formatMoney: (amount: number) => string;
+  manager?: User;
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-md">
       <div className="bg-surface-container-low/50 p-md rounded-lg flex flex-col gap-1">
         <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Total Budget</span>
         <span className="text-lg font-bold text-on-surface">{formatMoney(project.plannedBudget)}</span>
@@ -156,11 +162,23 @@ function MetricsGrid({
       </div>
       <div className="bg-surface-container-low/50 p-md rounded-lg flex flex-col gap-1">
         <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Progress Health</span>
-        <span className="text-lg font-bold text-on-surface">{healthScore ?? "—"}</span>
+        <span className="text-lg font-bold text-on-surface">{healthScore != null ? `${healthScore}%` : "—"}</span>
         <span className="text-[10px] text-primary font-bold mt-1">AI assessed</span>
+      </div>
+      <div className="bg-surface-container-low/50 p-md rounded-lg flex flex-col gap-1">
+        <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Project Manager</span>
+        <div className="mt-1 flex items-center gap-2">
+          {manager ? <Avatar person={manager} size="sm" /> : <span className="material-symbols-outlined text-outline">account_circle</span>}
+          <span className="text-sm font-semibold text-on-surface">{manager?.fullName || project.projectManagerName || "Unassigned"}</span>
+        </div>
       </div>
     </div>
   );
+}
+
+function normalizePercent(value?: number | null) {
+  if (value == null) return null;
+  return Math.min(Math.round(value > 1 ? value : value * 100), 100);
 }
 
 function OverallProgress({ 

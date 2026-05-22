@@ -113,6 +113,16 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        if (!await _scope.CanAccessDepartmentAsync(dto.DepartmentId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!await IsUserInDepartmentOrganizationAsync(dto.ProjectManagerId, dto.DepartmentId, ct))
+        {
+            return BadRequest(new { message = "Project manager must belong to the selected department organization." });
+        }
+
         return Ok(await Mediator.Send(new UpdateProjectCommand(id, dto), ct));
     }
 
@@ -305,7 +315,8 @@ public class ProjectsController : BaseApiController
 
         return await _db.Users.AnyAsync(user =>
             user.Id == parsedUserId &&
-            (user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
+            ((user.OrganizationId.HasValue && user.OrganizationId == organizationId) ||
+             user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
              user.Department != null && user.Department.OrganizationId == organizationId),
             ct);
     }
