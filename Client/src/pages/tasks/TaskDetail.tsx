@@ -4,7 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
-import { Avatar, AvatarStack, GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
+import { AvatarStack, GlassCard, GradientButton, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { DependencyManagement } from "./DependencyManagement";
 
 interface TaskDetailProps {
@@ -340,6 +340,9 @@ export function TaskDetail({
                         <span className="text-sm font-semibold text-slate-800 truncate">{subtask.title}</span>
                         <PriorityBadge priority={subtask.priority} />
                       </div>
+                      {subtask.description && (
+                        <p className="text-xs text-slate-500 mb-2 line-clamp-2">{subtask.description}</p>
+                      )}
                       <div className="flex items-center gap-3 text-xs text-slate-500">
                         {subAssignedUsersResolved.length > 0 && (
                           <span className="flex items-center gap-1">
@@ -510,13 +513,18 @@ export function TaskDetail({
 }
 
 function DetailItem({ icon, label, value, avatars }: { icon: string; label: string; value: string; avatars?: { id?: string; fullName?: string | null }[] | null }) {
+  const avatarPeople = avatars?.map(person => ({
+    ...person,
+    fullName: person.fullName ?? undefined,
+  }));
+
   return (
     <div className="flex items-start gap-2 p-2 rounded-lg">
       <span className="material-symbols-outlined text-slate-400 text-lg mt-0.5">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="text-[10px] font-semibold text-slate-400 uppercase">{label}</div>
         <div className="text-sm font-medium text-slate-700 flex items-start gap-1.5">
-          {avatars && avatars.length > 0 && <AvatarStack people={avatars} size="xs" />}
+          {avatarPeople && avatarPeople.length > 0 && <AvatarStack people={avatarPeople} size="xs" />}
           <span className="wrap-break-word">{value}</span>
         </div>
       </div>

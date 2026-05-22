@@ -59,6 +59,7 @@ export function TaskFormModal({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (!form.projectId) return;
     
     // Build clean submission object
     const submission: Record<string, unknown> = {
@@ -71,11 +72,8 @@ export function TaskFormModal({
       assignedToUserIds: form.assignedToUserIds,
     };
     
-    // Include projectId only if it has a value
-    console.log("subp: " + submission.projectId + "p: "+ form.projectId )
-    if (form.projectId && form.projectId !== "") {
+    if (form.projectId) {
       submission.projectId = form.projectId;
-      
     }
     
     // Include milestoneId only if it has a value
@@ -138,7 +136,10 @@ export function TaskFormModal({
               label="Project"
               value={form.projectId}
               onChange={(v) => setForm({ ...form, projectId: v, milestoneId: "" })}
-              options={projects.map(p => ({ value: p.id, label: p.name }))}
+              options={[
+                { value: "", label: "Select project" },
+                ...projects.map(p => ({ value: p.id, label: p.name })),
+              ]}
             />
 
             <SelectF
@@ -166,7 +167,7 @@ export function TaskFormModal({
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">
               Cancel
             </button>
-            <button type="submit" className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors">
+            <button type="submit" disabled={!form.projectId} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {initialData ? "Update Task" : "Create Task"}
             </button>
           </div>

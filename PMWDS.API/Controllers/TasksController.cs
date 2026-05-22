@@ -137,7 +137,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await CanAccessTaskAsync(id, ct))
+        if (!await CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -421,7 +421,7 @@ public class TasksController : BaseApiController
         if (parentTask == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct))
+        if (!await CanWorkOnTaskAsync(parentTask.Id, ct))
         {
             return Forbid();
         }
@@ -489,7 +489,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await CanAccessTaskAsync(id, ct))
+        if (!await CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -680,6 +680,33 @@ public class TasksController : BaseApiController
         return projectId != Guid.Empty && await _scope.CanManageProjectAsync(projectId, ct);
     }
 
+    private async Task<bool> CanWorkOnTaskAsync(Guid taskId, CancellationToken ct)
+    {
+        var currentUserId = _currentUser.UserId;
+        var task = await _db.Tasks
+            .Where(item => item.Id == taskId)
+            .Select(item => new
+            {
+                item.ProjectId,
+                item.AssignedToUserId,
+                HasAssignment = currentUserId != null && item.Assignments.Any(assignment => assignment.UserId == currentUserId)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (task == null)
+        {
+            return false;
+        }
+
+        if (await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(currentUserId) &&
+            (task.AssignedToUserId == currentUserId || task.HasAssignment);
+    }
+
     private async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
     {
         var scopedProjects = await _scope.ScopeProjectsAsync(
@@ -707,7 +734,8 @@ public class TasksController : BaseApiController
 
         return await _db.Users.AnyAsync(user =>
             user.Id == parsedUserId &&
-            (user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
+            (user.OrganizationId == organizationId ||
+             user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
              user.Department != null && user.Department.OrganizationId == organizationId),
             ct);
     }

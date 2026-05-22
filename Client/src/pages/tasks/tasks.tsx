@@ -280,9 +280,23 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
         // Build the task data with explicit IDs from the current context
         const taskData: Record<string, unknown> = { ...form };
         
-        // CRITICAL: Always add projectId from the current selected project
+        if (taskData.projectId === "") {
+            delete taskData.projectId;
+        }
+
         if (selectedProjectId) {
             taskData.projectId = selectedProjectId;
+        }
+
+        if (!taskData.projectId) {
+            const milestoneProjectId = selectedMilestone?.projectId;
+            if (milestoneProjectId) {
+                taskData.projectId = milestoneProjectId;
+            }
+        }
+
+        if (!taskData.projectId) {
+            throw new Error("Select a project before saving the task.");
         }
         
         // Add milestoneId if a specific milestone is selected (and not "unassigned")
