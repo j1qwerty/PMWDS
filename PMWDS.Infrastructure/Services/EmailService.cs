@@ -1,4 +1,5 @@
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using MimeKit;
 using PMWDS.Application.Interfaces.Services;
 using Microsoft.Extensions.Options;
@@ -24,9 +25,12 @@ public class EmailService : IEmailService
         using var client = new SmtpClient();
         await client.ConnectAsync(
         _settings.Host, _settings.Port,
-        _settings.UseSsl, ct);
-        await client.AuthenticateAsync(
-        _settings.Username, _settings.Password, ct);
+        GetSocketOptions(), ct);
+        if (!string.IsNullOrWhiteSpace(_settings.Username))
+        {
+            await client.AuthenticateAsync(
+            _settings.Username, _settings.Password, ct);
+        }
         await client.SendAsync(message, ct);
         await client.DisconnectAsync(true, ct);
     }
@@ -52,10 +56,18 @@ public class EmailService : IEmailService
         using var client = new SmtpClient();
         await client.ConnectAsync(
             _settings.Host, _settings.Port,
-            _settings.UseSsl, ct);
-        await client.AuthenticateAsync(
-            _settings.Username, _settings.Password, ct);
+            GetSocketOptions(), ct);
+        if (!string.IsNullOrWhiteSpace(_settings.Username))
+        {
+            await client.AuthenticateAsync(
+                _settings.Username, _settings.Password, ct);
+        }
         await client.SendAsync(message, ct);
         await client.DisconnectAsync(true, ct);
     }
+
+    private SecureSocketOptions GetSocketOptions()
+        => _settings.UseSsl
+            ? SecureSocketOptions.StartTlsWhenAvailable
+            : SecureSocketOptions.Auto;
 }
