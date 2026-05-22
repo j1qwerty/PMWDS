@@ -58,8 +58,8 @@ export function MilestoneDetail({
                 )}
                 {project && (
                   <span className="text-xs text-slate-500 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">rocket_launch</span>
-                    {project.name}
+                    <span className="material-symbols-outlined text-xs shrink-0">rocket_launch</span>
+                    <span className="break-words min-w-0">{project.name}</span>
                   </span>
                 )}
               </div>
@@ -142,7 +142,7 @@ export function MilestoneDetail({
             <span className="material-symbols-outlined text-slate-400 text-lg">rocket_launch</span>
             <div>
               <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Project</div>
-              <div className="text-sm font-medium text-slate-700 truncate">{project?.name || "N/A"}</div>
+              <div className="text-sm font-medium text-slate-700 break-words min-w-0">{project?.name || "N/A"}</div>
             </div>
           </div>
         </div>

@@ -39,7 +39,7 @@ export function DashboardPage() {
       .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
-        if (notificationsResult.status === "fulfilled") setUnread(notificationsResult.value);
+        if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
         if (usersResult.status === "fulfilled") setUsers(usersResult.value);
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
@@ -193,7 +193,13 @@ export function DashboardPage() {
             <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} title="High Risk Projects" />
           </div>
           <div className="lg:col-span-1">
-            <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+            try {
+              <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+              
+            } catch (error) {
+              
+            }
+            
           </div>
         </div>
 
