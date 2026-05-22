@@ -28,13 +28,14 @@ export function useRoleAccess() {
   return {
     roles,
     isAdmin: canUseRole(roles, ["SuperAdmin"]),
-    canManageDepartments: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead"]),
-    canManageProjects: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead"]),
-    canManageMilestones: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"]),
-    canManageTasks: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"]),
-    canManageUsers: canUseRole(roles, ["SuperAdmin"]),
-    canBroadcast: canUseRole(roles, ["SuperAdmin", "DepartmentHead", "ProjectManager"]),
-    canViewManagementData: canUseRole(roles, ["SuperAdmin", "ProjectManager", "DepartmentHead"]),
+    isDirector: canUseRole(roles, ["Director"]),
+    canManageDepartments: canUseRole(roles, ["SuperAdmin", "Director", "DepartmentHead"]),
+    canManageProjects: canUseRole(roles, ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead"]),
+    canManageMilestones: canUseRole(roles, ["SuperAdmin", "Director", "ProjectManager"]),
+    canManageTasks: canUseRole(roles, ["SuperAdmin", "Director", "ProjectManager"]),
+    canManageUsers: canUseRole(roles, ["SuperAdmin", "Director"]),
+    canBroadcast: canUseRole(roles, ["SuperAdmin", "Director", "DepartmentHead"]),
+    canViewManagementData: canUseRole(roles, ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead"]),
     hasAny: (allow: Role[]) => canUseRole(roles, allow),
   };
 }

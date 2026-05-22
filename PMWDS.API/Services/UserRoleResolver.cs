@@ -24,6 +24,11 @@ public static class UserRoleResolver
             fallback.Add("SuperAdmin");
         }
 
+        if (user.JobTitle.Contains("Director", StringComparison.OrdinalIgnoreCase))
+        {
+            fallback.Add("Director");
+        }
+
         if (user.JobTitle.Contains("ProjectManager", StringComparison.OrdinalIgnoreCase) ||
             user.JobTitle.Contains("Manager", StringComparison.OrdinalIgnoreCase))
         {
@@ -34,11 +39,6 @@ public static class UserRoleResolver
             user.JobTitle.Contains("Head", StringComparison.OrdinalIgnoreCase))
         {
             fallback.Add("DepartmentHead");
-        }
-
-        if (user.JobTitle.Contains("Lead", StringComparison.OrdinalIgnoreCase))
-        {
-            fallback.Add("TeamLead");
         }
 
         if (fallback.Count == 0)

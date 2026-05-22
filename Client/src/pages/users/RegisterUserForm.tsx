@@ -105,9 +105,9 @@ export function RegisterUserForm({ departments, organizations, onSubmit }: Regis
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
             <option>SuperAdmin</option>
+            <option>Director</option>
             <option>ProjectManager</option>
             <option>DepartmentHead</option>
-            <option>TeamLead</option>
             <option>TeamMember</option>
             <option>Viewer</option>
           </select>

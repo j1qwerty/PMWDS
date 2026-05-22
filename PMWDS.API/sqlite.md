@@ -205,7 +205,7 @@ Response: { "token": "jwt...", "expiry": "...", "userId": "...", "fullName": "..
 - "SuperAdmin" → SuperAdmin role
 - Contains "ProjectManager" or "Manager" → ProjectManager role
 - Contains "DepartmentHead" or "Head" → DepartmentHead role
-- Contains "Lead" → TeamLead role
+- Contains "Director" → Director role
 - Default → TeamMember role
 
 **JWT Settings:**

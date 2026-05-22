@@ -1,8 +1,8 @@
 export type Role =
   | "SuperAdmin"
+  | "Director"
   | "ProjectManager"
   | "DepartmentHead"
-  | "TeamLead"
   | "TeamMember"
   | "Viewer";
 

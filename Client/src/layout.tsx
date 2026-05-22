@@ -167,18 +167,18 @@ function Layout({ children }: { children: React.ReactNode }) {
       {
         title: "Team",
         items: [
-          { path: "/organizationStructure", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          { path: "/departmentsPage", label: "Departments", icon: "departments", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          { path: "/users", label: "Users", icon: "users", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
+          { path: "/organizationStructure", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "Director", "DepartmentHead", "ProjectManager", "TeamMember"] },
+          { path: "/departmentsPage", label: "Departments", icon: "departments", roles: ["SuperAdmin", "Director", "DepartmentHead", "ProjectManager", "TeamMember"] },
+          { path: "/users", label: "Users", icon: "users", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember"] },
           { path: "/profiles", label: "Profiles", icon: "users", roles: [] },
-          { path: "/skills", label: "Skills", icon: "skill", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"] },
+          { path: "/skills", label: "Skills", icon: "skill", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember"] },
         ],
       },
       {
         title: "Tools",
         items: [
-          { path: "/reports", label: "Reports", icon: "reports", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
-          { path: "/ai", label: "AI Insights", icon: "ai", roles: ["SuperAdmin", "ProjectManager", "DepartmentHead"] },
+          { path: "/reports", label: "Reports", icon: "reports", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead"] },
+          { path: "/ai", label: "AI Insights", icon: "ai", roles: [] },
         ],
       },
       {

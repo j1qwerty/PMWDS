@@ -137,9 +137,9 @@ public static class SeedData
         var specs = new[]
         {
             new RoleSpec("SuperAdmin", "Full administrative access.", 100, new[] { "AUTH.MANAGE", "USERS.MANAGE", "ROLES.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "INTEGRATIONS.MANAGE", "REPORTS.MANAGE", "SYSTEM.ADMIN", "SYSTEM.DATABASE.VIEW", "AI.SETTINGS.MANAGE", "USERS.PROFILE_PICTURE.MANAGE", "USERS.DEPARTMENTS.MANAGE", "ACTIVITY_LOGS.VIEW" }),
-            new RoleSpec("ProjectManager", "Manages projects and project teams.", 80, new[] { "PROJECTS.MANAGE", "TASKS.MANAGE", "REPORTS.MANAGE", "KNOWLEDGE.MANAGE" }),
+            new RoleSpec("Director", "Organization administrator with full access inside one organization.", 90, new[] { "USERS.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "REPORTS.MANAGE", "USERS.PROFILE_PICTURE.MANAGE", "USERS.DEPARTMENTS.MANAGE", "ACTIVITY_LOGS.VIEW" }),
+            new RoleSpec("ProjectManager", "Manages assigned projects and project teams.", 80, new[] { "PROJECTS.MANAGE", "TASKS.MANAGE", "REPORTS.MANAGE", "KNOWLEDGE.MANAGE" }),
             new RoleSpec("DepartmentHead", "Manages department capacity and planning.", 70, new[] { "USERS.MANAGE", "PROJECTS.MANAGE", "REPORTS.MANAGE" }),
-            new RoleSpec("TeamLead", "Coordinates delivery for a team.", 60, new[] { "TASKS.MANAGE", "KNOWLEDGE.MANAGE" }),
             new RoleSpec("TeamMember", "Contributes to project execution.", 40, new[] { "TASKS.MANAGE" }),
             new RoleSpec("Viewer", "Read-only access.", 10, Array.Empty<string>())
         };
@@ -899,13 +899,13 @@ public static class SeedData
         return new[]
         {
             new UserSpec("admin@pmwds.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", Dept("ENG"), AvailabilityStatus.Available, 100, 92, 26, 0.08),
-            new UserSpec("manager@pmwds.com", "Priya", "Menon", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new UserSpec("director@pmwds.com", "Priya", "Menon", "DIR001", "Director", "Director", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new UserSpec("manager@pmwds.com", "Dev", "Kapoor", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
             new UserSpec("head@pmwds.com", "Rohan", "Iyer", "DH001", "DepartmentHead", "DepartmentHead", Dept("ENG"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
-            new UserSpec("lead@pmwds.com", "Nisha", "Rao", "TL001", "TeamLead", "TeamLead", Dept("OPS"), AvailabilityStatus.Available, 82, 80, 42, 0.18),
             new UserSpec("member@pmwds.com", "Karan", "Verma", "TM001", "TeamMember", "TeamMember", Dept("ENG"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
             new UserSpec("viewer@pmwds.com", "Meera", "Nair", "VW001", "Viewer", "Viewer", Dept("STR"), AvailabilityStatus.Available, 100, 60, 18, 0.05),
             new UserSpec("ananya.patel@pmwds.com", "Ananya", "Patel", "ENG101", "Senior Engineer", "TeamMember", Dept("ENG"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
-            new UserSpec("vikram.singh@northwind-labs.example", "Vikram", "Singh", "NDL201", "Delivery Lead", "TeamLead", Dept("OPS"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
+            new UserSpec("vikram.singh@northwind-labs.example", "Vikram", "Singh", "NDL201", "Director", "Director", Dept("OPS"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
             new UserSpec("sneha.kulkarni@contoso-transform.example", "Sneha", "Kulkarni", "CTO301", "Strategy Analyst", "TeamMember", Dept("STR"), AvailabilityStatus.Available, 92, 76, 35, 0.11)
         };
     }

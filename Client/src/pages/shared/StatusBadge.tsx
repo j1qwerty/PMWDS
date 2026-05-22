@@ -31,8 +31,8 @@ export function StatusButtons({
     <div className="flex flex-wrap gap-2">
       {statuses.map((status) => {
         const canUpdate = variant === "task"
-          ? hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead")
-          : hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+          ? hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead")
+          : hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead");
         const styles = statusStyles[status] || statusStyles.NotStarted;
         const isActive = currentStatus === status;
 

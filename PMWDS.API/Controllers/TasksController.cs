@@ -69,7 +69,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "TeamLead")]
+    [Authorize(Policy = "TaskEditor")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -323,7 +323,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("subtasks/{id:guid}")]
-    [Authorize(Policy = "TeamLead")]
+    [Authorize(Policy = "TaskEditor")]
     public async Task<IActionResult> UpdateSubtask(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -441,7 +441,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("dependencies/{depId:guid}")]
-    [Authorize(Policy = "TeamLead")]
+    [Authorize(Policy = "TaskEditor")]
     public async Task<IActionResult> UpdateDependency(Guid depId, [FromBody] UpdateDependencyDto dto, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);

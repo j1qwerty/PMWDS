@@ -88,8 +88,9 @@ builder.Services
 builder.Services.AddAuthorization(opt =>
 {
     opt.AddPolicy("SuperAdmin", p => p.RequireRole("SuperAdmin"));
-    opt.AddPolicy("Manager", p => p.RequireRole("SuperAdmin", "ProjectManager", "DepartmentHead"));
-    opt.AddPolicy("TeamLead", p => p.RequireRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead"));
+    opt.AddPolicy("Director", p => p.RequireRole("SuperAdmin", "Director"));
+    opt.AddPolicy("Manager", p => p.RequireRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead"));
+    opt.AddPolicy("TaskEditor", p => p.RequireRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead"));
     opt.AddPolicy("Authenticated", p => p.RequireAuthenticatedUser());
 });
 

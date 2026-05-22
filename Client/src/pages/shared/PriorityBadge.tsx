@@ -23,7 +23,7 @@ export function PriorityButtons({
   return (
     <div className="flex flex-wrap gap-2">
       {priorities.map((priority) => {
-        const canUpdate = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead", "TeamLead");
+        const canUpdate = hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead");
         const styles = priorityStyles[priority] || priorityStyles.Low;
         const isActive = currentPriority === priority;
 

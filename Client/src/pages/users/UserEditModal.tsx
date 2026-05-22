@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, Role, User } from "../../types";
 import { Avatar } from "../shared";
 
-const roleOptions: Role[] = ["Viewer", "TeamMember", "TeamLead", "DepartmentHead", "ProjectManager", "SuperAdmin"];
+const roleOptions: Role[] = ["Viewer", "TeamMember", "DepartmentHead", "ProjectManager", "Director", "SuperAdmin"];
 const availabilityOptions = ["Available", "Busy", "Away", "InMeeting", "Offline", "DeepWork"];
 
 type UserEditModalProps = {

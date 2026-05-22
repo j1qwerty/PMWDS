@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { useAuth } from "../../auth";
 import type { Department, User } from "../../types";
 
-const adminRoles = ["SuperAdmin", "ProjectManager", "DepartmentHead"] as const;
+const globalAdminRoles = ["SuperAdmin"] as const;
 
 export function useUserOrganization(users: User[], departments: Department[]) {
   const { auth, hasRole } = useAuth();
 
-  const isOrgAdmin = hasRole(...adminRoles);
+  const isOrgAdmin = hasRole(...globalAdminRoles);
 
   const userOrganizationId = useMemo(() => {
     if (isOrgAdmin || !auth) return null;
