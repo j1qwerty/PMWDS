@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { SkillRecord, User } from "../../types";
@@ -19,11 +19,27 @@ interface SelectedSkill {
 
 export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkillsPanelProps) {
   const { auth, hasRole } = useAuth();
-  const isAdmin = hasRole("SuperAdmin");
+  const canDeactivate = hasRole("SuperAdmin", "Director");
   const [selectedUser, setSelectedUser] = useState(users[0]?.id || "");
   const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
+  const [availabilityStatus, setAvailabilityStatus] = useState("");
 
   const selectedUserData = users.find(u => u.id === selectedUser);
+  const existingSkillIds = useMemo(() => {
+    return new Set(selectedUserData?.skillDetails?.map((skill) => skill.skillId) ?? []);
+  }, [selectedUserData]);
+
+  useEffect(() => {
+    if (!selectedUserData) return;
+    setSelectedSkills(
+      selectedUserData.skillDetails?.map((skill) => ({
+        skillId: skill.skillId,
+        proficiencyLevel: skill.proficiencyLevel,
+        experienceMonths: skill.experienceMonths,
+      })) ?? []
+    );
+    setAvailabilityStatus(selectedUserData.availabilityStatus || "Available");
+  }, [selectedUserData]);
 
   const toggleSkill = (skillId: string) => {
     setSelectedSkills(prev => {
@@ -97,7 +113,7 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Select User</label>
           <select
             value={selectedUser}
-            onChange={(e) => { setSelectedUser(e.target.value); setSelectedSkills([]); }}
+            onChange={(e) => { setSelectedUser(e.target.value); }}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
             {users.map((user) => (
@@ -121,10 +137,13 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Availability Status</label>
           <select
-            onChange={(e) => e.target.value && handleAvailabilityChange(e.target.value)}
+            value={availabilityStatus}
+            onChange={(e) => {
+              setAvailabilityStatus(e.target.value);
+              if (e.target.value) void handleAvailabilityChange(e.target.value);
+            }}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
-            <option value="">Change status...</option>
             <option>Available</option>
             <option>Busy</option>
             <option>Away</option>
@@ -150,6 +169,9 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
                 }`}
               >
                 {skill.name}
+                {existingSkillIds.has(skill.id) && (
+                  <span className="ml-1 text-[10px] opacity-80">assigned</span>
+                )}
                 {selectedSkills.find(s => s.skillId === skill.id) && (
                   <span className="material-symbols-outlined text-sm ml-1 align-middle">check</span>
                 )}
@@ -242,9 +264,9 @@ export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkil
         <div className="flex gap-2 pt-2">
           <GradientButton variant="ghost" onClick={handleAddSkills} disabled={selectedSkills.length === 0}>
             <span className="material-symbols-outlined text-sm">add</span>
-            Add {selectedSkills.length > 0 ? `${selectedSkills.length} Skill(s)` : "Skills"}
+            Save {selectedSkills.length > 0 ? `${selectedSkills.length} Skill(s)` : "Skills"}
           </GradientButton>
-          {isAdmin && (
+          {canDeactivate && (
             <GradientButton variant="danger" onClick={handleDeactivate}>
               <span className="material-symbols-outlined text-sm">person_off</span>
               Deactivate User

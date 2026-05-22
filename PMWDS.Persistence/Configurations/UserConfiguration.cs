@@ -36,6 +36,10 @@ public class UserConfiguration
         .WithOne(p => p.User)
         .HasForeignKey<UserProfile>(p => p.UserId)
         .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(e => e.Organization)
+        .WithMany()
+        .HasForeignKey(e => e.OrganizationId)
+        .OnDelete(DeleteBehavior.Restrict);
         b.HasMany(e => e.Roles)
         .WithMany(r => r.Users)
         .UsingEntity(j => j.ToTable("UserRoles"));
@@ -51,6 +55,7 @@ public class UserConfiguration
 
         b.HasIndex(e => e.EmployeeCode).IsUnique();
         b.HasIndex(e => e.Email).IsUnique();
+        b.HasIndex(e => e.OrganizationId);
         b.HasIndex(e => e.DepartmentId);
     }
 }

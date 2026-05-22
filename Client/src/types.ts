@@ -24,6 +24,7 @@ export interface User {
   email: string;
   profilePictureUrl?: string | null;
   jobTitle?: string | null;
+  organizationId?: string | null;
   department?: string | null;
   departmentId?: string | null;
   departments: UserDepartmentAssignment[];
@@ -39,6 +40,15 @@ export interface User {
   lastLoginDate?: string | null;
   roles: string[];
   skills: string[];
+  skillDetails?: UserSkillAssignment[];
+}
+
+export interface UserSkillAssignment {
+  skillId: string;
+  skillName: string;
+  proficiencyLevel: number;
+  experienceMonths: number;
+  lastUsed?: string | null;
 }
 
 export interface UserDepartmentAssignment {

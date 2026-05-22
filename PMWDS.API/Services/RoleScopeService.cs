@@ -39,8 +39,9 @@ public class RoleScopeService
             .ToListAsync(ct);
 
         var primaryOrgId = await _db.Users
-            .Where(user => user.Id == userId && user.Department != null && user.Department.OrganizationId.HasValue)
-            .Select(user => user.Department!.OrganizationId)
+            .Where(user => user.Id == userId &&
+                (user.OrganizationId.HasValue || (user.Department != null && user.Department.OrganizationId.HasValue)))
+            .Select(user => user.OrganizationId ?? user.Department!.OrganizationId)
             .FirstOrDefaultAsync(ct);
 
         if (primaryOrgId.HasValue && !assignedOrgIds.Contains(primaryOrgId.Value))
@@ -126,6 +127,7 @@ public class RoleScopeService
         {
             var departmentIds = await GetDepartmentIdsAsync(ct);
             return query.Where(user =>
+                (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
                 user.DepartmentAssignments.Any(assignment => departmentIds.Contains(assignment.DepartmentId)) ||
                 (user.DepartmentId.HasValue && departmentIds.Contains(user.DepartmentId.Value)) ||
                 user.Roles.Any(role => (role.Name == "Director" || role.Name == "DepartmentHead") &&
@@ -135,6 +137,7 @@ public class RoleScopeService
         }
 
         return query.Where(user =>
+            (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
             user.DepartmentAssignments.Any(assignment =>
                 assignment.Department.OrganizationId.HasValue &&
                 organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||

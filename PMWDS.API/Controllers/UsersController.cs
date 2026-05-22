@@ -118,6 +118,11 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
+        if (!await IsOrganizationInScopeAsync(dto.OrganizationId, ct))
+        {
+            return Forbid();
+        }
+
         user.UpdateProfile(
             dto.FirstName,
             dto.LastName,
@@ -125,7 +130,7 @@ public class UsersController : BaseApiController
             dto.JobTitle ?? string.Empty,
             dto.ProfilePictureUrl);
 
-        await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, ct);
+        await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, dto.OrganizationId, ct);
 
         var profile = user.Profile ?? UserProfile.Create(user.Id, null, dto.JobTitle, null, null, null, null);
         profile.UpdateProfileDetails(
@@ -184,6 +189,11 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
+        if (!await IsOrganizationInScopeAsync(dto.OrganizationId, ct))
+        {
+            return Forbid();
+        }
+
         var roleName = string.IsNullOrWhiteSpace(dto.Role) ? "Viewer" : dto.Role.Trim();
         if (!_scope.IsSuperAdmin && roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
         {
@@ -213,7 +223,12 @@ public class UsersController : BaseApiController
 
         await _uow.Users.AddAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
-        await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, ct);
+        var requestedOrganizationId = dto.OrganizationId ?? await GetOrganizationForDepartmentAsync(dto.DepartmentId, ct);
+        if (requestedOrganizationId.HasValue)
+        {
+            user.AssignToOrganization(requestedOrganizationId.Value);
+        }
+        await AssignDepartmentsAsync(user, dto.DepartmentIds, dto.DepartmentId, dto.OrganizationId, ct);
 
         var profile = UserProfile.Create(
             user.Id,
@@ -260,7 +275,7 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
-        await AssignDepartmentsAsync(user, req.DepartmentIds, req.PrimaryDepartmentId, ct);
+        await AssignDepartmentsAsync(user, req.DepartmentIds, req.PrimaryDepartmentId, null, ct);
         await _uow.SaveChangesAsync(ct);
 
         var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
@@ -495,10 +510,20 @@ public class UsersController : BaseApiController
     public async Task<IActionResult> GetWorkload(
         [FromQuery] Guid? departmentId,
         CancellationToken ct)
-        => Ok(await Mediator.Send(new GetWorkloadDistributionQuery(departmentId), ct));
+    {
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var scopedUsers = await (await _scope.ScopeUsersAsync(UserGraph(includeSkills: true), ct))
+            .Select(user => user.Id)
+            .ToListAsync(ct);
+        return Ok(await Mediator.Send(new GetWorkloadDistributionQuery(departmentId, scopedUsers), ct));
+    }
 
     [HttpPatch("{id}/deactivate")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Director")]
     public async Task<IActionResult> Deactivate(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -512,6 +537,11 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
+        if (!await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
+        }
+
         user.Deactivate();
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
@@ -522,6 +552,7 @@ public class UsersController : BaseApiController
         ApplicationUser user,
         IReadOnlyCollection<Guid>? departmentIds,
         Guid? primaryDepartmentId,
+        Guid? organizationId,
         CancellationToken ct)
     {
         var requested = (departmentIds ?? Array.Empty<Guid>())
@@ -538,6 +569,10 @@ public class UsersController : BaseApiController
         {
             _db.UserDepartments.RemoveRange(existing);
             user.ClearPrimaryDepartment();
+            if (organizationId.HasValue)
+            {
+                user.AssignToOrganization(organizationId.Value);
+            }
             return;
         }
 
@@ -577,6 +612,15 @@ public class UsersController : BaseApiController
         if (primary != Guid.Empty)
         {
             user.AssignToDepartment(primary);
+            var primaryOrganizationId = await GetOrganizationForDepartmentAsync(primary, ct);
+            if (primaryOrganizationId.HasValue)
+            {
+                user.AssignToOrganization(primaryOrganizationId.Value);
+            }
+        }
+        else if (organizationId.HasValue)
+        {
+            user.AssignToOrganization(organizationId.Value);
         }
     }
 
@@ -584,6 +628,7 @@ public class UsersController : BaseApiController
     {
         var query = _db.Users
             .Include(u => u.Department)
+            .Include(u => u.Organization)
             .Include(u => u.DepartmentAssignments)
             .ThenInclude(d => d.Department)
             .ThenInclude(d => d!.Organization)
@@ -631,6 +676,29 @@ public class UsersController : BaseApiController
                 ct);
 
         return validCount == requested.Count;
+    }
+
+    private async Task<bool> IsOrganizationInScopeAsync(Guid? organizationId, CancellationToken ct)
+    {
+        if (!organizationId.HasValue || _scope.IsSuperAdmin)
+        {
+            return true;
+        }
+
+        return await _scope.CanAccessOrganizationAsync(organizationId.Value, ct);
+    }
+
+    private async Task<Guid?> GetOrganizationForDepartmentAsync(Guid? departmentId, CancellationToken ct)
+    {
+        if (!departmentId.HasValue)
+        {
+            return null;
+        }
+
+        return await _db.Departments
+            .Where(department => department.Id == departmentId.Value)
+            .Select(department => department.OrganizationId)
+            .FirstOrDefaultAsync(ct);
     }
 }
 

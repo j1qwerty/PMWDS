@@ -16,6 +16,7 @@ public class ApplicationUser : AuditableEntity
     public string? PasswordResetTokenHash { get; private set; }
     public DateTime? PasswordResetTokenExpiresAt { get; private set; }
     // Organization
+    public Guid? OrganizationId { get; private set; }
     public Guid? DepartmentId { get; private set; }
     public string JobTitle { get; private set; } = string.Empty;
     public string EmployeeCode { get; private set; } = string.Empty;
@@ -28,6 +29,7 @@ public class ApplicationUser : AuditableEntity
     public DateTime? LastAIScoreUpdate { get; private set; }
     // Navigation
     public Department? Department { get; private set; }
+    public Organization? Organization { get; private set; }
     public UserProfile? Profile { get; private set; }
     public ICollection<Role> Roles { get; private set; } = new List<Role>();
     public ICollection<UserDepartment> DepartmentAssignments { get; private set; } = new List<UserDepartment>();
@@ -75,6 +77,7 @@ public class ApplicationUser : AuditableEntity
         }
     }
     public void AssignToDepartment(Guid departmentId) => DepartmentId = departmentId;
+    public void AssignToOrganization(Guid organizationId) => OrganizationId = organizationId;
     public void ClearPrimaryDepartment() => DepartmentId = null;
     public void UpdateAvailability(
     AvailabilityStatus status, double percentage)

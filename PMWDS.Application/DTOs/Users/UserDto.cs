@@ -10,6 +10,7 @@ public record UserDto(
  string Email,
  string? ProfilePictureUrl,
  string? JobTitle,
+ Guid? OrganizationId,
  string? Department,
  Guid? DepartmentId,
  List<UserDepartmentDto> Departments,
@@ -24,7 +25,8 @@ public record UserDto(
  bool IsActive,
  DateTime? LastLoginDate,
  List<string> Roles,
- List<string>? Skills)
+ List<string>? Skills,
+ List<UserSkillDto>? SkillDetails)
 {
     public static UserDto FromEntity(
     ApplicationUser u,
@@ -37,6 +39,7 @@ public record UserDto(
     Email: u.Email,
     ProfilePictureUrl: u.ProfilePictureUrl,
     JobTitle: u.Profile?.JobTitle ?? u.JobTitle,
+    OrganizationId: u.OrganizationId ?? u.Department?.OrganizationId,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
     Departments: MapDepartments(u),
@@ -53,7 +56,8 @@ public record UserDto(
     LastLoginDate: null,
     Roles: roles?.ToList()
     ?? new(),
-    Skills: null
+    Skills: null,
+    SkillDetails: null
     );
     public static UserDto FromEntityWithSkills(
     ApplicationUser u,
@@ -66,6 +70,7 @@ public record UserDto(
     Email: u.Email,
     ProfilePictureUrl: u.ProfilePictureUrl,
     JobTitle: u.Profile?.JobTitle ?? u.JobTitle,
+    OrganizationId: u.OrganizationId ?? u.Department?.OrganizationId,
     Department: u.Department?.Name,
     DepartmentId: u.DepartmentId,
     Departments: MapDepartments(u),
@@ -84,6 +89,14 @@ public record UserDto(
     ?? new(),
     Skills: u.Skills
     .Select(s => s.Skill?.Name ?? "")
+    .ToList(),
+    SkillDetails: u.Skills
+    .Select(s => new UserSkillDto(
+        s.SkillId,
+        s.Skill?.Name ?? "",
+        s.ProficiencyLevel,
+        s.ExperienceMonths,
+        s.LastUsed))
     .ToList()
     );
 
@@ -133,6 +146,7 @@ public record RegisterUserDto(
  string Email,
  string Password,
  string? JobTitle,
+ Guid? OrganizationId,
  Guid? DepartmentId,
  List<Guid>? DepartmentIds,
  string Role = "Viewer");
@@ -141,6 +155,7 @@ public record UpdateUserDto(
  string LastName,
  string? JobTitle,
  string? PhoneNumber,
+ Guid? OrganizationId,
  Guid? DepartmentId,
  List<Guid>? DepartmentIds,
  double AvailabilityPercentage,

@@ -14,6 +14,11 @@ type UserEditModalProps = {
 };
 
 export function UserEditModal({ user, departments, organizations, onClose, onSubmit }: UserEditModalProps) {
+  const initialOrganizationId =
+    user.organizationId ??
+    user.departments?.find((item) => item.organizationId)?.organizationId ??
+    departments.find((department) => department.id === user.departmentId)?.organizationId ??
+    "";
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email] = useState(user.email);
@@ -22,6 +27,7 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
   const [availabilityPercentage, setAvailabilityPercentage] = useState(user.availabilityPercentage ?? 100);
   const [departmentIds, setDepartmentIds] = useState<string[]>(user.departments?.map((item) => item.departmentId) ?? (user.departmentId ? [user.departmentId] : []));
   const [primaryDepartmentId, setPrimaryDepartmentId] = useState(user.departmentId ?? user.departments?.find((item) => item.isPrimary)?.departmentId ?? "");
+  const [organizationId, setOrganizationId] = useState(initialOrganizationId);
   const [roles, setRoles] = useState<string[]>(user.roles?.length ? user.roles : ["Viewer"]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -29,11 +35,13 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
 
   const departmentsByOrg = useMemo(
     () =>
-      organizations.map((org) => ({
+      organizations
+        .filter((org) => !organizationId || org.id === organizationId)
+        .map((org) => ({
         org,
         departments: departments.filter((department) => department.organizationId === org.id),
       })),
-    [departments, organizations],
+    [departments, organizationId, organizations],
   );
 
   const toggleDepartment = (departmentId: string) => {
@@ -66,6 +74,7 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
         email,
         jobTitle,
         phoneNumber: "",
+        organizationId: organizationId || null,
         departmentId: primaryDepartmentId || null,
         departmentIds,
         roleNames: roles,
@@ -140,8 +149,25 @@ export function UserEditModal({ user, departments, organizations, onClose, onSub
           <section className="space-y-3">
             <div>
               <h4 className="text-sm font-bold text-slate-800">Organization and departments</h4>
-              <p className="text-xs text-slate-400">Select all departments, then choose the primary department.</p>
+              <p className="text-xs text-slate-400">Select an organization. Departments and the primary department can stay unassigned.</p>
             </div>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Organization</span>
+              <select
+                value={organizationId}
+                onChange={(event) => {
+                  setOrganizationId(event.target.value);
+                  setDepartmentIds([]);
+                  setPrimaryDepartmentId("");
+                }}
+                className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              >
+                <option value="">Unassigned</option>
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>{organization.name}</option>
+                ))}
+              </select>
+            </label>
             <div className="grid gap-3 md:grid-cols-2">
               {departmentsByOrg.map(({ org, departments: orgDepartments }) => (
                 <div key={org.id} className="rounded-xl border border-slate-100 p-3">

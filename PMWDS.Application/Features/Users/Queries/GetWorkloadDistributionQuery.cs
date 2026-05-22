@@ -5,7 +5,8 @@ using PMWDS.Domain.Enums;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Application.Features.Users.Queries;
 public record GetWorkloadDistributionQuery(
- Guid? DepartmentId)
+ Guid? DepartmentId,
+ IReadOnlyCollection<Guid>? UserIds = null)
  : IRequest<WorkloadDistributionDto>;
 public class GetWorkloadDistributionQueryHandler
  : IRequestHandler<
@@ -24,6 +25,10 @@ public class GetWorkloadDistributionQueryHandler
  ? (await _uow.Users.GetByDepartmentAsync(
  req.DepartmentId.Value, ct)).ToList()
  : (await _uow.Users.GetAllAsync(ct)).ToList();
+ if (req.UserIds is not null)
+ {
+ users = users.Where(user => req.UserIds.Contains(user.Id)).ToList();
+ }
  var allTasks = (await _uow.Tasks.GetAllAsync(ct)).ToList();
  var assignments = (await _uow.TaskAssignments.GetAllAsync(ct)).ToList();
  var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);

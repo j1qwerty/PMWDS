@@ -10,6 +10,9 @@ interface RegisterUserFormProps {
 }
 
 export function RegisterUserForm({ departments, organizations, lockedOrganizationId, onSubmit }: RegisterUserFormProps) {
+  const organizationOptions = lockedOrganizationId
+    ? organizations.filter((organization) => organization.id === lockedOrganizationId)
+    : organizations;
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -28,7 +31,12 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit(form);
+    onSubmit({
+      ...form,
+      organizationId: selectedOrganizationId || null,
+      departmentId: form.departmentId || null,
+      departmentIds: form.departmentId ? [form.departmentId] : [],
+    });
     setForm({
       firstName: "",
       lastName: "",
@@ -115,18 +123,24 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
           </select>
         </div>
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Organization</label>
-          <select
-            value={selectedOrganizationId}
-            disabled={Boolean(lockedOrganizationId)}
-            onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "" })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-          >
-            <option value="">None</option>
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>{org.name}</option>
-            ))}
-          </select>
+          {lockedOrganizationId ? (
+            <input
+              value={organizationOptions[0]?.name ?? "Assigned organization"}
+              disabled
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-slate-50 text-slate-500"
+            />
+          ) : (
+            <select
+              value={selectedOrganizationId}
+              onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "" })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+            >
+              <option value="">None</option>
+              {organizations.map((org) => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Department</label>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, SkillRecord, User, WorkloadReport } from "../../types";
@@ -24,6 +24,7 @@ export function UsersPage() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [workload, setWorkload] = useState<WorkloadReport | null>(null);
+  const [workloadDepartmentId, setWorkloadDepartmentId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"directory" | "workload" | "manage">("directory");
@@ -143,7 +144,8 @@ export function UsersPage() {
             departments={departments}
             organizations={organizations}
             token={auth?.token ?? ""}
-            canUploadPictures={isAdmin}
+          canUploadPictures={isAdmin}
+          showOrganizationFilter={isAdmin}
             canManageUsers={canManageUsers}
             onEditUser={setEditingUser}
             onDeleteUser={setDeletingUser}
@@ -155,7 +157,21 @@ export function UsersPage() {
         )}
 
         {activeTab === "workload" && (
-          <WorkloadView workload={workload} />
+          <>
+            <UsersTableFilters
+              departments={departments}
+              organizations={organizations}
+              selectedDepartmentId={workloadDepartmentId}
+              showOrganizationFilter={isAdmin}
+              onDepartmentChange={async (departmentId) => {
+                setWorkloadDepartmentId(departmentId);
+                if (auth) {
+                  setWorkload(await api.getWorkload(auth.token, departmentId || null));
+                }
+              }}
+            />
+            <WorkloadView workload={workload} />
+          </>
         )}
 
 {activeTab === "manage" && canManageUsers && (
@@ -217,6 +233,56 @@ export function UsersPage() {
     />
   </div>
 )}
+    </div>
+  );
+}
+
+function UsersTableFilters({
+  departments,
+  organizations,
+  selectedDepartmentId,
+  showOrganizationFilter,
+  onDepartmentChange,
+}: {
+  departments: Department[];
+  organizations: OrganizationRecord[];
+  selectedDepartmentId: string;
+  showOrganizationFilter: boolean;
+  onDepartmentChange: (departmentId: string) => void;
+}) {
+  const [organizationId, setOrganizationId] = useState("");
+  const visibleDepartments = useMemo(
+    () => organizationId ? departments.filter((department) => department.organizationId === organizationId) : departments,
+    [departments, organizationId],
+  );
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+      {showOrganizationFilter && (
+        <select
+          value={organizationId}
+          onChange={(event) => {
+            setOrganizationId(event.target.value);
+            onDepartmentChange("");
+          }}
+          className="h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="">All Organizations</option>
+          {organizations.map((organization) => (
+            <option key={organization.id} value={organization.id}>{organization.name}</option>
+          ))}
+        </select>
+      )}
+      <select
+        value={selectedDepartmentId}
+        onChange={(event) => onDepartmentChange(event.target.value)}
+        className="h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+      >
+        <option value="">All Departments</option>
+        {visibleDepartments.map((department) => (
+          <option key={department.id} value={department.id}>{department.name}</option>
+        ))}
+      </select>
     </div>
   );
 }

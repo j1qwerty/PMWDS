@@ -11,6 +11,7 @@ interface UsersTableProps {
   organizations: OrganizationRecord[];
   token: string;
   canUploadPictures: boolean;
+  showOrganizationFilter?: boolean;
   canManageUsers?: boolean;
   onPictureUploaded: (user: User) => void;
   onEditUser?: (user: User) => void;
@@ -23,6 +24,7 @@ export function UsersTable({
   organizations,
   token,
   canUploadPictures,
+  showOrganizationFilter = true,
   canManageUsers = false,
   onPictureUploaded,
   onEditUser,
@@ -42,7 +44,8 @@ export function UsersTable({
       (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesDept = !selectedDept || user.departmentId === selectedDept;
     const userDept = departments.find(d => d.id === user.departmentId);
-    const matchesOrg = !selectedOrg || userDept?.organizationId === selectedOrg;
+    const userOrgId = user.organizationId ?? userDept?.organizationId ?? user.departments?.find(item => item.organizationId)?.organizationId;
+    const matchesOrg = !selectedOrg || userOrgId === selectedOrg;
     return matchesSearch && matchesDept && matchesOrg;
   });
 
@@ -68,16 +71,18 @@ export function UsersTable({
           )}
         </div>
 
-        <select
-          value={selectedOrg}
-          onChange={(e) => { setSelectedOrg(e.target.value); setSelectedDept(""); }}
-          className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-        >
-          <option value="">All Organizations</option>
-          {organizations.map((org) => (
-            <option key={org.id} value={org.id}>{org.name}</option>
-          ))}
-        </select>
+        {showOrganizationFilter && (
+          <select
+            value={selectedOrg}
+            onChange={(e) => { setSelectedOrg(e.target.value); setSelectedDept(""); }}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+          >
+            <option value="">All Organizations</option>
+            {organizations.map((org) => (
+              <option key={org.id} value={org.id}>{org.name}</option>
+            ))}
+          </select>
+        )}
 
         <select
           value={selectedDept}
@@ -116,7 +121,7 @@ export function UsersTable({
               const burnoutScore = user.aiBurnoutRiskScore || 0;
               const burnoutPercent = burnoutScore <= 1 ? burnoutScore * 100 : burnoutScore;
               const dept = departments.find(d => d.id === user.departmentId);
-              const org = organizations.find(item => item.id === dept?.organizationId);
+              const org = organizations.find(item => item.id === (user.organizationId ?? dept?.organizationId));
               const departmentsLabel = user.departments?.length
                 ? user.departments.map(item => `${item.departmentName}${item.organizationName ? ` (${item.organizationName})` : ""}`).join(", ")
                 : dept?.name || user.department || "Unassigned";
