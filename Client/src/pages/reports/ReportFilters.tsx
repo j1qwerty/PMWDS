@@ -1,8 +1,9 @@
-import type { Department, Project } from "../../types";
+import type { Project } from "../../types";
 import { GlassCard } from "../shared";
 
 interface ReportFiltersProps {
   filters: {
+    organizationId: string;
     projectId: string;
     departmentId: string;
     startDate: string;
@@ -10,15 +11,14 @@ interface ReportFiltersProps {
     status: string;
   };
   projects: Project[];
-  departments: Department[];
   onFilterChange: (filters: ReportFiltersProps["filters"]) => void;
 }
 
-export function ReportFilters({ filters, projects, departments, onFilterChange }: ReportFiltersProps) {
-  const hasFilters = filters.projectId || filters.departmentId || filters.startDate || filters.endDate || filters.status;
+export function ReportFilters({ filters, projects, onFilterChange }: ReportFiltersProps) {
+  const hasFilters = filters.organizationId || filters.projectId || filters.departmentId || filters.startDate || filters.endDate || filters.status;
 
   const clearFilters = () => {
-    onFilterChange({ projectId: "", departmentId: "", startDate: "", endDate: "", status: "" });
+    onFilterChange({ organizationId: "", projectId: "", departmentId: "", startDate: "", endDate: "", status: "" });
   };
 
   return (
@@ -52,23 +52,6 @@ export function ReportFilters({ filters, projects, departments, onFilterChange }
             <option value="">All Projects</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>{project.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Department */}
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Department
-          </label>
-          <select
-            value={filters.departmentId}
-            onChange={(e) => onFilterChange({ ...filters, departmentId: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-          >
-            <option value="">All Departments</option>
-            {departments.map((dept) => (
-              <option key={dept.id} value={dept.id}>{dept.name}</option>
             ))}
           </select>
         </div>

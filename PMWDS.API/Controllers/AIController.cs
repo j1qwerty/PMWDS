@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Services;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Features.AI.Commands;
 using PMWDS.Application.Features.AI.Queries;
@@ -18,16 +19,25 @@ public class AIController : BaseApiController
     private readonly IAIService _ai;
     private readonly AISettings _aiSettings;
     private readonly ApplicationDbContext _db;
+    private readonly IUnitOfWork _uow;
+    private readonly RoleScopeService _scope;
 
-    public AIController(IAIService ai, IOptions<AISettings> aiSettings, ApplicationDbContext db)
+    public AIController(
+        IAIService ai,
+        IOptions<AISettings> aiSettings,
+        ApplicationDbContext db,
+        IUnitOfWork uow,
+        RoleScopeService scope)
     {
         _ai = ai;
         _aiSettings = aiSettings.Value;
         _db = db;
+        _uow = uow;
+        _scope = scope;
     }
 
     [HttpGet("settings")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAISettings(CancellationToken ct)
     {
         var stored = (await _db.AIProviderCredentials.AsNoTracking().ToListAsync(ct))
@@ -174,7 +184,20 @@ public class AIController : BaseApiController
     [HttpGet("predict-delay/{taskId:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> PredictDelay(Guid taskId, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetTaskDelayPredictionQuery(taskId), ct));
+    {
+        var task = await _uow.Tasks.GetByIdAsync(taskId, ct);
+        if (task == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new GetTaskDelayPredictionQuery(taskId), ct));
+    }
 
     [HttpPost("predictions/{taskId:guid}")]
     [Authorize(Policy = "Manager")]
@@ -200,9 +223,16 @@ public class AIController : BaseApiController
         => Ok(await _ai.GetPredictionResultsAsync(taskId, modelId, ct));
 
     [HttpGet("project-health/{projectId:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> ProjectHealth(Guid projectId, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetProjectHealthQuery(projectId), ct));
+    {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new GetProjectHealthQuery(projectId), ct));
+    }
 
     [HttpPost("optimize-resources/{projectId:guid}")]
     [Authorize(Policy = "Manager")]
@@ -210,14 +240,50 @@ public class AIController : BaseApiController
         => Ok(await _ai.OptimizeResourceAllocationAsync(projectId, ct));
 
     [HttpGet("burnout-risk")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> BurnoutRisk([FromQuery] Guid? departmentId, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetBurnoutRiskQuery(departmentId), ct));
+    {
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var candidateUsers = departmentId.HasValue
+            ? await _uow.Users.GetByDepartmentAsync(departmentId.Value, ct)
+            : await _uow.Users.GetAllAsync(ct);
+        var scopedUsers = await _scope.ScopeUsersAsync(candidateUsers.AsQueryable(), ct);
+        var users = scopedUsers.ToList();
+
+        return Ok(users
+            .OrderByDescending(u => u.AIBurnoutRiskScore)
+            .Select(u => new BurnoutRiskDto(
+                UserId: u.Id.ToString(),
+                FullName: u.FullName,
+                BurnoutRisk: u.AIBurnoutRiskScore,
+                WorkloadScore: u.AIWorkloadScore,
+                ActiveTasks: u.GetActiveTaskCount(),
+                RiskLevel: u.AIBurnoutRiskScore switch
+                {
+                    >= 0.8 => "Critical",
+                    >= 0.6 => "High",
+                    >= 0.4 => "Medium",
+                    _ => "Low"
+                },
+                Recommendations: GetBurnoutRecommendations(u.AIBurnoutRiskScore)))
+            .ToList());
+    }
 
     [HttpGet("insights/{projectId:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Insights(Guid projectId, CancellationToken ct)
-        => Ok(await _ai.GenerateProjectInsightsAsync(projectId, ct));
+    {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await _ai.GenerateProjectInsightsAsync(projectId, ct));
+    }
 
     [HttpPost("chat")]
     [Authorize(Policy = "Authenticated")]
@@ -304,6 +370,32 @@ public class AIController : BaseApiController
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> GetModelPerformance(CancellationToken ct)
         => Ok(await _ai.GetModelPerformanceAsync(ct));
+
+    private static List<string> GetBurnoutRecommendations(double burnoutRisk)
+        => burnoutRisk switch
+        {
+            >= 0.8 => new()
+            {
+                "Immediately reassign tasks.",
+                "Schedule mandatory rest period.",
+                "HR intervention recommended."
+            },
+            >= 0.6 => new()
+            {
+                "Reduce task load by 30%.",
+                "No new task assignments.",
+                "Weekly check-in required."
+            },
+            >= 0.4 => new()
+            {
+                "Monitor workload closely.",
+                "Avoid overtime assignments."
+            },
+            _ => new()
+            {
+                "Continue standard monitoring."
+            }
+        };
 }
 
 public record ChatRequest(

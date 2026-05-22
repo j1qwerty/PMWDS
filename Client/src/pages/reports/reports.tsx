@@ -1,25 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { Department, Project } from "../../types";
+import type { Department, OrganizationRecord, Project } from "../../types";
 import { 
   AnimatedBackground, 
-  GlassCard, 
   LoadingPage,
   PageHeader,
+  OrganizationDepartmentFilter,
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
 import { RecentExports } from "./RecentExports";
 
 export function ReportsPage() {
-  const { auth } = useAuth();
+  const { auth, hasRole } = useAuth();
+  const isSuperAdmin = hasRole("SuperAdmin");
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [downloads, setDownloads] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ 
+    organizationId: "",
     projectId: "", 
     departmentId: "", 
     startDate: "", 
@@ -32,14 +35,54 @@ export function ReportsPage() {
     setLoading(true);
     Promise.all([
       api.getProjects(auth.token), 
-      api.getDepartments(auth.token)
-    ]).then(([projectData, departmentData]) => {
+      api.getDepartments(auth.token),
+      isSuperAdmin ? api.getOrganizations(auth.token) : Promise.resolve([]),
+    ]).then(([projectData, departmentData, organizationData]) => {
       setProjects(projectData);
       setDepartments(departmentData);
+      setOrganizations(organizationData);
       if (projectData[0]) setFilters((current) => ({ ...current, projectId: projectData[0].id }));
       if (departmentData[0]) setFilters((current) => ({ ...current, departmentId: departmentData[0].id }));
     }).finally(() => setLoading(false));
-  }, [auth]);
+  }, [auth, isSuperAdmin]);
+
+  const visibleDepartments = useMemo(() => {
+    return filters.organizationId
+      ? departments.filter((department) => department.organizationId === filters.organizationId)
+      : departments;
+  }, [departments, filters.organizationId]);
+
+  const visibleProjects = useMemo(() => {
+    if (filters.departmentId) {
+      return projects.filter((project) => project.departmentId === filters.departmentId);
+    }
+
+    if (filters.organizationId) {
+      const departmentIds = new Set(visibleDepartments.map((department) => department.id));
+      return projects.filter((project) => departmentIds.has(project.departmentId));
+    }
+
+    return projects;
+  }, [filters.departmentId, filters.organizationId, projects, visibleDepartments]);
+
+  useEffect(() => {
+    if (filters.departmentId && !visibleDepartments.some((department) => department.id === filters.departmentId)) {
+      setFilters((current) => ({ ...current, departmentId: "", projectId: "" }));
+      return;
+    }
+
+    if (filters.projectId && !visibleProjects.some((project) => project.id === filters.projectId)) {
+      setFilters((current) => ({ ...current, projectId: "" }));
+    }
+  }, [filters.departmentId, filters.projectId, visibleDepartments, visibleProjects]);
+
+  const reportFilterPayload = () => ({
+    projectId: filters.projectId || null,
+    departmentId: filters.departmentId || null,
+    startDate: filters.startDate || null,
+    endDate: filters.endDate || null,
+    status: filters.status || null,
+  });
 
   const handleDownload = async (label: string, action: () => Promise<Blob>) => {
     try {
@@ -76,13 +119,17 @@ export function ReportsPage() {
     handleDownload("task-completion", () => 
       api.downloadReport(auth.token, "reports/task-completion", { 
         method: "POST", 
-        body: filters 
+        body: reportFilterPayload() 
       })
     );
   };
 
   const downloadDepartmentWorkload = () => {
     if (!auth) return;
+    if (!filters.departmentId) {
+      setMessage("Select a department before downloading the department workload report.");
+      return;
+    }
     handleDownload("department-workload", () => 
       api.downloadReport(auth.token, "reports/department-workload", { 
         method: "POST", 
@@ -100,7 +147,7 @@ export function ReportsPage() {
     handleDownload("delay-analysis", () => 
       api.downloadReport(auth.token, "reports/delay-analysis", { 
         method: "POST", 
-        body: filters 
+        body: reportFilterPayload() 
       })
     );
   };
@@ -138,10 +185,27 @@ export function ReportsPage() {
         {/* Left: Filters & Report Generation */}
         <div className="flex flex-col gap-6">
           {/* Filters */}
+          <OrganizationDepartmentFilter
+            organizations={organizations}
+            departments={departments}
+            users={[]}
+            selectedOrganizationId={filters.organizationId}
+            selectedDepartmentId={filters.departmentId}
+            onOrganizationChange={(organizationId) => setFilters((current) => ({
+              ...current,
+              organizationId,
+              departmentId: "",
+              projectId: "",
+            }))}
+            onDepartmentChange={(departmentId) => setFilters((current) => ({
+              ...current,
+              departmentId,
+              projectId: "",
+            }))}
+          />
           <ReportFilters
             filters={filters}
-            projects={projects}
-            departments={departments}
+            projects={visibleProjects}
             onFilterChange={setFilters}
           />
 

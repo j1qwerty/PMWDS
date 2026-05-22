@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { BurnoutRiskRecord, Project, ProjectHealth, Task } from "../../types";
+import type { BurnoutRiskRecord, Department, OrganizationRecord, Project, ProjectHealth } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { AnimatedBackground, PageHeader, GlassCard, LoadingPage } from "../shared";
+import { AnimatedBackground, PageHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter } from "../shared";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -16,11 +16,15 @@ import { NeuralHeatmap } from "./NeuralHeatmap";
 import { AnomalyFeed } from "./AnomalyFeed";
 
 export function AIPage() {
-  const { auth } = useAuth();
+  const { auth, hasRole } = useAuth();
+  const isSuperAdmin = hasRole("SuperAdmin");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [burnout, setBurnout] = useState<BurnoutRiskRecord[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [delay, setDelay] = useState<any>(null);
@@ -35,19 +39,58 @@ export function AIPage() {
     setLoading(true);
     Promise.all([
       api.getProjects(auth.token),
+      api.getDepartments(auth.token),
+      isSuperAdmin ? api.getOrganizations(auth.token) : Promise.resolve([]),
       api.getMyTasks(auth.token),
-      api.getAiBurnoutRisk(auth.token),
       api.getAISettings(auth.token),
-    ]).then(([projectData, taskData, burnoutData, settings]) => {
+    ]).then(([projectData, departmentData, organizationData, taskData, settings]) => {
       setProjects(projectData);
-      setTasks(taskData);
-      setBurnout(burnoutData);
+      setDepartments(departmentData);
+      setOrganizations(organizationData);
       setProvider(settings.defaultProvider || "OpenAI");
       setModel(settings.defaultModel || "");
       if (projectData[0]) setSelectedProjectId(projectData[0].id);
       if (taskData[0]) setSelectedTaskId(taskData[0].id);
     }).finally(() => setLoading(false));
-  }, [auth]);
+  }, [auth, isSuperAdmin]);
+
+  useEffect(() => {
+    if (!auth) return;
+    api.getAiBurnoutRisk(auth.token, selectedDepartmentId || null)
+      .then(setBurnout)
+      .catch(() => setBurnout([]));
+  }, [auth, selectedDepartmentId]);
+
+  const visibleDepartments = useMemo(() => {
+    return selectedOrganizationId
+      ? departments.filter((department) => department.organizationId === selectedOrganizationId)
+      : departments;
+  }, [departments, selectedOrganizationId]);
+
+  const visibleProjects = useMemo(() => {
+    if (selectedDepartmentId) {
+      return projects.filter((project) => project.departmentId === selectedDepartmentId);
+    }
+
+    if (selectedOrganizationId) {
+      const departmentIds = new Set(visibleDepartments.map((department) => department.id));
+      return projects.filter((project) => departmentIds.has(project.departmentId));
+    }
+
+    return projects;
+  }, [projects, selectedDepartmentId, selectedOrganizationId, visibleDepartments]);
+
+  useEffect(() => {
+    if (selectedDepartmentId && !visibleDepartments.some((department) => department.id === selectedDepartmentId)) {
+      setSelectedDepartmentId("");
+      setSelectedProjectId("");
+      return;
+    }
+
+    if (selectedProjectId && !visibleProjects.some((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId(visibleProjects[0]?.id ?? "");
+    }
+  }, [selectedDepartmentId, selectedProjectId, visibleDepartments, visibleProjects]);
 
   useEffect(() => {
     if (!auth || !selectedProjectId) return;
@@ -69,7 +112,7 @@ export function AIPage() {
     }
   };
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId) ?? null;
+  const selectedProject = visibleProjects.find(p => p.id === selectedProjectId) ?? null;
 
   if (loading) return <LoadingPage label="Loading AI insights..." />;
 
@@ -85,13 +128,32 @@ export function AIPage() {
         />
       </div>
 
+      <div className="relative z-10 mb-5">
+        <OrganizationDepartmentFilter
+          organizations={organizations}
+          departments={departments}
+          users={[]}
+          selectedOrganizationId={selectedOrganizationId}
+          selectedDepartmentId={selectedDepartmentId}
+          onOrganizationChange={(organizationId) => {
+            setSelectedOrganizationId(organizationId);
+            setSelectedDepartmentId("");
+            setSelectedProjectId("");
+          }}
+          onDepartmentChange={(departmentId) => {
+            setSelectedDepartmentId(departmentId);
+            setSelectedProjectId("");
+          }}
+        />
+      </div>
+
       {/* Main Grid Layout */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         
         {/* Left Sidebar: Projects (Agents) */}
         <div className="flex flex-col gap-5 max-h-150">
           <ProjectList
-            projects={projects}
+            projects={visibleProjects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
           />
@@ -137,7 +199,7 @@ export function AIPage() {
 
           {/* Timeline & Recommendations Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <TimelinePredictions projects={projects} />
+            <TimelinePredictions projects={visibleProjects} />
             <AIRecommendations />
           </div>
 

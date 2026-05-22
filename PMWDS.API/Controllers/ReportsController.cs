@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Reports;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
@@ -13,15 +14,18 @@ public class ReportsController : BaseApiController
     private readonly IReportService _reports;
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly RoleScopeService _scope;
 
     public ReportsController(
         IReportService reports,
         IUnitOfWork uow,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        RoleScopeService scope)
     {
         _reports = reports;
         _uow = uow;
         _currentUser = currentUser;
+        _scope = scope;
     }
 
     [HttpGet("project-status/{projectId:guid}")]
@@ -31,6 +35,11 @@ public class ReportsController : BaseApiController
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+        {
+            return Forbid();
+        }
+
         var bytes = await _reports.GenerateProjectStatusReportAsync(projectId, format, ct);
         return File(bytes, GetContentType(format), $"project-status.{format}");
     }
@@ -42,6 +51,11 @@ public class ReportsController : BaseApiController
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
+        if (!await CanAccessReportFilterAsync(filter, ct))
+        {
+            return Forbid();
+        }
+
         var bytes = await _reports.GenerateTaskCompletionReportAsync(filter, format, ct);
         return File(bytes, GetContentType(format), $"task-completion.{format}");
     }
@@ -53,6 +67,11 @@ public class ReportsController : BaseApiController
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
+        if (!await _scope.CanAccessDepartmentAsync(req.DepartmentId, ct))
+        {
+            return Forbid();
+        }
+
         var bytes = await _reports.GenerateDepartmentWorkloadReportAsync(req.DepartmentId, new DateRange(req.StartDate, req.EndDate), format, ct);
         return File(bytes, GetContentType(format), $"department-workload.{format}");
     }
@@ -64,6 +83,11 @@ public class ReportsController : BaseApiController
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+        {
+            return Forbid();
+        }
+
         var bytes = await _reports.GenerateBudgetVarianceReportAsync(projectId, format, ct);
         return File(bytes, GetContentType(format), $"budget-variance.{format}");
     }
@@ -75,6 +99,11 @@ public class ReportsController : BaseApiController
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
+        if (!await CanAccessReportFilterAsync(filter, ct))
+        {
+            return Forbid();
+        }
+
         var bytes = await _reports.GenerateDelayAnalysisReportAsync(filter, format, ct);
         return File(bytes, GetContentType(format), $"delay-analysis.{format}");
     }
@@ -231,6 +260,21 @@ public class ReportsController : BaseApiController
             report.Format,
             report.GeneratedByUserId,
             report.Data.Length);
+
+    private async Task<bool> CanAccessReportFilterAsync(ReportFilterDto filter, CancellationToken ct)
+    {
+        if (filter.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(filter.ProjectId.Value, ct))
+        {
+            return false;
+        }
+
+        if (filter.DepartmentId.HasValue && !await _scope.CanAccessDepartmentAsync(filter.DepartmentId.Value, ct))
+        {
+            return false;
+        }
+
+        return true;
+    }
 
     private static ReportScheduleResponse MapSchedule(ReportSchedule schedule)
         => new(
