@@ -1,8 +1,32 @@
 import { useState, type FormEvent } from "react";
+import { z } from "zod";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 
 type LoginMode = "signin" | "signup" | "forgot" | "reset";
+
+const emailSchema = z.string().trim().email("Please enter a valid email address");
+const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+const authSchemas = {
+  signin: z.object({
+    email: emailSchema,
+    password: passwordSchema,
+  }),
+  signup: z.object({
+    firstName: z.string().trim().min(1, "First name is required"),
+    lastName: z.string().trim().min(1, "Last name is required"),
+    email: emailSchema,
+    password: passwordSchema,
+  }),
+  forgot: z.object({
+    email: emailSchema,
+  }),
+  reset: z.object({
+    email: emailSchema,
+    resetToken: z.string().trim().min(1, "Reset token is required"),
+    password: passwordSchema,
+  }),
+};
 
 export function LoginPage() {
   const [email, setEmail] = useState("admin@pmwds.com");
@@ -13,28 +37,26 @@ export function LoginPage() {
   const [mode, setMode] = useState<LoginMode>(() => new URLSearchParams(window.location.search).get("token") ? "reset" : "signin");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
 
   const validateForm = () => {
-    const errors: { email?: string; password?: string } = {};
-
-    if (!email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = "Please enter a valid email address";
+    const payload = { firstName, lastName, email, password, resetToken };
+    const result = authSchemas[mode].safeParse(payload);
+    if (result.success) {
+      setFieldErrors({});
+      return true;
     }
 
-    if (!password) {
-      errors.password = "Password is required";
-    } else if (password.length < 6) {
-      errors.password = "Password must be at least 6 characters";
+    const errors: Record<string, string> = {};
+    for (const issue of result.error.issues) {
+      const key = String(issue.path[0] ?? "");
+      if (key && !errors[key]) errors[key] = issue.message;
     }
-
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return false;
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -42,7 +64,7 @@ export function LoginPage() {
     setError("");
     setSuccess("");
 
-    if (mode === "signin" && !validateForm()) return;
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
@@ -156,18 +178,26 @@ export function LoginPage() {
             <div className="grid grid-cols-2 gap-3">
               <input
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: undefined }));
+                }}
                 required
                 placeholder="First name"
                 className="h-11 rounded-[10px] border border-[#e0e3e5] px-3.5 text-sm outline-none focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
               />
               <input
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: undefined }));
+                }}
                 required
                 placeholder="Last name"
                 className="h-11 rounded-[10px] border border-[#e0e3e5] px-3.5 text-sm outline-none focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
               />
+              {fieldErrors.firstName && <p className="text-[11px] text-[#ba1a1a]">{fieldErrors.firstName}</p>}
+              {fieldErrors.lastName && <p className="text-[11px] text-[#ba1a1a]">{fieldErrors.lastName}</p>}
             </div>
           )}
           {/* Email Field */}
@@ -215,12 +245,21 @@ export function LoginPage() {
               </label>
               <input
                 value={resetToken}
-                onChange={(e) => setResetToken(e.target.value)}
+                onChange={(e) => {
+                  setResetToken(e.target.value);
+                  if (fieldErrors.resetToken) setFieldErrors(prev => ({ ...prev, resetToken: undefined }));
+                }}
                 required
                 disabled={loading}
                 placeholder="Paste reset token"
                 className="w-full h-11 rounded-[10px] border border-[#e0e3e5] px-3.5 text-sm text-[#191c1e] outline-none transition-all duration-200 focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
               />
+              {fieldErrors.resetToken && (
+                <p className="text-[11px] text-[#ba1a1a] ml-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">error</span>
+                  {fieldErrors.resetToken}
+                </p>
+              )}
             </div>
           )}
 
@@ -265,7 +304,7 @@ export function LoginPage() {
                   }
                   ${loading ? "bg-[#f2f4f6]" : "bg-white"}
                 `}
-                autoComplete="current-password"
+                autoComplete={mode === "reset" ? "new-password" : "current-password"}
               />
               <button
                 type="button"
@@ -318,7 +357,7 @@ export function LoginPage() {
             DEMO CREDENTIALS
           </p>
           <p className="text-[11px] text-[#464554] text-center">
-            admin@pmwds.com, pm@pmwds.com, head@pmwds.com, lead@pmwds.com, member@pmwds.com, viewer@pmwds.com / Pmwds@123
+            admin@pmwds.com, director@pmwds.com, manager@pmwds.com, head@pmwds.com, member@pmwds.com, viewer@pmwds.com / Pmwds@123
           </p>
         </div>
       </div>
