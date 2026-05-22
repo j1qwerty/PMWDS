@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Features.Projects.Commands;
 using PMWDS.Application.Features.Projects.Queries;
@@ -7,6 +9,7 @@ using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
 using PMWDS.Infrastructure.Services;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
@@ -16,17 +19,23 @@ public class ProjectsController : BaseApiController
     private readonly IAIService _ai;
     private readonly ICurrentUserService _currentUser;
     private readonly ILocalFileStorageService _localFiles;
+    private readonly RoleScopeService _scope;
+    private readonly ApplicationDbContext _db;
 
     public ProjectsController(
         IUnitOfWork uow,
         IAIService ai,
         ICurrentUserService currentUser,
-        ILocalFileStorageService localFiles)
+        ILocalFileStorageService localFiles,
+        RoleScopeService scope,
+        ApplicationDbContext db)
     {
         _uow = uow;
         _ai = ai;
         _currentUser = currentUser;
         _localFiles = localFiles;
+        _scope = scope;
+        _db = db;
     }
 
     [HttpGet("dashboard")]
@@ -38,25 +47,59 @@ public class ProjectsController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll([FromQuery] Guid? departmentId, [FromQuery] ProjectStatus? status, CancellationToken ct)
     {
-        IEnumerable<Project> projects = departmentId.HasValue
-            ? await _uow.Projects.GetByDepartmentAsync(departmentId.Value, ct)
-            : await _uow.Projects.GetAllAsync(ct);
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var query = _db.Projects
+            .Include(p => p.Department)
+            .Include(p => p.Tasks)
+            .Include(p => p.Milestones)
+            .AsQueryable();
+
+        if (departmentId.HasValue)
+        {
+            query = query.Where(p => p.DepartmentId == departmentId.Value);
+        }
+
+        query = await _scope.ScopeProjectsAsync(query, ct);
 
         if (status.HasValue)
-            projects = projects.Where(p => p.Status == status.Value);
+        {
+            query = query.Where(p => p.Status == status.Value);
+        }
 
+        var projects = await query.OrderByDescending(p => p.CreatedDate).ToListAsync(ct);
         return Ok(projects.Select(ProjectDto.FromEntity));
     }
 
     [HttpGet("{id:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetProjectDetailsQuery(id), ct));
+    {
+        if (!await _scope.CanAccessProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new GetProjectDetailsQuery(id), ct));
+    }
 
     [HttpPost]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken ct)
     {
+        if (!await _scope.CanAccessDepartmentAsync(dto.DepartmentId, ct) || !_scope.IsSuperAdmin && !_scope.IsDirector)
+        {
+            return Forbid();
+        }
+
+        if (!await IsUserInDepartmentOrganizationAsync(dto.ProjectManagerId, dto.DepartmentId, ct))
+        {
+            return BadRequest(new { message = "Project manager must belong to the selected department organization." });
+        }
+
         var result = await Mediator.Send(new CreateProjectCommand(dto), ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
@@ -64,12 +107,26 @@ public class ProjectsController : BaseApiController
     [HttpPut("{id:guid}")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto, CancellationToken ct)
-        => Ok(await Mediator.Send(new UpdateProjectCommand(id, dto), ct));
+    {
+        if (!await _scope.CanManageProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new UpdateProjectCommand(id, dto), ct));
+    }
 
     [HttpPatch("{id:guid}/status")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateProjectStatusRequest req, CancellationToken ct)
-        => Ok(await Mediator.Send(new UpdateProjectStatusCommand(id, req.NewStatus, req.Justification), ct));
+    {
+        if (!await _scope.CanManageProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new UpdateProjectStatusCommand(id, req.NewStatus, req.Justification), ct));
+    }
 
     [HttpGet("{id:guid}/progress")]
     [Authorize(Policy = "Authenticated")]
@@ -78,6 +135,11 @@ public class ProjectsController : BaseApiController
         var project = await _uow.Projects.GetWithDetailsAsync(id, ct);
         if (project == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
 
         return Ok(new
         {
@@ -93,17 +155,38 @@ public class ProjectsController : BaseApiController
     [HttpGet("{id:guid}/ai/health")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetAIHealth(Guid id, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetProjectHealthQuery(id), ct));
+    {
+        if (!await _scope.CanAccessProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new GetProjectHealthQuery(id), ct));
+    }
 
     [HttpGet("{id:guid}/ai/insights")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetAIInsights(Guid id, CancellationToken ct)
-        => Ok(await _ai.GenerateProjectInsightsAsync(id, ct));
+    {
+        if (!await _scope.CanAccessProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await _ai.GenerateProjectInsightsAsync(id, ct));
+    }
 
     [HttpPost("{id:guid}/ai/optimize-resources")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> OptimizeResources(Guid id, CancellationToken ct)
-        => Ok(await _ai.OptimizeResourceAllocationAsync(id, ct));
+    {
+        if (!await _scope.CanManageProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await _ai.OptimizeResourceAllocationAsync(id, ct));
+    }
 
     [HttpPost("{id:guid}/documents")]
     [Authorize(Policy = "Authenticated")]
@@ -112,6 +195,11 @@ public class ProjectsController : BaseApiController
         var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
             return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
 
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
@@ -138,6 +226,11 @@ public class ProjectsController : BaseApiController
         if (project == null)
             return NotFound();
 
+        if (!await _scope.CanAccessProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
         var docs = await _uow.ProjectDocuments.FindAsync(d => d.ProjectId == id);
         return Ok(docs.Select(d => new
         {
@@ -163,12 +256,17 @@ public class ProjectsController : BaseApiController
         if (doc == null)
             return NotFound();
 
+        if (!await _scope.CanAccessProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
         var stream = await _localFiles.DownloadFileAsync(doc.FilePath, ct);
         return File(stream, doc.ContentType, doc.Title);
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -177,10 +275,39 @@ public class ProjectsController : BaseApiController
             return NotFound();
         }
 
+        if (!await _scope.CanManageProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
         await _uow.Tasks.DeleteTasksByProjectAsync(id, ct);
         await _uow.Projects.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private async Task<bool> IsUserInDepartmentOrganizationAsync(string userId, Guid departmentId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(userId, out var parsedUserId))
+        {
+            return false;
+        }
+
+        var organizationId = await _db.Departments
+            .Where(department => department.Id == departmentId)
+            .Select(department => department.OrganizationId)
+            .FirstOrDefaultAsync(ct);
+
+        if (!organizationId.HasValue)
+        {
+            return false;
+        }
+
+        return await _db.Users.AnyAsync(user =>
+            user.Id == parsedUserId &&
+            (user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
+             user.Department != null && user.Department.OrganizationId == organizationId),
+            ct);
     }
 }
 

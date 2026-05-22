@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Tasks;
 using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Tasks.Commands;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
+using PMWDS.Persistence.Context;
 using TaskDependency = PMWDS.Domain.Entities.TaskDependency;
 
 namespace PMWDS.API.Controllers;
@@ -16,23 +19,36 @@ public class TasksController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
     private readonly IFileStorageService _files;
+    private readonly RoleScopeService _scope;
+    private readonly ApplicationDbContext _db;
 
     public TasksController(
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         INotificationService notifications,
-        IFileStorageService files)
+        IFileStorageService files,
+        RoleScopeService scope,
+        ApplicationDbContext db)
     {
         _uow = uow;
         _currentUser = currentUser;
         _notifications = notifications;
         _files = files;
+        _scope = scope;
+        _db = db;
     }
 
     [HttpGet("by-project/{projectId:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
-        => Ok((await _uow.Tasks.GetByProjectAsync(projectId, ct)).Select(TaskDto.FromEntity));
+    {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok((await _uow.Tasks.GetByProjectAsync(projectId, ct)).Select(TaskDto.FromEntity));
+    }
 
     [HttpGet("my-tasks")]
     [Authorize(Policy = "Authenticated")]
@@ -42,6 +58,8 @@ public class TasksController : BaseApiController
             return Unauthorized();
 
         var tasks = await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct);
+        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        tasks = tasks.Where(task => allowedProjectIds.Contains(task.ProjectId)).ToList();
         return Ok(tasks.Select(TaskDto.FromEntity));
     }
 
@@ -52,7 +70,17 @@ public class TasksController : BaseApiController
         try
         {
             var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
-            return task == null ? NotFound() : Ok(TaskDto.FromEntity(task));
+            if (task == null)
+            {
+                return NotFound();
+            }
+
+            if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+            {
+                return Forbid();
+            }
+
+            return Ok(TaskDto.FromEntity(task));
         }
         catch (Exception ex)
         {
@@ -64,6 +92,17 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Create([FromBody] CreateTaskDto dto, CancellationToken ct)
     {
+        if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
+            !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, dto.ProjectId, ct))
+        {
+            return BadRequest(new { message = "Assignee must belong to the selected project organization." });
+        }
+
         var result = await Mediator.Send(new CreateTaskCommand(dto), ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
@@ -75,6 +114,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         task.UpdateDetails(
             dto.Title,
@@ -92,7 +136,14 @@ public class TasksController : BaseApiController
     [HttpPatch("{id:guid}/progress")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
-        => Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+    {
+        if (!await CanAccessTaskAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+    }
 
     [HttpPatch("{id:guid}/status")]
     [Authorize(Policy = "Authenticated")]
@@ -101,6 +152,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         task.UpdateStatus(req.NewStatus);
         task.SetModified(_currentUser.UserId ?? "system");
@@ -122,6 +178,22 @@ public class TasksController : BaseApiController
             }
 
             var assigneeId = req.AssigneeId!;
+            var singleTask = await _uow.Tasks.GetByIdAsync(id, ct);
+            if (singleTask == null)
+            {
+                return NotFound();
+            }
+
+            if (!await _scope.CanManageProjectAsync(singleTask.ProjectId, ct))
+            {
+                return Forbid();
+            }
+
+            if (!await IsUserInProjectOrganizationAsync(assigneeId, singleTask.ProjectId, ct))
+            {
+                return BadRequest(new { message = "Assignee must belong to the selected project organization." });
+            }
+
             return Ok(await Mediator.Send(new AssignTaskCommand(id, assigneeId, req.UseAIRecommendation), ct));
         }
 
@@ -131,10 +203,16 @@ public class TasksController : BaseApiController
             return NotFound();
         }
 
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
         foreach (var userId in assigneeIds)
         {
             if (!Guid.TryParse(userId, out var parsedUserId) ||
-                await _uow.Users.GetByIdAsync(parsedUserId, ct) == null)
+                await _uow.Users.GetByIdAsync(parsedUserId, ct) == null ||
+                !await IsUserInProjectOrganizationAsync(userId, task.ProjectId, ct))
             {
                 return BadRequest(new { message = $"Invalid assignee '{userId}'." });
             }
@@ -169,12 +247,26 @@ public class TasksController : BaseApiController
     [HttpGet("{id:guid}/ai/delay-prediction")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDelayPrediction(Guid id, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetTaskDelayPredictionQuery(id), ct));
+    {
+        if (!await CanAccessTaskAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new GetTaskDelayPredictionQuery(id), ct));
+    }
 
     [HttpPost("{id:guid}/escalate")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Escalate(Guid id, CancellationToken ct)
-        => Ok(await Mediator.Send(new EscalateTaskCommand(id), ct));
+    {
+        if (!await CanManageTaskAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new EscalateTaskCommand(id), ct));
+    }
 
     [HttpPost("{id:guid}/comments")]
     [Authorize(Policy = "Authenticated")]
@@ -183,6 +275,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         var comment = TaskComment.Create(
             id,
@@ -200,6 +297,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         await using var stream = file.OpenReadStream();
         var filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
@@ -224,6 +326,11 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
         task.Start();
         var entry = TimeEntry.StartTimer(
             id,
@@ -243,6 +350,11 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
         var entry = _uow.TimeEntries.FindAsync(
             e => e.TaskId == id
                 && e.UserId == (_currentUser.UserId ?? "system")
@@ -259,17 +371,29 @@ public class TasksController : BaseApiController
     [HttpGet("overdue")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetOverdue(CancellationToken ct)
-        => Ok((await _uow.Tasks.GetOverdueTasksAsync(ct)).Select(TaskDto.FromEntity));
+    {
+        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var tasks = (await _uow.Tasks.GetOverdueTasksAsync(ct)).Where(task => allowedProjectIds.Contains(task.ProjectId));
+        return Ok(tasks.Select(TaskDto.FromEntity));
+    }
 
     [HttpGet("escalated")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetEscalated(CancellationToken ct)
-        => Ok((await _uow.Tasks.GetEscalatedTasksAsync(ct)).Select(TaskDto.FromEntity));
+    {
+        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var tasks = (await _uow.Tasks.GetEscalatedTasksAsync(ct)).Where(task => allowedProjectIds.Contains(task.ProjectId));
+        return Ok(tasks.Select(TaskDto.FromEntity));
+    }
 
     [HttpGet("unassigned")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetUnassigned(CancellationToken ct)
-        => Ok((await _uow.Tasks.GetUnassignedTasksAsync(ct)).Select(TaskDto.FromEntity));
+    {
+        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var tasks = (await _uow.Tasks.GetUnassignedTasksAsync(ct)).Where(task => allowedProjectIds.Contains(task.ProjectId));
+        return Ok(tasks.Select(TaskDto.FromEntity));
+    }
 
     [HttpGet("{id:guid}/subtasks")]
     [Authorize(Policy = "Authenticated")]
@@ -279,6 +403,7 @@ public class TasksController : BaseApiController
         {
             var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
             if (parentTask == null) return NotFound();
+            if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
             var subtasks = await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct);
             return Ok(subtasks.Select(TaskDto.FromEntity));
         }
@@ -289,12 +414,23 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/subtasks")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> CreateSubtask(Guid id, [FromBody] CreateSubtaskDto dto, CancellationToken ct)
     {
         var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
         if (parentTask == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
+            !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
+        {
+            return BadRequest(new { message = "Assignee must belong to the selected project organization." });
+        }
 
         var dueDate = dto.DueDate ?? DateTime.UtcNow.AddDays(7);
         var createDto = new CreateTaskDto(
@@ -319,6 +455,7 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         if (task == null || task.ParentTaskId == null)
             return NotFound();
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct)) return Forbid();
         return Ok(TaskDto.FromEntity(task));
     }
 
@@ -329,6 +466,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null || task.ParentTaskId == null)
             return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         task.UpdateDetails(
             dto.Title,
@@ -346,7 +488,14 @@ public class TasksController : BaseApiController
     [HttpPatch("subtasks/{id:guid}/progress")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
-        => Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+    {
+        if (!await CanAccessTaskAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        return Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+    }
 
     [HttpPatch("subtasks/{id:guid}/status")]
     [Authorize(Policy = "Authenticated")]
@@ -355,6 +504,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null || task.ParentTaskId == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         task.UpdateStatus(req.NewStatus);
         task.SetModified(_currentUser.UserId ?? "system");
@@ -372,6 +526,17 @@ public class TasksController : BaseApiController
             return BadRequest(new { message = "Assignee is required." });
         }
 
+        if (!await CanManageTaskAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null || !await IsUserInProjectOrganizationAsync(req.AssigneeId, task.ProjectId, ct))
+        {
+            return BadRequest(new { message = "Assignee must belong to the selected project organization." });
+        }
+
         return Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
     }
 
@@ -382,6 +547,11 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null || task.ParentTaskId == null)
             return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
@@ -394,6 +564,7 @@ public class TasksController : BaseApiController
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null) return NotFound();
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct)) return Forbid();
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
@@ -407,6 +578,7 @@ public class TasksController : BaseApiController
         {
             var task = await _uow.Tasks.GetByIdAsync(id, ct);
             if (task == null) return NotFound();
+            if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct)) return Forbid();
             var dependencies = (await _uow.Tasks.GetDependenciesForTaskAsync(id, ct))
                 .Select(TaskDependencyDto.FromEntity)
                 .ToList();
@@ -419,12 +591,17 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/dependencies")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> CreateDependency(Guid id, [FromBody] CreateDependencyDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
 
         var predecessor = await _uow.Tasks.GetByIdAsync(dto.PredecessorTaskId, ct);
         if (predecessor == null)
@@ -434,6 +611,12 @@ public class TasksController : BaseApiController
         if (successor == null)
             return BadRequest(new { message = "Successor task not found." });
 
+        if (!await _scope.CanAccessProjectAsync(predecessor.ProjectId, ct) ||
+            !await _scope.CanAccessProjectAsync(successor.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
         var dependency = TaskDependency.Create(dto.PredecessorTaskId, dto.SuccessorTaskId, dto.Type, dto.LagDays);
         await _uow.TaskDependencies.AddAsync(dependency, ct);
         await _uow.SaveChangesAsync(ct);
@@ -441,12 +624,18 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("dependencies/{depId:guid}")]
-    [Authorize(Policy = "TaskEditor")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateDependency(Guid depId, [FromBody] UpdateDependencyDto dto, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
         if (dependency == null)
             return NotFound();
+
+        if (!await CanAccessTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await CanAccessTaskAsync(dependency.SuccessorTaskId, ct))
+        {
+            return Forbid();
+        }
 
         dependency.UpdateType(dto.Type);
         dependency.UpdateLag(dto.LagDays);
@@ -455,16 +644,72 @@ public class TasksController : BaseApiController
     }
 
     [HttpDelete("dependencies/{depId:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> DeleteDependency(Guid depId, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
         if (dependency == null)
             return NotFound();
 
+        if (!await CanAccessTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await CanAccessTaskAsync(dependency.SuccessorTaskId, ct))
+        {
+            return Forbid();
+        }
+
         await _uow.TaskDependencies.DeleteAsync(depId, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
+    {
+        var projectId = await _db.Tasks
+            .Where(task => task.Id == taskId)
+            .Select(task => task.ProjectId)
+            .FirstOrDefaultAsync(ct);
+        return projectId != Guid.Empty && await _scope.CanAccessProjectAsync(projectId, ct);
+    }
+
+    private async Task<bool> CanManageTaskAsync(Guid taskId, CancellationToken ct)
+    {
+        var projectId = await _db.Tasks
+            .Where(task => task.Id == taskId)
+            .Select(task => task.ProjectId)
+            .FirstOrDefaultAsync(ct);
+        return projectId != Guid.Empty && await _scope.CanManageProjectAsync(projectId, ct);
+    }
+
+    private async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
+    {
+        var scopedProjects = await _scope.ScopeProjectsAsync(
+            _db.Projects.Include(project => project.Department).AsQueryable(),
+            ct);
+        return (await scopedProjects.Select(project => project.Id).ToListAsync(ct)).ToHashSet();
+    }
+
+    private async Task<bool> IsUserInProjectOrganizationAsync(string userId, Guid projectId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(userId, out var parsedUserId))
+        {
+            return false;
+        }
+
+        var organizationId = await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => project.Department != null ? project.Department.OrganizationId : null)
+            .FirstOrDefaultAsync(ct);
+
+        if (!organizationId.HasValue)
+        {
+            return false;
+        }
+
+        return await _db.Users.AnyAsync(user =>
+            user.Id == parsedUserId &&
+            (user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
+             user.Department != null && user.Department.OrganizationId == organizationId),
+            ct);
     }
 }
 

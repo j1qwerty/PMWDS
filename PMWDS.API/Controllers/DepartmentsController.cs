@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PMWDS.API.Services;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 
@@ -8,17 +9,27 @@ namespace PMWDS.API.Controllers;
 public class DepartmentsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
+    private readonly RoleScopeService _scope;
 
-    public DepartmentsController(IUnitOfWork uow)
+    public DepartmentsController(IUnitOfWork uow, RoleScopeService scope)
     {
         _uow = uow;
+        _scope = scope;
     }
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
-        var departments = await _uow.Departments.GetAllAsync(ct);
+        var departments = (await _uow.Departments.GetAllAsync(ct)).ToList();
+        if (!_scope.IsSuperAdmin)
+        {
+            var organizationIds = await _scope.GetOrganizationIdsAsync(ct);
+            departments = departments
+                .Where(d => d.OrganizationId.HasValue && organizationIds.Contains(d.OrganizationId.Value))
+                .ToList();
+        }
+
         return Ok(departments.Select(MapDepartment));
     }
 
@@ -30,6 +41,11 @@ public class DepartmentsController : BaseApiController
         if (department == null)
         {
             return NotFound();
+        }
+
+        if (!await _scope.CanAccessDepartmentAsync(id, ct))
+        {
+            return Forbid();
         }
 
         return Ok(MapDepartment(department));
@@ -63,15 +79,31 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Create(
         [FromBody] CreateDepartmentDto dto,
         CancellationToken ct)
     {
+        var organizationId = dto.OrganizationId;
+        if (!_scope.IsSuperAdmin)
+        {
+            if (!_scope.IsDirector)
+            {
+                return Forbid();
+            }
+
+            var organizationIds = await _scope.GetOrganizationIdsAsync(ct);
+            organizationId = organizationId.HasValue ? organizationId : organizationIds.FirstOrDefault();
+            if (!organizationId.HasValue || !organizationIds.Contains(organizationId.Value))
+            {
+                return Forbid();
+            }
+        }
+
         var normalizedCode = dto.Code.ToUpper();
         var normalizedName = dto.Name.ToLower().Trim();
         var existingByCode = await _uow.Departments.FindAsync(
-            d => d.OrganizationId == dto.OrganizationId && d.Code == normalizedCode,
+            d => d.OrganizationId == organizationId && d.Code == normalizedCode,
             ct);
         if (existingByCode.Any())
         {
@@ -79,7 +111,7 @@ public class DepartmentsController : BaseApiController
         }
 
         var existingByName = await _uow.Departments.FindAsync(
-            d => d.OrganizationId == dto.OrganizationId && d.Name.ToLower() == normalizedName,
+            d => d.OrganizationId == organizationId && d.Name.ToLower() == normalizedName,
             ct);
         if (existingByName.Any())
         {
@@ -93,9 +125,9 @@ public class DepartmentsController : BaseApiController
             department.AssignHead(dto.DepartmentHeadUserId);
         }
 
-        if (dto.OrganizationId.HasValue)
+        if (organizationId.HasValue)
         {
-            department.AssignToOrganization(dto.OrganizationId.Value);
+            department.AssignToOrganization(organizationId.Value);
         }
 
         if (dto.MaxCapacity.HasValue)
@@ -110,7 +142,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateDepartmentDto dto,
@@ -122,11 +154,34 @@ public class DepartmentsController : BaseApiController
             return NotFound();
         }
 
+        if (!await _scope.CanManageDepartmentAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        var organizationId = dto.OrganizationId;
+        if (!_scope.IsSuperAdmin)
+        {
+            if (_scope.IsDirector)
+            {
+                var organizationIds = await _scope.GetOrganizationIdsAsync(ct);
+                organizationId = organizationId.HasValue ? organizationId : department.OrganizationId;
+                if (!organizationId.HasValue || !organizationIds.Contains(organizationId.Value))
+                {
+                    return Forbid();
+                }
+            }
+            else
+            {
+                organizationId = department.OrganizationId;
+            }
+        }
+
         var newCode = dto.Code.ToUpper();
-        if (newCode != department.Code || dto.OrganizationId != department.OrganizationId)
+        if (newCode != department.Code || organizationId != department.OrganizationId)
         {
             var existingByCode = await _uow.Departments.FindAsync(
-                d => d.Id != id && d.OrganizationId == dto.OrganizationId && d.Code == newCode,
+                d => d.Id != id && d.OrganizationId == organizationId && d.Code == newCode,
                 ct);
             if (existingByCode.Any())
             {
@@ -135,10 +190,10 @@ public class DepartmentsController : BaseApiController
         }
 
         var newName = dto.Name.ToLower().Trim();
-        if (newName != department.Name.ToLower() || dto.OrganizationId != department.OrganizationId)
+        if (newName != department.Name.ToLower() || organizationId != department.OrganizationId)
         {
             var existingByName = await _uow.Departments.FindAsync(
-                d => d.Id != id && d.OrganizationId == dto.OrganizationId && d.Name.ToLower() == newName,
+                d => d.Id != id && d.OrganizationId == organizationId && d.Name.ToLower() == newName,
                 ct);
             if (existingByName.Any())
             {
@@ -152,7 +207,7 @@ public class DepartmentsController : BaseApiController
             department.AssignHead(dto.DepartmentHeadUserId);
         }
 
-        department.AssignToOrganization(dto.OrganizationId);
+        department.AssignToOrganization(organizationId);
 
         if (dto.MaxCapacity.HasValue)
         {

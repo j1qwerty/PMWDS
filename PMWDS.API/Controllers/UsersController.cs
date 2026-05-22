@@ -17,17 +17,20 @@ public class UsersController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly ApplicationDbContext _db;
     private readonly ILocalFileStorageService _localFiles;
+    private readonly RoleScopeService _scope;
 
     public UsersController(
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         ApplicationDbContext db,
-        ILocalFileStorageService localFiles)
+        ILocalFileStorageService localFiles,
+        RoleScopeService scope)
     {
         _uow = uow;
         _currentUser = currentUser;
         _db = db;
         _localFiles = localFiles;
+        _scope = scope;
     }
 
     [HttpGet]
@@ -36,9 +39,21 @@ public class UsersController : BaseApiController
         [FromQuery] Guid? departmentId,
         CancellationToken ct)
     {
-        var users = departmentId.HasValue
-            ? await _uow.Users.GetByDepartmentWithSkillsAsync(departmentId.Value, ct)
-            : await _uow.Users.GetAllWithSkillsAsync(ct);
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var query = UserGraph(includeSkills: true);
+        if (departmentId.HasValue)
+        {
+            query = query.Where(u =>
+                u.DepartmentId == departmentId.Value ||
+                u.DepartmentAssignments.Any(assignment => assignment.DepartmentId == departmentId.Value));
+        }
+
+        query = await _scope.ScopeUsersAsync(query, ct);
+        var users = await query.ToListAsync(ct);
 
         return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))));
     }
@@ -50,6 +65,11 @@ public class UsersController : BaseApiController
         if (!Guid.TryParse(id, out var parsedId))
         {
             return BadRequest("Invalid user id.");
+        }
+
+        if (!await _scope.CanAccessUserAsync(parsedId, ct))
+        {
+            return Forbid();
         }
 
         var user = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
@@ -86,6 +106,16 @@ public class UsersController : BaseApiController
         if (user == null)
         {
             return NotFound();
+        }
+
+        if (!await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!await AreDepartmentsInScopeAsync(dto.DepartmentIds, dto.DepartmentId, ct))
+        {
+            return Forbid();
         }
 
         user.UpdateProfile(
@@ -136,7 +166,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPost("register")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Director")]
     public async Task<IActionResult> Register(
         [FromBody] RegisterUserDto dto,
         CancellationToken ct)
@@ -149,7 +179,17 @@ public class UsersController : BaseApiController
             return Conflict(new { message = $"A user with email '{dto.Email}' already exists." });
         }
 
+        if (!await AreDepartmentsInScopeAsync(dto.DepartmentIds, dto.DepartmentId, ct))
+        {
+            return Forbid();
+        }
+
         var roleName = string.IsNullOrWhiteSpace(dto.Role) ? "Viewer" : dto.Role.Trim();
+        if (!_scope.IsSuperAdmin && roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
         var role = (await _uow.Roles.FindAsync(r => r.Name == roleName, ct)).FirstOrDefault();
         if (role == null)
         {
@@ -193,7 +233,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}/departments")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Director")]
     public async Task<IActionResult> AssignDepartments(
         string id,
         [FromBody] AssignUserDepartmentsRequest req,
@@ -208,6 +248,16 @@ public class UsersController : BaseApiController
         if (user == null)
         {
             return NotFound();
+        }
+
+        if (!await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!await AreDepartmentsInScopeAsync(req.DepartmentIds, req.PrimaryDepartmentId, ct))
+        {
+            return Forbid();
         }
 
         await AssignDepartmentsAsync(user, req.DepartmentIds, req.PrimaryDepartmentId, ct);
@@ -432,7 +482,11 @@ public class UsersController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetAvailable(CancellationToken ct)
     {
-        var users = await _uow.Users.GetAvailableUsersAsync(ct);
+        var query = await _scope.ScopeUsersAsync(
+            UserGraph(includeSkills: true)
+                .Where(u => u.IsActive && u.AvailabilityStatus == PMWDS.Domain.Enums.AvailabilityStatus.Available),
+            ct);
+        var users = await query.ToListAsync(ct);
         return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))));
     }
 
@@ -524,6 +578,59 @@ public class UsersController : BaseApiController
         {
             user.AssignToDepartment(primary);
         }
+    }
+
+    private IQueryable<ApplicationUser> UserGraph(bool includeSkills)
+    {
+        var query = _db.Users
+            .Include(u => u.Department)
+            .Include(u => u.DepartmentAssignments)
+            .ThenInclude(d => d.Department)
+            .ThenInclude(d => d!.Organization)
+            .Include(u => u.Profile)
+            .Include(u => u.Roles)
+            .AsQueryable();
+
+        if (includeSkills)
+        {
+            query = query
+                .Include(u => u.Skills)
+                .ThenInclude(s => s.Skill);
+        }
+
+        return query;
+    }
+
+    private async Task<bool> AreDepartmentsInScopeAsync(
+        IReadOnlyCollection<Guid>? departmentIds,
+        Guid? primaryDepartmentId,
+        CancellationToken ct)
+    {
+        if (_scope.IsSuperAdmin)
+        {
+            return true;
+        }
+
+        var requested = (departmentIds ?? Array.Empty<Guid>())
+            .Append(primaryDepartmentId ?? Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (requested.Count == 0)
+        {
+            return true;
+        }
+
+        var organizationIds = await _scope.GetOrganizationIdsAsync(ct);
+        var validCount = await _db.Departments
+            .CountAsync(department =>
+                requested.Contains(department.Id) &&
+                department.OrganizationId.HasValue &&
+                organizationIds.Contains(department.OrganizationId.Value),
+                ct);
+
+        return validCount == requested.Count;
     }
 }
 
