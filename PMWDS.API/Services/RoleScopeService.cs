@@ -127,23 +127,29 @@ public class RoleScopeService
         {
             var departmentIds = await GetDepartmentIdsAsync(ct);
             return query.Where(user =>
-                (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
-                user.DepartmentAssignments.Any(assignment => departmentIds.Contains(assignment.DepartmentId)) ||
-                (user.DepartmentId.HasValue && departmentIds.Contains(user.DepartmentId.Value)) ||
-                user.Roles.Any(role => (role.Name == "Director" || role.Name == "DepartmentHead") &&
-                    user.DepartmentAssignments.Any(assignment =>
-                        assignment.Department.OrganizationId.HasValue &&
-                        organizationIds.Contains(assignment.Department.OrganizationId.Value))));
+                !user.Roles.Any(role => role.Name == "SuperAdmin") &&
+                (
+                    (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
+                    user.DepartmentAssignments.Any(assignment => departmentIds.Contains(assignment.DepartmentId)) ||
+                    (user.DepartmentId.HasValue && departmentIds.Contains(user.DepartmentId.Value)) ||
+                    user.Roles.Any(role => (role.Name == "Director" || role.Name == "DepartmentHead") &&
+                        user.DepartmentAssignments.Any(assignment =>
+                            assignment.Department.OrganizationId.HasValue &&
+                            organizationIds.Contains(assignment.Department.OrganizationId.Value)))
+                ));
         }
 
         return query.Where(user =>
-            (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
-            user.DepartmentAssignments.Any(assignment =>
-                assignment.Department.OrganizationId.HasValue &&
-                organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
-            (user.Department != null &&
-                user.Department.OrganizationId.HasValue &&
-                organizationIds.Contains(user.Department.OrganizationId.Value)));
+            !user.Roles.Any(role => role.Name == "SuperAdmin") &&
+            (
+                (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
+                user.DepartmentAssignments.Any(assignment =>
+                    assignment.Department.OrganizationId.HasValue &&
+                    organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
+                (user.Department != null &&
+                    user.Department.OrganizationId.HasValue &&
+                    organizationIds.Contains(user.Department.OrganizationId.Value))
+            ));
     }
 
     public async Task<bool> CanAccessOrganizationAsync(Guid organizationId, CancellationToken ct)
@@ -258,6 +264,15 @@ public class RoleScopeService
         if (IsSuperAdmin || CurrentUserId == userId)
         {
             return true;
+        }
+
+        var isSuperAdminUser = await _db.Users
+            .Where(user => user.Id == userId)
+            .Select(user => user.Roles.Any(role => role.Name == "SuperAdmin"))
+            .FirstOrDefaultAsync(ct);
+        if (isSuperAdminUser)
+        {
+            return false;
         }
 
         var scopedUserIds = await (await ScopeUsersAsync(_db.Users.AsQueryable(), ct))

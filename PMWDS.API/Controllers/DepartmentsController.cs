@@ -67,7 +67,8 @@ public class DepartmentsController : BaseApiController
         }
 
         var projects = (await _uow.Projects.GetByDepartmentAsync(id, ct)).ToList();
-        var users = (await _uow.Users.GetByDepartmentAsync(id, ct)).ToList();
+        var users = await _scope.ScopeUsersAsync((await _uow.Users.GetByDepartmentAsync(id, ct)).AsQueryable(), ct);
+        var visibleUsers = users.ToList();
 
         return Ok(new
         {
@@ -76,10 +77,10 @@ public class DepartmentsController : BaseApiController
             department.Code,
             department.Description,
             department.OrganizationId,
-            TeamMembers = users.Count,
+            TeamMembers = visibleUsers.Count,
             ActiveProjects = projects.Count(p => p.Status == PMWDS.Domain.Enums.ProjectStatus.InProgress),
             CompletedProjects = projects.Count(p => p.Status == PMWDS.Domain.Enums.ProjectStatus.Completed),
-            AverageWorkload = users.Any() ? users.Average(u => u.AIWorkloadScore) : 0d
+            AverageWorkload = visibleUsers.Any() ? visibleUsers.Average(u => u.AIWorkloadScore) : 0d
         });
     }
 

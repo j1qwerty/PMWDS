@@ -79,6 +79,7 @@ public class ApplicationUser : AuditableEntity
     public void AssignToDepartment(Guid departmentId) => DepartmentId = departmentId;
     public void AssignToOrganization(Guid organizationId) => OrganizationId = organizationId;
     public void ClearPrimaryDepartment() => DepartmentId = null;
+    public void ClearOrganization() => OrganizationId = null;
     public void UpdateAvailability(
     AvailabilityStatus status, double percentage)
     {

@@ -230,9 +230,22 @@ public static class SeedData
                     user.PhoneNumber,
                     spec.JobTitle,
                     user.ProfilePictureUrl);
-                user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
-                user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
+            user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
+            user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
+
+            if (spec.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            {
+                user.ClearPrimaryDepartment();
+                user.ClearOrganization();
+                var assignments = await context.UserDepartments
+                    .Where(assignment => assignment.UserId == user.Id)
+                    .ToListAsync(ct);
+                if (assignments.Count > 0)
+                {
+                    context.UserDepartments.RemoveRange(assignments);
+                }
             }
+        }
 
             var profilePicUrl = imagePaths.TryGetValue(spec.EmployeeCode, out var path)
                 ? path
@@ -898,7 +911,7 @@ public static class SeedData
         Guid Dept(string code) => departments.FirstOrDefault(d => d.Code == code)?.Id ?? departments.First().Id;
         return new[]
         {
-            new UserSpec("admin@pmwds.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", Dept("ENG"), AvailabilityStatus.Available, 100, 92, 26, 0.08),
+            new UserSpec("admin@pmwds.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
             new UserSpec("director@pmwds.com", "Priya", "Menon", "DIR001", "Director", "Director", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
             new UserSpec("manager@pmwds.com", "Dev", "Kapoor", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
             new UserSpec("head@pmwds.com", "Rohan", "Iyer", "DH001", "DepartmentHead", "DepartmentHead", Dept("ENG"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
@@ -996,7 +1009,7 @@ public static class SeedData
     private sealed record IntegrationSpec(string Type, string Name, object Configuration, bool Enabled);
     private sealed record AIProviderCredentialSpec(string Provider, string DisplayName, bool Enabled, string BaseUrl, string DefaultModel);
     private sealed record RoleSpec(string Name, string Description, int Level, IReadOnlyCollection<string> PermissionCodes);
-    private sealed record UserSpec(string Email, string FirstName, string LastName, string EmployeeCode, string JobTitle, string Role, Guid DepartmentId, AvailabilityStatus Availability, double AvailabilityPercent, double Performance, double Workload, double Burnout);
+    private sealed record UserSpec(string Email, string FirstName, string LastName, string EmployeeCode, string JobTitle, string Role, Guid? DepartmentId, AvailabilityStatus Availability, double AvailabilityPercent, double Performance, double Workload, double Burnout);
     private sealed record ProjectSpec(string Name, string Description, string Category, ProjectPriority Priority, Guid DepartmentId, Guid ManagerId, DateTime Start, DateTime End, decimal Budget, decimal ActualCost, string Client, double Progress, double Health, double DelayRisk, double BudgetRisk, string Insight);
     private sealed record TaskSpec(Guid ProjectId, Guid? MilestoneId, Guid? ParentTaskId, string Title, string Description, TaskPriority Priority, DateTime Start, DateTime Due, int EstimatedHours, Guid AssigneeId, string AssignedById, TaskStatus Status, double Progress, double DelayProbability, int ExpectedDelayDays, string Notes);
 }
