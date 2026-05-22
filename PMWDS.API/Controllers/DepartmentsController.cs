@@ -55,6 +55,11 @@ public class DepartmentsController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Dashboard(Guid id, CancellationToken ct)
     {
+        if (!await _scope.CanAccessDepartmentAsync(id, ct))
+        {
+            return Forbid();
+        }
+
         var department = await _uow.Departments.GetByIdAsync(id, ct);
         if (department == null)
         {

@@ -6,6 +6,7 @@ interface DepartmentCardProps {
   department: Department;
   index: number;
   isAdmin: boolean;
+  canEdit?: boolean;
   canDelete?: boolean;
   onEdit: (dept: Department) => void;
   onDelete: (dept: Department) => void;
@@ -20,6 +21,7 @@ export function DepartmentCard({
   department, 
   index, 
   isAdmin, 
+  canEdit = isAdmin,
   canDelete = isAdmin,
   onEdit, 
   onDelete,
@@ -59,15 +61,17 @@ export function DepartmentCard({
             <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{department.code}</div>
           </div>
         </div>
-        {isAdmin && (
+        {(canEdit || canDelete) && (
           <div className="flex gap-1 shrink-0 ml-2">
-            <button
-              onClick={() => onEdit(department)}
-              className="w-8 h-8 rounded-lg border border-slate-200 bg-white cursor-pointer flex items-center justify-center hover:bg-slate-50 hover:border-slate-300 transition-colors"
-              title="Edit department"
-            >
-              <span className="material-symbols-outlined text-sm text-slate-500">edit</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => onEdit(department)}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white cursor-pointer flex items-center justify-center hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                title="Edit department"
+              >
+                <span className="material-symbols-outlined text-sm text-slate-500">edit</span>
+              </button>
+            )}
             {canDelete && (
               <button
                 onClick={() => onDelete(department)}

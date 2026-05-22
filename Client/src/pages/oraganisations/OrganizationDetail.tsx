@@ -12,6 +12,8 @@ interface OrganizationDetailProps {
   isAdmin: boolean;
   canDeleteOrg?: boolean;
   canManageDepartments?: boolean;
+  canCreateDepartments?: boolean;
+  canEditDepartment?: (dept: Department) => boolean;
   onEditOrg: () => void;
   onDeleteOrg: () => void;
   onAddDept: () => void;
@@ -26,6 +28,8 @@ export function OrganizationDetail({
   isAdmin,
   canDeleteOrg = isAdmin,
   canManageDepartments = isAdmin,
+  canCreateDepartments = canManageDepartments,
+  canEditDepartment = () => canManageDepartments,
   onEditOrg,
   onDeleteOrg,
   onAddDept,
@@ -40,7 +44,7 @@ export function OrganizationDetail({
     users.find((u) => u.id === dept.departmentHeadUserId);
 
   const getTeamMembers = (deptId: string) =>
-    users.filter((u) => u.departmentId === deptId);
+    users.filter((u) => u.departmentId === deptId || u.departments?.some((department) => department.departmentId === deptId));
 
   return (
     <>
@@ -167,7 +171,7 @@ export function OrganizationDetail({
               {departments.length} department{departments.length !== 1 ? "s" : ""} in {organization.name}
             </p>
           </div>
-          {canManageDepartments && (
+          {canCreateDepartments && (
             <GradientButton onClick={onAddDept}>
               <span className="material-symbols-outlined text-lg">add</span>
               Add Department
@@ -183,6 +187,7 @@ export function OrganizationDetail({
                 department={dept}
                 index={index}
                 isAdmin={canManageDepartments}
+                canEdit={canEditDepartment(dept)}
                 canDelete={canDeleteOrg}
                 onEdit={onEditDept}
                 onDelete={onDeleteDept}
@@ -200,7 +205,7 @@ export function OrganizationDetail({
             <p className="text-sm text-slate-400  mx-auto mb-6">
               Create your first department to start organizing your teams and projects.
             </p>
-            {canManageDepartments && (
+            {canCreateDepartments && (
               <GradientButton variant="ghost" onClick={onAddDept}>
                 <span className="material-symbols-outlined">add</span>
                 Create First Department

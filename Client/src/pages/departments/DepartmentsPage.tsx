@@ -23,6 +23,7 @@ export function DepartmentsPage() {
     const { auth } = useAuth();
     const access = useRoleAccess();
     const canManageDepartments = access.canManageDepartments;
+    const canCreateDepartments = access.isAdmin || access.isDirector;
     const canDeleteDepartments = access.isAdmin;
 
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -88,7 +89,18 @@ export function DepartmentsPage() {
     }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
 
     const selectedDepartment = departments.find((d) => d.id === selectedDeptId) ?? null;
-    const selectedOrganization = organizations.find((o) => o.id === selectedOrgId);
+    const selectedOrganization = organizations.find((o) => o.id === (selectedOrgId || selectedDepartment?.organizationId));
+    const selectedTeamMembers = selectedDepartment
+        ? users.filter((user) =>
+            user.departmentId === selectedDepartment.id ||
+            user.departments?.some((department) => department.departmentId === selectedDepartment.id))
+        : [];
+    const canEditSelectedDepartment = Boolean(
+        selectedDepartment &&
+        (access.isAdmin ||
+            access.isDirector ||
+            (access.isDepartmentHead && selectedDepartment.departmentHeadUserId === auth?.userId))
+    );
 
     const departmentHead = selectedDepartment?.departmentHeadUserId
         ? users.find((u) => u.id === selectedDepartment.departmentHeadUserId)
@@ -142,7 +154,7 @@ export function DepartmentsPage() {
                 <PageHeader
                     title="Departments"
                     description="Manage departments across all organizations"
-                    action={canManageDepartments ? {
+                    action={canCreateDepartments ? {
                         label: "New Department",
                         onClick: () => setDeptModal({ open: true }),
                         icon: "add",
@@ -247,7 +259,7 @@ export function DepartmentsPage() {
                         <>
 
                             {/* Admin Actions */}
-                            {canManageDepartments && (
+                            {canEditSelectedDepartment && (
                                 <GlassCard className="p-4">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -287,7 +299,7 @@ export function DepartmentsPage() {
                                 departmentHead={departmentHead}
                                 parentDepartment={parentDepartment}
                                 childCount={childCount}
-                                teamMembers={users.slice(0, 5)}
+                                teamMembers={selectedTeamMembers}
                                 dashboard={dashboard}
                             />
 

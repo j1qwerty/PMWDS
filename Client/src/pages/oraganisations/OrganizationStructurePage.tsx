@@ -19,6 +19,7 @@ export function OrganizationStructurePage() {
   const isAdmin = hasRole("SuperAdmin");
   const canManageOrganization = hasRole("SuperAdmin", "Director");
   const canManageDepartments = hasRole("SuperAdmin", "Director", "DepartmentHead");
+  const canCreateDepartments = hasRole("SuperAdmin", "Director");
 
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -190,6 +191,11 @@ export function OrganizationStructurePage() {
               isAdmin={canManageOrganization}
               canDeleteOrg={access.isAdmin}
               canManageDepartments={canManageDepartments}
+              canCreateDepartments={canCreateDepartments}
+              canEditDepartment={(department) =>
+                access.isAdmin ||
+                access.isDirector ||
+                (access.isDepartmentHead && department.departmentHeadUserId === auth?.userId)}
               onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
               onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
               onAddDept={() => setDeptModal({ open: true })}
