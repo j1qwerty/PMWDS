@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Notifications;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
@@ -12,15 +13,18 @@ public class NotificationsController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
+    private readonly RoleScopeService _scope;
 
     public NotificationsController(
         IUnitOfWork uow,
         ICurrentUserService currentUser,
-        INotificationService notifications)
+        INotificationService notifications,
+        RoleScopeService scope)
     {
         _uow = uow;
         _currentUser = currentUser;
         _notifications = notifications;
+        _scope = scope;
     }
 
     [HttpGet]
@@ -81,6 +85,11 @@ public class NotificationsController : BaseApiController
             return NotFound();
         }
 
+        if (notification.UserId != _currentUser.UserId)
+        {
+            return Forbid();
+        }
+
         notification.MarkAsRead();
         await _uow.Notifications.UpdateAsync(notification, ct);
         await _uow.SaveChangesAsync(ct);
@@ -112,20 +121,38 @@ public class NotificationsController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var notification = await _uow.Notifications.GetByIdAsync(id, ct);
+        if (notification == null)
+        {
+            return NotFound();
+        }
+
+        if (notification.UserId != _currentUser.UserId && !_scope.IsSuperAdmin)
+        {
+            return Forbid();
+        }
+
         await _uow.Notifications.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
 
     [HttpPost("broadcast")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Roles = "SuperAdmin,Director,DepartmentHead")]
     public async Task<IActionResult> Broadcast(
         [FromBody] BroadcastNotificationRequest req,
         CancellationToken ct)
     {
-        var users = req.DepartmentId.HasValue
+        if (req.DepartmentId.HasValue && !await _scope.CanAccessDepartmentAsync(req.DepartmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var candidateUsers = req.DepartmentId.HasValue
             ? await _uow.Users.GetByDepartmentAsync(req.DepartmentId.Value, ct)
             : await _uow.Users.GetAllAsync(ct);
+        var scopedUsers = await _scope.ScopeUsersAsync(candidateUsers.AsQueryable(), ct);
+        var users = scopedUsers.ToList();
 
         var dtos = users.Select(u => new SendNotificationDto(
             u.Id.ToString(),
@@ -140,7 +167,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet("templates")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> GetTemplates(CancellationToken ct)
         => Ok((await _uow.NotificationTemplates.GetAllAsync(ct)).Select(MapTemplate));
 
@@ -181,7 +208,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet("rules")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> GetRules(CancellationToken ct)
         => Ok((await _uow.AlertRules.GetAllAsync(ct)).Select(MapRule));
 

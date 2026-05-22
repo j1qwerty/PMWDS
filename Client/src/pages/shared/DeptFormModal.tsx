@@ -17,7 +17,6 @@ interface DeptFormModalProps {
 
 export function DeptFormModal({ 
   initialData, 
-  departments, 
   organizations, 
   users = [], 
   selectedOrgId, 

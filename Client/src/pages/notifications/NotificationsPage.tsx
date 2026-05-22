@@ -9,12 +9,9 @@ import type {
 } from "../../types";
 import { 
   AnimatedBackground, 
-  GlassCard, 
-  GradientButton, 
   LoadingPage,
   PageHeader,
   ModalOverlay,
-  getStatusColor,
 } from "../shared";
 import { NotificationInbox } from "./NotificationInbox";
 import { NotificationTemplates } from "./NotificationTemplates";
@@ -26,9 +23,8 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 
 export function NotificationsPage() {
   const { auth, hasRole } = useAuth();
-  const canManage = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const canBroadcast = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const canConfigure = hasRole("SuperAdmin", "ProjectManager");
+  const canConfigure = hasRole("SuperAdmin");
+  const canBroadcast = hasRole("SuperAdmin", "Director", "DepartmentHead");
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
@@ -54,8 +50,8 @@ export function NotificationsPage() {
     setLoading(true);
     Promise.all([
       api.getNotifications(auth.token),
-      canManage ? api.getNotificationTemplates(auth.token) : Promise.resolve([]),
-      canManage ? api.getAlertRules(auth.token) : Promise.resolve([]),
+      canConfigure ? api.getNotificationTemplates(auth.token) : Promise.resolve([]),
+      canConfigure ? api.getAlertRules(auth.token) : Promise.resolve([]),
       canBroadcast ? api.getDepartments(auth.token) : Promise.resolve([]),
     ])
       .then(([notificationData, templateData, ruleData, departmentData]) => {
@@ -67,7 +63,13 @@ export function NotificationsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, [auth]);
+  useEffect(() => { loadData(); }, [auth, canBroadcast, canConfigure]);
+
+  useEffect(() => {
+    if (!canConfigure && activeTab !== "inbox") {
+      setActiveTab("inbox");
+    }
+  }, [activeTab, canConfigure]);
 
   const unreadCount = items.filter(i => !i.isRead).length;
 
@@ -146,7 +148,7 @@ export function NotificationsPage() {
       <div className="relative z-10">
         <PageHeader
           title="Notifications"
-          description="Manage inbox, templates, and alert rules"
+          description={canConfigure ? "Manage inbox, templates, and alert rules" : "Manage your notification inbox"}
           action={canBroadcast ? {
             label: "Broadcast",
             onClick: () => setBroadcastOpen(true),
@@ -170,11 +172,15 @@ export function NotificationsPage() {
       )}
 
       {/* Stats Row */}
-      <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div className={`relative z-10 grid grid-cols-2 ${canConfigure ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3 mb-5`}>
         <StatCard label="Total Notifications" value={items.length} color="indigo" icon="notifications" />
         <StatCard label="Unread" value={unreadCount} color="amber" icon="mark_email_unread" />
-        <StatCard label="Templates" value={templates.length} color="emerald" icon="description" />
-        <StatCard label="Alert Rules" value={rules.length} color="violet" icon="rule" />
+        {canConfigure && (
+          <>
+            <StatCard label="Templates" value={templates.length} color="emerald" icon="description" />
+            <StatCard label="Alert Rules" value={rules.length} color="violet" icon="rule" />
+          </>
+        )}
       </div>
 
       {/* Tab Navigation */}
@@ -188,7 +194,7 @@ export function NotificationsPage() {
             count={unreadCount}
             countColor="amber"
           />
-          {canManage && (
+          {canConfigure && (
             <>
               <TabButton
                 active={activeTab === "templates"}
@@ -222,7 +228,7 @@ export function NotificationsPage() {
           />
         )}
 
-        {activeTab === "templates" && canManage && (
+        {activeTab === "templates" && canConfigure && (
           <NotificationTemplates
             templates={templates}
             onEdit={(template) => setTemplateModal({ open: true, editTemplate: template })}
@@ -232,7 +238,7 @@ export function NotificationsPage() {
           />
         )}
 
-        {activeTab === "rules" && canManage && (
+        {activeTab === "rules" && canConfigure && (
           <NotificationRules
             rules={rules}
             onEdit={(rule) => setRuleModal({ open: true, editRule: rule })}
@@ -244,7 +250,7 @@ export function NotificationsPage() {
       </div>
 
       {/* Modals */}
-      {broadcastOpen && (
+      {broadcastOpen && canBroadcast && (
         <ModalOverlay onClose={() => setBroadcastOpen(false)}>
           <BroadcastModal
             departments={departments}
@@ -254,7 +260,7 @@ export function NotificationsPage() {
         </ModalOverlay>
       )}
 
-      {templateModal.open && (
+      {templateModal.open && canConfigure && (
         <ModalOverlay onClose={() => setTemplateModal({ open: false })}>
           <TemplateFormModal
             initialData={templateModal.editTemplate}
@@ -264,7 +270,7 @@ export function NotificationsPage() {
         </ModalOverlay>
       )}
 
-      {ruleModal.open && (
+      {ruleModal.open && canConfigure && (
         <ModalOverlay onClose={() => setRuleModal({ open: false })}>
           <RuleFormModal
             initialData={ruleModal.editRule}
@@ -274,7 +280,7 @@ export function NotificationsPage() {
         </ModalOverlay>
       )}
 
-      {deleteConfirm.open && (
+      {deleteConfirm.open && canConfigure && (
         <ModalOverlay onClose={() => setDeleteConfirm({ open: false, type: "template", id: "", name: "" })}>
           <DeleteConfirmationModal
             name={deleteConfirm.name}
