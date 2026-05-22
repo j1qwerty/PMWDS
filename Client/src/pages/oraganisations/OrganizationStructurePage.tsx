@@ -11,11 +11,14 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage } from "../shared";
+import { LoadingPage, useRoleAccess } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth, hasRole } = useAuth();
+  const access = useRoleAccess();
   const isAdmin = hasRole("SuperAdmin");
+  const canManageOrganization = hasRole("SuperAdmin", "Director");
+  const canManageDepartments = hasRole("SuperAdmin", "Director", "DepartmentHead");
 
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -41,7 +44,7 @@ export function OrganizationStructurePage() {
     Promise.all([
       api.getOrganizations(auth.token),
       api.getDepartments(auth.token),
-      isAdmin ? api.getUsers(auth.token) : Promise.resolve([]),
+      canManageDepartments ? api.getUsers(auth.token) : Promise.resolve([]),
     ]).then(([orgData, deptData, userData]) => {
       setOrganizations(orgData);
       setDepartments(deptData);
@@ -167,14 +170,16 @@ export function OrganizationStructurePage() {
       )}
 
       {/* Main Layout */}
-      <div className="grid grid-cols-[320px_1fr] gap-6 relative z-10">
-        <OrganizationList
-          organizations={organizations}
-          selectedOrgId={selectedOrgId}
-          onSelect={setSelectedOrgId}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-        />
+      <div className={`${isAdmin ? "grid grid-cols-[320px_1fr]" : "grid grid-cols-1"} gap-6 relative z-10`}>
+        {isAdmin && (
+          <OrganizationList
+            organizations={organizations}
+            selectedOrgId={selectedOrgId}
+            onSelect={setSelectedOrgId}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
+        )}
 
         <div className="flex flex-col gap-5">
           {selectedOrg ? (
@@ -182,7 +187,9 @@ export function OrganizationStructurePage() {
               organization={selectedOrg}
               departments={orgDepartments}
               users={users}
-              isAdmin={isAdmin}
+              isAdmin={canManageOrganization}
+              canDeleteOrg={access.isAdmin}
+              canManageDepartments={canManageDepartments}
               onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
               onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
               onAddDept={() => setDeptModal({ open: true })}

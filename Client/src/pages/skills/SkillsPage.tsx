@@ -15,8 +15,8 @@ import { SkillFormModal } from "./SkillFormModal";
 
 export function SkillsPage() {
   const { auth, hasRole } = useAuth();
-  const canManage = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const canWrite = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const canManage = hasRole("SuperAdmin", "Director", "DepartmentHead");
+  const canWrite = hasRole("SuperAdmin", "Director", "DepartmentHead");
 
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [message, setMessage] = useState("");
@@ -51,9 +51,6 @@ export function SkillsPage() {
   });
 
   // Stats
-  const totalUsers = skills.reduce((sum, s) => sum + (s.userCount || 0), 0);
-  const avgUsersPerSkill = skills.length > 0 ? Math.round(totalUsers / skills.length) : 0;
-
   const handleSkillSubmit = async (payload: Record<string, unknown>) => {
     if (!auth) return;
     try {
@@ -120,8 +117,6 @@ export function SkillsPage() {
       <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Skills" value={skills.length} color="indigo" icon="school" />
         <StatCard label="Categories" value={categories.length} color="violet" icon="category" />
-        <StatCard label="Total Users" value={totalUsers} color="emerald" icon="people" />
-        <StatCard label="Avg Users/Skill" value={avgUsersPerSkill} color="amber" icon="trending_up" />
       </div>
 
       {/* Main Content */}
@@ -226,14 +221,9 @@ export function SkillsPage() {
                       </p>
                     )}
 
-                    {/* User Count & Actions */}
+                    {/* Actions */}
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                      <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-slate-400">people</span>
-                        <span className="text-xs font-medium text-slate-500">
-                          {skill.userCount || 0} user{(skill.userCount || 0) !== 1 ? "s" : ""}
-                        </span>
-                      </div>
+                      <span className="text-xs font-medium text-slate-400">{skill.category || "General"}</span>
 
                       {canManage && (
                         <div className="flex gap-1.5">

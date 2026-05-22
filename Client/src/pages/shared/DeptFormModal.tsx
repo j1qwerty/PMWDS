@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { InputF } from "./InputF";
 import { SelectF } from "./SelectF";
+import { ScopedUserSelect } from "./ScopedUserSelect";
+import { useRoleAccess } from "./RoleGate";
 
 interface DeptFormModalProps {
   initialData?: Department;
@@ -32,7 +34,7 @@ export function DeptFormModal({
     maxCapacity: initialData?.maxCapacity ?? 24,
   });
 
-  const orgDepts = departments.filter((d) => d.organizationId === form.organizationId);
+  const access = useRoleAccess();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -73,36 +75,30 @@ export function DeptFormModal({
           onChange={(v) => setForm({ ...form, description: v })} 
         />
 
-        <SelectF
-          label="Organization"
-          value={form.organizationId}
-          onChange={(v) => setForm({ ...form, organizationId: v, parentDepartmentId: "" })}
-          options={organizations.map((o) => ({ value: o.id, label: o.name }))}
-        />
+        {access.isAdmin ? (
+          <SelectF
+            label="Organization"
+            value={form.organizationId}
+            onChange={(v) => setForm({ ...form, organizationId: v, parentDepartmentId: "" })}
+            options={organizations.map((o) => ({ value: o.id, label: o.name }))}
+          />
+        ) : (
+          <InputF
+            label="Organization"
+            value={organizations.find((organization) => organization.id === form.organizationId)?.name || "Assigned organization"}
+            onChange={() => undefined}
+            disabled
+          />
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <SelectF
-            label="Parent Department"
-            value={form.parentDepartmentId}
-            onChange={(v) => setForm({ ...form, parentDepartmentId: v })}
-            options={[
-              { value: "", label: "None (Top Level)" },
-              ...orgDepts
-                .filter(d => d.id !== initialData?.id)
-                .map((d) => ({ value: d.id, label: d.name })),
-            ]}
-          />
-          
-          <SelectF
-            label="Department Head"
-            value={form.departmentHeadUserId}
-            onChange={(v) => setForm({ ...form, departmentHeadUserId: v })}
-            options={[
-              { value: "", label: "Unassigned" },
-              ...users.map((u) => ({ value: u.id, label: u.fullName })),
-            ]}
-          />
-        </div>
+        {/* Parent department is intentionally hidden. Submit null so departments remain top-level. */}
+        <ScopedUserSelect
+          users={users}
+          value={form.departmentHeadUserId}
+          organizationId={form.organizationId}
+          label="Department Head"
+          onChange={(departmentHeadUserId) => setForm({ ...form, departmentHeadUserId })}
+        />
 
         <InputF
           label="Maximum Capacity"

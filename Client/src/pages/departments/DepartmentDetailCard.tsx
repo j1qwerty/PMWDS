@@ -16,8 +16,6 @@ export function DepartmentDetailCard({
   department,
   organization,
   departmentHead,
-  parentDepartment,
-  childCount,
   teamMembers = [],
   dashboard,
 }: DepartmentDetailCardProps) {
@@ -90,11 +88,9 @@ export function DepartmentDetailCard({
       </div>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         <DetailItem icon="business" label="Organization" value={organization?.name ?? "Unassigned"} />
-        <DetailItem icon="account_tree" label="Parent Dept" value={parentDepartment?.name ?? "None"} />
         <DetailItem icon="person" label="Dept Head" value={departmentHead?.fullName ?? "Unassigned"} avatar={departmentHead} />
-        <DetailItem icon="subdirectory_arrow_right" label="Sub-departments" value={childCount.toString()} />
       </div>
 
       {/* Dashboard Stats */}

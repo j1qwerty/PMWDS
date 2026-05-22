@@ -3,12 +3,15 @@ import { GradientButton } from "../shared/GradientButton";
 import { InfoTile } from "../shared/InfoTile";
 import { DepartmentCard } from "./DepartmentCard";
 import type { OrganizationRecord, Department, User } from "../../types";
+import { Avatar } from "../shared";
 
 interface OrganizationDetailProps {
   organization: OrganizationRecord;
   departments: Department[];
   users: User[];
   isAdmin: boolean;
+  canDeleteOrg?: boolean;
+  canManageDepartments?: boolean;
   onEditOrg: () => void;
   onDeleteOrg: () => void;
   onAddDept: () => void;
@@ -21,6 +24,8 @@ export function OrganizationDetail({
   departments,
   users,
   isAdmin,
+  canDeleteOrg = isAdmin,
+  canManageDepartments = isAdmin,
   onEditOrg,
   onDeleteOrg,
   onAddDept,
@@ -69,13 +74,26 @@ export function OrganizationDetail({
                 <span className="material-symbols-outlined text-base">edit</span>
                 Edit
               </GradientButton>
-              <GradientButton variant="danger" onClick={onDeleteOrg}>
-                <span className="material-symbols-outlined text-base">delete</span>
-                Delete
-              </GradientButton>
+              {canDeleteOrg && (
+                <GradientButton variant="danger" onClick={onDeleteOrg}>
+                  <span className="material-symbols-outlined text-base">delete</span>
+                  Delete
+                </GradientButton>
+              )}
             </div>
           )}
         </div>
+
+        {organization.director && (
+          <div className="mb-8 flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+            <Avatar person={organization.director} size="md" />
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Director</div>
+              <div className="text-sm font-bold text-slate-800">{organization.director.fullName}</div>
+              <div className="text-xs text-slate-500">{organization.director.email}</div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -136,7 +154,6 @@ export function OrganizationDetail({
             icon="description" 
             label="Departments" 
             value={departments.length}
-            subValue={`${departments.filter(d => d.parentDepartmentId).length} sub-departments`}
           />
         </div>
       </GlassCard>
@@ -150,7 +167,7 @@ export function OrganizationDetail({
               {departments.length} department{departments.length !== 1 ? "s" : ""} in {organization.name}
             </p>
           </div>
-          {isAdmin && (
+          {canManageDepartments && (
             <GradientButton onClick={onAddDept}>
               <span className="material-symbols-outlined text-lg">add</span>
               Add Department
@@ -165,7 +182,8 @@ export function OrganizationDetail({
                 key={dept.id}
                 department={dept}
                 index={index}
-                isAdmin={isAdmin}
+                isAdmin={canManageDepartments}
+                canDelete={canDeleteOrg}
                 onEdit={onEditDept}
                 onDelete={onDeleteDept}
                 teamMembers={getTeamMembers(dept.id)}
@@ -182,7 +200,7 @@ export function OrganizationDetail({
             <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
               Create your first department to start organizing your teams and projects.
             </p>
-            {isAdmin && (
+            {canManageDepartments && (
               <GradientButton variant="ghost" onClick={onAddDept}>
                 <span className="material-symbols-outlined">add</span>
                 Create First Department

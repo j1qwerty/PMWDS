@@ -16,8 +16,8 @@ import { ActivityFilters } from "./ActivityFilters";
 export function ActivityLogsPage() {
   const { auth, hasRole } = useAuth();
   const isAdmin = hasRole("SuperAdmin");
-  const isManager = hasRole("ProjectManager", "DepartmentHead");
-  const canViewAll = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const isManager = hasRole("Director");
+  const canViewAll = hasRole("SuperAdmin", "Director");
 
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLogRecord[]>([]);

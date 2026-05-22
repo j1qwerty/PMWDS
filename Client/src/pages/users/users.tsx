@@ -11,12 +11,12 @@ import { UsersTable } from "./UsersTable";
 import { WorkloadView } from "./WorkloadView";
 import { RegisterUserForm } from "./RegisterUserForm";
 import { UserSkillsPanel } from "./UserSkillsPanel"
-import { UserDepartmentManager } from "./UserDepartmentManager";
 import { UserEditModal } from "./UserEditModal";
 
 export function UsersPage() {
   const { auth, hasRole } = useAuth();
   const isAdmin = hasRole("SuperAdmin");
+  const canManageUsers = hasRole("SuperAdmin", "Director");
 
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -123,7 +123,7 @@ export function UsersPage() {
             icon="monitoring"
             label="Workload"
           />
-          {isAdmin && (
+          {canManageUsers && (
             <TabButton
               active={activeTab === "manage"}
               onClick={() => setActiveTab("manage")}
@@ -143,7 +143,7 @@ export function UsersPage() {
             organizations={organizations}
             token={auth?.token ?? ""}
             canUploadPictures={isAdmin}
-            canManageUsers={isAdmin}
+            canManageUsers={canManageUsers}
             onEditUser={setEditingUser}
             onDeleteUser={setDeletingUser}
             onPictureUploaded={(updated) => {
@@ -157,11 +157,12 @@ export function UsersPage() {
           <WorkloadView workload={workload} />
         )}
 
-{activeTab === "manage" && isAdmin && (
+{activeTab === "manage" && canManageUsers && (
    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
     <RegisterUserForm 
       departments={departments}
       organizations={organizations}
+      lockedOrganizationId={isAdmin ? undefined : organizations[0]?.id}
       onSubmit={async (form) => {
         if (!auth) return;
         await api.registerUser(auth.token, form);
@@ -174,17 +175,6 @@ export function UsersPage() {
       skills={skills}
       onMessage={setMessage}
       onUpdate={loadData}
-    />
-    <UserDepartmentManager
-      users={users}
-      departments={departments}
-      organizations={organizations}
-      onAssign={async (userId, departmentIds, primaryDepartmentId) => {
-        if (!auth) return;
-        await api.assignUserDepartments(auth.token, userId, departmentIds, primaryDepartmentId);
-        setMessage("Department assignments updated.");
-        loadData();
-      }}
     />
   </div>
 )}

@@ -185,7 +185,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         title: "System",
         items: [
           { path: "/roles", label: "Roles", icon: "roles", roles: ["SuperAdmin"] },
-          { path: "/activity-logs", label: "Activity Logs", icon: "activity", roles: ["SuperAdmin"] },
+          { path: "/activity-logs", label: "Activity Logs", icon: "activity", roles: ["SuperAdmin", "Director"] },
           { path: "/settings", label: "Settings", icon: "settings", roles: ["SuperAdmin"] },
         ],
       },

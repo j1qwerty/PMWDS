@@ -5,23 +5,25 @@ import { GlassCard } from "../shared";
 interface RegisterUserFormProps {
   departments: Department[];
   organizations: OrganizationRecord[];
+  lockedOrganizationId?: string;
   onSubmit: (form: Record<string, unknown>) => void;
 }
 
-export function RegisterUserForm({ departments, organizations, onSubmit }: RegisterUserFormProps) {
+export function RegisterUserForm({ departments, organizations, lockedOrganizationId, onSubmit }: RegisterUserFormProps) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "Pmwds@123",
     jobTitle: "TeamMember",
-    organizationId: "",
+    organizationId: lockedOrganizationId ?? "",
     departmentId: "",
     role: "TeamMember",
   });
 
+  const selectedOrganizationId = lockedOrganizationId ?? form.organizationId;
   const filteredDepartments = departments.filter(
-    d => !form.organizationId || d.organizationId === form.organizationId
+    d => !selectedOrganizationId || d.organizationId === selectedOrganizationId
   );
 
   const handleSubmit = (e: FormEvent) => {
@@ -33,7 +35,7 @@ export function RegisterUserForm({ departments, organizations, onSubmit }: Regis
       email: "",
       password: "Pmwds@123",
       jobTitle: "TeamMember",
-      organizationId: "",
+      organizationId: lockedOrganizationId ?? "",
       departmentId: "",
       role: "TeamMember",
     });
@@ -115,7 +117,8 @@ export function RegisterUserForm({ departments, organizations, onSubmit }: Regis
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Organization</label>
           <select
-            value={form.organizationId}
+            value={selectedOrganizationId}
+            disabled={Boolean(lockedOrganizationId)}
             onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "" })}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >

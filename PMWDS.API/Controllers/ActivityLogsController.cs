@@ -42,7 +42,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("user/{userId:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Director")]
     public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] int count = 50, CancellationToken ct = default)
     {
         if (!await _scope.CanAccessUserAsync(userId, ct))
@@ -71,7 +71,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("all")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = "Director")]
     public async Task<IActionResult> GetAll([FromQuery] int count = 50, CancellationToken ct = default)
     {
         if (_scope.IsSuperAdmin)

@@ -6,6 +6,7 @@ interface DepartmentCardProps {
   department: Department;
   index: number;
   isAdmin: boolean;
+  canDelete?: boolean;
   onEdit: (dept: Department) => void;
   onDelete: (dept: Department) => void;
   teamMembers?: User[];
@@ -19,6 +20,7 @@ export function DepartmentCard({
   department, 
   index, 
   isAdmin, 
+  canDelete = isAdmin,
   onEdit, 
   onDelete,
   teamMembers = [],
@@ -66,13 +68,15 @@ export function DepartmentCard({
             >
               <span className="material-symbols-outlined text-sm text-slate-500">edit</span>
             </button>
-            <button
-              onClick={() => onDelete(department)}
-              className="w-8 h-8 rounded-lg border border-red-200 bg-red-50 cursor-pointer flex items-center justify-center hover:bg-red-100 hover:border-red-300 transition-colors"
-              title="Delete department"
-            >
-              <span className="material-symbols-outlined text-sm text-red-500">delete</span>
-            </button>
+            {canDelete && (
+              <button
+                onClick={() => onDelete(department)}
+                className="w-8 h-8 rounded-lg border border-red-200 bg-red-50 cursor-pointer flex items-center justify-center hover:bg-red-100 hover:border-red-300 transition-colors"
+                title="Delete department"
+              >
+                <span className="material-symbols-outlined text-sm text-red-500">delete</span>
+              </button>
+            )}
           </div>
         )}
       </div>

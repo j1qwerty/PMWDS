@@ -7,7 +7,7 @@ namespace PMWDS.API.Controllers;
 
 [ApiController]
 [Route("api/v1/skills")]
-[Authorize(Policy = "SuperAdmin")]
+[Authorize(Policy = "Authenticated")]
 public class SkillsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
@@ -34,7 +34,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Roles = "SuperAdmin,Director,DepartmentHead")]
     public async Task<IActionResult> Create(
         [FromBody] CreateSkillDto dto,
         CancellationToken ct)
@@ -55,7 +55,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Roles = "SuperAdmin,Director,DepartmentHead")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateSkillDto dto,
