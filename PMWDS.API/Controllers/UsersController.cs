@@ -280,7 +280,7 @@ public class UsersController : BaseApiController
             return BadRequest("Invalid user id.");
         }
 
-        if (_currentUser.UserId != id && !User.IsInRole("SuperAdmin"))
+        if (_currentUser.UserId != id && !await _scope.CanManageUserAsync(parsedId, ct))
         {
             return Forbid();
         }

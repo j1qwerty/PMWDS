@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PMWDS.API.Services;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 
@@ -9,17 +10,27 @@ public class ProfilesController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly RoleScopeService _scope;
 
-    public ProfilesController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public ProfilesController(
+        IUnitOfWork uow,
+        ICurrentUserService currentUser,
+        RoleScopeService scope)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _scope = scope;
     }
 
     [HttpGet("{userId:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Get(Guid userId, CancellationToken ct)
     {
+        if (!await _scope.CanAccessUserAsync(userId, ct))
+        {
+            return Forbid();
+        }
+
         var profile = (await _uow.UserProfiles.FindAsync(p => p.UserId == userId, ct)).FirstOrDefault();
         return profile == null ? NotFound() : Ok(MapProfile(profile));
     }
@@ -28,6 +39,11 @@ public class ProfilesController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Upsert(Guid userId, [FromBody] UpsertProfileRequest req, CancellationToken ct)
     {
+        if (!await _scope.CanManageUserAsync(userId, ct))
+        {
+            return Forbid();
+        }
+
         var user = await _uow.Users.GetByIdAsync(userId, ct);
         if (user == null)
         {

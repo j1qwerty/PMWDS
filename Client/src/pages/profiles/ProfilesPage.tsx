@@ -5,7 +5,6 @@ import type { User, UserProfileRecord } from "../../types";
 import { 
   AnimatedBackground, 
   GlassCard, 
-  GradientButton, 
   LoadingPage,
   PageHeader,
   ModalOverlay,
@@ -18,8 +17,9 @@ import { ProfileFormModal } from "./ProfileFormModal";
 export function ProfilesPage() {
   const { auth, hasRole, updateCurrentUser } = useAuth();
   const { addToast } = useToast();
-  const canManageProfiles = hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
-  const isOwnProfile = !hasRole("SuperAdmin", "ProjectManager", "DepartmentHead");
+  const canViewProfileList = hasRole("SuperAdmin", "Director", "DepartmentHead");
+  const canManageProfiles = hasRole("SuperAdmin", "Director");
+  const isOwnProfile = !canViewProfileList;
 
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -113,7 +113,7 @@ export function ProfilesPage() {
         <PageHeader
           title={isOwnProfile ? "My Profile" : "Profiles"}
           description={isOwnProfile ? "View and manage your profile details" : "View and manage user profiles and details"}
-          action={(canManageProfiles || selectedUser?.id === auth?.userId) && selectedUser ? {
+          action={canManageProfiles && selectedUser ? {
             label: "Edit Profile",
             onClick: () => setProfileModal(true),
             icon: "edit",
@@ -153,10 +153,10 @@ export function ProfilesPage() {
           <ProfileDetail
             user={selectedUser}
             profile={profile}
-            canEdit={canManageProfiles || selectedUser.id === auth?.userId}
+            canEdit={canManageProfiles}
             onEdit={() => setProfileModal(true)}
             token={auth?.token ?? ""}
-            onImageUpload={handleImageUpload}
+            onImageUpload={canManageProfiles || selectedUser.id === auth?.userId ? handleImageUpload : undefined}
           />
         ) : (
           <GlassCard className="p-16 text-center flex flex-col items-center justify-center flex-1 min-h-96">
