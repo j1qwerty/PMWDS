@@ -21,6 +21,8 @@ export { useToast } from "./Toast";
 export { StatusButtons, StatusBadge } from "./StatusBadge";
 export { PriorityButtons, PriorityBadge } from "./PriorityBadge";
 export { FilterButtons } from "./FilterButtons";
+export { OrganizationDepartmentFilter } from "./OrganizationDepartmentFilter";
+export { ScopedUserSelect } from "./ScopedUserSelect";
 export { 
   departmentColorPalette, 
   statusColorPalette, 

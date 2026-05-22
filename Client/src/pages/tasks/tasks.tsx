@@ -17,6 +17,7 @@ import {
   PriorityBadge,
   FilterButtons,
   AnimatedBackground,
+  OrganizationDepartmentFilter,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { TaskDetail } from "./TaskDetail";
@@ -35,7 +36,7 @@ export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
-  const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
   
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedDeptId, setSelectedDeptId] = useState("");
@@ -124,24 +125,6 @@ export function TasksPage() {
   }, [auth, selectedTaskId]);
 
   // Filtered data
-  const filteredOrganizations = useMemo(() => {
-    if (shouldFilterByOrg && userOrganizationId) {
-      return organizations.filter(o => o.id === userOrganizationId);
-    }
-    return organizations;
-  }, [organizations, shouldFilterByOrg, userOrganizationId]);
-  
-  const filteredDepartments = useMemo(() => {
-    let filtered = departments;
-    if (shouldFilterByOrg && userOrganizationId) {
-      filtered = filtered.filter(d => d.organizationId === userOrganizationId);
-    }
-    if (selectedOrgId) {
-      filtered = filtered.filter(d => d.organizationId === selectedOrgId);
-    }
-    return filtered;
-  }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
-
   const filteredProjects = useMemo(() => {
     let filtered = projects;
     if (shouldFilterByOrg && userOrganizationId) {
@@ -379,69 +362,27 @@ export function TasksPage() {
 
       {/* Filters Section */}
       <div className="relative z-10 mb-5 space-y-3">
-        {/* Organization Tabs - only for admin users */}
-        {isOrgAdmin && (
-        <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-          <button
-            onClick={() => {
-              setSelectedOrgId("");
-              setSelectedDeptId("");
-              setSelectedProjectId("");
-              setSelectedMilestoneId("");
-            }}
-            className={`
-              px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
-              ${!selectedOrgId
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
-                : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
-              }
-            `}
-          >
-            <span className="material-symbols-outlined text-lg">grid_view</span>
-            All Tasks
-          </button>
-          <div className="w-px h-8 bg-slate-200 self-center mx-1"></div>
-          {filteredOrganizations.map((org) => (
-            <button
-              key={org.id}
-              onClick={() => {
-                setSelectedOrgId(org.id);
-                setSelectedDeptId("");
-                setSelectedProjectId("");
-                setSelectedMilestoneId("");
-              }}
-              className={`
-                px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
-                ${selectedOrgId === org.id
-                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
-                  : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
-                }
-              `}
-            >
-              <span className="material-symbols-outlined text-lg">business</span>
-              {org.name}
-            </button>
-          ))}
-        </div>
-        )}
+        <OrganizationDepartmentFilter
+          organizations={organizations}
+          departments={departments}
+          users={users}
+          selectedOrganizationId={selectedOrgId}
+          selectedDepartmentId={selectedDeptId}
+          allOrganizationsLabel="All Tasks"
+          onOrganizationChange={(organizationId) => {
+            setSelectedOrgId(organizationId);
+            setSelectedProjectId("");
+            setSelectedMilestoneId("");
+          }}
+          onDepartmentChange={(departmentId) => {
+            setSelectedDeptId(departmentId);
+            setSelectedProjectId("");
+            setSelectedMilestoneId("");
+          }}
+        />
 
         {/* Department, Project & Search Row */}
         <div className="flex gap-3 items-center flex-wrap">
-          <select
-            value={selectedDeptId}
-            onChange={(e) => {
-              setSelectedDeptId(e.target.value);
-              setSelectedProjectId("");
-              setSelectedMilestoneId("");
-            }}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-          >
-            <option value="">All Departments</option>
-            {filteredDepartments.map((dept) => (
-              <option key={dept.id} value={dept.id}>{dept.name}</option>
-            ))}
-          </select>
-
           <select
             value={selectedProjectId}
             onChange={(e) => {
@@ -889,6 +830,7 @@ export function TasksPage() {
           open={taskModal.open}
           initialData={taskModal.editTask}
           projects={filteredProjects}
+          departments={departments}
           milestones={filteredMilestones}
           users={users}
           onSubmit={handleTaskSubmit}

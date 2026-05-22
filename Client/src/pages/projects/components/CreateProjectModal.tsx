@@ -1,23 +1,26 @@
 import { priorities } from "../../constants";
-import type { Department, User } from "../../types";
+import type { Department, User } from "../../../types";
+import { ScopedUserSelect } from "../../shared";
+
+type ProjectFormState = {
+  projectCode: string;
+  name: string;
+  description: string;
+  category: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  plannedBudget: number;
+  departmentId: string;
+  projectManagerId: string;
+  priority: string;
+};
 
 interface CreateProjectModalProps {
   show: boolean;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  form: {
-    projectCode: string;
-    name: string;
-    description: string;
-    category: string;
-    plannedStartDate: string;
-    plannedEndDate: string;
-    plannedBudget: number;
-    departmentId: string;
-    projectManagerId: string;
-    priority: string;
-  };
-  setForm: React.Dispatch<React.SetStateAction<typeof form>>;
+  form: ProjectFormState;
+  setForm: React.Dispatch<React.SetStateAction<ProjectFormState>>;
   departments: Department[];
   users: User[];
 }
@@ -32,6 +35,7 @@ export function CreateProjectModal({
   users,
 }: CreateProjectModalProps) {
   if (!show) return null;
+  const selectedDepartment = departments.find((department) => department.id === form.departmentId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -84,13 +88,15 @@ export function CreateProjectModal({
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Project Manager</span>
-            <select value={form.projectManagerId} onChange={(e) => setForm({ ...form, projectManagerId: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm">
-              <option value="">Choose</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
-            </select>
-          </label>
+          <div className="md:col-span-2">
+            <ScopedUserSelect
+              users={users}
+              value={form.projectManagerId}
+              organizationId={selectedDepartment?.organizationId}
+              label="Project Manager"
+              onChange={(projectManagerId) => setForm({ ...form, projectManagerId })}
+            />
+          </div>
           <div className="md:col-span-2 flex justify-end gap-3 mt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 border border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant">Cancel</button>
             <button type="submit" className="px-6 py-2 primary-gradient text-white font-bold rounded-lg text-sm">Create Project</button>

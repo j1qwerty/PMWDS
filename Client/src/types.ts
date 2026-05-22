@@ -226,6 +226,12 @@ export interface OrganizationRecord {
   contactEmail: string;
   contactPhone: string;
   foundedDate: string;
+  director?: {
+    id: string;
+    fullName: string;
+    email: string;
+    profilePictureUrl?: string | null;
+  } | null;
   departments: OrganizationDepartmentSummary[];
   departmentCount: number;
 }

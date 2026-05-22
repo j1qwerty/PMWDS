@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
-import type { Milestone, Project, Task, User } from "../../types";
-import { ModalOverlay, InputF, SelectF } from "../shared";
+import type { Department, Milestone, Project, Task, User } from "../../types";
+import { ModalOverlay, InputF, SelectF, ScopedUserSelect } from "../shared";
 
 interface TaskFormModalProps {
   open: boolean;
@@ -8,13 +8,14 @@ interface TaskFormModalProps {
   defaultProjectId?: string;
   defaultMilestoneId?: string;
   projects: Project[];
+  departments?: Department[];
   milestones: Milestone[];
   users: User[];
   onSubmit: (data: Record<string, unknown>) => void;
   onClose: () => void;
 }
 
-export function TaskFormModal({ open, initialData, defaultProjectId = "", defaultMilestoneId = "", projects, milestones, users, onSubmit, onClose }: TaskFormModalProps) {
+export function TaskFormModal({ open, initialData, defaultProjectId = "", defaultMilestoneId = "", projects, departments = [], milestones, users, onSubmit, onClose }: TaskFormModalProps) {
   const [form, setForm] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
@@ -54,6 +55,9 @@ export function TaskFormModal({ open, initialData, defaultProjectId = "", defaul
       assignedToUserIds: form.assignedToUserIds,
     });
   };
+
+  const selectedProject = projects.find((project) => project.id === form.projectId);
+  const selectedDepartment = departments.find((department) => department.id === selectedProject?.departmentId);
 
   return (
     <ModalOverlay onClose={onClose}>
@@ -113,28 +117,15 @@ export function TaskFormModal({ open, initialData, defaultProjectId = "", defaul
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Assignees</label>
-            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 space-y-1">
-              {users.map(user => (
-                <label key={user.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-                  <input
-                    type="checkbox"
-                    checked={form.assignedToUserIds.includes(user.id)}
-                    onChange={() => setForm(current => {
-                      const assignedToUserIds = current.assignedToUserIds.includes(user.id)
-                        ? current.assignedToUserIds.filter(id => id !== user.id)
-                        : [...current.assignedToUserIds, user.id];
-                      return { ...current, assignedToUserIds, assignedToUserId: assignedToUserIds[0] || "" };
-                    })}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600"
-                  />
-                  {user.fullName}
-                </label>
-              ))}
-              {users.length === 0 && <div className="px-2 py-3 text-xs text-slate-400">No users available</div>}
-            </div>
-          </div>
+          <ScopedUserSelect
+            users={users}
+            values={form.assignedToUserIds}
+            organizationId={selectedDepartment?.organizationId}
+            label="Assignees"
+            multiple
+            onChange={(userId) => setForm({ ...form, assignedToUserId: userId, assignedToUserIds: [userId] })}
+            onMultiChange={(assignedToUserIds) => setForm({ ...form, assignedToUserIds, assignedToUserId: assignedToUserIds[0] || "" })}
+          />
 
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">

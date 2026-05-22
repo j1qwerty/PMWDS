@@ -1,9 +1,12 @@
 import { ProjectCard } from "./ProjectCard";
-import type { Project } from "../../../types";
+import type { Department, OrganizationRecord, Project, User } from "../../../types";
 import { GlassCard } from "../../shared";
 
 interface ProjectsBoardProps {
   projects: Project[];
+  departments: Department[];
+  organizations: OrganizationRecord[];
+  users: User[];
   selectedProjectId: string;
   selectedDepartmentId: string;
   onSelectProject: (id: string) => void;
@@ -11,6 +14,9 @@ interface ProjectsBoardProps {
 
 export function ProjectsBoard({ 
   projects, 
+  departments,
+  organizations,
+  users,
   selectedProjectId, 
   selectedDepartmentId, 
   onSelectProject 
@@ -46,6 +52,9 @@ export function ProjectsBoard({
         <ProjectCard
           key={project.id}
           project={project}
+          departments={departments}
+          organizations={organizations}
+          users={users}
           selectedProjectId={selectedProjectId}
           onSelect={onSelectProject}
         />

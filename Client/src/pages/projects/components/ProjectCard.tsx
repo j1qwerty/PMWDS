@@ -1,17 +1,23 @@
 import { classNames } from "../../../ui";
-import type { Project } from "../../../types";
+import type { Department, OrganizationRecord, Project, User } from "../../../types";
 import { AvatarStack } from "../../shared";
 
 interface ProjectCardProps {
   project: Project;
+  departments: Department[];
+  organizations: OrganizationRecord[];
+  users: User[];
   selectedProjectId: string;
   onSelect: (id: string) => void;
 }
 
-export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCardProps) {
-  const projProgress = project.progressPercentage || 0;
-  const projHealth = project.aiHealthScore != null ? Math.round(project.aiHealthScore * 100) : null;
+export function ProjectCard({ project, departments, organizations, users, selectedProjectId, onSelect }: ProjectCardProps) {
+  const projProgress = Math.min(Math.round(project.progressPercentage || 0), 100);
+  const rawHealth = project.aiHealthScore ?? null;
+  const projHealth = rawHealth == null ? null : Math.min(Math.round(rawHealth > 1 ? rawHealth : rawHealth * 100), 100);
   const isSelected = project.id === selectedProjectId;
+  const department = departments.find((item) => item.id === project.departmentId);
+  const organization = organizations.find((item) => item.id === department?.organizationId);
 
   const getStatusStyles = (status: string) => {
     const styles: Record<string, {
@@ -79,11 +85,13 @@ export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCar
   };
 
   const statusStyle = getStatusStyles(project.status);
+  const manager = users.find((user) => user.id === project.projectManagerId);
   const projectPeople = project.projectManagerId || project.projectManagerName
     ? [{
       id: project.projectManagerId || project.id,
-      fullName: project.projectManagerName || "Project Manager",
+      fullName: manager?.fullName || project.projectManagerName || "Project Manager",
       userId: project.projectManagerId,
+      profilePictureUrl: manager?.profilePictureUrl ?? null,
     }]
     : [];
   const getHealthColor = (score: number) => {
@@ -112,6 +120,9 @@ export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCar
           <h3 className="text-lg font-bold text-on-surface truncate">
             {project.name}
           </h3>
+          <span className="mt-1 truncate text-[11px] font-medium text-slate-400">
+            {department?.name || "No department"} {organization ? `- ${organization.name}` : ""}
+          </span>
         </div>
 
         <div className="size-12 relative flex items-center justify-center flex-shrink-0">
@@ -158,7 +169,7 @@ export function ProjectCard({ project, selectedProjectId, onSelect }: ProjectCar
           <span className="text-[10px] font-bold text-outline">Health</span>
           {projHealth != null ? (
             <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getHealthColor(projHealth)}`}>
-              {projHealth}
+              {projHealth}%
             </div>
           ) : (
             <div className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">N/A</div>

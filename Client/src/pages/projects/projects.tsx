@@ -4,7 +4,7 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
-import { GlassCard, LoadingPage, PageHeader, getDepartmentColor, useRoleAccess } from "../shared";
+import { GlassCard, LoadingPage, PageHeader, getDepartmentColor, OrganizationDepartmentFilter, useRoleAccess } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { 
   ProjectsBoard, 
@@ -45,7 +45,7 @@ export function ProjectsPage() {
     priority: "Medium",
   });
 
-  const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
 
@@ -198,69 +198,15 @@ export function ProjectsPage() {
         } : undefined}
       />
 
-      {/* Organization Tabs - only for admin users */}
-      {isOrgAdmin && (
-      <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-        {/* All Organizations Tab */}
-        <button
-          onClick={() => {
-            setSelectedOrgId("");
-            setSelectedDepartmentId("");
-          }}
-          className={`
-            px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
-            ${!selectedOrgId
-              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
-              : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
-            }
-          `}
-        >
-          <span className="material-symbols-outlined text-lg">grid_view</span>
-          All Organizations
-          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-            !selectedOrgId ? "bg-emerald-500 text-emerald-100" : "bg-slate-100 text-slate-400"
-          }`}>
-            {projects.length}
-          </span>
-        </button>
-
-        {/* Separator */}
-        <div className="w-px h-8 bg-slate-200 self-center mx-1"></div>
-
-        {/* Organization Tabs */}
-        {organizations.map((org, index) => {
-          const orgDeptIds = departments
-            .filter(d => d.organizationId === org.id)
-            .map(d => d.id);
-          const orgProjectCount = projects.filter(p => orgDeptIds.includes(p.departmentId)).length;
-          
-          return (
-            <button
-              key={org.id}
-              onClick={() => {
-                setSelectedOrgId(org.id);
-                setSelectedDepartmentId("");
-              }}
-              className={`
-                px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
-                ${selectedOrgId === org.id
-                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
-                  : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
-                }
-              `}
-            >
-              <span className="material-symbols-outlined text-lg">business</span>
-              {org.name}
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                selectedOrgId === org.id ? "bg-indigo-500 text-indigo-100" : "bg-slate-100 text-slate-400"
-              }`}>
-                {orgProjectCount}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      )}
+      <OrganizationDepartmentFilter
+        organizations={organizations}
+        departments={departments}
+        users={users}
+        selectedOrganizationId={selectedOrgId}
+        selectedDepartmentId={selectedDepartmentId}
+        onOrganizationChange={setSelectedOrgId}
+        onDepartmentChange={setSelectedDepartmentId}
+      />
 
       {/* Department Cards Section */}
       <div className="flex flex-col gap-3">
@@ -365,6 +311,9 @@ export function ProjectsPage() {
         {/* LEFT COLUMN: Projects Board */}
         <ProjectsBoard
           projects={filteredProjects}
+          departments={departments}
+          organizations={organizations}
+          users={users}
           selectedProjectId={selectedProjectId}
           selectedDepartmentId={selectedDepartmentId}
           onSelectProject={setSelectedProjectId}
