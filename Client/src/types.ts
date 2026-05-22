@@ -340,6 +340,8 @@ export interface SkillRecord {
   category: string;
   description: string;
   userCount: number;
+  organizationId?: string | null;
+  createdBy?: string | null;
 }
 
 export interface KnowledgeArticleRecord {

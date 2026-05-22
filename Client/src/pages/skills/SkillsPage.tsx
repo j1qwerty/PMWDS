@@ -5,7 +5,6 @@ import type { SkillRecord } from "../../types";
 import { 
   AnimatedBackground, 
   GlassCard, 
-  GradientButton, 
   LoadingPage,
   PageHeader,
   ModalOverlay,
@@ -17,6 +16,10 @@ export function SkillsPage() {
   const { auth, hasRole } = useAuth();
   const canManage = hasRole("SuperAdmin", "Director", "DepartmentHead");
   const canWrite = hasRole("SuperAdmin", "Director", "DepartmentHead");
+
+  const canDeleteSkill = (skill: SkillRecord) =>
+    hasRole("SuperAdmin") ||
+    (hasRole("Director") && (skill.createdBy === auth?.userId || Boolean(skill.organizationId)));
 
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [message, setMessage] = useState("");
@@ -234,7 +237,7 @@ export function SkillsPage() {
                           >
                             <span className="material-symbols-outlined text-sm text-slate-500">edit</span>
                           </button>
-                          {canWrite && (
+                          {canDeleteSkill(skill) && (
                             <button
                               onClick={() => setDeleteConfirm({ open: true, skill })}
                               className="w-8 h-8 rounded-lg border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 hover:border-red-300 transition-colors"
@@ -269,7 +272,7 @@ export function SkillsPage() {
         <ModalOverlay onClose={() => setDeleteConfirm({ open: false, skill: null })}>
           <DeleteConfirmationModal
             name={deleteConfirm.skill.name}
-            warning={`This skill is used by ${deleteConfirm.skill.userCount || 0} users. Deleting it will remove it from all user profiles.`}
+            warning="Deleting this skill will remove it from user profiles that reference it."
             onConfirm={handleDelete}
             onCancel={() => setDeleteConfirm({ open: false, skill: null })}
           />
