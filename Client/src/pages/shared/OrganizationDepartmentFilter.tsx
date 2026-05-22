@@ -58,19 +58,9 @@ export function OrganizationDepartmentFilter({
   const showOrganizationFilter = access.isAdmin;
 
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-3 ${className}`}>
+    <div className={` ${className}`}>
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[260px] flex-1">
-          <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400">
-            search
-          </span>
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search organizations or departments..."
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-          />
-        </div>
+        
 
         {showOrganizationFilter && (
           <select
@@ -102,6 +92,19 @@ export function OrganizationDepartmentFilter({
             </option>
           ))}
         </select>
+
+        <div className="relative min-w-[260px] flex-1 max-w-150">
+          <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400">
+            search
+          </span>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search organizations or departments..."
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
       </div>
     </div>
   );

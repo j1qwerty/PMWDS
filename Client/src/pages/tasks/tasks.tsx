@@ -270,40 +270,57 @@ export function TasksPage() {
     return filteredTasks.filter(t => !t.milestoneId);
   }, [filteredTasks]);
 
-  const handleTaskSubmit = async (form: Record<string, unknown>) => {
+const handleTaskSubmit = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
-      const assigneeIds = Array.isArray(form.assignedToUserIds)
-        ? form.assignedToUserIds.filter((value): value is string => typeof value === "string")
-        : [];
-      if (taskModal.editTask) {
-        await api.updateTask(auth.token, taskModal.editTask.id, form);
-        if (assigneeIds.length > 0) {
-          await api.assignTaskMembers(auth.token, taskModal.editTask.id, assigneeIds);
+        const assigneeIds = Array.isArray(form.assignedToUserIds)
+            ? form.assignedToUserIds.filter((value): value is string => typeof value === "string")
+            : [];
+        
+        // Build the task data with explicit IDs from the current context
+        const taskData: Record<string, unknown> = { ...form };
+        
+        // CRITICAL: Always add projectId from the current selected project
+        if (selectedProjectId) {
+            taskData.projectId = selectedProjectId;
         }
-        setMessage("Task updated.");
-        addToast("Task updated.");
-      } else {
-        await api.createTask(auth.token, form);
-        setMessage("Task created.");
-        addToast("Task created.");
-      }
-      setTaskModal({ open: false });
-      if (selectedProjectId) {
-        const projectTasks = await api.getTasksByProject(auth.token, selectedProjectId);
-        setTasks(prev => {
-          const otherTasks = prev.filter(t => t.projectId !== selectedProjectId);
-          return [...otherTasks, ...projectTasks];
-        });
-      } else {
-        loadData();
-      }
+        
+        // Add milestoneId if a specific milestone is selected (and not "unassigned")
+        if (selectedMilestoneId && selectedMilestoneId !== "unassigned") {
+            taskData.milestoneId = selectedMilestoneId;
+        }
+        
+        if (taskModal.editTask) {
+            await api.updateTask(auth.token, taskModal.editTask.id, taskData);
+            if (assigneeIds.length > 0) {
+                await api.assignTaskMembers(auth.token, taskModal.editTask.id, assigneeIds);
+            }
+            setMessage("Task updated.");
+            addToast("Task updated.");
+        } else {
+            await api.createTask(auth.token, taskData);
+            setMessage("Task created.");
+            addToast("Task created.");
+        }
+        
+        setTaskModal({ open: false });
+        
+        // Refresh logic...
+        if (selectedProjectId) {
+            const projectTasks = await api.getTasksByProject(auth.token, selectedProjectId);
+            setTasks(prev => {
+                const otherTasks = prev.filter(t => t.projectId !== selectedProjectId);
+                return [...otherTasks, ...projectTasks];
+            });
+        } else {
+            loadData();
+        }
     } catch (e) {
-      const errorMsg = `Error: ${e instanceof Error ? e.message : "Save failed"}`;
-      setMessage(errorMsg);
-      addToast(errorMsg, "error");
+        const errorMsg = `Error: ${e instanceof Error ? e.message : "Save failed"}`;
+        setMessage(errorMsg);
+        addToast(errorMsg, "error");
     }
-  };
+};
 
   const handleStatusChange = async (taskId: string, status: string) => {
     if (!auth) return;
@@ -826,17 +843,17 @@ export function TasksPage() {
 
       {/* Task Form Modal */}
       {taskModal.open && (
-        <TaskFormModal
-          open={taskModal.open}
-          initialData={taskModal.editTask}
-          projects={filteredProjects}
-          departments={departments}
-          milestones={filteredMilestones}
-          users={users}
-          onSubmit={handleTaskSubmit}
-          onClose={() => setTaskModal({ open: false })}
-        />
-      )}
+    <TaskFormModal
+        open={taskModal.open}
+        initialData={taskModal.editTask}
+        projects={filteredProjects}
+        departments={departments}
+        milestones={filteredMilestones}
+        users={users}
+        onSubmit={handleTaskSubmit}
+        onClose={() => setTaskModal({ open: false })}
+    />
+)}
     </div>
   );
 }

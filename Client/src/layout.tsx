@@ -169,7 +169,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         items: [
           { path: "/organizationStructure", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "Director", "DepartmentHead", "ProjectManager", "TeamMember"] },
           { path: "/departmentsPage", label: "Departments", icon: "departments", roles: ["SuperAdmin", "Director", "DepartmentHead", "ProjectManager", "TeamMember"] },
-          { path: "/users", label: "Users", icon: "users", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember"] },
+          { path: "/users", label: "Users", icon: "users", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead"] },
           { path: "/profiles", label: "Profiles", icon: "users", roles: [] },
           { path: "/skills", label: "Skills", icon: "skill", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember"] },
         ],

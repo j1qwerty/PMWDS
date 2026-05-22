@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, SkillRecord, User, WorkloadReport } from "../../types";
 import { 
   AnimatedBackground, 
+  DeleteConfirmationModal, 
   PageHeader,
   PageSkeleton,
 } from "../shared";
@@ -196,34 +197,26 @@ export function UsersPage() {
         />
       )}
 
-      {deletingUser && auth && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-800">Deactivate user</h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Deactivate {deletingUser.fullName}? The user remains in the database and can be audited later.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setDeletingUser(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await api.deactivateUser(auth.token, deletingUser.id);
-                  setUsers((current) => current.map((user) => user.id === deletingUser.id ? { ...user, isActive: false } : user));
-                  setDeletingUser(null);
-                  setMessage("User deactivated.");
-                  void loadData();
-                }}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-              >
-                Deactivate
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+     {deletingUser && auth && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+    <DeleteConfirmationModal
+      name={deletingUser.fullName}
+      warning="The user remains in the database and can be audited later."
+      onConfirm={async () => {
+        await api.deactivateUser(auth.token, deletingUser.id);
+        setUsers((current) => 
+          current.map((user) => 
+            user.id === deletingUser.id ? { ...user, isActive: false } : user
+          )
+        );
+        setDeletingUser(null);
+        setMessage("User deactivated.");
+        void loadData();
+      }}
+      onCancel={() => setDeletingUser(null)}
+    />
+  </div>
+)}
     </div>
   );
 }

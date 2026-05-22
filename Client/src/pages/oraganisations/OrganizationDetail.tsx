@@ -197,7 +197,7 @@ export function OrganizationDetail({
               <span className="material-symbols-outlined text-3xl text-slate-400">folder_open</span>
             </div>
             <h4 className="text-base font-semibold text-slate-700 mb-2">No departments yet</h4>
-            <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
+            <p className="text-sm text-slate-400  mx-auto mb-6">
               Create your first department to start organizing your teams and projects.
             </p>
             {canManageDepartments && (

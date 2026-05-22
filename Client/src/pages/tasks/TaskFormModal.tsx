@@ -15,7 +15,18 @@ interface TaskFormModalProps {
   onClose: () => void;
 }
 
-export function TaskFormModal({ open, initialData, defaultProjectId = "", defaultMilestoneId = "", projects, departments = [], milestones, users, onSubmit, onClose }: TaskFormModalProps) {
+export function TaskFormModal({ 
+  open, 
+  initialData, 
+  defaultProjectId = "", 
+  defaultMilestoneId = "", 
+  projects, 
+  departments = [], 
+  milestones, 
+  users, 
+  onSubmit, 
+  onClose 
+}: TaskFormModalProps) {
   const [form, setForm] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
@@ -48,12 +59,36 @@ export function TaskFormModal({ open, initialData, defaultProjectId = "", defaul
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      ...form,
-      milestoneId: form.milestoneId || null,
-      assignedToUserId: form.assignedToUserIds[0] || null,
+    
+    // Build clean submission object
+    const submission: Record<string, unknown> = {
+      title: form.title,
+      description: form.description,
+      startDate: form.startDate,
+      dueDate: form.dueDate,
+      estimatedHours: form.estimatedHours,
+      priority: form.priority,
       assignedToUserIds: form.assignedToUserIds,
-    });
+    };
+    
+    // Include projectId only if it has a value
+    console.log("subp: " + submission.projectId + "p: "+ form.projectId )
+    if (form.projectId && form.projectId !== "") {
+      submission.projectId = form.projectId;
+      
+    }
+    
+    // Include milestoneId only if it has a value
+    if (form.milestoneId && form.milestoneId !== "") {
+      submission.milestoneId = form.milestoneId;
+    }
+    
+    // Include assignedToUserId if available
+    if (form.assignedToUserIds[0]) {
+      submission.assignedToUserId = form.assignedToUserIds[0];
+    }
+    
+    onSubmit(submission);
   };
 
   const selectedProject = projects.find((project) => project.id === form.projectId);

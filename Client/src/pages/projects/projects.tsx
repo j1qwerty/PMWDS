@@ -6,13 +6,15 @@ import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
 import { GlassCard, LoadingPage, PageHeader, getDepartmentColor, OrganizationDepartmentFilter, useRoleAccess } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { 
-  ProjectsBoard, 
-  ProjectDetailPane, 
+import {
+  ProjectsBoard,
+  ProjectDetailPane,
   CreateProjectModal,
   EditProjectModal,
-  DeleteProjectModal 
+  DeleteProjectModal,
 } from "./components";
+import { DepartmentCards } from "./components/DepartmentCards";
+
 
 export function ProjectsPage() {
   const { auth, hasRole } = useAuth();
@@ -99,7 +101,7 @@ export function ProjectsPage() {
   // Filtered projects based on org and department selection
   const filteredProjects = useMemo(() => {
     let filtered = projects;
-    
+
     if (shouldFilterByOrg && userOrganizationId) {
       const orgDepartmentIds = departments
         .filter(d => d.organizationId === userOrganizationId)
@@ -113,11 +115,11 @@ export function ProjectsPage() {
         .map(d => d.id);
       filtered = filtered.filter(p => orgDepartmentIds.includes(p.departmentId));
     }
-    
+
     if (selectedDepartmentId) {
       filtered = filtered.filter(p => p.departmentId === selectedDepartmentId);
     }
-    
+
     return filtered;
   }, [projects, selectedOrgId, selectedDepartmentId, departments, shouldFilterByOrg, userOrganizationId]);
 
@@ -209,102 +211,17 @@ export function ProjectsPage() {
       />
 
       {/* Department Cards Section */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-indigo-500">account_tree</span>
-            Departments
-          </h3>
-          {(selectedDepartmentId || selectedOrgId) && (
-            <button
-              onClick={() => {
-                setSelectedDepartmentId("");
-                setSelectedOrgId("");
-              }}
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">close</span>
-              Clear Filters
-            </button>
-          )}
-        </div>
-
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {/* All Departments Button */}
-          <button
-            onClick={() => setSelectedDepartmentId("")}
-            className={`
-              shrink-0 p-4 rounded-xl border transition-all duration-200 min-w-[180px]
-              ${!selectedDepartmentId
-                ? "border-indigo-300 bg-indigo-50 shadow-sm"
-                : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
-              }
-            `}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <span className={`material-symbols-outlined text-xl ${!selectedDepartmentId ? "text-indigo-600" : "text-slate-400"}`}>
-                layers
-              </span>
-              <span className={`text-sm font-bold ${!selectedDepartmentId ? "text-indigo-700" : "text-slate-700"}`}>
-                All Departments
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className={`text-2xl font-bold ${!selectedDepartmentId ? "text-indigo-700" : "text-slate-700"}`}>
-                {filteredProjects.length}
-              </span>
-              <span className="text-[11px] text-slate-400">projects</span>
-            </div>
-          </button>
-
-          {/* Department Cards */}
-          {filteredDepartments.map((dept, index) => {
-            const deptProjects = filteredProjects.filter(p => p.departmentId === dept.id);
-            const colors = getDepartmentColor(index);
-            const isSelected = selectedDepartmentId === dept.id;
-
-            return (
-              <button
-                key={dept.id}
-                onClick={() => setSelectedDepartmentId(isSelected ? "" : dept.id)}
-                className={`
-                  shrink-0 p-4 rounded-xl border-2 transition-all duration-200 min-w-[180px]
-                  ${isSelected
-                    ? `${colors.border} ${colors.bg} shadow-md`
-                    : "border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm"
-                  }
-                `}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
-                  <span className={`text-sm font-bold ${isSelected ? colors.text : 'text-slate-700'}`}>
-                    {dept.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className={`text-2xl font-bold ${isSelected ? colors.text : 'text-slate-700'}`}>
-                    {deptProjects.length}
-                  </span>
-                  <span className="text-[11px] text-slate-400">projects</span>
-                </div>
-                {/* Mini progress indicator */}
-                <div className="mt-3 w-full h-1 rounded-full bg-slate-100 overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${colors.dot}`}
-                    style={{ width: `${deptProjects.length > 0 ? Math.min((deptProjects.length / projects.length) * 100, 100) : 0}%` }}
-                  />
-                </div>
-              </button>
-            );
-          })}
-
-          {filteredDepartments.length === 0 && selectedOrgId && (
-            <div className="shrink-0 p-4 rounded-xl border border-slate-200 bg-slate-50 min-w-[200px] flex items-center justify-center">
-              <span className="text-sm text-slate-400">No departments in this organization</span>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* <DepartmentCards
+        departments={filteredDepartments}
+        projects={projects}
+        selectedDepartmentId={selectedDepartmentId}
+        selectedOrgId={selectedOrgId}
+        onDepartmentSelect={setSelectedDepartmentId}
+        onClearFilters={() => {
+          setSelectedDepartmentId("");
+          setSelectedOrgId("");
+        }}
+      /> */}
 
       {/* Dual Pane Layout */}
       <div className="flex-1 flex overflow-hidden gap-5 min-h-[500px]">
@@ -321,44 +238,44 @@ export function ProjectsPage() {
 
         {/* RIGHT COLUMN: Project Detail Pane */}
         <GlassCard className="w-2/3">
-        {selectedProject ? (
-          <ProjectDetailPane
-            project={selectedProject}
-            health={health}
-            insights={insights}
-            hasRole={hasRole}
-            canUpdateProject={() => {}}
-            onStatusChange={handleStatusChange}
-            onEdit={access.canManageProjects ? openEditModal : undefined}
-            onDelete={access.isAdmin ? () => setShowDeleteConfirm(true) : undefined}
-            formatMoney={formatMoney}
-            authToken={auth?.token}
-          >
-            <MilestonesTab
-              key={selectedProject.id}
-              projectId={selectedProject.id}
+          {selectedProject ? (
+            <ProjectDetailPane
+              project={selectedProject}
+              health={health}
+              insights={insights}
+              hasRole={hasRole}
+              canUpdateProject={() => { }}
+              onStatusChange={handleStatusChange}
+              onEdit={access.canManageProjects ? openEditModal : undefined}
+              onDelete={access.isAdmin ? () => setShowDeleteConfirm(true) : undefined}
+              formatMoney={formatMoney}
               authToken={auth?.token}
-            />
-          </ProjectDetailPane>
-          
-        ) : (
-          <div className="flex-1 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-8 flex items-center justify-center">
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-slate-400 text-4xl">
-                  folder_open
-                </span>
+            >
+              <MilestonesTab
+                key={selectedProject.id}
+                projectId={selectedProject.id}
+                authToken={auth?.token}
+              />
+            </ProjectDetailPane>
+
+          ) : (
+            <div className="flex-1 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-8 flex items-center justify-center">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-slate-400 text-4xl">
+                    folder_open
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">No project selected</h3>
+                <p className="text-sm text-slate-400 ">
+                  Choose a project from the board to view details, milestones, and AI insights
+                </p>
               </div>
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">No project selected</h3>
-              <p className="text-sm text-slate-400 ">
-                Choose a project from the board to view details, milestones, and AI insights
-              </p>
             </div>
-          </div>
-        )}
+          )}
         </GlassCard>
       </div>
-      
+
 
       {/* Modals */}
       <CreateProjectModal
