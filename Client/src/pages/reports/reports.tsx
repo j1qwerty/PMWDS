@@ -116,10 +116,10 @@ export function ReportsPage() {
 
   const downloadTaskCompletion = () => {
     if (!auth) return;
-    handleDownload("task-completion", () => 
-      api.downloadReport(auth.token, "reports/task-completion", { 
-        method: "POST", 
-        body: reportFilterPayload() 
+    handleDownload("task-completion", () =>
+      api.downloadReport(auth.token, "reports/task-completion", {
+        method: "POST",
+        body: reportFilterPayload()
       })
     );
   };
@@ -130,24 +130,24 @@ export function ReportsPage() {
       setMessage("Select a department before downloading the department workload report.");
       return;
     }
-    handleDownload("department-workload", () => 
-      api.downloadReport(auth.token, "reports/department-workload", { 
-        method: "POST", 
-        body: { 
-          departmentId: filters.departmentId, 
-          startDate: filters.startDate || new Date().toISOString(), 
-          endDate: filters.endDate || new Date().toISOString() 
-        } 
+    handleDownload("department-workload", () =>
+      api.downloadReport(auth.token, "reports/department-workload", {
+        method: "POST",
+        body: {
+          departmentId: filters.departmentId,
+          startDate: filters.startDate || new Date().toISOString(),
+          endDate: filters.endDate || new Date().toISOString()
+        }
       })
     );
   };
 
   const downloadDelayAnalysis = () => {
     if (!auth) return;
-    handleDownload("delay-analysis", () => 
-      api.downloadReport(auth.token, "reports/delay-analysis", { 
-        method: "POST", 
-        body: reportFilterPayload() 
+    handleDownload("delay-analysis", () =>
+      api.downloadReport(auth.token, "reports/delay-analysis", {
+        method: "POST",
+        body: reportFilterPayload()
       })
     );
   };
