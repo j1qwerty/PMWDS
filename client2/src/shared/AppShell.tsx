@@ -18,6 +18,7 @@ import {
   FiTool,
   FiUser,
   FiUsers,
+  FiZap,
 } from "react-icons/fi";
 import { useAuth } from "./auth";
 
@@ -36,8 +37,10 @@ const nav = [
   { path: "/ai", label: "AI", icon: FiCpu },
   { path: "/reports", label: "Reports", icon: FiPieChart },
   { path: "/roles", label: "Roles", icon: FiShield },
+  { path: "/permissions", label: "Permissions", icon: FiShield },
   { path: "/skills", label: "Skills", icon: FiTool },
   { path: "/integrations", label: "Integrations", icon: FiLayers },
+  { path: "/webhooks", label: "Webhooks", icon: FiZap },
   { path: "/knowledge", label: "Knowledge", icon: FiBookOpen },
   { path: "/dashboards", label: "Dashboards", icon: FiGrid },
   { path: "/settings", label: "Settings", icon: FiSettings },

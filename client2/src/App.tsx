@@ -20,6 +20,8 @@ import { SkillsPage } from "./pages/skills/skills";
 import { IntegrationsPage } from "./pages/integrations/integrations";
 import { KnowledgePage } from "./pages/knowledge/knowledge";
 import { DashboardsPage } from "./pages/dashboards/dashboards";
+import { WebhooksPage } from "./pages/webhooks/webhooks";
+import { PermissionsPage } from "./pages/permissions/permissions";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -50,8 +52,10 @@ export default function App() {
                 <Route path="/ai" element={<AIPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/roles" element={<RolesPage />} />
+                <Route path="/permissions" element={<PermissionsPage />} />
                 <Route path="/skills" element={<SkillsPage />} />
                 <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/webhooks" element={<WebhooksPage />} />
                 <Route path="/knowledge" element={<KnowledgePage />} />
                 <Route path="/dashboards" element={<DashboardsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

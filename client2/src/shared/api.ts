@@ -209,6 +209,12 @@ export const api = {
   getPermissions(token: string) {
     return request<GenericRecord[]>("roles/permissions", { token });
   },
+  createPermission(token: string, payload: Record<string, unknown>) {
+    return request<GenericRecord>("roles/permissions", { token, method: "POST", body: payload });
+  },
+  updatePermission(token: string, id: string, payload: Record<string, unknown>) {
+    return request<GenericRecord>(`roles/permissions/${id}`, { token, method: "PUT", body: payload });
+  },
   getSkills(token: string) {
     return request<SkillRecord[]>("skills", { token });
   },
@@ -263,6 +269,9 @@ export const api = {
   },
   createWebhook(token: string, payload: Record<string, unknown>) {
     return request<Webhook>("webhooks", { token, method: "POST", body: payload });
+  },
+  updateWebhook(token: string, id: string, payload: Record<string, unknown>) {
+    return request<Webhook>(`webhooks/${id}`, { token, method: "PUT", body: payload });
   },
   getKnowledgeArticles(token: string, projectId?: string) {
     return request<KnowledgeArticle[]>("knowledge/articles", { token, query: { projectId } });
