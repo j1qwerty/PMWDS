@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FiChevronDown, FiEye, FiPlus, FiSearch, FiSliders, FiX } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiEye, FiMoreHorizontal, FiPlus, FiSearch, FiSliders, FiX } from "react-icons/fi";
 import type {
   ColorAssignments,
   Department,
@@ -77,19 +77,69 @@ export function ColorPicker({
   value: string;
   onChange: (color: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="color-picker" aria-label="Color tag picker">
-      {palette.map((color) => (
-        <button
-          key={color}
-          className={classNames("color-dot", value === color && "selected")}
-          style={{ background: color }}
-          onClick={() => onChange(color)}
-          title={color}
-          type="button"
-        />
-      ))}
+    <div className="color-menu" aria-label="Color tag picker">
+      <button
+        className="color-trigger"
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        title="Set color"
+      >
+        <span style={{ background: value }} />
+      </button>
+      {open ? (
+        <div className="color-popover">
+          {palette.map((color) => (
+            <button
+              key={color}
+              className={classNames("color-dot", value === color && "selected")}
+              style={{ background: color }}
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange(color);
+                setOpen(false);
+              }}
+              title={color}
+              type="button"
+            >
+              {value === color ? <FiCheck /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function UserAvatar({ user, fallback }: { user?: User | null; fallback?: string | null }) {
+  return (
+    <span className="avatar small" title={user?.fullName ?? fallback ?? "Unassigned"}>
+      {initials(user?.fullName ?? fallback ?? "NA")}
+    </span>
+  );
+}
+
+function AvatarStack({
+  users,
+  fallbacks,
+}: {
+  users?: Array<User | undefined | null>;
+  fallbacks?: Array<string | undefined | null>;
+}) {
+  const people = [...(users ?? []), ...(fallbacks ?? []).map((name) => (name ? ({ fullName: name } as User) : null))]
+    .filter(Boolean)
+    .slice(0, 4) as User[];
+  if (!people.length) return <span className="avatar-empty">Unassigned</span>;
+  return (
+    <span className="avatar-stack">
+      {people.map((user, index) => (
+        <UserAvatar key={`${user.id ?? user.fullName}-${index}`} user={user} />
+      ))}
+    </span>
   );
 }
 
@@ -279,6 +329,7 @@ export function WorkHierarchy({
           key={project.id}
           project={project}
           department={departments.find((department) => department.id === project.departmentId)}
+          users={users}
           color={colors[project.id] ?? "#6366f1"}
           onColor={(color) => onColor(project.id, color)}
           onView={() => onView(project, "project")}
@@ -315,6 +366,7 @@ export function WorkHierarchy({
 function ExpandableProject({
   project,
   department,
+  users,
   color,
   onColor,
   onView,
@@ -322,34 +374,38 @@ function ExpandableProject({
 }: {
   project: Project;
   department?: Department;
+  users: User[];
   color: string;
   onColor: (color: string) => void;
   onView: () => void;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
+  const projectManager = users.find((user) => user.id === project.projectManagerId);
+  const departmentHead = users.find((user) => user.id === department?.departmentHeadUserId);
   return (
-    <article className="expand-card project-card" style={{ borderLeftColor: color }}>
-      <button className="expand-head" onClick={() => setOpen((current) => !current)}>
-        <FiChevronDown className={open ? "rotated" : ""} />
+    <article className="tracker-card project-card" style={{ borderLeftColor: color }}>
+      <div className="tracker-head project-head" onClick={() => setOpen((current) => !current)}>
+        <button className="chevron-btn" type="button" aria-label="Expand project">
+          <FiChevronDown className={open ? "rotated" : ""} />
+        </button>
         <div>
           <strong>{project.name}</strong>
           <span>
             {project.projectCode} / {department?.name ?? "No department"} / {project.projectManagerName ?? "No manager"}
           </span>
         </div>
+        <AvatarStack users={[projectManager, departmentHead]} fallbacks={[project.projectManagerName]} />
         <StatusBadge status={project.status} />
+        <span className="tracker-percent">{project.progressPercentage}%</span>
         <ProgressBar value={project.progressPercentage} color={color} />
-        <button className="view-btn" onClick={(event) => { event.stopPropagation(); onView(); }} title="View details">
+        <ColorPicker value={color} onChange={onColor} />
+        <button className="view-btn" type="button" onClick={(event) => { event.stopPropagation(); onView(); }} title="View details">
           <FiEye />
         </button>
-      </button>
+      </div>
       {open ? (
-        <div className="expand-body">
-          <div className="color-row">
-            <span>Color tag</span>
-            <ColorPicker value={color} onChange={onColor} />
-          </div>
+        <div className="tracker-body">
           {children}
         </div>
       ) : null}
@@ -372,25 +428,28 @@ function ExpandableMilestone({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <article className="expand-card milestone-card" style={{ borderLeftColor: color }}>
-      <button className="expand-head" onClick={() => setOpen((current) => !current)}>
-        <FiChevronDown className={open ? "rotated" : ""} />
+    <article className="tracker-card milestone-card" style={{ borderLeftColor: color }}>
+      <div className="tracker-head milestone-head" onClick={() => setOpen((current) => !current)}>
+        <button className="milestone-icon" type="button" style={{ color, background: `${color}22` }}>
+          {milestone.status === "Completed" ? <FiCheck /> : <FiMoreHorizontal />}
+        </button>
         <div>
           <strong>{milestone.name}</strong>
           <span>{milestone.isCritical ? "Critical" : "Standard"} / due {formatDate(milestone.dueDate)}</span>
         </div>
-        <StatusBadge status={milestone.status} />
+        <span className="tracker-percent">{milestone.progressPercentage}%</span>
         <ProgressBar value={milestone.progressPercentage} color={color} />
-        <button className="view-btn" onClick={(event) => { event.stopPropagation(); onView(); }} title="View details">
+        <StatusBadge status={milestone.status} />
+        <ColorPicker value={color} onChange={onColor} />
+        <button className="view-btn" type="button" onClick={(event) => { event.stopPropagation(); onView(); }} title="View details">
           <FiEye />
         </button>
-      </button>
+        <button className="chevron-btn" type="button" aria-label="Expand milestone">
+          <FiChevronDown className={open ? "rotated" : ""} />
+        </button>
+      </div>
       {open ? (
-        <div className="expand-body nested">
-          <div className="color-row">
-            <span>Milestone color</span>
-            <ColorPicker value={color} onChange={onColor} />
-          </div>
+        <div className="task-list open">
           {children}
         </div>
       ) : null}
@@ -419,31 +478,39 @@ function ExpandableTask({
 }) {
   const [open, setOpen] = useState(false);
   const subtasks = taskChildren(task);
+  const assignedUsers = task.assignees?.map((assignee) => users.find((user) => user.id === assignee.userId)).filter(Boolean) as User[] | undefined;
+  const primaryAssignee = users.find((user) => user.id === task.assignedToUserId);
+  const done = task.status === "Completed" || task.progressPercentage >= 100;
   return (
-    <article className="expand-card task-card" style={{ borderLeftColor: color }}>
-      <button className="expand-head" onClick={() => setOpen((current) => !current)}>
-        <FiChevronDown className={open ? "rotated" : ""} />
+    <article className="task-row-card" style={{ borderLeftColor: color }}>
+      <div className="task-row-head">
+        <button
+          className={classNames("task-checkbox", done && "checked")}
+          type="button"
+          onClick={() => onStatus(task.id, done ? "InProgress" : "Completed")}
+          aria-label={done ? "Mark task in progress" : "Mark task complete"}
+        >
+          {done ? <FiCheck /> : null}
+        </button>
         <div>
-          <strong>{task.title}</strong>
+          <strong className={done ? "done-text" : ""}>{task.title}</strong>
           <span>{task.assignedToUserName ?? "Unassigned"} / due {formatDate(task.dueDate)}</span>
         </div>
+        <AvatarStack users={assignedUsers?.length ? assignedUsers : [primaryAssignee]} fallbacks={[task.assignedToUserName]} />
+        <span className={classNames("due", task.isOverdue && "overdue")}>{formatDate(task.dueDate)}</span>
         <PriorityBadge priority={task.priority} />
         <StatusBadge status={task.status} />
-        <ProgressBar value={task.progressPercentage} color={color} />
-        <button className="view-btn" onClick={(event) => { event.stopPropagation(); onView(task, "task"); }} title="View details">
+        <ColorPicker value={color} onChange={onColor} />
+        <button className="view-btn" type="button" onClick={() => onView(task, "task")} title="View details">
           <FiEye />
         </button>
-      </button>
+        <button className="view-btn" type="button" onClick={() => setOpen((current) => !current)} title="Expand task">
+          <FiChevronDown className={open ? "rotated" : ""} />
+        </button>
+      </div>
       {open ? (
-        <div className="expand-body nested">
-          <div className="detail-grid">
-            <ControlBlock title="Task progress">
-              <ProgressEditor task={task} onProgress={onProgress} onStatus={onStatus} />
-            </ControlBlock>
-            <ControlBlock title="Color assignment">
-              <ColorPicker value={color} onChange={onColor} />
-            </ControlBlock>
-          </div>
+        <div className="task-expand open">
+          <ProgressEditor task={task} onProgress={onProgress} onStatus={onStatus} />
           <Comments task={task} users={users} onComment={onComment} />
           {subtasks.length ? (
             <div className="subtask-stack">
@@ -487,22 +554,28 @@ function ExpandableSubtask({
   onView: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const done = subtask.status === "Completed" || subtask.progressPercentage >= 100;
   return (
-    <article className="expand-card subtask-card" style={{ borderLeftColor: color }}>
-      <button className="expand-head" onClick={() => setOpen((current) => !current)}>
-        <FiChevronDown className={open ? "rotated" : ""} />
-        <div>
-          <strong>{subtask.title}</strong>
-          <span>{subtask.assignedToUserName ?? "Unassigned"} / {subtask.progressPercentage}%</span>
-        </div>
+    <article className="subtask-row">
+      <button
+        className={classNames("sub-dot-check", done && "checked")}
+        type="button"
+        style={{ borderColor: color, background: done ? color : undefined }}
+        onClick={() => onStatus(subtask.id, done ? "InProgress" : "Completed")}
+      />
+      <button className="subtask-main" type="button" onClick={() => setOpen((current) => !current)}>
+        <span className={done ? "done-text" : ""}>{subtask.title}</span>
+      </button>
+      <span className="subtask-progress">{subtask.progressPercentage}%</span>
+      <AvatarStack users={[users.find((user) => user.id === subtask.assignedToUserId)]} fallbacks={[subtask.assignedToUserName]} />
+      <div className="subtask-actions">
         <StatusBadge status={subtask.status} />
-        <ProgressBar value={subtask.progressPercentage} color={color} />
-        <button className="view-btn" onClick={(event) => { event.stopPropagation(); onView(); }} title="View details">
+        <button className="view-btn" type="button" onClick={onView} title="View details">
           <FiEye />
         </button>
-      </button>
+      </div>
       {open ? (
-        <div className="expand-body nested">
+        <div className="subtask-expand">
           <ProgressEditor task={subtask} onProgress={onProgress} onStatus={onStatus} />
           <Comments task={subtask} users={users} onComment={onComment} />
         </div>

@@ -59,6 +59,7 @@ export type Department = {
   code: string;
   description?: string | null;
   organizationId?: string | null;
+  departmentHeadUserId?: string | null;
   maxCapacity?: number;
   capacityUtilization?: number;
 };

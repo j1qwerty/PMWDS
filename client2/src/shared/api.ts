@@ -23,7 +23,7 @@ import type {
 } from "./types";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "http://localhost:5177/api/v1";
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "/api/v1";
 
 type ApiOptions = {
   token?: string | null;
@@ -33,7 +33,7 @@ type ApiOptions = {
 };
 
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`);
+  const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`, window.location.origin);
   Object.entries(options.query ?? {}).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
   });

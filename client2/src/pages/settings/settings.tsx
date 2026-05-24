@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ColorPicker, PageTitle } from "../../shared/components";
-import { palette } from "../../shared/utils";
 
 type UiSettings = {
   accent: string;
@@ -45,11 +44,7 @@ export function SettingsPage() {
             <ColorPicker value={settings.accent} onChange={(accent) => setSettings((current) => ({ ...current, accent }))} />
           </SettingRow>
           <SettingRow title="Color palette" detail="Available for projects, milestones, tasks, and subtasks.">
-            <div className="color-picker">
-              {palette.map((color) => (
-                <span className="color-dot selected" key={color} style={{ background: color }} />
-              ))}
-            </div>
+            <ColorPicker value={settings.accent} onChange={(accent) => setSettings((current) => ({ ...current, accent }))} />
           </SettingRow>
           <SettingRow title="Density" detail="Compact keeps expanded elements short for project management work.">
             <select value={settings.density} onChange={(event) => setSettings((current) => ({ ...current, density: event.target.value as UiSettings["density"] }))}>
