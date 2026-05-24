@@ -1,5 +1,24 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { FiCheckSquare, FiColumns, FiFlag, FiFolder, FiGrid, FiLogOut, FiSettings } from "react-icons/fi";
+import {
+  FiActivity,
+  FiBell,
+  FiBookOpen,
+  FiBriefcase,
+  FiCheckSquare,
+  FiColumns,
+  FiCpu,
+  FiFlag,
+  FiFolder,
+  FiGrid,
+  FiLayers,
+  FiLogOut,
+  FiPieChart,
+  FiSettings,
+  FiShield,
+  FiTool,
+  FiUser,
+  FiUsers,
+} from "react-icons/fi";
 import { useAuth } from "./auth";
 
 const nav = [
@@ -8,6 +27,19 @@ const nav = [
   { path: "/kanban", label: "Kanban", icon: FiColumns },
   { path: "/milestones", label: "Milestones", icon: FiFlag },
   { path: "/tasks", label: "Tasks", icon: FiCheckSquare },
+  { path: "/organizations", label: "Organizations", icon: FiBriefcase },
+  { path: "/departments", label: "Departments", icon: FiLayers },
+  { path: "/users", label: "Users", icon: FiUsers },
+  { path: "/profile", label: "Profile", icon: FiUser },
+  { path: "/notifications", label: "Notifications", icon: FiBell },
+  { path: "/activity", label: "Activity", icon: FiActivity },
+  { path: "/ai", label: "AI", icon: FiCpu },
+  { path: "/reports", label: "Reports", icon: FiPieChart },
+  { path: "/roles", label: "Roles", icon: FiShield },
+  { path: "/skills", label: "Skills", icon: FiTool },
+  { path: "/integrations", label: "Integrations", icon: FiLayers },
+  { path: "/knowledge", label: "Knowledge", icon: FiBookOpen },
+  { path: "/dashboards", label: "Dashboards", icon: FiGrid },
   { path: "/settings", label: "Settings", icon: FiSettings },
 ];
 

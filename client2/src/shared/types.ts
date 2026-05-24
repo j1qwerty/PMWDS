@@ -165,3 +165,131 @@ export type Filters = {
 };
 
 export type ColorAssignments = Record<string, string>;
+
+export type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  priority: string;
+  isRead: boolean;
+  createdDate: string;
+};
+
+export type ActivityLog = {
+  id: string;
+  userId: string;
+  projectId?: string | null;
+  activityType: string;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type RoleRecord = {
+  id: string;
+  name: string;
+  description?: string;
+  permissionLevel?: number;
+  permissions?: Array<{ id: string; code: string; name: string; module?: string }>;
+};
+
+export type SkillRecord = {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  userCount?: number;
+  organizationId?: string | null;
+};
+
+export type UserProfile = {
+  id: string;
+  userId: string;
+  bio?: string | null;
+  jobTitle?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+  linkedInUrl?: string | null;
+};
+
+export type AIProvider = {
+  provider: string;
+  displayName: string;
+  isEnabled: boolean;
+  isConfigured: boolean;
+  defaultModel: string;
+  baseUrl?: string;
+};
+
+export type BurnoutRisk = {
+  userId: string;
+  fullName: string;
+  burnoutRisk: number;
+  workloadScore: number;
+  activeTasks: number;
+  riskLevel: string;
+  recommendations?: string[];
+};
+
+export type Integration = {
+  id: string;
+  integrationType: string;
+  name: string;
+  isEnabled: boolean;
+  status: string;
+  lastSync?: string | null;
+};
+
+export type Webhook = {
+  id: string;
+  integrationId?: string | null;
+  eventType: string;
+  callbackUrl: string;
+  isActive: boolean;
+};
+
+export type KnowledgeArticle = {
+  id: string;
+  projectId?: string | null;
+  title: string;
+  content: string;
+  category: string;
+  tags?: string[];
+  viewCount?: number;
+  relevanceScore?: number;
+  createdDate?: string;
+};
+
+export type LessonLearned = {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  category: string;
+  impact: string;
+  keywords?: string[];
+  recordedDate?: string;
+};
+
+export type StoredReport = {
+  id: string;
+  name: string;
+  reportType: string;
+  generatedDate: string;
+  format: string;
+  sizeBytes?: number;
+};
+
+export type DashboardRecord = {
+  id: string;
+  userId: string;
+  name: string;
+  layoutType: string;
+  isDefault: boolean;
+  lastAccessed?: string;
+  widgets?: Array<{ id: string; title: string; widgetType: string; displayOrder: number }>;
+};
+
+export type GenericRecord = Record<string, unknown> & { id?: string };
