@@ -105,5 +105,9 @@ Thumbs.db
 .dotnet
 Client\node_modules
 **node_modules\**
+node_modules/
+**/node_modules/
+dist/
+**/dist/
 status
 status\api-build
