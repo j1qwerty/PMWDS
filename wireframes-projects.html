@@ -1,0 +1,1908 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+  <meta charset="UTF-8"/>  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>  
+  <title>React App Tracker</title>  
+  <style>  
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }  
+
+    :root {  
+      --bg:       #0d0e1a;  
+      --surface:  #13141f;  
+      --surface2: #1a1b2e;  
+      --border:   #252640;  
+      --accent:   #6366f1;  
+      --accent2:  #8b5cf6;  
+      --text:     #e2e8f0;  
+      --muted:    #64748b;  
+      --success:  #22c55e;  
+      --warn:     #f97316;  
+      --danger:   #ef4444;  
+      --info:     #3b82f6;  
+      --sidebar:  220px;  
+    }  
+
+    body {  
+      font-family: 'Segoe UI', system-ui, sans-serif;  
+      background: var(--bg);  
+      color: var(--text);  
+      display: flex;  
+      height: 100vh;  
+      overflow: hidden;  
+    }  
+
+    /* ═══════════════════════════════════  
+       SIDEBAR  
+    ═══════════════════════════════════ */  
+    .sidebar {  
+      width: var(--sidebar);  
+      background: var(--surface);  
+      border-right: 1px solid var(--border);  
+      display: flex;  
+      flex-direction: column;  
+      flex-shrink: 0;  
+      transition: width 0.3s;  
+      overflow: hidden;  
+    }  
+    .sidebar.collapsed { width: 58px; }  
+
+    .sidebar-logo {  
+      display: flex;  
+      align-items: center;  
+      gap: 0.7rem;  
+      padding: 1.1rem 1rem;  
+      border-bottom: 1px solid var(--border);  
+      white-space: nowrap;  
+    }  
+    .logo-icon {  
+      width: 32px; height: 32px;  
+      background: linear-gradient(135deg, var(--accent), var(--accent2));  
+      border-radius: 8px;  
+      display: flex; align-items: center; justify-content: center;  
+      font-size: 1rem;  
+      flex-shrink: 0;  
+    }  
+    .logo-text { font-size: 0.95rem; font-weight: 700; color:#fff; }  
+    .logo-text span { color: var(--accent); }  
+
+    .collapse-btn {  
+      margin-left: auto;  
+      background: none; border: none;  
+      color: var(--muted); cursor: pointer;  
+      font-size: 0.85rem;  
+      padding: 2px 4px;  
+      border-radius: 4px;  
+      flex-shrink: 0;  
+    }  
+    .collapse-btn:hover { color: var(--text); }  
+
+    .nav-section {  
+      padding: 0.8rem 0.5rem 0.3rem;  
+      font-size: 0.62rem;  
+      text-transform: uppercase;  
+      letter-spacing: 0.1em;  
+      color: var(--muted);  
+      white-space: nowrap;  
+      overflow: hidden;  
+    }  
+    .sidebar.collapsed .nav-section { opacity: 0; }  
+
+    .nav-item {  
+      display: flex;  
+      align-items: center;  
+      gap: 0.75rem;  
+      padding: 0.55rem 0.9rem;  
+      margin: 0.1rem 0.4rem;  
+      border-radius: 8px;  
+      cursor: pointer;  
+      font-size: 0.85rem;  
+      color: var(--muted);  
+      white-space: nowrap;  
+      transition: background 0.15s, color 0.15s;  
+      text-decoration: none;  
+    }  
+    .nav-item:hover { background: var(--surface2); color: var(--text); }  
+    .nav-item.active {  
+      background: rgba(99,102,241,0.15);  
+      color: #a5b4fc;  
+    }  
+    .nav-item .ni { font-size: 1rem; flex-shrink: 0; }  
+    .nav-label { overflow: hidden; }  
+
+    .nav-badge {  
+      margin-left: auto;  
+      background: var(--accent);  
+      color: #fff;  
+      font-size: 0.6rem;  
+      font-weight: 700;  
+      padding: 1px 6px;  
+      border-radius: 999px;  
+      flex-shrink: 0;  
+    }  
+
+    .sidebar-footer {  
+      margin-top: auto;  
+      border-top: 1px solid var(--border);  
+      padding: 0.8rem 0.4rem;  
+    }  
+
+    /* ═══════════════════════════════════  
+       MAIN LAYOUT  
+    ═══════════════════════════════════ */  
+    .main {  
+      flex: 1;  
+      display: flex;  
+      flex-direction: column;  
+      overflow: hidden;  
+    }  
+
+    /* ── Topbar ── */  
+    .topbar {  
+      display: flex;  
+      align-items: center;  
+      gap: 1rem;  
+      padding: 0.75rem 1.5rem;  
+      border-bottom: 1px solid var(--border);  
+      background: var(--surface);  
+      flex-shrink: 0;  
+    }  
+    .topbar h2 { font-size: 1rem; font-weight: 600; color:#fff; }  
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.7rem; }  
+
+    .search-box {  
+      display: flex;  
+      align-items: center;  
+      gap: 0.5rem;  
+      background: var(--surface2);  
+      border: 1px solid var(--border);  
+      border-radius: 8px;  
+      padding: 0.35rem 0.75rem;  
+    }  
+    .search-box input {  
+      background: none;  
+      border: none;  
+      outline: none;  
+      color: var(--text);  
+      font-size: 0.82rem;  
+      width: 160px;  
+    }  
+    .search-box input::placeholder { color: var(--muted); }  
+
+    .btn {  
+      display: inline-flex; align-items: center; gap: 0.4rem;  
+      padding: 0.4rem 0.9rem;  
+      border-radius: 8px;  
+      border: none; cursor: pointer;  
+      font-size: 0.8rem; font-weight: 600;  
+      transition: opacity 0.2s, transform 0.1s;  
+    }  
+    .btn:active { transform: scale(0.97); }  
+    .btn-primary { background: var(--accent); color: #fff; }  
+    .btn-primary:hover { opacity: 0.88; }  
+    .btn-ghost {  
+      background: var(--surface2);  
+      border: 1px solid var(--border);  
+      color: var(--text);  
+    }  
+    .btn-ghost:hover { background: #252640; }  
+    .btn-sm { padding: 0.25rem 0.6rem; font-size: 0.75rem; }  
+    .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }  
+
+    .avatar {  
+      width: 32px; height: 32px;  
+      border-radius: 50%;  
+      display: flex; align-items: center; justify-content: center;  
+      font-size: 0.7rem; font-weight: 700; color: #fff;  
+      cursor: pointer;  
+    }  
+    .av1{background:#6366f1} .av2{background:#ec4899}  
+    .av3{background:#f97316} .av4{background:#22c55e}  
+
+    /* ── Content ── */  
+    .content {  
+      flex: 1;  
+      overflow-y: auto;  
+      padding: 1.5rem;  
+    }  
+    .content::-webkit-scrollbar { width: 6px; }  
+    .content::-webkit-scrollbar-track { background: var(--bg); }  
+    .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }  
+
+    /* Page sections */  
+    .page { display: none; }  
+    .page.active { display: block; }  
+
+    /* ═══════════════════════════════════  
+       DASHBOARD / TRACKER PAGE  
+    ═══════════════════════════════════ */  
+    .summary-grid {  
+      display: grid;  
+      grid-template-columns: repeat(4, 1fr);  
+      gap: 1rem;  
+      margin-bottom: 1.5rem;  
+    }  
+    .summary-card {  
+      background: var(--surface);  
+      border: 1px solid var(--border);  
+      border-radius: 12px;  
+      padding: 1rem 1.2rem;  
+    }  
+    .summary-card .sc-top {  
+      display: flex; justify-content: space-between; align-items: center;  
+      margin-bottom: 0.5rem;  
+    }  
+    .summary-card .sc-icon {  
+      width: 34px; height: 34px; border-radius: 9px;  
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;  
+    }  
+    .summary-card .sc-num {  
+      font-size: 1.7rem; font-weight: 700; color: #fff;  
+    }  
+    .summary-card .sc-lbl {  
+      font-size: 0.72rem; color: var(--muted);  
+      text-transform: uppercase; letter-spacing: 0.05em;  
+    }  
+    .sc-prog {  
+      height: 4px; background: var(--surface2);  
+      border-radius: 999px; margin-top: 0.6rem; overflow: hidden;  
+    }  
+    .sc-prog div { height: 100%; border-radius: 999px; }  
+
+    /* Actions bar */  
+    .actions-bar {  
+      display: flex; align-items: center; gap: 0.7rem;  
+      margin-bottom: 1.2rem;  
+    }  
+    .actions-bar h3 { font-size: 0.95rem; font-weight: 600; }  
+    .spacer { flex: 1; }  
+
+    /* Milestone */  
+    .milestone {  
+      background: var(--surface);  
+      border: 1px solid var(--border);  
+      border-radius: 14px;  
+      margin-bottom: 1rem;  
+      overflow: hidden;  
+    }  
+    .milestone-header {  
+      display: flex; align-items: center; gap: 0.9rem;  
+      padding: 0.9rem 1.2rem;  
+      cursor: pointer; user-select: none;  
+      transition: background 0.15s;  
+    }  
+    .milestone-header:hover { background: var(--surface2); }  
+
+    .m-icon {  
+      width: 34px; height: 34px; border-radius: 9px;  
+      display: flex; align-items: center; justify-content: center;  
+      font-size: 0.95rem; flex-shrink: 0;  
+    }  
+    .m-info { flex: 1; min-width: 0; }  
+    .m-info h3 { font-size: 0.88rem; font-weight: 600; }  
+    .m-info p { font-size: 0.72rem; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  
+
+    .m-right { display: flex; align-items: center; gap: 0.8rem; flex-shrink: 0; }  
+    .m-pct { font-size: 0.82rem; font-weight: 700; color: #a5b4fc; min-width: 34px; text-align: right; }  
+    .m-bar { width: 90px; height: 6px; background: var(--surface2); border-radius: 999px; overflow: hidden; }  
+    .m-bar-fill { height: 100%; border-radius: 999px; }  
+
+    .status-pill {  
+      padding: 0.18rem 0.65rem; border-radius: 999px;  
+      font-size: 0.67rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;  
+      white-space: nowrap;  
+    }  
+    .pill-done    { background:#14532d; color:#4ade80; }  
+    .pill-active  { background:#1e3a8a; color:#93c5fd; }  
+    .pill-pending { background:#292524; color:#78716c; }  
+    .pill-review  { background:#451a03; color:#fb923c; }  
+
+    .chevron { font-size: 0.65rem; color: var(--muted); transition: transform 0.2s; }  
+    .open > .chevron, .milestone-header.open .chevron { transform: rotate(180deg); }  
+
+    .task-list { padding: 0 1.2rem 0.8rem; display: none; }  
+    .task-list.open { display: block; }  
+
+    /* Add task button */  
+    .add-task-row {  
+      display: flex; align-items: center; gap: 0.5rem;  
+      padding: 0.4rem 0.6rem;  
+      border: 1px dashed var(--border);  
+      border-radius: 8px;  
+      cursor: pointer;  
+      color: var(--muted);  
+      font-size: 0.78rem;  
+      transition: border-color 0.2s, color 0.2s;  
+      margin-top: 0.4rem;  
+    }  
+    .add-task-row:hover { border-color: var(--accent); color: var(--accent); }  
+
+    /* Task */  
+    .task {  
+      background: var(--surface2);  
+      border: 1px solid var(--border);  
+      border-radius: 10px;  
+      padding: 0.65rem 0.9rem;  
+      margin-bottom: 0.5rem;  
+    }  
+    .task-header {  
+      display: flex; align-items: center; gap: 0.7rem;  
+    }  
+    .checkbox {  
+      width: 17px; height: 17px; border-radius: 5px;  
+      border: 2px solid #4338ca;  
+      display: flex; align-items: center; justify-content: center;  
+      flex-shrink: 0; font-size: 0.6rem; color: #4ade80;  
+      cursor: pointer;  
+    }  
+    .checkbox.checked { background: #4338ca; border-color: #4338ca; }  
+    .task-name { flex: 1; font-size: 0.83rem; font-weight: 500; }  
+    .task-name.done { text-decoration: line-through; color: var(--muted); }  
+
+    .task-actions { display: flex; align-items: center; gap: 0.5rem; }  
+    .assignee-sm {  
+      width: 22px; height: 22px; border-radius: 50%;  
+      display: flex; align-items: center; justify-content: center;  
+      font-size: 0.58rem; font-weight: 700; color: #fff;  
+    }  
+    .due { font-size: 0.68rem; color: var(--muted); }  
+    .due.overdue { color: var(--danger); }  
+
+    .icon-btn {  
+      background: none; border: none; cursor: pointer;  
+      color: var(--muted); font-size: 0.8rem; padding: 2px 4px;  
+      border-radius: 4px; transition: color 0.15s, background 0.15s;  
+    }  
+    .icon-btn:hover { color: var(--text); background: var(--border); }  
+
+    /* Task expand */  
+    .task-expand { display: none; margin-top: 0.6rem; }  
+    .task-expand.open { display: block; }  
+
+    .task-progress-row {  
+      display: flex; align-items: center; gap: 0.6rem;  
+      margin-bottom: 0.6rem;  
+    }  
+    .task-progress-row label { font-size: 0.72rem; color: var(--muted); min-width: 60px; }  
+    .progress-bar-wrap { flex: 1; }  
+    .pbar {  
+      height: 6px; background: var(--surface);  
+      border-radius: 999px; overflow: hidden;  
+    }  
+    .pbar div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }  
+
+    /* Subtask */  
+    .subtask-section { margin-bottom: 0.6rem; }  
+    .subtask-section-header {  
+      display: flex; align-items: center; justify-content: space-between;  
+      margin-bottom: 0.4rem;  
+    }  
+    .subtask-section-header span { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }  
+
+    .subtask {  
+      display: flex; align-items: center; gap: 0.6rem;  
+      padding: 0.3rem 0.5rem;  
+      border-radius: 6px;  
+      transition: background 0.15s;  
+    }  
+    .subtask:hover { background: var(--surface); }  
+    .sub-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }  
+    .dot-done{background:var(--success)} .dot-active{background:var(--accent)} .dot-pending{background:#374151}  
+    .subtask-name { flex: 1; font-size: 0.77rem; color: #94a3b8; }  
+    .subtask-name.done { text-decoration: line-through; color: #374151; }  
+    .sub-pill { padding: 0.08rem 0.45rem; border-radius: 999px; font-size: 0.62rem; font-weight: 600; }  
+
+    /* Comments */  
+    .comments-section { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }  
+    .comments-title { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }  
+    .comment {  
+      display: flex; gap: 0.6rem; margin-bottom: 0.5rem;  
+    }  
+    .comment-body { flex: 1; }  
+    .comment-meta { font-size: 0.68rem; color: var(--muted); margin-bottom: 0.15rem; }  
+    .comment-meta strong { color: #a5b4fc; }  
+    .comment-text { font-size: 0.78rem; color: #cbd5e1; background: var(--surface); border-radius: 6px; padding: 0.35rem 0.5rem; }  
+
+    .comment-input-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }  
+    .comment-input-row input {  
+      flex: 1; background: var(--surface); border: 1px solid var(--border);  
+      border-radius: 7px; padding: 0.35rem 0.6rem;  
+      color: var(--text); font-size: 0.78rem; outline: none;  
+    }  
+    .comment-input-row input:focus { border-color: var(--accent); }  
+
+    /* ═══════════════════════════════════  
+       MODAL  
+    ═══════════════════════════════════ */  
+    .modal-overlay {  
+      position: fixed; inset: 0;  
+      background: rgba(0,0,0,0.7);  
+      display: flex; align-items: center; justify-content: center;  
+      z-index: 100;  
+      opacity: 0; pointer-events: none;  
+      transition: opacity 0.2s;  
+    }  
+    .modal-overlay.open { opacity: 1; pointer-events: all; }  
+
+    .modal {  
+      background: var(--surface);  
+      border: 1px solid var(--border);  
+      border-radius: 16px;  
+      padding: 1.5rem;  
+      width: 480px;  
+      max-width: 95vw;  
+      max-height: 90vh;  
+      overflow-y: auto;  
+      transform: translateY(20px);  
+      transition: transform 0.2s;  
+    }  
+    .modal-overlay.open .modal { transform: translateY(0); }  
+
+    .modal-header {  
+      display: flex; align-items: center; justify-content: space-between;  
+      margin-bottom: 1.2rem;  
+    }  
+    .modal-header h3 { font-size: 1rem; font-weight: 600; }  
+    .modal-close {  
+      background: none; border: none; color: var(--muted); cursor: pointer;  
+      font-size: 1.1rem; line-height: 1; border-radius: 6px; padding: 2px 6px;  
+    }  
+    .modal-close:hover { color: var(--text); background: var(--surface2); }  
+
+    .form-group { margin-bottom: 1rem; }  
+    .form-group label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.35rem; font-weight: 500; }  
+    .form-control {  
+      width: 100%; background: var(--surface2);  
+      border: 1px solid var(--border); border-radius: 8px;  
+      padding: 0.5rem 0.75rem; color: var(--text);  
+      font-size: 0.83rem; outline: none;  
+      transition: border-color 0.15s;  
+      font-family: inherit;  
+    }  
+    .form-control:focus { border-color: var(--accent); }  
+    textarea.form-control { resize: vertical; min-height: 72px; }  
+    select.form-control { cursor: pointer; }  
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }  
+
+    .progress-input-row { display: flex; align-items: center; gap: 0.7rem; }  
+    .progress-input-row input[type=range] { flex: 1; accent-color: var(--accent); }  
+    .progress-input-row span { font-size: 0.82rem; font-weight: 700; color: #a5b4fc; min-width: 36px; }  
+
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.3rem; }  
+
+    /* Subtask input list */  
+    .subtask-inputs { margin-top: 0.4rem; }  
+    .subtask-input-row {  
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;  
+    }  
+    .subtask-input-row input {  
+      flex: 1; background: var(--surface2);  
+      border: 1px solid var(--border); border-radius: 7px;  
+      padding: 0.38rem 0.6rem; color: var(--text);  
+      font-size: 0.8rem; outline: none;  
+    }  
+    .subtask-input-row input:focus { border-color: var(--accent); }  
+    .remove-sub {  
+      background: none; border: none; color: var(--muted);  
+      cursor: pointer; font-size: 0.9rem;  
+    }  
+    .remove-sub:hover { color: var(--danger); }  
+
+    /* Color dot picker */  
+    .color-picker { display: flex; gap: 0.5rem; flex-wrap: wrap; }  
+    .color-dot {  
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer;  
+      border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s;  
+    }  
+    .color-dot:hover { transform: scale(1.15); }  
+    .color-dot.selected { border-color: #fff; }  
+
+    /* ═══════════════════════════════════  
+       OTHER PAGES (placeholder)  
+    ═══════════════════════════════════ */  
+    .placeholder-page {  
+      display: flex; flex-direction: column;  
+      align-items: center; justify-content: center;  
+      height: 60vh; gap: 1rem; color: var(--muted);  
+    }  
+    .placeholder-page .ph-icon { font-size: 3rem; opacity: 0.4; }  
+    .placeholder-page h2 { font-size: 1.2rem; color: var(--text); }  
+    .placeholder-page p { font-size: 0.85rem; text-align: center; max-width: 300px; }  
+
+    /* Kanban */  
+    .kanban-grid {  
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;  
+    }  
+    .kanban-col {  
+      background: var(--surface); border: 1px solid var(--border);  
+      border-radius: 12px; padding: 0.9rem;  
+    }  
+    .kanban-col-header {  
+      display: flex; align-items: center; justify-content: space-between;  
+      margin-bottom: 0.8rem;  
+    }  
+    .kanban-col-header h4 { font-size: 0.82rem; font-weight: 600; }  
+    .kc-count {  
+      background: var(--surface2); border: 1px solid var(--border);  
+      border-radius: 999px; font-size: 0.68rem; padding: 1px 7px; color: var(--muted);  
+    }  
+    .kanban-card {  
+      background: var(--surface2); border: 1px solid var(--border);  
+      border-radius: 8px; padding: 0.65rem 0.75rem; margin-bottom: 0.5rem;  
+      cursor: grab;  
+    }  
+    .kanban-card h5 { font-size: 0.8rem; font-weight: 500; margin-bottom: 0.3rem; }  
+    .kanban-card p  { font-size: 0.7rem; color: var(--muted); }  
+    .kc-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; }  
+
+    /* Team page */  
+    .team-grid {  
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;  
+    }  
+    .team-card {  
+      background: var(--surface); border: 1px solid var(--border);  
+      border-radius: 12px; padding: 1.2rem; text-align: center;  
+    }  
+    .team-avatar {  
+      width: 56px; height: 56px; border-radius: 50%;  
+      display: flex; align-items: center; justify-content: center;  
+      font-size: 1.1rem; font-weight: 700; color: #fff;  
+      margin: 0 auto 0.6rem;  
+    }  
+    .team-card h4 { font-size: 0.88rem; font-weight: 600; }  
+    .team-card p  { font-size: 0.73rem; color: var(--muted); margin-top: 2px; }  
+    .team-stats { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.8rem; }  
+    .ts-item { text-align: center; }  
+    .ts-item .tsn { font-size: 1rem; font-weight: 700; color: var(--accent); }  
+    .ts-item .tsl { font-size: 0.65rem; color: var(--muted); }  
+
+    /* Settings */  
+    .settings-section {  
+      background: var(--surface); border: 1px solid var(--border);  
+      border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem;  
+    }  
+    .settings-section h3 { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.8rem; }  
+    .setting-row {  
+      display: flex; align-items: center; justify-content: space-between;  
+      padding: 0.55rem 0; border-bottom: 1px solid var(--border);  
+    }  
+    .setting-row:last-child { border-bottom: none; }  
+    .setting-row label { font-size: 0.82rem; }  
+    .setting-row p { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }  
+    .toggle {  
+      width: 38px; height: 20px; background: var(--border);  
+      border-radius: 999px; cursor: pointer; position: relative;  
+      transition: background 0.2s; flex-shrink: 0;  
+    }  
+    .toggle.on { background: var(--accent); }  
+    .toggle::after {  
+      content:''; position: absolute;  
+      width: 14px; height: 14px; background: #fff;  
+      border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s;  
+    }  
+    .toggle.on::after { left: 21px; }  
+
+    /* Notification dot */  
+    .notif-dot {  
+      width: 8px; height: 8px; background: var(--danger);  
+      border-radius: 50%; margin-left: 2px;  
+    }  
+
+    /* Toast */  
+    .toast-container {  
+      position: fixed; bottom: 1.5rem; right: 1.5rem;  
+      display: flex; flex-direction: column; gap: 0.5rem; z-index: 200;  
+    }  
+    .toast {  
+      background: var(--surface2); border: 1px solid var(--border);  
+      border-radius: 10px; padding: 0.7rem 1rem;  
+      display: flex; align-items: center; gap: 0.6rem;  
+      font-size: 0.82rem; min-width: 220px;  
+      animation: slideIn 0.3s ease;  
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);  
+    }  
+    .toast.success { border-left: 3px solid var(--success); }  
+    .toast.error   { border-left: 3px solid var(--danger); }  
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }  
+
+    /* Responsive tweaks */  
+    @media (max-width: 900px) {  
+      .summary-grid { grid-template-columns: repeat(2,1fr); }  
+      .kanban-grid  { grid-template-columns: repeat(2,1fr); }  
+      .team-grid    { grid-template-columns: repeat(2,1fr); }  
+    }  
+    @media (max-width: 600px) {  
+      .sidebar { width: 58px; }  
+      .nav-label, .logo-text, .nav-section, .nav-badge { display: none; }  
+    }  
+  </style>  
+</head>  
+<body>  
+
+<!-- ════════════════════════════════════════  
+     SIDEBAR  
+════════════════════════════════════════ -->  
+<nav class="sidebar" id="sidebar">  
+  <div class="sidebar-logo">  
+    <div class="logo-icon">⚛</div>  
+    <span class="logo-text">React<span>Track</span></span>  
+    <button class="collapse-btn" onclick="toggleSidebar()">◀</button>  
+  </div>  
+
+  <div class="nav-section">Main</div>  
+  <a class="nav-item active" onclick="showPage('dashboard', this)">  
+    <span class="ni">📊</span><span class="nav-label">Dashboard</span>  
+  </a>  
+  <a class="nav-item" onclick="showPage('tracker', this)">  
+    <span class="ni">🎯</span><span class="nav-label">Tracker</span>  
+    <span class="nav-badge">4</span>  
+  </a>  
+  <a class="nav-item" onclick="showPage('kanban', this)">  
+    <span class="ni">📋</span><span class="nav-label">Kanban Board</span>  
+  </a>  
+  <a class="nav-item" onclick="showPage('timeline', this)">  
+    <span class="ni">📅</span><span class="nav-label">Timeline</span>  
+  </a>  
+
+  <div class="nav-section">Manage</div>  
+  <a class="nav-item" onclick="showPage('team', this)">  
+    <span class="ni">👥</span><span class="nav-label">Team</span>  
+  </a>  
+  <a class="nav-item" onclick="showPage('reports', this)">  
+    <span class="ni">📈</span><span class="nav-label">Reports</span>  
+  </a>  
+  <a class="nav-item" onclick="showPage('activity', this)">  
+    <span class="ni">🔔</span><span class="nav-label">Activity</span>  
+    <span class="notif-dot"></span>  
+  </a>  
+
+  <div class="nav-section">Config</div>  
+  <a class="nav-item" onclick="showPage('settings', this)">  
+    <span class="ni">⚙️</span><span class="nav-label">Settings</span>  
+  </a>  
+
+  <div class="sidebar-footer">  
+    <div class="nav-item">  
+      <div class="avatar av1" style="width:26px;height:26px;font-size:0.6rem">AK</div>  
+      <span class="nav-label" style="font-size:0.8rem">Aryan K.</span>  
+    </div>  
+  </div>  
+</nav>  
+
+<!-- ════════════════════════════════════════  
+     MAIN  
+════════════════════════════════════════ -->  
+<div class="main">  
+
+  <!-- Topbar -->  
+  <div class="topbar">  
+    <h2 id="topbar-title">📊 Dashboard</h2>  
+    <div class="topbar-right">  
+      <div class="search-box">  
+        <span>🔍</span>  
+        <input type="text" placeholder="Search tasks…" oninput="searchTasks(this.value)"/>  
+      </div>  
+      <button class="btn btn-primary" onclick="openModal('milestone')">＋ Milestone</button>  
+      <div class="avatar av2">SR</div>  
+      <div class="avatar av3">MJ</div>  
+    </div>  
+  </div>  
+
+  <!-- Content -->  
+  <div class="content">  
+
+    <!-- ══ DASHBOARD PAGE ══ -->  
+    <div class="page active" id="page-dashboard">  
+      <div class="summary-grid">  
+        <div class="summary-card">  
+          <div class="sc-top">  
+            <div>  
+              <div class="sc-num" id="stat-milestones">4</div>  
+              <div class="sc-lbl">Milestones</div>  
+            </div>  
+            <div class="sc-icon" style="background:rgba(99,102,241,0.15)">🏁</div>  
+          </div>  
+          <div class="sc-prog"><div style="width:50%;background:#6366f1"></div></div>  
+        </div>  
+        <div class="summary-card">  
+          <div class="sc-top">  
+            <div>  
+              <div class="sc-num" id="stat-tasks">12</div>  
+              <div class="sc-lbl">Total Tasks</div>  
+            </div>  
+            <div class="sc-icon" style="background:rgba(59,130,246,0.15)">✅</div>  
+          </div>  
+          <div class="sc-prog"><div style="width:66%;background:#3b82f6"></div></div>  
+        </div>  
+        <div class="summary-card">  
+          <div class="sc-top">  
+            <div>  
+              <div class="sc-num" id="stat-subtasks">28</div>  
+              <div class="sc-lbl">Subtasks</div>  
+            </div>  
+            <div class="sc-icon" style="background:rgba(34,197,94,0.15)">📌</div>  
+          </div>  
+          <div class="sc-prog"><div style="width:43%;background:#22c55e"></div></div>  
+        </div>  
+        <div class="summary-card">  
+          <div class="sc-top">  
+            <div>  
+              <div class="sc-num" id="stat-done">18</div>  
+              <div class="sc-lbl">Completed</div>  
+            </div>  
+            <div class="sc-icon" style="background:rgba(249,115,22,0.15)">🔥</div>  
+          </div>  
+          <div class="sc-prog"><div style="width:64%;background:#f97316"></div></div>  
+        </div>  
+      </div>  
+
+      <!-- Tracker embedded in dashboard -->  
+      <div id="tracker-container"></div>  
+    </div>  
+
+    <!-- ══ TRACKER PAGE ══ -->  
+    <div class="page" id="page-tracker">  
+      <div id="tracker-container-2"></div>  
+    </div>  
+
+    <!-- ══ KANBAN PAGE ══ -->  
+    <div class="page" id="page-kanban">  
+      <div class="actions-bar">  
+        <h3>📋 Kanban Board</h3>  
+        <div class="spacer"></div>  
+        <button class="btn btn-ghost btn-sm">Filter ▾</button>  
+        <button class="btn btn-primary btn-sm" onclick="openModal('task')">＋ Task</button>  
+      </div>  
+      <div class="kanban-grid">  
+        <div class="kanban-col">  
+          <div class="kanban-col-header">  
+            <h4>🔵 To Do</h4><span class="kc-count">3</span>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>Zustand global store</h5>  
+            <p>Auth + UI preference slices</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-pending">Pending</span>  
+              <div class="assignee-sm av3" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#f97316">MJ</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>CI/CD Pipeline</h5>  
+            <p>GitHub Actions + Docker</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-pending">Pending</span>  
+              <div class="assignee-sm av4" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#22c55e">PK</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>E2E tests with Cypress</h5>  
+            <p>Critical user flows</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-pending">Pending</span>  
+              <div class="assignee-sm av1" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#6366f1">AK</div>  
+            </div>  
+          </div>  
+        </div>  
+        <div class="kanban-col">  
+          <div class="kanban-col-header">  
+            <h4>🟡 In Progress</h4><span class="kc-count">3</span>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>Build core UI components</h5>  
+            <p>Modal, Drawer, Toast</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-active">Active</span>  
+              <div class="assignee-sm av3" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#f97316">MJ</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>React Query setup</h5>  
+            <p>Custom hooks per resource</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-active">Active</span>  
+              <div class="assignee-sm av4" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#22c55e">PK</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>Storybook stories</h5>  
+            <p>Writing component stories</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-review">Review</span>  
+              <div class="assignee-sm av1" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#6366f1">AK</div>  
+            </div>  
+          </div>  
+        </div>  
+        <div class="kanban-col">  
+          <div class="kanban-col-header">  
+            <h4>🟠 Review</h4><span class="kc-count">2</span>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>ESLint + Prettier config</h5>  
+            <p>Code quality enforcement</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-review">Review</span>  
+              <div class="assignee-sm av2" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#ec4899">SR</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>Design token system</h5>  
+            <p>Color, typography, spacing</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-review">Review</span>  
+              <div class="assignee-sm av2" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#ec4899">SR</div>  
+            </div>  
+          </div>  
+        </div>  
+        <div class="kanban-col">  
+          <div class="kanban-col-header">  
+            <h4>🟢 Done</h4><span class="kc-count">4</span>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>Vite + React + TS init</h5>  
+            <p>Project bootstrap complete</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-done">Done</span>  
+              <div class="assignee-sm av1" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#6366f1">AK</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>Axios interceptors</h5>  
+            <p>Auth token & error handler</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-done">Done</span>  
+              <div class="assignee-sm av4" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#22c55e">PK</div>  
+            </div>  
+          </div>  
+          <div class="kanban-card">  
+            <h5>tsconfig + path aliases</h5>  
+            <p>TS configuration complete</p>  
+            <div class="kc-footer">  
+              <span class="status-pill pill-done">Done</span>  
+              <div class="assignee-sm av1" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff;background:#6366f1">AK</div>  
+            </div>  
+          </div>  
+        </div>  
+      </div>  
+    </div>  
+
+    <!-- ══ TIMELINE PAGE ══ -->  
+    <div class="page" id="page-timeline">  
+      <div class="placeholder-page">  
+        <div class="ph-icon">📅</div>  
+        <h2>Timeline View</h2>  
+        <p>Gantt-style timeline for milestones and tasks coming soon.</p>  
+        <button class="btn btn-primary" onclick="showToast('Timeline feature in development!', 'success')">Notify Me</button>  
+      </div>  
+    </div>  
+
+    <!-- ══ TEAM PAGE ══ -->  
+    <div class="page" id="page-team">  
+      <div class="actions-bar">  
+        <h3>👥 Team Members</h3>  
+        <div class="spacer"></div>  
+        <button class="btn btn-primary btn-sm">＋ Invite Member</button>  
+      </div>  
+      <div class="team-grid">  
+        <div class="team-card">  
+          <div class="team-avatar av1">AK</div>  
+          <h4>Aryan Kumar</h4>  
+          <p>Lead Developer</p>  
+          <div class="team-stats">  
+            <div class="ts-item"><div class="tsn">8</div><div class="tsl">Tasks</div></div>  
+            <div class="ts-item"><div class="tsn">6</div><div class="tsl">Done</div></div>  
+            <div class="ts-item"><div class="tsn">75%</div><div class="tsl">Rate</div></div>  
+          </div>  
+        </div>  
+        <div class="team-card">  
+          <div class="team-avatar av2">SR</div>  
+          <h4>Sara Rao</h4>  
+          <p>UI/UX Designer</p>  
+          <div class="team-stats">  
+            <div class="ts-item"><div class="tsn">6</div><div class="tsl">Tasks</div></div>  
+            <div class="ts-item"><div class="tsn">5</div><div class="tsl">Done</div></div>  
+            <div class="ts-item"><div class="tsn">83%</div><div class="tsl">Rate</div></div>  
+          </div>  
+        </div>  
+        <div class="team-card">  
+          <div class="team-avatar av3">MJ</div>  
+          <h4>Mike John</h4>  
+          <p>Frontend Dev</p>  
+          <div class="team-stats">  
+            <div class="ts-item"><div class="tsn">5</div><div class="tsl">Tasks</div></div>  
+            <div class="ts-item"><div class="tsn">3</div><div class="tsl">Done</div></div>  
+            <div class="ts-item"><div class="tsn">60%</div><div class="tsl">Rate</div></div>  
+          </div>  
+        </div>  
+        <div class="team-card">  
+          <div class="team-avatar av4">PK</div>  
+          <h4>Priya K.</h4>  
+          <p>Backend Dev</p>  
+          <div class="team-stats">  
+            <div class="ts-item"><div class="tsn">7</div><div class="tsl">Tasks</div></div>  
+            <div class="ts-item"><div class="tsn">4</div><div class="tsl">Done</div></div>  
+            <div class="ts-item"><div class="tsn">57%</div><div class="tsl">Rate</div></div>  
+          </div>  
+        </div>  
+      </div>  
+    </div>  
+
+    <!-- ══ REPORTS PAGE ══ -->  
+    <div class="page" id="page-reports">  
+      <div class="placeholder-page">  
+        <div class="ph-icon">📈</div>  
+        <h2>Reports & Analytics</h2>  
+        <p>Burndown charts, velocity graphs, and sprint reports coming soon.</p>  
+      </div>  
+    </div>  
+
+    <!-- ══ ACTIVITY PAGE ══ -->  
+    <div class="page" id="page-activity">  
+      <div class="actions-bar"><h3>🔔 Activity Feed</h3></div>  
+      <div id="activity-feed" style="max-width:600px"></div>  
+    </div>  
+
+    <!-- ══ SETTINGS PAGE ══ -->  
+    <div class="page" id="page-settings">  
+      <div class="actions-bar"><h3>⚙️ Settings</h3></div>  
+      <div class="settings-section">  
+        <h3>Notifications</h3>  
+        <div class="setting-row">  
+          <div><label>Task due reminders</label><p>Get notified 24h before due date</p></div>  
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>  
+        </div>  
+        <div class="setting-row">  
+          <div><label>Comment mentions</label><p>Notify when someone @mentions you</p></div>  
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>  
+        </div>  
+        <div class="setting-row">  
+          <div><label>Milestone completion</label><p>Notify on milestone progress</p></div>  
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>  
+        </div>  
+      </div>  
+      <div class="settings-section">  
+        <h3>Appearance</h3>  
+        <div class="setting-row">  
+          <div><label>Compact mode</label><p>Reduce spacing in task lists</p></div>  
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>  
+        </div>  
+        <div class="setting-row">  
+          <div><label>Show subtasks by default</label><p>Auto-expand subtask lists</p></div>  
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>  
+        </div>  
+      </div>  
+      <div class="settings-section">  
+        <h3>Project</h3>  
+        <div class="setting-row">  
+          <div><label>Project Name</label></div>  
+          <input class="form-control" style="width:200px" value="React App Tracker"/>  
+        </div>  
+        <div class="setting-row">  
+          <div><label>Sprint Duration</label></div>  
+          <select class="form-control" style="width:120px">  
+            <option>1 week</option>  
+            <option selected>2 weeks</option>  
+            <option>3 weeks</option>  
+          </select>  
+        </div>  
+      </div>  
+    </div>  
+
+  </div><!-- /content -->  
+</div><!-- /main -->  
+
+<!-- ════════════════════════════════════════  
+     MODALS  
+════════════════════════════════════════ -->  
+
+<!-- Add Milestone Modal -->  
+<div class="modal-overlay" id="modal-milestone">  
+  <div class="modal">  
+    <div class="modal-header">  
+      <h3>🏁 New Milestone</h3>  
+      <button class="modal-close" onclick="closeModal('milestone')">✕</button>  
+    </div>  
+    <div class="form-group">  
+      <label>Milestone Title *</label>  
+      <input class="form-control" id="m-title" placeholder="e.g. Authentication Module"/>  
+    </div>  
+    <div class="form-group">  
+      <label>Description</label>  
+      <textarea class="form-control" id="m-desc" placeholder="What does this milestone cover?"></textarea>  
+    </div>  
+    <div class="form-row">  
+      <div class="form-group">  
+        <label>Status</label>  
+        <select class="form-control" id="m-status">  
+          <option value="pending">Pending</option>  
+          <option value="active">Active</option>  
+          <option value="review">Review</option>  
+          <option value="done">Done</option>  
+        </select>  
+      </div>  
+      <div class="form-group">  
+        <label>Target Date</label>  
+        <input class="form-control" id="m-date" type="date"/>  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Color Tag</label>  
+      <div class="color-picker">  
+        <div class="color-dot selected" style="background:#6366f1" data-color="#6366f1" onclick="selectColor(this,'m')"></div>  
+        <div class="color-dot" style="background:#3b82f6" data-color="#3b82f6" onclick="selectColor(this,'m')"></div>  
+        <div class="color-dot" style="background:#22c55e" data-color="#22c55e" onclick="selectColor(this,'m')"></div>  
+        <div class="color-dot" style="background:#f97316" data-color="#f97316" onclick="selectColor(this,'m')"></div>  
+        <div class="color-dot" style="background:#ec4899" data-color="#ec4899" onclick="selectColor(this,'m')"></div>  
+        <div class="color-dot" style="background:#eab308" data-color="#eab308" onclick="selectColor(this,'m')"></div>  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Progress</label>  
+      <div class="progress-input-row">  
+        <input type="range" min="0" max="100" value="0" id="m-progress"  
+               oninput="document.getElementById('m-prog-val').textContent=this.value+'%'"/>  
+        <span id="m-prog-val">0%</span>  
+      </div>  
+    </div>  
+    <div class="modal-footer">  
+      <button class="btn btn-ghost" onclick="closeModal('milestone')">Cancel</button>  
+      <button class="btn btn-primary" onclick="addMilestone()">Create Milestone</button>  
+    </div>  
+  </div>  
+</div>  
+
+<!-- Add Task Modal -->  
+<div class="modal-overlay" id="modal-task">  
+  <div class="modal">  
+    <div class="modal-header">  
+      <h3>✅ New Task</h3>  
+      <button class="modal-close" onclick="closeModal('task')">✕</button>  
+    </div>  
+    <div class="form-group">  
+      <label>Task Name *</label>  
+      <input class="form-control" id="t-name" placeholder="e.g. Implement login form"/>  
+    </div>  
+    <div class="form-group">  
+      <label>Milestone</label>  
+      <select class="form-control" id="t-milestone"></select>  
+    </div>  
+    <div class="form-row">  
+      <div class="form-group">  
+        <label>Assignee</label>  
+        <select class="form-control" id="t-assignee">  
+          <option value="AK">Aryan Kumar (AK)</option>  
+          <option value="SR">Sara Rao (SR)</option>  
+          <option value="MJ">Mike John (MJ)</option>  
+          <option value="PK">Priya K. (PK)</option>  
+        </select>  
+      </div>  
+      <div class="form-group">  
+        <label>Due Date</label>  
+        <input class="form-control" id="t-due" type="date"/>  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Status</label>  
+      <select class="form-control" id="t-status">  
+        <option value="pending">Pending</option>  
+        <option value="active">Active</option>  
+        <option value="review">Review</option>  
+        <option value="done">Done</option>  
+      </select>  
+    </div>  
+    <div class="form-group">  
+      <label>Progress</label>  
+      <div class="progress-input-row">  
+        <input type="range" min="0" max="100" value="0" id="t-progress"  
+               oninput="document.getElementById('t-prog-val').textContent=this.value+'%'"/>  
+        <span id="t-prog-val">0%</span>  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Subtasks</label>  
+      <div class="subtask-inputs" id="subtask-inputs">  
+        <div class="subtask-input-row">  
+          <input placeholder="Add a subtask…"/>  
+          <button class="remove-sub" onclick="removeSubInput(this)">✕</button>  
+        </div>  
+      </div>  
+      <button class="btn btn-ghost btn-sm" style="margin-top:0.4rem" onclick="addSubInput()">＋ Add Subtask</button>  
+    </div>  
+    <div class="modal-footer">  
+      <button class="btn btn-ghost" onclick="closeModal('task')">Cancel</button>  
+      <button class="btn btn-primary" onclick="addTask()">Create Task</button>  
+    </div>  
+  </div>  
+</div>  
+
+<!-- Add Subtask Modal -->  
+<div class="modal-overlay" id="modal-subtask">  
+  <div class="modal">  
+    <div class="modal-header">  
+      <h3>📌 New Subtask</h3>  
+      <button class="modal-close" onclick="closeModal('subtask')">✕</button>  
+    </div>  
+    <div class="form-group">  
+      <label>Subtask Name *</label>  
+      <input class="form-control" id="st-name" placeholder="e.g. Write unit test for hook"/>  
+    </div>  
+    <div class="form-group">  
+      <label>Parent Task</label>  
+      <select class="form-control" id="st-task"></select>  
+    </div>  
+    <div class="form-row">  
+      <div class="form-group">  
+        <label>Status</label>  
+        <select class="form-control" id="st-status">  
+          <option value="pending">Pending</option>  
+          <option value="active">Active</option>  
+          <option value="done">Done</option>  
+        </select>  
+      </div>  
+      <div class="form-group">  
+        <label>Assignee</label>  
+        <select class="form-control" id="st-assignee">  
+          <option value="AK">Aryan (AK)</option>  
+          <option value="SR">Sara (SR)</option>  
+          <option value="MJ">Mike (MJ)</option>  
+          <option value="PK">Priya (PK)</option>  
+        </select>  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Notes</label>  
+      <textarea class="form-control" id="st-notes" placeholder="Additional context…"></textarea>  
+    </div>  
+    <div class="modal-footer">  
+      <button class="btn btn-ghost" onclick="closeModal('subtask')">Cancel</button>  
+      <button class="btn btn-primary" onclick="addSubtask()">Add Subtask</button>  
+    </div>  
+  </div>  
+</div>  
+
+<!-- Toast Container -->  
+<div class="toast-container" id="toast-container"></div>  
+
+<!-- ════════════════════════════════════════  
+     JAVASCRIPT  
+════════════════════════════════════════ -->  
+<script>  
+/* ──────────────────────────────────────  
+   DATA STORE  
+────────────────────────────────────── */  
+const avatarColors = { AK:'#6366f1', SR:'#ec4899', MJ:'#f97316', PK:'#22c55e' };  
+const statusMap = {  
+  done:    { cls:'pill-done',    label:'Done'    },  
+  active:  { cls:'pill-active',  label:'Active'  },  
+  pending: { cls:'pill-pending', label:'Pending' },  
+  review:  { cls:'pill-review',  label:'Review'  },  
+};  
+
+let selectedMilestoneColor = '#6366f1';  
+
+let data = {  
+  milestones: [  
+    {  
+      id: 'm1', title: 'M1 · Project Setup & Architecture',  
+      desc: 'Vite · TypeScript · Folder structure · ESLint · Prettier',  
+      color: '#6366f1', status: 'done', progress: 100,  
+      tasks: [  
+        {  
+          id: 't1', name: 'Initialize Vite + React + TS project',  
+          assignee:'AK', due:'2026-05-01', status:'done', progress:100,  
+          subtasks: [  
+            { id:'st1', name:'Run vite create command',  status:'done' },  
+            { id:'st2', name:'Configure tsconfig.json',  status:'done' },  
+            { id:'st3', name:'Setup path aliases',        status:'done' },  
+          ],  
+          comments: [{ author:'AK', time:'May 1', text:'Completed setup with Vite 5 and React 18.' }]  
+        },  
+        {  
+          id: 't2', name: 'ESLint + Prettier configuration',  
+          assignee:'SR', due:'2026-05-02', status:'done', progress:100,  
+          subtasks: [  
+            { id:'st4', name:'Install ESLint plugins', status:'done' },  
+            { id:'st5', name:'Configure .prettierrc',  status:'done' },  
+          ],  
+          comments: []  
+        }  
+      ]  
+    },  
+    {  
+      id: 'm2', title: 'M2 · UI Component Library',  
+      desc: 'Design system · Storybook · Atomic components · Theming',  
+      color: '#3b82f6', status: 'active', progress: 75,  
+      tasks: [  
+        {  
+          id: 't3', name: 'Design token system',  
+          assignee:'SR', due:'2026-05-08', status:'done', progress:100,  
+          subtasks: [  
+            { id:'st6',  name:'Color palette variables', status:'done' },  
+            { id:'st7',  name:'Typography scale',         status:'done' },  
+            { id:'st8',  name:'Spacing tokens',           status:'done' },  
+          ],  
+          comments: [{ author:'SR', time:'May 8', text:'Tokens exported to CSS vars and Figma.' }]  
+        },  
+        {  
+          id: 't4', name: 'Build core components',  
+          assignee:'MJ', due:'2026-05-20', status:'active', progress:60,  
+          subtasks: [  
+            { id:'st9',  name:'Button variants',    status:'done'    },  
+            { id:'st10', name:'Input & Select',      status:'done'    },  
+            { id:'st11', name:'Modal & Drawer',       status:'active'  },  
+            { id:'st12', name:'Toast notifications', status:'pending' },  
+          ],  
+          comments: [  
+            { author:'MJ', time:'May 15', text:'Button and input components merged to main.' },  
+            { author:'AK', time:'May 16', text:'Modal needs accessibility review before merge.' }  
+          ]  
+        },  
+        {  
+          id: 't5', name: 'Storybook integration',  
+          assignee:'AK', due:'2026-05-18', status:'review', progress:70,  
+          subtasks: [  
+            { id:'st13', name:'Install & configure Storybook', status:'done'   },  
+            { id:'st14', name:'Write component stories',        status:'active' },  
+          ],  
+          comments: []  
+        }  
+      ]  
+    },  
+    {  
+      id: 'm3', title: 'M3 · API Integration & State',  
+      desc: 'React Query · Zustand · Axios · Error boundaries',  
+      color: '#22c55e', status: 'active', progress: 40,  
+      tasks: [  
+        {  
+          id: 't6', name: 'Axios instance & interceptors',  
+          assignee:'PK', due:'2026-05-12', status:'done', progress:100,  
+          subtasks: [  
+            { id:'st15', name:'Base URL config',          status:'done' },  
+            { id:'st16', name:'Auth token interceptor', status:'done' },
+            { id:'st17', name:'Error response handler',   status:'done' },
+          ],
+          comments: [{ author:'PK', time:'May 12', text:'Interceptors tested with mock server.' }]
+        },
+        {
+          id: 't7', name: 'React Query setup',
+          assignee:'PK', due:'2026-05-28', status:'active', progress:40,
+          subtasks: [
+            { id:'st18', name:'QueryClient configuration', status:'done'    },
+            { id:'st19', name:'Custom hooks per resource',  status:'active'  },
+            { id:'st20', name:'Optimistic updates',         status:'pending' },
+          ],
+          comments: [{ author:'PK', time:'May 20', text:'useUser and useProducts hooks done.' }]
+        },
+        {
+          id: 't8', name: 'Zustand global store',
+          assignee:'MJ', due:'2026-05-30', status:'pending', progress:0,
+          subtasks: [
+            { id:'st21', name:'Auth slice',          status:'pending' },
+            { id:'st22', name:'UI preference slice', status:'pending' },
+          ],
+          comments: []
+        }
+      ]
+    },
+    {
+      id: 'm4', title: 'M4 · Testing & Deployment',
+      desc: 'Vitest · RTL · Cypress · CI/CD · Docker · Vercel',
+      color: '#f97316', status: 'pending', progress: 10,
+      tasks: [
+        {
+          id: 't9', name: 'Unit & integration tests',
+          assignee:'AK', due:'2026-06-05', status:'pending', progress:10,
+          subtasks: [
+            { id:'st23', name:'Vitest configuration',     status:'done'    },
+            { id:'st24', name:'Component tests with RTL', status:'pending' },
+            { id:'st25', name:'Hook unit tests',           status:'pending' },
+          ],
+          comments: []
+        },
+        {
+          id: 't10', name: 'CI/CD Pipeline setup',
+          assignee:'PK', due:'2026-06-10', status:'pending', progress:0,
+          subtasks: [
+            { id:'st26', name:'GitHub Actions workflow', status:'pending' },
+            { id:'st27', name:'Docker image build',       status:'pending' },
+            { id:'st28', name:'Vercel deployment config', status:'pending' },
+          ],
+          comments: []
+        }
+      ]
+    }
+  ],
+  activityLog: [
+    { icon:'✅', text:'<strong>AK</strong> completed task <em>Vite + TS setup</em>', time:'2h ago' },
+    { icon:'💬', text:'<strong>MJ</strong> commented on <em>Build core components</em>', time:'4h ago' },
+    { icon:'🏁', text:'<strong>SR</strong> updated milestone <em>UI Component Library</em> to 75%', time:'6h ago' },
+    { icon:'📌', text:'<strong>PK</strong> added subtask <em>Optimistic updates</em>', time:'Yesterday' },
+    { icon:'🔔', text:'<strong>AK</strong> marked <em>Storybook integration</em> as Review', time:'Yesterday' },
+  ]
+};
+
+/* ──────────────────────────────────────
+   SIDEBAR TOGGLE
+────────────────────────────────────── */
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const btn = sb.querySelector('.collapse-btn');
+  sb.classList.toggle('collapsed');
+  btn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
+}
+
+/* ──────────────────────────────────────
+   PAGE NAVIGATION
+────────────────────────────────────── */
+const pageTitles = {
+  dashboard: '📊 Dashboard',
+  tracker:   '🎯 Milestone Tracker',
+  kanban:    '📋 Kanban Board',
+  timeline:  '📅 Timeline',
+  team:      '👥 Team',
+  reports:   '📈 Reports',
+  activity:  '🔔 Activity',
+  settings:  '⚙️ Settings',
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent = pageTitles[id] || id;
+
+  if (id === 'activity') renderActivity();
+  if (id === 'tracker')  renderTracker('tracker-container-2');
+}
+
+/* ──────────────────────────────────────
+   RENDER TRACKER
+────────────────────────────────────── */
+function renderTracker(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  let html = `
+    <div class="actions-bar">
+      <h3>🎯 Milestones</h3>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" onclick="openModal('subtask')">＋ Subtask</button>
+      <button class="btn btn-ghost btn-sm" onclick="openModal('task')">＋ Task</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('milestone')">＋ Milestone</button>
+    </div>`;
+
+  data.milestones.forEach(m => {
+    const st = statusMap[m.status];
+    html += `
+    <div class="milestone" id="ms-${m.id}">
+      <div class="milestone-header" onclick="toggleMilestone('${m.id}', this)">
+        <div class="m-icon" style="background:${m.color}22">
+          <span style="color:${m.color}">${milestoneIcon(m.status)}</span>
+        </div>
+        <div class="m-info">
+          <h3>${m.title}</h3>
+          <p>${m.desc}</p>
+        </div>
+        <div class="m-right">
+          <span class="m-pct">${m.progress}%</span>
+          <div class="m-bar">
+            <div class="m-bar-fill" style="width:${m.progress}%;background:${m.color}"></div>
+          </div>
+          <span class="status-pill ${st.cls}">${st.label}</span>
+          <button class="icon-btn" title="Edit milestone" onclick="event.stopPropagation();editMilestone('${m.id}')">✏️</button>
+          <button class="icon-btn" title="Delete milestone" onclick="event.stopPropagation();deleteMilestone('${m.id}')">🗑</button>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="task-list open" id="tl-${m.id}">`;
+
+    m.tasks.forEach(t => {
+      const tst = statusMap[t.status];
+      const isDone = t.status === 'done';
+      const assigneeColor = avatarColors[t.assignee] || '#6366f1';
+      html += `
+        <div class="task" id="task-${t.id}">
+          <div class="task-header">
+            <div class="checkbox ${isDone ? 'checked' : ''}" onclick="toggleTaskDone('${m.id}','${t.id}')">${isDone ? '✓' : ''}</div>
+            <span class="task-name ${isDone ? 'done' : ''}">${t.name}</span>
+            <div class="task-actions">
+              <div class="assignee-sm" style="background:${assigneeColor};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.58rem;font-weight:700;color:#fff">${t.assignee}</div>
+              <span class="due">${formatDate(t.due)}</span>
+              <span class="status-pill ${tst.cls}">${tst.label}</span>
+              <button class="icon-btn" title="Add subtask" onclick="openSubtaskFor('${m.id}','${t.id}')">＋</button>
+              <button class="icon-btn" title="Expand" onclick="toggleTaskExpand('${t.id}', this)">▾</button>
+              <button class="icon-btn" title="Delete task" onclick="deleteTask('${m.id}','${t.id}')">🗑</button>
+            </div>
+          </div>
+
+          <div class="task-expand" id="te-${t.id}">
+            <div class="task-progress-row" style="margin-top:0.6rem">
+              <label>Progress</label>
+              <div class="progress-bar-wrap">
+                <div class="pbar"><div style="width:${t.progress}%"></div></div>
+              </div>
+              <span style="font-size:0.75rem;font-weight:700;color:#a5b4fc;min-width:34px;text-align:right">${t.progress}%</span>
+              <input type="range" min="0" max="100" value="${t.progress}"
+                style="width:80px;accent-color:var(--accent)"
+                oninput="updateTaskProgress('${m.id}','${t.id}',this.value)"/>
+            </div>
+
+            <div class="subtask-section">
+              <div class="subtask-section-header">
+                <span>Subtasks (${t.subtasks.length})</span>
+                <button class="btn btn-ghost btn-sm" onclick="openSubtaskFor('${m.id}','${t.id}')">＋ Add</button>
+              </div>
+              ${t.subtasks.map(st => `
+                <div class="subtask" id="subtask-${st.id}">
+                  <div class="sub-dot dot-${st.status}"></div>
+                  <span class="subtask-name ${st.status === 'done' ? 'done' : ''}">${st.name}</span>
+                  <span class="sub-pill ${statusMap[st.status].cls}">${statusMap[st.status].label}</span>
+                  <select class="form-control" style="width:90px;padding:0.15rem 0.4rem;font-size:0.68rem;margin-left:0.4rem"
+                    onchange="updateSubtaskStatus('${m.id}','${t.id}','${st.id}',this.value)">
+                    <option value="pending" ${st.status==='pending'?'selected':''}>Pending</option>
+                    <option value="active"  ${st.status==='active' ?'selected':''}>Active</option>
+                    <option value="done"    ${st.status==='done'   ?'selected':''}>Done</option>
+                  </select>
+                  <button class="icon-btn" onclick="deleteSubtask('${m.id}','${t.id}','${st.id}')">🗑</button>
+                </div>`).join('')}
+            </div>
+
+            <div class="comments-section">
+              <div class="comments-title">💬 Comments (${t.comments.length})</div>
+              <div id="comments-${t.id}">
+                ${t.comments.map(c => `
+                  <div class="comment">
+                    <div class="assignee-sm" style="background:${avatarColors[c.author]||'#6366f1'};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:#fff;flex-shrink:0">${c.author}</div>
+                    <div class="comment-body">
+                      <div class="comment-meta"><strong>${c.author}</strong> · ${c.time}</div>
+                      <div class="comment-text">${c.text}</div>
+                    </div>
+                  </div>`).join('')}
+              </div>
+              <div class="comment-input-row">
+                <input id="ci-${t.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postComment('${m.id}','${t.id}')"/>
+                <button class="btn btn-primary btn-sm" onclick="postComment('${m.id}','${t.id}')">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    html += `
+        <div class="add-task-row" onclick="openTaskFor('${m.id}')">
+          <span>＋</span><span>Add task to this milestone</span>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function milestoneIcon(status) {
+  return { done:'✅', active:'🔄', pending:'⏳', review:'🔍' }[status] || '🏁';
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+/* ──────────────────────────────────────
+   TOGGLE MILESTONE / TASK EXPAND
+────────────────────────────────────── */
+function toggleMilestone(id, header) {
+  const list = document.getElementById('tl-' + id);
+  const isOpen = list.classList.contains('open');
+  list.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+}
+
+function toggleTaskExpand(id, btn) {
+  const exp = document.getElementById('te-' + id);
+  exp.classList.toggle('open');
+  btn.textContent = exp.classList.contains('open') ? '▴' : '▾';
+}
+
+/* ──────────────────────────────────────
+   TASK DONE TOGGLE
+────────────────────────────────────── */
+function toggleTaskDone(mId, tId) {
+  const m = data.milestones.find(x => x.id === mId);
+  const t = m.tasks.find(x => x.id === tId);
+  t.status   = t.status === 'done' ? 'active' : 'done';
+  t.progress = t.status === 'done' ? 100 : 50;
+  recalcMilestone(mId);
+  rerenderAll();
+  logActivity(`✅ Task <em>${t.name}</em> marked as ${t.status}`);
+}
+
+/* ──────────────────────────────────────
+   PROGRESS UPDATE
+────────────────────────────────────── */
+function updateTaskProgress(mId, tId, val) {
+  const m = data.milestones.find(x => x.id === mId);
+  const t = m.tasks.find(x => x.id === tId);
+  t.progress = parseInt(val);
+  if (t.progress === 100) t.status = 'done';
+  else if (t.progress > 0) t.status = 'active';
+  else t.status = 'pending';
+  recalcMilestone(mId);
+  rerenderAll();
+}
+
+function recalcMilestone(mId) {
+  const m = data.milestones.find(x => x.id === mId);
+  if (!m.tasks.length) { m.progress = 0; return; }
+  m.progress = Math.round(m.tasks.reduce((s, t) => s + t.progress, 0) / m.tasks.length);
+  if (m.progress === 100) m.status = 'done';
+  else if (m.progress > 0) m.status = 'active';
+  else m.status = 'pending';
+}
+
+/* ──────────────────────────────────────
+   SUBTASK STATUS UPDATE
+────────────────────────────────────── */
+function updateSubtaskStatus(mId, tId, stId, val) {
+  const m  = data.milestones.find(x => x.id === mId);
+  const t  = m.tasks.find(x => x.id === tId);
+  const st = t.subtasks.find(x => x.id === stId);
+  st.status = val;
+  const doneCount = t.subtasks.filter(s => s.status === 'done').length;
+  t.progress = t.subtasks.length ? Math.round((doneCount / t.subtasks.length) * 100) : 0;
+  if (t.progress === 100) t.status = 'done';
+  else if (t.progress > 0) t.status = 'active';
+  else t.status = 'pending';
+  recalcMilestone(mId);
+  rerenderAll();
+  logActivity(`📌 Subtask <em>${st.name}</em> → ${val}`);
+}
+
+/* ──────────────────────────────────────
+   DELETE
+────────────────────────────────────── */
+function deleteMilestone(mId) {
+  if (!confirm('Delete this milestone and all its tasks?')) return;
+  data.milestones = data.milestones.filter(x => x.id !== mId);
+  rerenderAll();
+  showToast('Milestone deleted', 'error');
+  logActivity(`🗑 Milestone deleted`);
+}
+
+function deleteTask(mId, tId) {
+  const m = data.milestones.find(x => x.id === mId);
+  const t = m.tasks.find(x => x.id === tId);
+  if (!confirm(`Delete task "${t.name}"?`)) return;
+  m.tasks = m.tasks.filter(x => x.id !== tId);
+  recalcMilestone(mId);
+  rerenderAll();
+  showToast('Task deleted', 'error');
+}
+
+function deleteSubtask(mId, tId, stId) {
+  const m  = data.milestones.find(x => x.id === mId);
+  const t  = m.tasks.find(x => x.id === tId);
+  t.subtasks = t.subtasks.filter(x => x.id !== stId);
+  const doneCount = t.subtasks.filter(s => s.status === 'done').length;
+  t.progress = t.subtasks.length ? Math.round((doneCount / t.subtasks.length) * 100) : 0;
+  recalcMilestone(mId);
+  rerenderAll();
+  showToast('Subtask removed', 'error');
+}
+
+/* ──────────────────────────────────────
+   COMMENTS
+────────────────────────────────────── */
+function postComment(mId, tId) {
+  const input = document.getElementById('ci-' + tId);
+  const text  = input.value.trim();
+  if (!text) return;
+  const m = data.milestones.find(x => x.id === mId);
+  const t = m.tasks.find(x => x.id === tId);
+  const now = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  t.comments.push({ author:'AK', time:now, text });
+  input.value = '';
+  rerenderAll();
+  // re-expand the task
+  setTimeout(() => {
+    const exp = document.getElementById('te-' + tId);
+    if (exp) exp.classList.add('open');
+  }, 50);
+  logActivity(`💬 <strong>AK</strong> commented on <em>${t.name}</em>`);
+  showToast('Comment posted', 'success');
+}
+
+/* ──────────────────────────────────────
+   MODAL HELPERS
+────────────────────────────────────── */
+let _taskForMilestone = null;
+let _milestoneForSubtask = null;
+let _taskForSubtask = null;
+
+function openModal(type) {
+  if (type === 'task') populateMilestoneSelect();
+  if (type === 'subtask') populateTaskSelect();
+  document.getElementById('modal-' + type).classList.add('open');
+}
+
+function closeModal(type) {
+  document.getElementById('modal-' + type).classList.remove('open');
+  _taskForMilestone    = null;
+  _milestoneForSubtask = null;
+  _taskForSubtask      = null;
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      const id = overlay.id.replace('modal-', '');
+      closeModal(id);
+    }
+  });
+});
+
+function openTaskFor(mId) {
+  _taskForMilestone = mId;
+  populateMilestoneSelect(mId);
+  openModal('task');
+}
+
+function openSubtaskFor(mId, tId) {
+  _milestoneForSubtask = mId;
+  _taskForSubtask      = tId;
+  populateTaskSelect(tId);
+  openModal('subtask');
+}
+
+function populateMilestoneSelect(selectedId) {
+  const sel = document.getElementById('t-milestone');
+  sel.innerHTML = data.milestones.map(m =>
+    `<option value="${m.id}" ${m.id === (selectedId || _taskForMilestone) ? 'selected' : ''}>${m.title}</option>`
+  ).join('');
+}
+
+function populateTaskSelect(selectedId) {
+  const sel = document.getElementById('st-task');
+  const allTasks = data.milestones.flatMap(m => m.tasks.map(t => ({ ...t, mTitle: m.title })));
+  sel.innerHTML = allTasks.map(t =>
+    `<option value="${t.id}" ${t.id === (selectedId || _taskForSubtask) ? 'selected' : ''}>${t.name}</option>`
+  ).join('');
+}
+
+function selectColor(el, prefix) {
+  document.querySelectorAll(`#modal-${prefix === 'm' ? 'milestone' : 'task'} .color-dot`)
+    .forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedMilestoneColor = el.dataset.color;
+}
+
+/* ──────────────────────────────────────
+   ADD MILESTONE
+────────────────────────────────────── */
+function addMilestone() {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) { showToast('Please enter a milestone title', 'error'); return; }
+  const id = 'm' + Date.now();
+  data.milestones.push({
+    id, title,
+    desc:     document.getElementById('m-desc').value.trim() || 'No description',
+    color:    selectedMilestoneColor,
+    status:   document.getElementById('m-status').value,
+    progress: parseInt(document.getElementById('m-progress').value),
+    tasks:    []
+  });
+  document.getElementById('m-title').value    = '';
+  document.getElementById('m-desc').value     = '';
+  document.getElementById('m-progress').value = 0;
+  document.getElementById('m-prog-val').textContent = '0%';
+  closeModal('milestone');
+  rerenderAll();
+  showToast(`Milestone "${title}" created!`, 'success');
+  logActivity(`🏁 New milestone <em>${title}</em> added`);
+}
+
+/* ──────────────────────────────────────
+   EDIT MILESTONE
+────────────────────────────────────── */
+function editMilestone(mId) {
+  const m = data.milestones.find(x => x.id === mId);
+  document.getElementById('m-title').value    = m.title;
+  document.getElementById('m-desc').value     = m.desc;
+  document.getElementById('m-status').value   = m.status;
+  document.getElementById('m-progress').value = m.progress;
+  document.getElementById('m-prog-val').textContent = m.progress + '%';
+  selectedMilestoneColor = m.color;
+  document.querySelectorAll('#modal-milestone .color-dot').forEach(d => {
+    d.classList.toggle('selected', d.dataset.color === m.color);
+  });
+  // change button to update
+  const footer = document.querySelector('#modal-milestone .modal-footer');
+  footer.innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal('milestone')">Cancel</button>
+    <button class="btn btn-primary" onclick="updateMilestone('${mId}')">Update Milestone</button>`;
+  openModal('milestone');
+}
+
+function updateMilestone(mId) {
+  const m = data.milestones.find(x => x.id === mId);
+  m.title    = document.getElementById('m-title').value.trim() || m.title;
+  m.desc     = document.getElementById('m-desc').value.trim()  || m.desc;
+  m.status   = document.getElementById('m-status').value;
+  m.progress = parseInt(document.getElementById('m-progress').value);
+  m.color    = selectedMilestoneColor;
+  closeModal('milestone');
+  // reset footer
+  const footer = document.querySelector('#modal-milestone .modal-footer');
+  footer.innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal('milestone')">Cancel</button>
+    <button class="btn btn-primary" onclick="addMilestone()">Create Milestone</button>`;
+  rerenderAll();
+  showToast('Milestone updated', 'success');
+}
+
+/* ──────────────────────────────────────
+   ADD TASK
+────────────────────────────────────── */
+function addSubInput() {
+  const wrap = document.getElementById('subtask-inputs');
+  const row  = document.createElement('div');
+  row.className = 'subtask-input-row';
+  row.innerHTML = `<input placeholder="Add a subtask…"/><button class="remove-sub" onclick="removeSubInput(this)">✕</button>`;
+  wrap.appendChild(row);
+}
+
+function removeSubInput(btn) {
+  btn.parentElement.remove();
+}
+
+function addTask() {
+  const name = document.getElementById('t-name').value.trim();
+  if (!name) { showToast('Please enter a task name', 'error'); return; }
+  const mId = document.getElementById('t-milestone').value;
+  const m   = data.milestones.find(x => x.id === mId);
+  if (!m) { showToast('Select a milestone', 'error'); return; }
+
+  const subtaskInputs = [...document.querySelectorAll('#subtask-inputs input')]
+    .map(i => i.value.trim()).filter(Boolean)
+    .map((n, idx) => ({ id:'st' + Date.now() + idx, name: n, status:'pending' }));
+
+  const progress = parseInt(document.getElementById('t-progress').value);
+  const status   = document.getElementById('t-status').value;
+
+  m.tasks.push({
+    id:       't' + Date.now(),
+    name,
+    assignee: document.getElementById('t-assignee').value,
+    due:      document.getElementById('t-due').value,
+    status,
+    progress,
+    subtasks: subtaskInputs,
+    comments: []
+  });
+
+  recalcMilestone(mId);
+
+  // reset form
+  document.getElementById('t-name').value     = '';
+  document.getElementById('t-due').value      = '';
+  document.getElementById('t-progress').value = 0;
+  document.getElementById('t-prog-val').textContent = '0%';
+  document.getElementById('subtask-inputs').innerHTML = `
+    <div class="subtask-input-row">
+      <input placeholder="Add a subtask…"/>
+      <button class="remove-sub" onclick="removeSubInput(this)">✕</button>
+    </div>`;
+
+  closeModal('task');
+  rerenderAll();
+  showToast(`Task "${name}" added!`, 'success');
+  logActivity(`✅ New task <em>${name}</em> added to <em>${m.title}</em>`);
+}
+
+/* ──────────────────────────────────────
+   ADD SUBTASK
+────────────────────────────────────── */
+function addSubtask() {
+  const name = document.getElementById('st-name').value.trim();
+  if (!name) { showToast('Please enter a subtask name', 'error'); return; }
+  const tId  = document.getElementById('st-task').value;
+  let targetTask = null, targetMilestone = null;
+  data.milestones.forEach(m => {
+    m.tasks.forEach(t => {
+      if (t.id === tId) { targetTask = t; targetMilestone = m; }
+    });
+  });
+  if (!targetTask) { showToast('Select a task', 'error'); return; }
+
+  targetTask.subtasks.push({
+    id:     'st' + Date.now(),
+    name,
+    status: document.getElementById('st-status').value,
+  });
+
+  const doneCount = targetTask.subtasks.filter(s => s.status === 'done').length;
+  targetTask.progress = Math.round((doneCount / targetTask.subtasks.length) * 100);
+  recalcMilestone(targetMilestone.id);
+
+  document.getElementById('st-name').value  = '';
+  document.getElementById('st-notes').value = '';
+  closeModal('subtask');
+  rerenderAll();
+  showToast(`Subtask "${name}" added!`, 'success');
+  logActivity(`📌 New subtask <em>${name}</em> added`);
+}
+
+/* ──────────────────────────────────────
+   SEARCH
+────────────────────────────────────── */
+function searchTasks(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.task').forEach(el => {
+    const name = el.querySelector('.task-name').textContent.toLowerCase();
+    el.style.display = (!q || name.includes(q)) ? '' : 'none';
+  });
+}
+
+/* ──────────────────────────────────────
+   ACTIVITY LOG
+────────────────────────────────────── */
+function logActivity(text) {
+  const icons = ['💬','✅','📌','🏁','🔄'];
+  const icon  = icons[Math.floor(Math.random() * icons.length)];
+  data.activityLog.unshift({ icon, text, time: 'Just now' });
+}
+
+function renderActivity() {
+  const feed = document.getElementById('activity-feed');
+  feed.innerHTML = data.activityLog.map(a => `
+    <div style="display:flex;align-items:flex-start;gap:0.8rem;padding:0.7rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:1.1rem">${a.icon}</span>
+      <div>
+        <div style="font-size:0.82rem">${a.text}</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ──────────────────────────────────────
+   TOAST
+────────────────────────────────────── */
+function showToast(msg, type = 'success') {
+  const tc   = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${msg}</span>`;
+  tc.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+/* ──────────────────────────────────────
+   RE-RENDER ALL
+────────────────────────────────────── */
+function rerenderAll() {
+  renderTracker('tracker-container');
+  renderTracker('tracker-container-2');
+  updateStats();
+}
+
+function updateStats() {
+  const totalTasks    = data.milestones.reduce((s, m) => s + m.tasks.length, 0);
+  const totalSubtasks = data.milestones.reduce((s, m) => m.tasks.reduce((ss, t) => ss + t.subtasks.length, ss), 0);
+  const doneTasks     = data.milestones.reduce((s, m) => s + m.tasks.filter(t => t.status === 'done').length, 0);
+  document.getElementById('stat-milestones').textContent = data.milestones.length;
+  document.getElementById('stat-tasks').textContent      = totalTasks;
+  document.getElementById('stat-subtasks').textContent   = totalSubtasks;
+  document.getElementById('stat-done').textContent       = doneTasks;
+}
+
+/* ──────────────────────────────────────
+   INIT
+────────────────────────────────────── */
+renderTracker('tracker-container');
+updateStats();
+</script>
+</body>
+</html>
