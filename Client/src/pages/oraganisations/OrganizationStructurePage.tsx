@@ -3,7 +3,6 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { AnimatedBackground } from "../shared/AnimatedBackground";
-import { GradientButton } from "../shared/GradientButton";
 import { OrganizationList } from "./OrganizationList";
 import { OrganizationDetail } from "./OrganizationDetail";
 import { ModalOverlay } from "../shared/ModalOverlay";
@@ -11,7 +10,7 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage, useRoleAccess } from "../shared";
+import { LoadingPage, useRoleAccess, useNavHeader } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth, hasRole } = useAuth();
@@ -123,38 +122,25 @@ export function OrganizationStructurePage() {
     }
   };
 
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: "structure",
+      description: "Manage organizations and their departments",
+      action: isAdmin ? {
+        label: "New Organization",
+        onClick: () => setOrgModal({ open: true }),
+        icon: "add_business",
+      } : undefined,
+    });
+  }, [setNavHeader, isAdmin]);
+
   if (loading) return <LoadingPage label="Loading organizations..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
-      <AnimatedBackground />
-
-     {/* Header */}
-<div className="relative z-10 mb-7">
-  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
     <div>
-      <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
-        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-      </span>
-      <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-        Organization Structure
-      </h1>
-      <p className="text-sm text-slate-500 mt-1">
-        Manage organizations and their departments
-      </p>
-    </div>
-    
-    {isAdmin && (
-      <div className="flex items-center gap-3">
-        
-        <GradientButton onClick={() => setOrgModal({ open: true })}>
-          <span className="material-symbols-outlined text-lg">add_business</span>
-          New Organization
-        </GradientButton>
-      </div>
-    )}
-  </div>
-</div>
+      <AnimatedBackground />
 
       {/* Message */}
       {message && (

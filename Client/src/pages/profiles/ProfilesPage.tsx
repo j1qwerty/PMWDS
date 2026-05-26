@@ -6,7 +6,7 @@ import {
   AnimatedBackground, 
   GlassCard, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
   ModalOverlay,
   useToast,
 } from "../shared";
@@ -64,6 +64,20 @@ export function ProfilesPage() {
       .catch(() => setProfile(null));
   }, [auth, selectedUser]);
 
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: isOwnProfile ? "My Profile" : "Profiles",
+      description: isOwnProfile ? "View and manage your profile details" : "View and manage user profiles and details",
+      action: canManageProfiles && selectedUser ? {
+        label: "Edit Profile",
+        onClick: () => setProfileModal(true),
+        icon: "edit",
+      } : undefined,
+    });
+  }, [setNavHeader, isOwnProfile, canManageProfiles, selectedUser]);
+
   const handleProfileSubmit = async (payload: Record<string, unknown>) => {
     if (!auth || !selectedUser) return;
     try {
@@ -105,21 +119,10 @@ export function ProfilesPage() {
   if (loading) return <LoadingPage label="Loading profiles..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title={isOwnProfile ? "My Profile" : "Profiles"}
-          description={isOwnProfile ? "View and manage your profile details" : "View and manage user profiles and details"}
-          action={canManageProfiles && selectedUser ? {
-            label: "Edit Profile",
-            onClick: () => setProfileModal(true),
-            icon: "edit",
-          } : undefined}
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

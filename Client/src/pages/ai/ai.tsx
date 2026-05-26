@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Department, OrganizationRecord, Project, ProjectHealth } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { AnimatedBackground, PageHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter } from "../shared";
+import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter } from "../shared";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -33,6 +33,12 @@ export function AIPage() {
   const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");
   const [chatResult, setChatResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({ title: "AI Insights", description: "Neural analysis, predictions, and intelligent recommendations" });
+  }, [setNavHeader]);
 
   useEffect(() => {
     if (!auth) return;
@@ -117,16 +123,10 @@ export function AIPage() {
   if (loading) return <LoadingPage label="Loading AI insights..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="AI Insights"
-          description="Neural analysis, predictions, and intelligent recommendations"
-        />
-      </div>
+
 
       <div className="relative z-10 mb-5">
         <OrganizationDepartmentFilter
@@ -151,7 +151,7 @@ export function AIPage() {
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         
         {/* Left Sidebar: Projects (Agents) */}
-        <div className="flex flex-col gap-5 max-h-150">
+        <div className="flex flex-col gap-5 lg:max-h-150">
           <ProjectList
             projects={visibleProjects}
             selectedProjectId={selectedProjectId}

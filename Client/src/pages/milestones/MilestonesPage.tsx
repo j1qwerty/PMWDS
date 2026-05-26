@@ -9,7 +9,7 @@ import {
     GlassCard,
     GradientButton,
     LoadingPage,
-    PageHeader,
+    useNavHeader,
     ModalOverlay,
     DeleteConfirmationModal,
     getDepartmentColor,
@@ -46,6 +46,20 @@ export function MilestonesPage() {
     const [loading, setLoading] = useState(true);
     const [milestoneModal, setMilestoneModal] = useState<{ open: boolean; editMilestone?: Milestone }>({ open: false });
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; milestone: Milestone | null }>({ open: false, milestone: null });
+
+    const { setNavHeader } = useNavHeader();
+
+    useEffect(() => {
+      setNavHeader({
+        title: "Milestones",
+        description: "Track project milestones, critical paths, and delivery progress",
+        action: isAdmin && selectedProjectId ? {
+          label: "New Milestone",
+          onClick: () => setMilestoneModal({ open: true }),
+          icon: "flag",
+        } : undefined,
+      });
+    }, [setNavHeader, isAdmin, selectedProjectId]);
 
     const loadData = () => {
         if (!auth) return;
@@ -234,21 +248,10 @@ export function MilestonesPage() {
     if (loading) return <LoadingPage label="Loading milestones..." />;
 
     return (
-        <div className="min-h-screen p-7 relative font-sans">
+        <div>
             <AnimatedBackground />
 
-            {/* Page Header */}
-            <div className="relative z-10">
-                <PageHeader
-                    title="Milestones"
-                    description="Track project milestones, critical paths, and delivery progress"
-                    action={isAdmin && selectedProjectId ? {
-                        label: "New Milestone",
-                        onClick: () => setMilestoneModal({ open: true }),
-                        icon: "flag",
-                    } : undefined}
-                />
-            </div>
+
 
             {/* Message */}
             {message && (

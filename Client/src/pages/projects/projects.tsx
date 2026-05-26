@@ -4,7 +4,7 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
-import { GlassCard, LoadingPage, PageHeader, getDepartmentColor, OrganizationDepartmentFilter, useRoleAccess } from "../shared";
+import { GlassCard, LoadingPage, useNavHeader, getDepartmentColor, OrganizationDepartmentFilter, useRoleAccess } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
   ProjectsBoard,
@@ -47,6 +47,20 @@ export function ProjectsPage() {
     projectManagerId: "",
     priority: "Medium",
   });
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: "Projects",
+      description: "Manage and track projects across departments",
+      action: access.canManageProjects ? {
+        label: "Create New Project",
+        onClick: () => setShowCreateModal(true),
+        icon: "add_circle",
+      } : undefined,
+    });
+  }, [setNavHeader, access.canManageProjects]);
 
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
@@ -190,17 +204,8 @@ export function ProjectsPage() {
   if (loading) return <LoadingPage label="Loading projects..." />;
 
   return (
-    <div className="p-2 flex flex-col gap-5 min-h-screen">
-      {/* Page Header */}
-      <PageHeader
-        title="Projects"
-        description="Manage and track projects across departments"
-        action={access.canManageProjects ? {
-          label: "Create New Project",
-          onClick: () => setShowCreateModal(true),
-          icon: "add_circle",
-        } : undefined}
-      />
+    <div className="flex flex-col gap-5">
+
 
       <OrganizationDepartmentFilter
         organizations={organizations}

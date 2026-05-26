@@ -99,6 +99,7 @@
   --spacing-xl: 2.5rem;
   --spacing-column-gutter: 1.25rem;
   --spacing-container-margin: 2rem;
+  --breakpoint-3xl: 1792px;
 }
 
 /* Custom utility values */

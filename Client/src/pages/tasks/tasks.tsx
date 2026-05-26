@@ -6,7 +6,7 @@ import { formatPercent, formatDate } from "../../ui";
 import { 
   GlassCard, 
   GradientButton, 
-  PageHeader,
+  useNavHeader,
   LoadingPage,
   Avatar,
   AvatarStack,
@@ -53,6 +53,21 @@ export function TasksPage() {
   
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: "Tasks",
+      description: "Manage and track all tasks across projects and milestones",
+      action: isAdmin ? {
+        label: "New Task",
+        onClick: () => setTaskModal({ open: true }),
+        icon: "add_task",
+      } : undefined,
+    });
+  }, [setNavHeader, isAdmin]);
+
   const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
   const [recommendation, setRecommendation] = useState<any>(null);
   const [delay, setDelay] = useState<any>(null);
@@ -353,21 +368,10 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
   if (loading) return <LoadingPage label="Loading tasks..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Tasks"
-          description="Manage and track all tasks across projects and milestones"
-          action={isAdmin ? {
-            label: "New Task",
-            onClick: () => setTaskModal({ open: true }),
-            icon: "add_task",
-          } : undefined}
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

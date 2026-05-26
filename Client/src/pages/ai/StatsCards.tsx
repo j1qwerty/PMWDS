@@ -60,13 +60,13 @@ function StatCard({ label, value, subtext, icon, color }: {
   const colors = colorMap[color];
 
   return (
-    <div className={`rounded-xl border p-4 ${colors.border} bg-white/90 backdrop-blur-sm`}>
+    <div className={`rounded-xl border ${colors.border} bg-white/90 backdrop-blur-sm overflow-hidden`} style={{ padding: 'clamp(6px, 1.5vw, 12px)' }}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
-        <span className={`material-symbols-outlined text-lg ${colors.text}`}>{icon}</span>
+        <span className="font-semibold text-slate-400 uppercase tracking-wider" style={{ fontSize: 'clamp(8px, 2vw, 11px)' }}>{label}</span>
+        <span className={`material-symbols-outlined leading-none ${colors.text}`} style={{ fontSize: 'clamp(16px, 3.5vw, 24px)' }}>{icon}</span>
       </div>
-      <span className={`text-3xl font-bold ${colors.text}`}>{value}</span>
-      <p className="text-[11px] text-slate-400 mt-1">{subtext}</p>
+      <span className={`font-bold ${colors.text}`} style={{ fontSize: 'clamp(16px, 4.5vw, 30px)' }}>{value}</span>
+      <p className="text-slate-400 mt-1" style={{ fontSize: 'clamp(10px, 2.2vw, 13px)' }}>{subtext}</p>
     </div>
   );
 }

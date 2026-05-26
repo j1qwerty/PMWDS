@@ -7,7 +7,7 @@ import {
   GlassCard, 
   GradientButton, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
 } from "../shared";
 import { ActivityList } from "./ActivityList";
 import { ActivityForm } from "./ActivityForm";
@@ -29,6 +29,12 @@ export function ActivityLogsPage() {
   const [selectedType, setSelectedType] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({ title: "Activity Logs", description: "Track and monitor user activities across the platform" });
+  }, [setNavHeader]);
 
   const loadData = () => {
     if (!auth) return;
@@ -126,16 +132,10 @@ export function ActivityLogsPage() {
   if (loading) return <LoadingPage label="Loading activity logs..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Activity Logs"
-          description="Track and monitor user activities across the platform"
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

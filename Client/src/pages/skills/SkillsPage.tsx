@@ -6,7 +6,7 @@ import {
   AnimatedBackground, 
   GlassCard, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
 } from "../shared";
@@ -29,6 +29,20 @@ export function SkillsPage() {
 
   const [skillModal, setSkillModal] = useState<{ open: boolean; editSkill?: SkillRecord }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: SkillRecord | null }>({ open: false, skill: null });
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: "Skills",
+      description: "Manage skill taxonomy and expertise catalogue",
+      action: canWrite ? {
+        label: "Create Skill",
+        onClick: () => setSkillModal({ open: true }),
+        icon: "add",
+      } : undefined,
+    });
+  }, [setNavHeader, canWrite]);
 
   const loadData = () => {
     if (!auth) return;
@@ -86,21 +100,10 @@ export function SkillsPage() {
   if (loading) return <LoadingPage label="Loading skills..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Skills"
-          description="Manage skill taxonomy and expertise catalogue"
-          action={canWrite ? {
-            label: "Create Skill",
-            onClick: () => setSkillModal({ open: true }),
-            icon: "add",
-          } : undefined}
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

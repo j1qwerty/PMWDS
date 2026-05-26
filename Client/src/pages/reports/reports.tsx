@@ -5,7 +5,7 @@ import type { Department, OrganizationRecord, Project } from "../../types";
 import { 
   AnimatedBackground, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
   OrganizationDepartmentFilter,
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
@@ -29,6 +29,12 @@ export function ReportsPage() {
     endDate: "", 
     status: "" 
   });
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({ title: "Reports", description: "Generate portfolio, workload, delay, and budget reports" });
+  }, [setNavHeader]);
 
   useEffect(() => {
     if (!auth) return;
@@ -155,16 +161,10 @@ export function ReportsPage() {
   if (loading) return <LoadingPage label="Loading reports..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Reports"
-          description="Generate portfolio, workload, delay, and budget reports"
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

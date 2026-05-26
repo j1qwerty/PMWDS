@@ -6,7 +6,7 @@ import {
   AnimatedBackground, 
   GlassCard, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
 } from "../shared";
@@ -34,6 +34,12 @@ export function RolesPage() {
     id: string;
     name: string;
   }>({ open: false, type: "role", id: "", name: "" });
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({ title: "Roles & Permissions", description: "Manage role definitions, permission levels, and access control" });
+  }, [setNavHeader]);
 
   const loadData = () => {
     if (!auth) return;
@@ -105,16 +111,10 @@ export function RolesPage() {
   if (loading) return <LoadingPage label="Loading roles and permissions..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Roles & Permissions"
-          description="Manage role definitions, permission levels, and access control"
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { z } from "zod";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
+import { LoginSidebar } from "./LoginSidebar";
 
 type LoginMode = "signin" | "signup" | "forgot" | "reset";
 
@@ -27,6 +28,15 @@ const authSchemas = {
     password: passwordSchema,
   }),
 };
+
+const demoAccounts = [
+  { email: "admin@pmwds.com", label: "Admin", icon: "shield_person", color: "bg-red-500" },
+  { email: "director@pmwds.com", label: "Director", icon: "account_balance", color: "bg-purple-500" },
+  { email: "manager@pmwds.com", label: "Manager", icon: "supervisor_account", color: "bg-blue-500" },
+  { email: "head@pmwds.com", label: "Head", icon: "engineering", color: "bg-teal-500" },
+  { email: "member@pmwds.com", label: "Member", icon: "person", color: "bg-green-500" },
+  { email: "viewer@pmwds.com", label: "Viewer", icon: "visibility", color: "bg-orange-500" },
+];
 
 export function LoginPage() {
   const [email, setEmail] = useState("admin@pmwds.com");
@@ -99,266 +109,368 @@ export function LoginPage() {
     }
   };
 
+  const handleDemoLogin = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword("Pmwds@123");
+    setMode("signin");
+    // Auto-submit after a brief delay to show the user what's happening
+    setTimeout(() => {
+      const form = document.getElementById("login-form") as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }, 300);
+  };
+
   const title = mode === "signup" ? "Create account" : mode === "forgot" ? "Reset request" : mode === "reset" ? "Set new password" : "Sign in";
 
+  const features = [
+    {
+      icon: "analytics",
+      title: "Real-time Analytics",
+      description: "Track project progress with live dashboards and performance metrics"
+    },
+    {
+      icon: "account_tree",
+      title: "Department Management",
+      description: "Organize projects across departments with role-based access control"
+    },
+    {
+      icon: "task_alt",
+      title: "Milestone Tracking",
+      description: "Monitor deliverables and deadlines with automated milestone alerts"
+    },
+    {
+      icon: "insights",
+      title: "AI-Powered Insights",
+      description: "Get intelligent recommendations and risk predictions for your projects"
+    }
+  ];
+
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-[#f7f9fb] to-[#e0e3e5] p-6 font-sans">
-      {/* Background decorative elements */}
-      <div className="fixed -top-[20%] -right-[10%] w-[500px] h-[500px] rounded-full bg-[rgba(70,72,212,0.06)] blur-[80px] pointer-events-none" />
-      <div className="fixed -bottom-[20%] -left-[10%] w-[400px] h-[400px] rounded-full bg-[rgba(129,39,207,0.04)] blur-[80px] pointer-events-none" />
+    <div className="flex min-h-screen w-full bg-gradient-to-br from-slate-50 to-indigo-50/30 font-sans">
+      {/* Left Panel - Only visible on desktop */}
+      {/* <LoginSidebar/> */}
 
-      {/* Login Card */}
-      <div className="w-full max-w-[420px] rounded-2xl border border-[rgba(224,227,229,0.8)] bg-white/85 backdrop-blur-[20px] p-10 shadow-[0_20px_60px_rgba(70,72,212,0.08),0_0_0_1px_rgba(255,255,255,0.5)] relative z-[1]">
-
-        {/* Logo & Header */}
-        <div className="text-center mb-8">
-          <div className="text-[28px] font-extrabold text-[#4648d4] tracking-[0.15em] uppercase mb-2">
-            PMWDS
-          </div>
-          <p className="text-sm text-[#767586] leading-relaxed">
-            Project Monitoring & Workflow Distribution System
-          </p>
-        </div>
-
-        {/* <h2 className="text-2xl font-bold text-[#191c1e] text-center mb-2">
-          Welcome Back
-        </h2>
-        <p className="text-sm text-[#767586] text-center mb-7">
-          Sign in to your account to continue
-        </p> */}
-
-        {/* Error Banner */}
-        {error && (
-          <div className="bg-[#ffdad6] border border-[rgba(186,26,26,0.3)] rounded-lg p-3 mb-5 flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-[#ba1a1a] text-xl shrink-0 mt-px">
-              error
-            </span>
-            <div className="flex-1">
-              <p className="text-[13px] font-semibold text-[#ba1a1a] mb-0.5">
-                Login Failed
-              </p>
-              <p className="text-xs text-[#93000a] leading-relaxed">
-                {error}
-              </p>
+      {/* Right Panel - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-[440px]">
+          {/* Mobile Logo - Only visible on mobile */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="inline-flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl text-white">rocket_launch</span>
+              </div>
+              <span className="text-2xl font-bold text-indigo-600">PMWDS</span>
             </div>
-            <button
-              onClick={() => setError("")}
-              className="bg-transparent border-none cursor-pointer p-0.5 ml-auto shrink-0"
-            >
-              <span className="material-symbols-outlined text-[#ba1a1a] text-base">
-                close
-              </span>
-            </button>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {success && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-700">
-              {success}
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#191c1e]">{title}</h2>
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
-                setError("");
-                setSuccess("");
-              }}
-              className="text-xs font-semibold text-[#4648d4]"
-            >
-              {mode === "signin" ? "Create account" : "Back to sign in"}
-            </button>
+            <p className="text-sm text-slate-500">
+              Project Monitoring & Workflow Distribution
+            </p>
           </div>
 
-          {mode === "signup" && (
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                value={firstName}
-                onChange={(e) => {
-                  setFirstName(e.target.value);
-                  if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: undefined }));
-                }}
-                required
-                placeholder="First name"
-                className="h-11 rounded-[10px] border border-[#e0e3e5] px-3.5 text-sm outline-none focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
-              />
-              <input
-                value={lastName}
-                onChange={(e) => {
-                  setLastName(e.target.value);
-                  if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: undefined }));
-                }}
-                required
-                placeholder="Last name"
-                className="h-11 rounded-[10px] border border-[#e0e3e5] px-3.5 text-sm outline-none focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
-              />
-              {fieldErrors.firstName && <p className="text-[11px] text-[#ba1a1a]">{fieldErrors.firstName}</p>}
-              {fieldErrors.lastName && <p className="text-[11px] text-[#ba1a1a]">{fieldErrors.lastName}</p>}
-            </div>
-          )}
-          {/* Email Field */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[#191c1e] tracking-[0.08em] uppercase">
-              Email Address
-            </label>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#767586] text-xl pointer-events-none">
-                mail
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
-                }}
-                placeholder="Enter your email"
-                disabled={loading}
-                className={`
-                  w-full h-11 pl-10 pr-3.5 rounded-[10px] text-sm text-[#191c1e] outline-none transition-all duration-200 box-border
-                  ${fieldErrors.email
-                    ? "border-[1.5px] border-[#ba1a1a]"
-                    : "border border-[#e0e3e5] focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
-                  }
-                  ${loading ? "bg-[#f2f4f6]" : "bg-white"}
-                `}
-                autoComplete="email"
-                autoFocus
-              />
-            </div>
-            {fieldErrors.email && (
-              <p className="text-[11px] text-[#ba1a1a] ml-1 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">error</span>
-                {fieldErrors.email}
-              </p>
+          {/* Login Card */}
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 p-8">
+            {/* Error Banner */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3 animate-shake">
+                <span className="material-symbols-outlined text-red-500 text-xl shrink-0 mt-0.5">
+                  error
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-700 mb-0.5">
+                    Authentication Failed
+                  </p>
+                  <p className="text-xs text-red-600 leading-relaxed">
+                    {error}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setError("")}
+                  className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
             )}
-          </div>
 
-          {mode !== "forgot" && mode === "reset" && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#191c1e] tracking-[0.08em] uppercase">
-                Reset Token
-              </label>
-              <input
-                value={resetToken}
-                onChange={(e) => {
-                  setResetToken(e.target.value);
-                  if (fieldErrors.resetToken) setFieldErrors(prev => ({ ...prev, resetToken: undefined }));
-                }}
-                required
-                disabled={loading}
-                placeholder="Paste reset token"
-                className="w-full h-11 rounded-[10px] border border-[#e0e3e5] px-3.5 text-sm text-[#191c1e] outline-none transition-all duration-200 focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
-              />
-              {fieldErrors.resetToken && (
-                <p className="text-[11px] text-[#ba1a1a] ml-1 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">error</span>
-                  {fieldErrors.resetToken}
+            {/* Success Banner */}
+            {success && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+                <span className="material-symbols-outlined text-emerald-500 text-xl shrink-0 mt-0.5">
+                  check_circle
+                </span>
+                <p className="text-sm text-emerald-700 leading-relaxed">
+                  {success}
                 </p>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Password Field */}
-          {mode !== "forgot" && <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-[#191c1e] tracking-[0.08em] uppercase">
-                {mode === "reset" ? "New Password" : "Password"}
-              </label>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(mode === "signin" ? "signup" : "signin");
+                  setError("");
+                  setSuccess("");
+                  setFieldErrors({});
+                }}
+                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+              >
+                {mode === "signin" ? "Create account" : "Sign in instead"}
+              </button>
+            </div>
+
+            {/* Form */}
+            <form id="login-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+              {mode === "signup" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <input
+                      value={firstName}
+                      onChange={(e) => {
+                        setFirstName(e.target.value);
+                        if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: undefined }));
+                      }}
+                      required
+                      placeholder="First name"
+                      className={`h-11 rounded-xl border px-3.5 text-sm outline-none transition-all duration-200 ${
+                        fieldErrors.firstName
+                          ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      }`}
+                    />
+                    {fieldErrors.firstName && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">error</span>
+                        {fieldErrors.firstName}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <input
+                      value={lastName}
+                      onChange={(e) => {
+                        setLastName(e.target.value);
+                        if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: undefined }));
+                      }}
+                      required
+                      placeholder="Last name"
+                      className={`h-11 rounded-xl border px-3.5 text-sm outline-none transition-all duration-200 ${
+                        fieldErrors.lastName
+                          ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      }`}
+                    />
+                    {fieldErrors.lastName && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">error</span>
+                        {fieldErrors.lastName}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Email Field */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xl pointer-events-none">
+                    mail
+                  </span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                    }}
+                    placeholder="you@example.com"
+                    disabled={loading}
+                    className={`w-full h-11 pl-10 pr-3.5 rounded-xl text-sm outline-none transition-all duration-200 ${
+                      fieldErrors.email
+                        ? "border-2 border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    } ${loading ? "bg-slate-50" : "bg-white"}`}
+                    autoComplete="email"
+                    autoFocus
+                  />
+                </div>
+                {fieldErrors.email && (
+                  <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">error</span>
+                    {fieldErrors.email}
+                  </p>
+                )}
+              </div>
+
+              {mode === "reset" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Reset Token
+                  </label>
+                  <input
+                    value={resetToken}
+                    onChange={(e) => {
+                      setResetToken(e.target.value);
+                      if (fieldErrors.resetToken) setFieldErrors(prev => ({ ...prev, resetToken: undefined }));
+                    }}
+                    required
+                    disabled={loading}
+                    placeholder="Paste reset token"
+                    className="w-full h-11 rounded-xl border border-slate-200 px-3.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                  {fieldErrors.resetToken && (
+                    <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">error</span>
+                      {fieldErrors.resetToken}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Password Field */}
+              {mode !== "forgot" && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      {mode === "reset" ? "New Password" : "Password"}
+                    </label>
+                    {mode === "signin" && (
+                      <button
+                        type="button"
+                        className="text-xs text-indigo-600 font-medium hover:text-indigo-700 transition-colors"
+                        onClick={() => {
+                          setMode("forgot");
+                          setError("");
+                          setSuccess("");
+                        }}
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xl pointer-events-none">
+                      lock
+                    </span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                      }}
+                      placeholder="Enter your password"
+                      disabled={loading}
+                      className={`w-full h-11 pl-10 pr-12 rounded-xl text-sm outline-none transition-all duration-200 ${
+                        fieldErrors.password
+                          ? "border-2 border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      } ${loading ? "bg-slate-50" : "bg-white"}`}
+                      autoComplete={mode === "reset" ? "new-password" : "current-password"}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-xl">
+                        {showPassword ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
+                  {fieldErrors.password && (
+                    <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">error</span>
+                      {fieldErrors.password}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {mode === "signup" ? "Creating account..." : mode === "forgot" ? "Sending link..." : mode === "reset" ? "Resetting..." : "Signing in..."}
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-lg">login</span>
+                    {mode === "signup" ? "Create Account" : mode === "forgot" ? "Send Reset Link" : mode === "reset" ? "Reset Password" : "Sign In"}
+                  </>
+                )}
+              </button>
+
+              {/* Create Account Button - Only show on signin mode */}
               {mode === "signin" && (
                 <button
                   type="button"
-                  className="text-[11px] text-[#4648d4] font-medium bg-transparent border-none cursor-pointer p-0"
                   onClick={() => {
-                    setMode("forgot");
+                    setMode("signup");
                     setError("");
                     setSuccess("");
+                    setFieldErrors({});
                   }}
+                  className="w-full h-11 border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-indigo-50/50 flex items-center justify-center gap-2"
                 >
-                  Forgot Password?
+                  <span className="material-symbols-outlined text-lg">person_add</span>
+                  Create New Account
                 </button>
               )}
-            </div>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#767586] text-xl pointer-events-none">
-                lock
-              </span>
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
-                }}
-                placeholder="Enter your password"
-                disabled={loading}
-                className={`
-                  w-full h-11 pl-10 pr-11 rounded-[10px] text-sm text-[#191c1e] outline-none transition-all duration-200 box-border
-                  ${fieldErrors.password
-                    ? "border-[1.5px] border-[#ba1a1a]"
-                    : "border border-[#e0e3e5] focus:border-[#4648d4] focus:shadow-[0_0_0_3px_rgba(70,72,212,0.1)]"
-                  }
-                  ${loading ? "bg-[#f2f4f6]" : "bg-white"}
-                `}
-                autoComplete={mode === "reset" ? "new-password" : "current-password"}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-1 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-2 text-[#767586] flex items-center"
-              >
-                <span className="material-symbols-outlined text-xl">
-                  {showPassword ? "visibility_off" : "visibility"}
+            </form>
+          </div>
+
+          {/* Demo Accounts Section */}
+          {mode === "signin" && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Demo Accounts
                 </span>
-              </button>
-            </div>
-            {fieldErrors.password && (
-              <p className="text-[11px] text-[#ba1a1a] ml-1 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">error</span>
-                {fieldErrors.password}
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {demoAccounts.map((account) => (
+                  <button
+                    key={account.email}
+                    onClick={() => handleDemoLogin(account.email)}
+                    disabled={loading}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${account.color} flex items-center justify-center shrink-0`}>
+                      <span className="material-symbols-outlined text-white text-sm">
+                        {account.icon}
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors">
+                        {account.label}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {account.email}
+                      </div>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-500 text-sm ml-auto shrink-0 transition-colors">
+                      arrow_forward
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 text-center mt-3">
+                Password for all accounts: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">Pmwds@123</code>
               </p>
-            )}
-          </div>}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className={`
-    w-full h-11 text-sm font-semibold tracking-[0.5px] border-none rounded-[10px] cursor-pointer flex items-center justify-center gap-2 transition-all duration-300
-    ${loading
-                ? "bg-indigo-400 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-px shadow-md shadow-indigo-500/25"
-              }
-    text-white
-  `}
-          >
-            {loading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {mode === "signup" ? "Creating..." : mode === "forgot" ? "Sending..." : mode === "reset" ? "Saving..." : "Signing in..."}
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-lg">login</span>
-                {mode === "signup" ? "Create Account" : mode === "forgot" ? "Send Reset Link" : mode === "reset" ? "Reset Password" : "Sign In"}
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-3 bg-[rgba(70,72,212,0.04)] rounded-lg border border-[rgba(70,72,212,0.1)]">
-          <p className="text-[11px] text-[#767586] text-center font-semibold tracking-[0.05em] mb-1">
-            DEMO CREDENTIALS
-          </p>
-          <p className="text-[11px] text-[#464554] text-center">
-            admin@pmwds.com, director@pmwds.com, manager@pmwds.com, head@pmwds.com, member@pmwds.com, viewer@pmwds.com / Pmwds@123
-          </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

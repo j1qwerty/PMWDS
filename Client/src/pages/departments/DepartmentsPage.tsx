@@ -6,7 +6,7 @@ import {
     AnimatedBackground,
     GlassCard,
     GradientButton,
-    PageHeader,
+    useNavHeader,
     LoadingPage,
     ModalOverlay,
     DeleteConfirmationModal,
@@ -36,6 +36,21 @@ export function DepartmentsPage() {
     const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [deptModal, setDeptModal] = useState<{ open: boolean; editDept?: Department }>({ open: false });
+
+    const { setNavHeader } = useNavHeader();
+
+    useEffect(() => {
+      setNavHeader({
+        title: "Departments",
+        description: "Manage departments across all organizations",
+        action: canCreateDepartments ? {
+          label: "New Department",
+          onClick: () => setDeptModal({ open: true }),
+          icon: "add",
+        } : undefined,
+      });
+    }, [setNavHeader, canCreateDepartments]);
+
     const [deleteConfirm, setDeleteConfirm] = useState<{
         open: boolean;
         id: string;
@@ -146,21 +161,10 @@ export function DepartmentsPage() {
     if (loading) return <LoadingPage label="Loading departments..." />;
 
     return (
-        <div className="min-h-screen p-2 relative font-sans">
+        <div>
             <AnimatedBackground />
 
-            {/* Page Header */}
-            <div className="relative z-10">
-                <PageHeader
-                    title="Departments"
-                    description="Manage departments across all organizations"
-                    action={canCreateDepartments ? {
-                        label: "New Department",
-                        onClick: () => setDeptModal({ open: true }),
-                        icon: "add",
-                    } : undefined}
-                />
-            </div>
+
 
             {/* Message */}
             {message && (

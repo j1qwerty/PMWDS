@@ -5,7 +5,7 @@ import type { Department, OrganizationRecord, SkillRecord, User, WorkloadReport 
 import { 
   AnimatedBackground, 
   DeleteConfirmationModal, 
-  PageHeader,
+  useNavHeader,
   PageSkeleton,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
@@ -30,6 +30,23 @@ export function UsersPage() {
   const [activeTab, setActiveTab] = useState<"directory" | "workload" | "manage">("directory");
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: "Users",
+      description: "People operations, capacity, activation state, and workload shape",
+      action: canManageUsers ? {
+        label: "New User",
+        onClick: () => {
+          setActiveTab("manage");
+          setTimeout(() => document.getElementById("register-user-form")?.scrollIntoView({ behavior: "smooth" }), 100);
+        },
+        icon: "add",
+      } : undefined,
+    });
+  }, [setNavHeader, canManageUsers]);
 
   const handleToggleUserActive = async (user: User) => {
     if (!auth) return;
@@ -69,7 +86,7 @@ export function UsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-7 relative font-sans">
+      <div>
         <AnimatedBackground />
         <div className="relative z-10">
           <PageSkeleton />
@@ -79,16 +96,10 @@ export function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Users"
-          description="People operations, capacity, activation state, and workload shape"
-        />
-      </div>
+
 
       {/* Message */}
       {message && (
@@ -189,6 +200,7 @@ export function UsersPage() {
 
 {activeTab === "manage" && canManageUsers && (
    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div id="register-user-form">
     <RegisterUserForm 
       departments={departments}
       organizations={organizations}
@@ -201,6 +213,7 @@ export function UsersPage() {
         loadData();
       }} 
     />
+    </div>
     <UserSkillsPanel 
       users={users}
       skills={skills}

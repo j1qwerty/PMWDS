@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { useAuth } from "./auth";
 import type { Role } from "./types";
-import { Avatar } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton } from "./pages/shared";
 
 import {
   HiOutlineHome,
@@ -22,6 +22,10 @@ import {
   HiOutlineSearch,
   HiOutlineBell,
   HiChat,
+  HiOutlineChevronDoubleLeft,
+  HiOutlineChevronDoubleRight,
+  HiOutlineMenu,
+  HiOutlineX,
 } from "react-icons/hi";
 
 import { VscSymbolProperty } from "react-icons/vsc";
@@ -33,13 +37,15 @@ import {
   RiDashboard3Line,
   RiGitRepositoryLine,
 } from "react-icons/ri";
+import { SearchBar } from "./pages/shared/search";
 
 // ─── Helper: classNames ────────────────────────────────────────────
 function classNames(...classes: (string | boolean | undefined | null)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-const iconClass = "h-[18px] w-[18px] shrink-0";
+// Responsive icon sizing using clamp
+const iconClass = "h-[clamp(16px,2vw,18px)] w-[clamp(16px,2vw,18px)] shrink-0";
 
 const iconMap: Record<string, React.ReactNode> = {
   home: <HiOutlineHome className={iconClass} />,
@@ -133,7 +139,12 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { auth, logout, hasRole } = useAuth();
 
   const [unreadCount, setUnreadCount] = useState(0);
-  const [oldUiExpanded, setOldUiExpanded] = useState(false);
+  const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  
+  // Track screen size for responsive behavior
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {
     if (!auth) return;
@@ -143,6 +154,24 @@ function Layout({ children }: { children: React.ReactNode }) {
       .then((res) => setUnreadCount(res.count))
       .catch(() => setUnreadCount(0));
   }, [auth]);
+
+  // Responsive breakpoint detection
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+      
+      // Auto-collapse sidebar on tablet
+      if (width >= 768 && width < 1024) {
+        setSidebarCompact(true);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const newUiNavGroups: Array<{
     title: string;
@@ -191,7 +220,6 @@ function Layout({ children }: { children: React.ReactNode }) {
       },
     ];
 
-
   const isActive = (path: string) => {
     if (path === "/") {
       return location.pathname === "/";
@@ -199,63 +227,110 @@ function Layout({ children }: { children: React.ReactNode }) {
     return location.pathname.startsWith(path);
   };
 
-  const allItems = [...newUiNavGroups.flatMap((g) => g.items)];
-  const pageTitle =
-    allItems.find((item) => isActive(item.path))?.label || "PMWDS";
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
+    <NavHeaderProvider>
     <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
+      {/* Mobile overlay backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <nav
-        className="
-          fixed left-0 top-0 z-50
-          h-full w-[240px]
-          bg-surface-container-lowest/95
-          backdrop-blur-3xl
-          shadow-[8px_0_40px_rgba(0,0,0,0.05)]
-          flex flex-col
-        "
+        className={classNames(
+          "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300",
+          "bg-surface-container-lowest/95 backdrop-blur-3xl shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
+          // Mobile: overlay with smooth slide
+          "max-md:z-[100]",
+          mobileSidebarOpen 
+            ? "max-md:translate-x-0 max-md:w-[clamp(240px,70vw,280px)]" 
+            : "max-md:-translate-x-full",
+          // Tablet & Desktop: responsive width
+          sidebarCompact 
+            ? "md:w-[clamp(56px,8vw,64px)]" 
+            : "md:w-[clamp(200px,25vw,240px)]"
+        )}
       >
-        {/* Logo */}
-        <div className="px-5 pt-5 pb-3">
-          <div className="text-[22px] font-black text-primary uppercase tracking-[0.22em]">
-            PMWDS
-          </div>
+        {/* Logo + Toggle */}
+        <div className="flex items-center justify-between px-[clamp(12px,2vw,16px)] pt-[clamp(16px,2.5vw,20px)] pb-[clamp(8px,1.5vw,12px)]">
+          {!sidebarCompact && (
+            <div className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap">
+              PMWDS
+            </div>
+          )}
+          
+          {/* Hide toggle on mobile (sidebar closes via overlay click) */}
+          <button
+            onClick={() => setSidebarCompact(!sidebarCompact)}
+            className="hidden md:flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
+            style={{ 
+              height: 'clamp(28px,4vw,32px)', 
+              width: 'clamp(28px,4vw,32px)' 
+            }}
+          >
+            {sidebarCompact ? 
+              <HiOutlineChevronDoubleRight className="h-[clamp(14px,2vw,18px)] w-[clamp(14px,2vw,18px)]" /> : 
+              <HiOutlineChevronDoubleLeft className="h-[clamp(14px,2vw,18px)] w-[clamp(14px,2vw,18px)]" />
+            }
+          </button>
+          
+          {/* Mobile close button */}
+          <button
+            onClick={() => setMobileSidebarOpen(false)}
+            className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary"
+            style={{ 
+              height: 'clamp(28px,4vw,32px)', 
+              width: 'clamp(28px,4vw,32px)' 
+            }}
+          >
+            <HiOutlineX className="h-[clamp(16px,2.5vw,20px)] w-[clamp(16px,2.5vw,20px)]" />
+          </button>
         </div>
 
-        {/* User */}
-        <div className="mx-3 mb-4 rounded-2xl bg-surface-container-low px-3 py-3">
-          <div className="flex items-center gap-3">
+        {/* User Profile */}
+        <div className={classNames(
+          "mx-[clamp(8px,2vw,12px)] mb-[clamp(12px,2vw,16px)] rounded-2xl bg-surface-container-low",
+          sidebarCompact ? "p-[clamp(6px,1vw,8px)] flex justify-center" : "px-[clamp(8px,2vw,12px)] py-[clamp(8px,1.5vw,12px)]"
+        )}>
+          <div className={`flex items-center ${sidebarCompact ? "" : "gap-[clamp(8px,1.5vw,12px)]"}`}>
             <Avatar
               person={{
                 id: auth?.userId,
                 fullName: auth?.fullName || "User",
                 profilePictureUrl: auth?.profilePictureUrl,
               }}
-              size="sm"
-              className="ring-2 ring-primary/20"
+              size={sidebarCompact ? "xs" : "sm"}
+              className="ring-2 ring-primary/20 shrink-0"
             />
 
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-on-surface">
-                {auth?.fullName || "Alex Rivera"}
-              </span>
-
-              <span className="truncate text-[9px] uppercase tracking-[0.18em] text-outline">
-                {auth?.roles?.join(", ") || "SuperAdmin"}
-              </span>
-            </div>
+            {!sidebarCompact && (
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-[clamp(11px,1.5vw,13px)] font-medium text-on-surface">
+                  {auth?.fullName || "Alex Rivera"}
+                </span>
+                <span className="truncate text-[clamp(8px,1vw,9px)] uppercase tracking-[0.18em] text-outline">
+                  {auth?.roles?.join(", ") || "SuperAdmin"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Navigation */}
         <div
-          className="
-            sidebar-scrollbar
-            flex-1 overflow-y-auto
-            px-3 pr-4
-            space-y-5
-          "
+          className={classNames(
+            "sidebar-scrollbar flex-1 overflow-y-auto transition-all duration-300",
+            "space-y-[clamp(16px,2.5vw,20px)]",
+            sidebarCompact ? "px-[clamp(2px,0.5vw,4px)]" : "px-[clamp(8px,1.5vw,12px)] pr-[clamp(8px,2vw,16px)]"
+          )}
         >
           {newUiNavGroups.map((group, index) => {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
@@ -266,68 +341,88 @@ function Layout({ children }: { children: React.ReactNode }) {
             if (visibleItems.length === 0) return null;
 
             return (
-              <div key={group.title} className="space-y-1.5">
-                {/* Show section title for all groups except first (Overview) */}
-                {index !== 0 && (
-                  <div className={`px-3 pb-1 text-[10px] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}>
+              <div key={group.title} className="space-y-[clamp(4px,0.8vw,6px)]">
+                {!sidebarCompact && index !== 0 && (
+                  <div className={classNames(
+                    "px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold",
+                    theme.textDefault
+                  )}>
                     {group.title}
                   </div>
                 )}
 
-                <div className="space-y-[2px]">
+                <div className="space-y-[clamp(1px,0.3vw,2px)]">
                   {visibleItems.map((item) => {
-                      const active = isActive(item.path);
+                    const active = isActive(item.path);
 
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileSidebarOpen(false)}
+                        className={classNames(
+                          "relative flex items-center rounded-md transition-all duration-200 group",
+                          sidebarCompact 
+                            ? "justify-center px-0 py-[clamp(7px,1vw,9px)]" 
+                            : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(7px,1vw,9px)]",
+                          active
+                            ? `${theme.active} ${theme.borderActive}`
+                            : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                        )}
+                        title={sidebarCompact ? item.label : undefined}
+                      >
+                        <span
                           className={classNames(
-                            "relative flex items-center gap-3 px-3 py-[9px] rounded-md transition-all duration-200",
+                            "transition-all duration-300 shrink-0",
                             active
-                              ? `${theme.active} ${theme.borderActive}`
-                              : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`,
-                            "group"
+                              ? `${theme.iconActive} scale-110`
+                              : `${theme.iconDefault} group-hover:scale-110`
                           )}
                         >
-                          <span
-                            className={classNames(
-                              "transition-all duration-300",
-                              active
-                                ? `${theme.iconActive} scale-110`
-                                : `${theme.iconDefault} group-hover:scale-110`
-                            )}
-                          >
-                            {iconMap[item.icon]}
-                          </span>
+                          {iconMap[item.icon]}
+                        </span>
 
-                          <span className="text-[13px] font-medium tracking-[0.01em]">
+                        {!sidebarCompact && (
+                          <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
                             {item.label}
                           </span>
+                        )}
 
-                          {(item.path === "/notifications" || item.path === "/notificationsPage") &&
-                            unreadCount > 0 && (
-                              <span className="ml-auto h-2 w-2 rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
-                            )}
-                        </Link>
-                      );
-                    })}
+                        {/* Notification dot for expanded sidebar */}
+                        {!sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
+                          unreadCount > 0 && (
+                            <span className="ml-auto h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                          )}
+                        
+                        {/* Notification dot for compact sidebar */}
+                        {sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
+                          unreadCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                          )}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
-
-         
         </div>
 
         {/* Logout */}
-        <div className="px-3 pb-3 pt-2">
+        <div className={classNames(
+          "pb-[clamp(8px,1.5vw,12px)] pt-[clamp(4px,1vw,8px)]",
+          sidebarCompact ? "px-[clamp(4px,1vw,8px)]" : "px-[clamp(8px,1.5vw,12px)]"
+        )}>
           <button
             onClick={logout}
-            className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-on-surface-variant transition-all duration-300 hover:bg-error-container hover:text-error"
+            className={classNames(
+              "flex items-center w-full rounded-xl transition-all duration-300 hover:bg-error-container hover:text-error text-on-surface-variant",
+              sidebarCompact ? "justify-center p-[clamp(8px,1.5vw,10px)]" : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(8px,1.5vw,10px)]"
+            )}
+            title={sidebarCompact ? "Log Out" : undefined}
           >
             <svg
-              className="h-[18px] w-[18px]"
+              className="h-[clamp(16px,2vw,18px)] w-[clamp(16px,2vw,18px)] shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -340,71 +435,71 @@ function Layout({ children }: { children: React.ReactNode }) {
               />
             </svg>
 
-            <span className="text-[13px]">Log Out</span>
+            {!sidebarCompact && <span className="text-[clamp(11px,1.5vw,13px)]">Log Out</span>}
           </button>
         </div>
       </nav>
 
       {/* Main Content */}
-      <div className="ml-[240px] flex min-h-screen flex-1 flex-col layout-max-width">
+      <div className={classNames(
+        "flex min-h-screen flex-1 flex-col transition-all duration-300",
+        // Mobile: no margin (sidebar is overlay)
+        "ml-0",
+        // Tablet & Desktop: responsive margin
+        sidebarCompact 
+          ? "md:ml-[clamp(56px,8vw,64px)]" 
+          : "md:ml-[clamp(200px,25vw,240px)]"
+      )}
+        style={{ maxWidth: 'min(100%, 1800px)', marginRight: 'auto' }}
+      >
         {/* Topbar */}
         <header
-          className="sticky top-0 z-40 h-[56px] bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
+          className="sticky top-0 z-40 bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
+          style={{ height: 'clamp(48px,6vw,56px)' }}
         >
-          <div className="flex h-full items-center justify-between px-6">
-            {/* Page Title */}
-            <div className="text-h2 font-bold tracking-[-0.03em] text-primary">
-              {pageTitle}
+          <div className="flex h-full items-center justify-between" style={{ padding: '0 clamp(8px,3vw,24px)' }}>
+            <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,12px)' }}>
+              {/* Mobile hamburger */}
+              <button
+                onClick={() => setMobileSidebarOpen(true)}
+                className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                style={{ height: 'clamp(28px,4vw,32px)', width: 'clamp(28px,4vw,32px)' }}
+              >
+                <HiOutlineMenu style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
+              </button>
+              <NavHeader />
             </div>
 
-            {/* Right */}
-            <div className="flex items-center gap-4">
-              {/* Search */}
-              <div className="relative hidden md:block">
-                <span className="material-symbols-outlined absolute left-4 top-2 text-outline text-[20px] pointer-events-none">
-                  search
-                </span>
-                <input
-                  className="
-                    w-[250px]
-                    h-[40px]
-                    rounded-full
-                    bg-surface-container-low
-                    border border-surface-variant
-                    pl-11 pr-4
-                    text-[13px]
-                    text-on-surface
-                    placeholder:text-outline
-                    outline-none
-                    transition-all duration-300
-                    focus:border-primary
-                    focus:bg-surface-container-lowest
-                    focus:ring-2 focus:ring-primary/10
-                  "
-                  placeholder="Search..."
-                  type="text"
-                />
-              </div>
-
-              {/* Chat */}
+            {/* Right actions */}
+            <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
+              <NavActionButton />
+              
+              {/* Chat button */}
               <Link
                 to="/chat"
-                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
               >
-                {/* <span className="material-symbols-outlined text-[20px]">chat</span> */}
-                <HiOutlineChatAlt2></HiOutlineChatAlt2>
+                <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
               </Link>
 
-              {/* Notifications */}
+              {/* Notifications button */}
               <Link
                 to="/notifications"
-                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
               >
-                {/* <span className="material-symbols-outlined text-[20px]">inbox</span> */}
-                <HiOutlineBell></HiOutlineBell>
+                <HiOutlineBell style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
 
                 {unreadCount > 0 && (
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                  <span className="absolute rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" 
+                    style={{ 
+                      height: 'clamp(6px,1vw,8px)', 
+                      width: 'clamp(6px,1vw,8px)', 
+                      top: 'clamp(4px,0.8vw,8px)', 
+                      right: 'clamp(4px,0.8vw,8px)' 
+                    }} 
+                  />
                 )}
               </Link>
             </div>
@@ -412,11 +507,18 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content */}
-        <main className="flex flex-1 flex-col gap-xl p-container-margin px-4">
+        <main
+          className="flex flex-1 flex-col relative font-sans w-full mx-auto"
+          style={{
+            padding: 'clamp(12px,2vw,40px)',
+            gap: 'clamp(16px,2.5vw,48px)',
+          }}
+        >
           {children}
         </main>
       </div>
     </div>
+    </NavHeaderProvider>
   );
 }
 

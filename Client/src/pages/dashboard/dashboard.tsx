@@ -193,12 +193,10 @@ export function DashboardPage() {
             <SimpleProjectList projects={dashboard?.highRiskProjects ?? []} title="High Risk Projects" />
           </div>
           <div className="lg:col-span-1">
-            try {
+       
               <NotificationList items={unread.slice(0, 6)} title="Notifications" />
               
-            } catch (error) {
-              
-            }
+          
             
           </div>
         </div>

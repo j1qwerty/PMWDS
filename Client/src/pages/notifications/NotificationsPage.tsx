@@ -10,7 +10,7 @@ import type {
 import { 
   AnimatedBackground, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
   ModalOverlay,
 } from "../shared";
 import { NotificationInbox } from "./NotificationInbox";
@@ -44,6 +44,20 @@ export function NotificationsPage() {
     id: string;
     name: string;
   }>({ open: false, type: "template", id: "", name: "" });
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({
+      title: "Notifications",
+      description: canConfigure ? "Manage inbox, templates, and alert rules" : "Manage your notification inbox",
+      action: canBroadcast ? {
+        label: "Broadcast",
+        onClick: () => setBroadcastOpen(true),
+        icon: "campaign",
+      } : undefined,
+    });
+  }, [setNavHeader, canConfigure, canBroadcast]);
 
   const loadData = () => {
     if (!auth) return;
@@ -141,21 +155,10 @@ export function NotificationsPage() {
   if (loading) return <LoadingPage label="Loading notifications..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Notifications"
-          description={canConfigure ? "Manage inbox, templates, and alert rules" : "Manage your notification inbox"}
-          action={canBroadcast ? {
-            label: "Broadcast",
-            onClick: () => setBroadcastOpen(true),
-            icon: "campaign",
-          } : undefined}
-        />
-      </div>
+
 
       {/* Message */}
       {message && (

@@ -5,7 +5,7 @@ import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "..
 import { 
   AnimatedBackground, 
   LoadingPage,
-  PageHeader,
+  useNavHeader,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
 import { AIConfiguration } from "./AIConfiguration";
@@ -34,6 +34,12 @@ export function SettingsPage() {
   const [testingCustom, setTestingCustom] = useState<string | null>(null);
   const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name: string; free: boolean }>>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+
+  const { setNavHeader } = useNavHeader();
+
+  useEffect(() => {
+    setNavHeader({ title: "Settings", description: "Manage your profile, AI configuration, and provider settings" });
+  }, [setNavHeader]);
 
   // Provider Matrix State
   const [matrixProviders, setMatrixProviders] = useState<AIProvider[]>([]);
@@ -205,16 +211,10 @@ export function SettingsPage() {
   if (aiLoading && isSuperAdmin) return <LoadingPage label="Loading settings..." />;
 
   return (
-    <div className="min-h-screen p-7 relative font-sans">
+    <div>
       <AnimatedBackground />
 
-      {/* Page Header */}
-      <div className="relative z-10">
-        <PageHeader
-          title="Settings"
-          description="Manage your profile, AI configuration, and provider settings"
-        />
-      </div>
+
 
       {/* Message */}
       {saved && (

@@ -25,14 +25,8 @@ import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { RolesPage } from "./pages/roles/RolesPage";
 import { ActivityLogsPage } from ".//pages/activity/ActivityLogsPage";
 import { SettingsPage } from "./pages/settings/settings";
-
-// Old UI
 import { LoginPage } from "./pages/login/login";
-import { DashboardsPage } from "./old/features/dashboards/pages/DashboardsPage";
-import { IntegrationsPage } from "./old/features/integrations/pages/IntegrationsPage";
-import { WebhooksPage } from "./old/features/integrations/pages/WebhooksPage";
-import { KnowledgePage } from "./old/features/knowledge/pages/KnowledgePage";
-import { Departments } from "./pages/departments/departments";
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
   return auth ? <>{children}</> : <Navigate to="/login" />;

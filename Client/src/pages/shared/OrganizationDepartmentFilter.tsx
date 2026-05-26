@@ -69,7 +69,7 @@ export function OrganizationDepartmentFilter({
               onOrganizationChange(event.target.value);
               onDepartmentChange("");
             }}
-            className="h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+            className="h-10 min-w-[280px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
           >
             <option value="">{allOrganizationsLabel}</option>
             {visibleOrganizations.map((organization) => (
