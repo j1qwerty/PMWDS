@@ -68,6 +68,7 @@ export function ActivityList({ logs, users }: ActivityListProps) {
           <div className="divide-y divide-slate-100">
             {logs.map((log) => {
               const user = users.find(u => u.id === log.userId);
+              const userName = log.userName ?? user?.fullName;
               const icon = getActivityIcon(log.activityType);
               const colorClass = getActivityColor(log.activityType);
               const metadata = typeof log.metadata === 'string' 
@@ -104,10 +105,13 @@ export function ActivityList({ logs, users }: ActivityListProps) {
                       )}
 
                       {/* User Info */}
-                      {user && (
+                      {userName && (
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <Avatar person={user} size="xs" className="shadow-none ring-0" />
-                          <span className="text-[10px] text-slate-400">{user.fullName}</span>
+                          {user && <Avatar person={user} size="xs" className="shadow-none ring-0" />}
+                          <span className="text-[10px] text-slate-400">{userName}</span>
+                          {log.projectName && (
+                            <span className="text-[10px] text-slate-400">/ {log.projectName}</span>
+                          )}
                         </div>
                       )}
 

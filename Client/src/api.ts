@@ -890,31 +890,31 @@ export const api = {
     return request<void>(`knowledge/lessons/${id}`, { token, method: "DELETE" });
   },
   getMyActivityLogs(token: string, count = 50) {
-    return request<ActivityLogRecord[]>("activitylogs", {
+    return requestList<ActivityLogRecord>("activitylogs", {
       token,
       query: { count },
     });
   },
   getUserActivityLogs(token: string, userId: string, count = 50) {
-    return request<ActivityLogRecord[]>(`activitylogs/user/${userId}`, {
+    return requestList<ActivityLogRecord>(`activitylogs/user/${userId}`, {
       token,
       query: { count },
     });
   },
   getTeamActivityLogs(token: string, count = 50) {
-    return request<ActivityLogRecord[]>("activitylogs/team", {
+    return requestList<ActivityLogRecord>("activitylogs/team", {
       token,
       query: { count },
     });
   },
   getAllActivityLogs(token: string, count = 50) {
-    return request<ActivityLogRecord[]>("activitylogs/all", {
+    return requestList<ActivityLogRecord>("activitylogs/all", {
       token,
       query: { count },
     });
   },
   getProjectActivityLogs(token: string, projectId: string, count = 50) {
-    return request<ActivityLogRecord[]>(`activitylogs/project/${projectId}`, {
+    return requestList<ActivityLogRecord>(`activitylogs/project/${projectId}`, {
       token,
       query: { count },
     });

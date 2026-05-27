@@ -373,7 +373,9 @@ export interface LessonLearnedRecord {
 export interface ActivityLogRecord {
   id: string;
   userId: string;
+  userName?: string | null;
   projectId?: string | null;
+  projectName?: string | null;
   activityType: string;
   description: string;
   timestamp: string;
