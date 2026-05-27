@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
+using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Features.Projects.Commands;
 using PMWDS.Application.Features.Projects.Queries;
@@ -45,7 +46,11 @@ public class ProjectsController : BaseApiController
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? departmentId, [FromQuery] ProjectStatus? status, CancellationToken ct)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] Guid? departmentId,
+        [FromQuery] ProjectStatus? status,
+        [FromQuery] PaginationQuery pagination,
+        CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
         {
@@ -70,8 +75,13 @@ public class ProjectsController : BaseApiController
             query = query.Where(p => p.Status == status.Value);
         }
 
-        var projects = await query.OrderByDescending(p => p.CreatedDate).ToListAsync(ct);
-        return Ok(projects.Select(ProjectDto.FromEntity));
+        var totalCount = await query.CountAsync(ct);
+        var projects = await query
+            .OrderByDescending(p => p.CreatedDate)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        return Ok(PaginatedResponse<ProjectDto>.Create(projects.Select(ProjectDto.FromEntity).ToList(), pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]

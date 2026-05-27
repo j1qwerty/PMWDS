@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
+using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 
@@ -19,7 +20,7 @@ public class DepartmentsController : BaseApiController
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
+    public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var departments = (await _uow.Departments.GetAllAsync(ct)).ToList();
         if (!_scope.IsSuperAdmin)
@@ -30,7 +31,15 @@ public class DepartmentsController : BaseApiController
                 .ToList();
         }
 
-        return Ok(departments.Select(MapDepartment));
+        var totalCount = departments.Count;
+        var items = departments
+            .OrderBy(department => department.Name)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .Select(MapDepartment)
+            .ToList();
+
+        return Ok(PaginatedResponse<DepartmentDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]

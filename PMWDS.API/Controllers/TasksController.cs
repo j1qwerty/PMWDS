@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
+using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Tasks;
 using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Tasks.Commands;
@@ -40,19 +41,27 @@ public class TasksController : BaseApiController
 
     [HttpGet("by-project/{projectId:guid}")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
+    public async Task<IActionResult> GetByProject(Guid projectId, [FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
         {
             return Forbid();
         }
 
-        return Ok((await _uow.Tasks.GetByProjectAsync(projectId, ct)).Select(TaskDto.FromEntity));
+        var tasks = (await _uow.Tasks.GetByProjectAsync(projectId, ct))
+            .OrderByDescending(task => task.CreatedDate)
+            .ToList();
+        var items = tasks
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .Select(TaskDto.FromEntity)
+            .ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
     }
 
     [HttpGet("my-tasks")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetMyTasks(CancellationToken ct)
+    public async Task<IActionResult> GetMyTasks([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_currentUser.UserId))
             return Unauthorized();
@@ -60,7 +69,13 @@ public class TasksController : BaseApiController
         var tasks = await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct);
         var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
         tasks = tasks.Where(task => allowedProjectIds.Contains(task.ProjectId)).ToList();
-        return Ok(tasks.Select(TaskDto.FromEntity));
+        var visibleTasks = tasks.OrderByDescending(task => task.CreatedDate).ToList();
+        var items = visibleTasks
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .Select(TaskDto.FromEntity)
+            .ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, visibleTasks.Count));
     }
 
     [HttpGet("{id:guid}")]
@@ -370,42 +385,57 @@ public class TasksController : BaseApiController
 
     [HttpGet("overdue")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetOverdue(CancellationToken ct)
+    public async Task<IActionResult> GetOverdue([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetOverdueTasksAsync(ct)).Where(task => allowedProjectIds.Contains(task.ProjectId));
-        return Ok(tasks.Select(TaskDto.FromEntity));
+        var tasks = (await _uow.Tasks.GetOverdueTasksAsync(ct))
+            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+            .OrderBy(task => task.DueDate)
+            .ToList();
+        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
     }
 
     [HttpGet("escalated")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetEscalated(CancellationToken ct)
+    public async Task<IActionResult> GetEscalated([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetEscalatedTasksAsync(ct)).Where(task => allowedProjectIds.Contains(task.ProjectId));
-        return Ok(tasks.Select(TaskDto.FromEntity));
+        var tasks = (await _uow.Tasks.GetEscalatedTasksAsync(ct))
+            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+            .OrderByDescending(task => task.ModifiedDate ?? task.CreatedDate)
+            .ToList();
+        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
     }
 
     [HttpGet("unassigned")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetUnassigned(CancellationToken ct)
+    public async Task<IActionResult> GetUnassigned([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetUnassignedTasksAsync(ct)).Where(task => allowedProjectIds.Contains(task.ProjectId));
-        return Ok(tasks.Select(TaskDto.FromEntity));
+        var tasks = (await _uow.Tasks.GetUnassignedTasksAsync(ct))
+            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+            .OrderByDescending(task => task.CreatedDate)
+            .ToList();
+        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
     }
 
     [HttpGet("{id:guid}/subtasks")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetSubtasks(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetSubtasks(Guid id, [FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         try
         {
             var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
             if (parentTask == null) return NotFound();
             if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
-            var subtasks = await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct);
-            return Ok(subtasks.Select(TaskDto.FromEntity));
+            var subtasks = (await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct))
+                .OrderByDescending(task => task.CreatedDate)
+                .ToList();
+            var items = subtasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
+            return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, subtasks.Count));
         }
         catch (Exception ex)
         {

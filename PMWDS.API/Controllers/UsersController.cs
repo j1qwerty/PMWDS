@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
+using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Features.Users.Queries;
 using PMWDS.Application.Interfaces.Services;
@@ -37,6 +39,7 @@ public class UsersController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
+        [FromQuery] PaginationQuery pagination,
         CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -53,9 +56,18 @@ public class UsersController : BaseApiController
         }
 
         query = await _scope.ScopeUsersAsync(query, ct);
-        var users = await query.ToListAsync(ct);
+        var totalCount = await query.CountAsync(ct);
+        var users = await query
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
 
-        return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))));
+        return Ok(PaginatedResponse<UserDto>.Create(
+            users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))).ToList(),
+            pagination,
+            totalCount));
     }
 
     [HttpGet("{id}")]
@@ -231,10 +243,7 @@ public class UsersController : BaseApiController
         user.SetCreatedBy(_currentUser.UserId ?? "system");
         user.Roles.Add(role);
 
-        var passwordHash = Convert.ToBase64String(
-            System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(dto.Password + user.Id)));
-        user.SetPassword(passwordHash);
+        user.SetPassword(new PasswordHasher<ApplicationUser>().HashPassword(user, dto.Password.Trim()));
 
         await _uow.Users.AddAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
@@ -510,14 +519,23 @@ public class UsersController : BaseApiController
 
     [HttpGet("available")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> GetAvailable(CancellationToken ct)
+    public async Task<IActionResult> GetAvailable([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var query = await _scope.ScopeUsersAsync(
             UserGraph(includeSkills: true)
                 .Where(u => u.IsActive && u.AvailabilityStatus == PMWDS.Domain.Enums.AvailabilityStatus.Available),
             ct);
-        var users = await query.ToListAsync(ct);
-        return Ok(users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))));
+        var totalCount = await query.CountAsync(ct);
+        var users = await query
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        return Ok(PaginatedResponse<UserDto>.Create(
+            users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))).ToList(),
+            pagination,
+            totalCount));
     }
 
     [HttpGet("workload")]

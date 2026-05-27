@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
+using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 
@@ -19,7 +20,7 @@ public class OrganizationsController : BaseApiController
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
+    public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var organizations = (await _uow.Organizations.GetAllAsync(ct)).ToList();
         if (!_scope.IsSuperAdmin)
@@ -30,10 +31,18 @@ public class OrganizationsController : BaseApiController
 
         var departments = await _uow.Departments.GetAllAsync(ct);
         var directors = await GetDirectorSummariesAsync(organizations.Select(o => o.Id).ToHashSet(), ct);
-        return Ok(organizations.Select(o => MapOrganization(
-            o,
-            departments.Where(d => d.OrganizationId == o.Id).ToList(),
-            directors.GetValueOrDefault(o.Id))));
+        var totalCount = organizations.Count;
+        var items = organizations
+            .OrderBy(organization => organization.Name)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .Select(o => MapOrganization(
+                o,
+                departments.Where(d => d.OrganizationId == o.Id).ToList(),
+                directors.GetValueOrDefault(o.Id)))
+            .ToList();
+
+        return Ok(PaginatedResponse<OrganizationResponse>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]

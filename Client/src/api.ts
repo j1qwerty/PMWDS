@@ -60,6 +60,14 @@ type ApiOptions = {
   query?: Record<string, string | number | boolean | undefined | null>;
 };
 
+type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`);
 
@@ -111,6 +119,11 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   return (await response.blob()) as T;
 }
 
+async function requestList<T>(path: string, options: ApiOptions = {}): Promise<T[]> {
+  const result = await request<T[] | PaginatedResponse<T>>(path, options);
+  return Array.isArray(result) ? result : result.items;
+}
+
 export const api = {
   login(email: string, password: string) {
     return request<AuthResponse>("auth/login", {
@@ -146,7 +159,7 @@ export const api = {
     });
   },
   getProjects(token: string, filters?: { departmentId?: string; status?: string }) {
-    return request<Project[]>("projects", {
+    return requestList<Project>("projects", {
       token,
       query: filters ?? {},
     });
@@ -215,22 +228,22 @@ export const api = {
     return request<void>(`milestones/${id}`, { token, method: "DELETE" });
   },
   getTasksByProject(token: string, projectId: string) {
-    return request<Task[]>(`tasks/by-project/${projectId}`, { token });
+    return requestList<Task>(`tasks/by-project/${projectId}`, { token });
   },
   getMyTasks(token: string) {
-    return request<Task[]>("tasks/my-tasks", { token });
+    return requestList<Task>("tasks/my-tasks", { token });
   },
   getTask(token: string, id: string) {
     return request<Task>(`tasks/${id}`, { token });
   },
   getOverdueTasks(token: string) {
-    return request<Task[]>("tasks/overdue", { token });
+    return requestList<Task>("tasks/overdue", { token });
   },
   getEscalatedTasks(token: string) {
-    return request<Task[]>("tasks/escalated", { token });
+    return requestList<Task>("tasks/escalated", { token });
   },
   getUnassignedTasks(token: string) {
-    return request<Task[]>("tasks/unassigned", { token });
+    return requestList<Task>("tasks/unassigned", { token });
   },
   createTask(token: string, payload: Record<string, unknown>) {
     return request<Task>("tasks", { token, method: "POST", body: payload });
@@ -297,7 +310,7 @@ export const api = {
     return request<void>(`tasks/${id}`, { token, method: "DELETE" });
   },
   getSubtasks(token: string, parentTaskId: string) {
-    return request<Task[]>(`tasks/${parentTaskId}/subtasks`, { token });
+    return requestList<Task>(`tasks/${parentTaskId}/subtasks`, { token });
   },
   createSubtask(token: string, parentTaskId: string, payload: Record<string, unknown>) {
     return request<Task>(`tasks/${parentTaskId}/subtasks`, { token, method: "POST", body: payload });
@@ -345,7 +358,7 @@ export const api = {
     return request<void>(`tasks/dependencies/${depId}`, { token, method: "DELETE" });
   },
   getUsers(token: string, departmentId?: string | null) {
-    return request<User[]>("users", {
+    return requestList<User>("users", {
       token,
       query: { departmentId: departmentId ?? undefined },
     });
@@ -354,7 +367,7 @@ export const api = {
     return request<User>("users/me", { token });
   },
   getAvailableUsers(token: string) {
-    return request<User[]>("users/available", { token });
+    return requestList<User>("users/available", { token });
   },
   getWorkload(token: string, departmentId?: string | null) {
     return request<WorkloadReport>("users/workload", {
@@ -405,7 +418,7 @@ export const api = {
     return request<User>(`users/${id}/reactivate`, { token, method: "PATCH" });
   },
   getDepartments(token: string) {
-    return request<Department[]>("departments", { token });
+    return requestList<Department>("departments", { token });
   },
   getRoles(token: string) {
     return request<RoleRecord[]>("roles", { token });
@@ -511,7 +524,7 @@ export const api = {
     return request<void>(`notifications/rules/${id}`, { token, method: "DELETE" });
   },
   getOrganizations(token: string) {
-    return request<OrganizationRecord[]>("organizations", { token });
+    return requestList<OrganizationRecord>("organizations", { token });
   },
   getOrganization(token: string, id: string) {
     return request<OrganizationRecord>(`organizations/${id}`, { token });
