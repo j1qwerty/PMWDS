@@ -9,6 +9,7 @@ public class RoleScopeService
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private ScopeSnapshot? _scopeSnapshot;
 
     public RoleScopeService(ApplicationDbContext db, ICurrentUserService currentUser)
     {
@@ -26,57 +27,10 @@ public class RoleScopeService
         Guid.TryParse(_currentUser.UserId, out var userId) ? userId : null;
 
     public async Task<List<Guid>> GetOrganizationIdsAsync(CancellationToken ct)
-    {
-        if (CurrentUserId is not { } userId)
-        {
-            return new List<Guid>();
-        }
-
-        var assignedOrgIds = await _db.UserDepartments
-            .Where(assignment => assignment.UserId == userId && assignment.Department.OrganizationId.HasValue)
-            .Select(assignment => assignment.Department.OrganizationId!.Value)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var primaryOrgId = await _db.Users
-            .Where(user => user.Id == userId &&
-                (user.OrganizationId.HasValue || (user.Department != null && user.Department.OrganizationId.HasValue)))
-            .Select(user => user.OrganizationId ?? user.Department!.OrganizationId)
-            .FirstOrDefaultAsync(ct);
-
-        if (primaryOrgId.HasValue && !assignedOrgIds.Contains(primaryOrgId.Value))
-        {
-            assignedOrgIds.Add(primaryOrgId.Value);
-        }
-
-        return assignedOrgIds;
-    }
+        => (await GetScopeSnapshotAsync(ct)).OrganizationIds.ToList();
 
     public async Task<List<Guid>> GetDepartmentIdsAsync(CancellationToken ct)
-    {
-        if (CurrentUserId is not { } userId)
-        {
-            return new List<Guid>();
-        }
-
-        var departmentIds = await _db.UserDepartments
-            .Where(assignment => assignment.UserId == userId)
-            .Select(assignment => assignment.DepartmentId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var primaryDepartmentId = await _db.Users
-            .Where(user => user.Id == userId && user.DepartmentId.HasValue)
-            .Select(user => user.DepartmentId)
-            .FirstOrDefaultAsync(ct);
-
-        if (primaryDepartmentId.HasValue && !departmentIds.Contains(primaryDepartmentId.Value))
-        {
-            departmentIds.Add(primaryDepartmentId.Value);
-        }
-
-        return departmentIds;
-    }
+        => (await GetScopeSnapshotAsync(ct)).DepartmentIds.ToList();
 
     public async Task<IQueryable<Organization>> ScopeOrganizationsAsync(IQueryable<Organization> query, CancellationToken ct)
     {
@@ -290,5 +244,79 @@ public class RoleScopeService
         }
 
         return IsDirector && await CanAccessUserAsync(userId, ct);
+    }
+
+    private async Task<ScopeSnapshot> GetScopeSnapshotAsync(CancellationToken ct)
+    {
+        if (_scopeSnapshot != null)
+        {
+            return _scopeSnapshot;
+        }
+
+        if (CurrentUserId is not { } userId)
+        {
+            _scopeSnapshot = ScopeSnapshot.Empty;
+            return _scopeSnapshot;
+        }
+
+        var userScope = await _db.Users
+            .Where(user => user.Id == userId)
+            .Select(user => new
+            {
+                user.OrganizationId,
+                user.DepartmentId,
+                PrimaryDepartmentOrganizationId = user.Department != null
+                    ? user.Department.OrganizationId
+                    : null,
+                Assignments = user.DepartmentAssignments
+                    .Select(assignment => new
+                    {
+                        assignment.DepartmentId,
+                        OrganizationId = assignment.Department.OrganizationId
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (userScope == null)
+        {
+            _scopeSnapshot = ScopeSnapshot.Empty;
+            return _scopeSnapshot;
+        }
+
+        var organizationIds = new HashSet<Guid>();
+        var departmentIds = new HashSet<Guid>();
+
+        if (userScope.OrganizationId.HasValue)
+        {
+            organizationIds.Add(userScope.OrganizationId.Value);
+        }
+
+        if (userScope.PrimaryDepartmentOrganizationId.HasValue)
+        {
+            organizationIds.Add(userScope.PrimaryDepartmentOrganizationId.Value);
+        }
+
+        if (userScope.DepartmentId.HasValue)
+        {
+            departmentIds.Add(userScope.DepartmentId.Value);
+        }
+
+        foreach (var assignment in userScope.Assignments)
+        {
+            departmentIds.Add(assignment.DepartmentId);
+            if (assignment.OrganizationId.HasValue)
+            {
+                organizationIds.Add(assignment.OrganizationId.Value);
+            }
+        }
+
+        _scopeSnapshot = new ScopeSnapshot(organizationIds, departmentIds);
+        return _scopeSnapshot;
+    }
+
+    private sealed record ScopeSnapshot(HashSet<Guid> OrganizationIds, HashSet<Guid> DepartmentIds)
+    {
+        public static ScopeSnapshot Empty { get; } = new(new HashSet<Guid>(), new HashSet<Guid>());
     }
 }
