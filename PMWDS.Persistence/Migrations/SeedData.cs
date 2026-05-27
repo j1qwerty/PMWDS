@@ -1,6 +1,7 @@
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
 using PMWDS.Persistence.Context;
@@ -113,7 +114,71 @@ public static class SeedData
             ("AI.SETTINGS.MANAGE", "Manage AI Settings", "Manage AI providers, models, and API keys.", "AI", true),
             ("USERS.PROFILE_PICTURE.MANAGE", "Manage Profile Pictures", "Upload and update user profile pictures.", "Users", false),
             ("USERS.DEPARTMENTS.MANAGE", "Manage User Departments", "Assign users to departments and organizations.", "Users", false),
-            ("ACTIVITY_LOGS.VIEW", "View Activity Logs", "View user and team activity logs.", "Audit", true)
+            ("ACTIVITY_LOGS.VIEW", "View Activity Logs", "View user and team activity logs.", "Audit", true),
+            (PermissionCodes.SystemAdmin, "System Administration", "Full system administration access.", "System", true),
+            (PermissionCodes.SystemDatabaseView, "View Database Status", "View active database provider and fallback status.", "System", true),
+            (PermissionCodes.OrganizationView, "View Organizations", "View organization records.", "Organization", true),
+            (PermissionCodes.OrganizationCreate, "Create Organizations", "Create organization records.", "Organization", true),
+            (PermissionCodes.OrganizationEdit, "Edit Organizations", "Update organization records.", "Organization", true),
+            (PermissionCodes.OrganizationDelete, "Delete Organizations", "Delete organization records.", "Organization", true),
+            (PermissionCodes.DepartmentView, "View Departments", "View department records.", "Departments", false),
+            (PermissionCodes.DepartmentCreate, "Create Departments", "Create department records.", "Departments", false),
+            (PermissionCodes.DepartmentEdit, "Edit Departments", "Update department records.", "Departments", false),
+            (PermissionCodes.DepartmentDelete, "Delete Departments", "Delete department records.", "Departments", false),
+            (PermissionCodes.ProjectView, "View Projects", "View project records.", "Projects", false),
+            (PermissionCodes.ProjectCreate, "Create Projects", "Create project records.", "Projects", false),
+            (PermissionCodes.ProjectEdit, "Edit Projects", "Update project records.", "Projects", false),
+            (PermissionCodes.ProjectDelete, "Delete Projects", "Delete project records.", "Projects", false),
+            (PermissionCodes.MilestoneView, "View Milestones", "View milestone records.", "Milestones", false),
+            (PermissionCodes.MilestoneCreate, "Create Milestones", "Create milestone records.", "Milestones", false),
+            (PermissionCodes.MilestoneEdit, "Edit Milestones", "Update milestone records.", "Milestones", false),
+            (PermissionCodes.MilestoneDelete, "Delete Milestones", "Delete milestone records.", "Milestones", false),
+            (PermissionCodes.TaskView, "View Tasks", "View task records.", "Tasks", false),
+            (PermissionCodes.TaskCreate, "Create Tasks", "Create task records.", "Tasks", false),
+            (PermissionCodes.TaskEdit, "Edit Tasks", "Update task records.", "Tasks", false),
+            (PermissionCodes.TaskDelete, "Delete Tasks", "Delete task records.", "Tasks", false),
+            (PermissionCodes.TaskAssign, "Assign Tasks", "Assign task ownership.", "Tasks", false),
+            (PermissionCodes.TaskCommentCreate, "Create Task Comments", "Add comments to tasks.", "Tasks", false),
+            (PermissionCodes.TaskAttachmentCreate, "Create Task Attachments", "Upload task attachments.", "Tasks", false),
+            (PermissionCodes.TaskTimeTrack, "Track Task Time", "Start and stop task timers.", "Tasks", false),
+            (PermissionCodes.SubtaskView, "View Subtasks", "View subtask records.", "Subtasks", false),
+            (PermissionCodes.SubtaskCreate, "Create Subtasks", "Create subtask records.", "Subtasks", false),
+            (PermissionCodes.SubtaskEdit, "Edit Subtasks", "Update subtask records.", "Subtasks", false),
+            (PermissionCodes.SubtaskDelete, "Delete Subtasks", "Delete subtask records.", "Subtasks", false),
+            (PermissionCodes.UserView, "View Users", "View user records.", "Users", false),
+            (PermissionCodes.UserCreate, "Create Users", "Create user records.", "Users", false),
+            (PermissionCodes.UserEdit, "Edit Users", "Update user records.", "Users", false),
+            (PermissionCodes.UserDelete, "Delete Users", "Deactivate or delete users.", "Users", false),
+            (PermissionCodes.UserDepartmentManage, "Manage User Departments", "Assign users to departments and organizations.", "Users", false),
+            (PermissionCodes.UserProfilePictureManage, "Manage Profile Pictures", "Upload and update user profile pictures.", "Users", false),
+            (PermissionCodes.RoleView, "View Roles", "View role records.", "Authorization", true),
+            (PermissionCodes.RoleCreate, "Create Roles", "Create role records.", "Authorization", true),
+            (PermissionCodes.RoleEdit, "Edit Roles", "Update role records.", "Authorization", true),
+            (PermissionCodes.RoleDelete, "Delete Roles", "Delete role records.", "Authorization", true),
+            (PermissionCodes.PermissionView, "View Permissions", "View permission records.", "Authorization", true),
+            (PermissionCodes.PermissionCreate, "Create Permissions", "Create permission records.", "Authorization", true),
+            (PermissionCodes.PermissionEdit, "Edit Permissions", "Update permission records.", "Authorization", true),
+            (PermissionCodes.PermissionDelete, "Delete Permissions", "Delete permission records.", "Authorization", true),
+            (PermissionCodes.NotificationView, "View Notifications", "View notifications.", "Notifications", false),
+            (PermissionCodes.NotificationBroadcast, "Broadcast Notifications", "Broadcast notifications to users or groups.", "Notifications", false),
+            (PermissionCodes.NotificationTemplateManage, "Manage Notification Templates", "Create and update notification templates.", "Notifications", true),
+            (PermissionCodes.NotificationRuleManage, "Manage Alert Rules", "Create and update alert rules.", "Notifications", true),
+            (PermissionCodes.ActivityLogView, "View Activity Logs", "View activity logs.", "Audit", true),
+            (PermissionCodes.ActivityLogCreate, "Create Activity Logs", "Create activity log entries.", "Audit", false),
+            (PermissionCodes.ReportView, "View Reports", "View reports.", "Reports", false),
+            (PermissionCodes.ReportCreate, "Create Reports", "Create reports.", "Reports", false),
+            (PermissionCodes.ReportEdit, "Edit Reports", "Update reports.", "Reports", false),
+            (PermissionCodes.ReportDelete, "Delete Reports", "Delete reports.", "Reports", false),
+            (PermissionCodes.KnowledgeView, "View Knowledge", "View knowledge articles and lessons.", "Knowledge", false),
+            (PermissionCodes.KnowledgeCreate, "Create Knowledge", "Create knowledge articles and lessons.", "Knowledge", false),
+            (PermissionCodes.KnowledgeEdit, "Edit Knowledge", "Update knowledge articles and lessons.", "Knowledge", false),
+            (PermissionCodes.KnowledgeDelete, "Delete Knowledge", "Delete knowledge articles and lessons.", "Knowledge", false),
+            (PermissionCodes.IntegrationView, "View Integrations", "View integrations and webhooks.", "Integrations", true),
+            (PermissionCodes.IntegrationCreate, "Create Integrations", "Create integrations and webhooks.", "Integrations", true),
+            (PermissionCodes.IntegrationEdit, "Edit Integrations", "Update integrations and webhooks.", "Integrations", true),
+            (PermissionCodes.IntegrationDelete, "Delete Integrations", "Delete integrations and webhooks.", "Integrations", true),
+            (PermissionCodes.AiView, "View AI", "View AI insights and predictions.", "AI", false),
+            (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true)
         };
 
         foreach (var spec in specs)
@@ -134,14 +199,82 @@ public static class SeedData
     private static async Task SeedRolesAsync(ApplicationDbContext context, CancellationToken ct)
     {
         var permissions = await context.Permissions.ToDictionaryAsync(p => p.Code, ct);
+        var allPermissionCodes = permissions.Keys.ToArray();
+        var directorPermissionCodes = new[]
+        {
+            "USERS.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "REPORTS.MANAGE", "USERS.PROFILE_PICTURE.MANAGE", "USERS.DEPARTMENTS.MANAGE", "ACTIVITY_LOGS.VIEW",
+            PermissionCodes.OrganizationView, PermissionCodes.OrganizationEdit,
+            PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete,
+            PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete,
+            PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete,
+            PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
+            PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete,
+            PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete, PermissionCodes.UserDepartmentManage, PermissionCodes.UserProfilePictureManage,
+            PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast,
+            PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate,
+            PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete,
+            PermissionCodes.KnowledgeView, PermissionCodes.KnowledgeCreate, PermissionCodes.KnowledgeEdit, PermissionCodes.KnowledgeDelete,
+            PermissionCodes.AiView
+        };
+        var projectManagerPermissionCodes = new[]
+        {
+            "PROJECTS.MANAGE", "TASKS.MANAGE", "REPORTS.MANAGE", "KNOWLEDGE.MANAGE",
+            PermissionCodes.DepartmentView,
+            PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit,
+            PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete,
+            PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
+            PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete,
+            PermissionCodes.UserView,
+            PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete,
+            PermissionCodes.KnowledgeView, PermissionCodes.KnowledgeCreate, PermissionCodes.KnowledgeEdit, PermissionCodes.KnowledgeDelete,
+            PermissionCodes.NotificationView,
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.AiView
+        };
+        var departmentHeadPermissionCodes = new[]
+        {
+            "USERS.MANAGE", "PROJECTS.MANAGE", "REPORTS.MANAGE",
+            PermissionCodes.DepartmentView, PermissionCodes.DepartmentEdit,
+            PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit,
+            PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit,
+            PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate,
+            PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
+            PermissionCodes.UserView, PermissionCodes.UserEdit, PermissionCodes.UserDepartmentManage,
+            PermissionCodes.ReportView, PermissionCodes.ReportCreate,
+            PermissionCodes.NotificationView, PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate,
+            PermissionCodes.AiView
+        };
+        var teamMemberPermissionCodes = new[]
+        {
+            "TASKS.MANAGE",
+            PermissionCodes.ProjectView,
+            PermissionCodes.MilestoneView,
+            PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
+            PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
+            PermissionCodes.NotificationView,
+            PermissionCodes.ActivityLogCreate
+        };
+        var viewerPermissionCodes = new[]
+        {
+            PermissionCodes.OrganizationView,
+            PermissionCodes.DepartmentView,
+            PermissionCodes.ProjectView,
+            PermissionCodes.MilestoneView,
+            PermissionCodes.TaskView,
+            PermissionCodes.SubtaskView,
+            PermissionCodes.NotificationView,
+            PermissionCodes.ReportView,
+            PermissionCodes.KnowledgeView,
+            PermissionCodes.AiView
+        };
         var specs = new[]
         {
-            new RoleSpec("SuperAdmin", "Full administrative access.", 100, new[] { "AUTH.MANAGE", "USERS.MANAGE", "ROLES.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "INTEGRATIONS.MANAGE", "REPORTS.MANAGE", "SYSTEM.ADMIN", "SYSTEM.DATABASE.VIEW", "AI.SETTINGS.MANAGE", "USERS.PROFILE_PICTURE.MANAGE", "USERS.DEPARTMENTS.MANAGE", "ACTIVITY_LOGS.VIEW" }),
-            new RoleSpec("Director", "Organization administrator with full access inside one organization.", 90, new[] { "USERS.MANAGE", "ORGS.MANAGE", "PROJECTS.MANAGE", "TASKS.MANAGE", "KNOWLEDGE.MANAGE", "REPORTS.MANAGE", "USERS.PROFILE_PICTURE.MANAGE", "USERS.DEPARTMENTS.MANAGE", "ACTIVITY_LOGS.VIEW" }),
-            new RoleSpec("ProjectManager", "Manages assigned projects and project teams.", 80, new[] { "PROJECTS.MANAGE", "TASKS.MANAGE", "REPORTS.MANAGE", "KNOWLEDGE.MANAGE" }),
-            new RoleSpec("DepartmentHead", "Manages department capacity and planning.", 70, new[] { "USERS.MANAGE", "PROJECTS.MANAGE", "REPORTS.MANAGE" }),
-            new RoleSpec("TeamMember", "Contributes to project execution.", 40, new[] { "TASKS.MANAGE" }),
-            new RoleSpec("Viewer", "Read-only access.", 10, Array.Empty<string>())
+            new RoleSpec("SuperAdmin", "Full administrative access.", 100, allPermissionCodes),
+            new RoleSpec("Director", "Organization administrator with full access inside one organization.", 90, directorPermissionCodes),
+            new RoleSpec("ProjectManager", "Manages assigned projects and project teams.", 80, projectManagerPermissionCodes),
+            new RoleSpec("DepartmentHead", "Manages department capacity and planning.", 70, departmentHeadPermissionCodes),
+            new RoleSpec("TeamMember", "Contributes to project execution.", 40, teamMemberPermissionCodes),
+            new RoleSpec("Viewer", "Read-only access.", 10, viewerPermissionCodes)
         };
 
         foreach (var spec in specs)
@@ -217,7 +350,7 @@ public static class SeedData
             {
                 user = ApplicationUser.Create(spec.Email, spec.FirstName, spec.LastName, spec.EmployeeCode, spec.JobTitle, spec.DepartmentId);
                 user.SetCreatedBy(SeedUser);
-                user.SetPassword(HashPassword(DefaultPassword, user.Id));
+                user.SetPassword(HashPassword(user, DefaultPassword));
                 user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
                 await context.Users.AddAsync(user, ct);
@@ -1001,8 +1134,8 @@ public static class SeedData
         await context.TaskAssignments.AddAsync(assignment, ct);
     }
 
-    private static string HashPassword(string password, Guid userId)
-        => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(password.Trim() + userId)));
+    private static string HashPassword(ApplicationUser user, string password)
+        => new PasswordHasher<ApplicationUser>().HashPassword(user, password.Trim());
 
     private sealed record DepartmentSpec(string OrganizationName, string Name, string Code, string Description, int Capacity);
     private sealed record AlertRuleSpec(string Name, string ConditionType, string Expression, string ActionType, object Parameters);

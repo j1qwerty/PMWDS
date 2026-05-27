@@ -138,7 +138,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPost("broadcast")]
-    [Authorize(Roles = "SuperAdmin,Director,DepartmentHead")]
+    [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Broadcast(
         [FromBody] BroadcastNotificationRequest req,
         CancellationToken ct)

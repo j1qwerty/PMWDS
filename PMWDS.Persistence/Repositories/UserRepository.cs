@@ -106,5 +106,6 @@ public class UserRepository : BaseRepository<ApplicationUser>, IUserRepository
             .ThenInclude(d => d.Department)
             .ThenInclude(d => d!.Organization)
             .Include(u => u.Profile)
-            .Include(u => u.Roles);
+            .Include(u => u.Roles)
+            .ThenInclude(r => r.Permissions);
 }

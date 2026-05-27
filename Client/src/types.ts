@@ -14,6 +14,7 @@ export interface AuthResponse {
   email: string;
   profilePictureUrl?: string | null;
   roles: Role[];
+  permissions: string[];
 }
 
 export interface User {

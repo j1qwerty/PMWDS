@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
@@ -6,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Settings;
 using System.IdentityModel.Tokens.Jwt;
@@ -42,13 +44,23 @@ public class AuthController : BaseApiController
         CancellationToken ct)
     {
         var user = await _uow.Users.GetByEmailAsync(req.Email, ct);
-        if (user == null || !user.IsActive || !IsPasswordValid(user, req.Password))
+        var passwordVerification = user == null
+            ? PasswordVerificationResult.Failed
+            : VerifyPassword(user, req.Password);
+        if (user == null || !user.IsActive || passwordVerification == PasswordVerificationResult.Failed)
         {
             return Unauthorized(new { Message = "Invalid credentials." });
         }
 
         var roles = UserRoleResolver.Resolve(user);
-        var token = GenerateToken(user, roles);
+        var permissions = ResolvePermissions(user);
+        if (passwordVerification == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.SetPassword(HashPassword(user, req.Password));
+            await _uow.SaveChangesAsync(ct);
+        }
+
+        var token = GenerateToken(user, roles, permissions);
 
         return Ok(new
         {
@@ -58,7 +70,8 @@ public class AuthController : BaseApiController
             FullName = user.FullName,
             Email = user.Email,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            Roles = roles
+            Roles = roles,
+            Permissions = permissions
         });
     }
 
@@ -91,7 +104,7 @@ public class AuthController : BaseApiController
             req.JobTitle ?? "Viewer");
         user.SetCreatedBy("signup");
         user.Roles.Add(viewer);
-        user.SetPassword(HashPassword(req.Password, user.Id));
+        user.SetPassword(HashPassword(user, req.Password));
 
         await _uow.Users.AddAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
@@ -136,7 +149,7 @@ public class AuthController : BaseApiController
             return BadRequest(new { message = "Password reset link is invalid or expired." });
         }
 
-        user.SetPassword(HashPassword(req.NewPassword, user.Id));
+        user.SetPassword(HashPassword(user, req.NewPassword));
         await _uow.SaveChangesAsync(ct);
         return Ok(new { message = "Password reset successfully." });
     }
@@ -159,7 +172,8 @@ public class AuthController : BaseApiController
             return NotFound();
         }
 
-        if (!IsPasswordValid(user, req.OldPassword))
+        var passwordVerification = VerifyPassword(user, req.OldPassword);
+        if (passwordVerification == PasswordVerificationResult.Failed)
         {
             return BadRequest(new { message = "Current password is incorrect." });
         }
@@ -169,7 +183,7 @@ public class AuthController : BaseApiController
             return BadRequest(new { message = "New password must be at least 6 characters." });
         }
 
-        var newHash = HashPassword(req.NewPassword, parsedUserId);
+        var newHash = HashPassword(user, req.NewPassword);
         user.SetPassword(newHash);
 
         await _uow.SaveChangesAsync(ct);
@@ -193,7 +207,7 @@ public class AuthController : BaseApiController
             return Unauthorized();
         }
 
-        var token = GenerateToken(user, UserRoleResolver.Resolve(user));
+        var token = GenerateToken(user, UserRoleResolver.Resolve(user), ResolvePermissions(user));
         return Ok(new
         {
             Token = token,
@@ -201,29 +215,35 @@ public class AuthController : BaseApiController
         });
     }
 
-    private bool IsPasswordValid(ApplicationUser user, string password)
+    private static PasswordVerificationResult VerifyPassword(ApplicationUser user, string password)
     {
         var normalized = password?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(normalized))
         {
-            return false;
+            return PasswordVerificationResult.Failed;
         }
 
         if (!string.IsNullOrEmpty(user.PasswordHash))
         {
-            var hash = HashPassword(normalized, user.Id);
-            return hash == user.PasswordHash;
+            var hasher = new PasswordHasher<ApplicationUser>();
+            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, normalized);
+            if (result != PasswordVerificationResult.Failed)
+            {
+                return result;
+            }
+
+            return LegacyHashPassword(normalized, user.Id) == user.PasswordHash
+                ? PasswordVerificationResult.SuccessRehashNeeded
+                : PasswordVerificationResult.Failed;
         }
 
-        return normalized == "Pmwds@123"
-            || normalized == "Admin@12345!"
-            || normalized == user.EmployeeCode
-            || normalized == $"{user.EmployeeCode}@123";
+        return PasswordVerificationResult.Failed;
     }
 
     private string GenerateToken(
         ApplicationUser user,
-        IEnumerable<string> roles)
+        IEnumerable<string> roles,
+        IEnumerable<string> permissions)
     {
         var claims = new List<Claim>
         {
@@ -235,6 +255,7 @@ public class AuthController : BaseApiController
         };
 
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(permissions.Select(p => new Claim(PermissionCodes.PermissionClaimType, p)));
 
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_jwt.Secret ?? string.Empty));
@@ -251,7 +272,18 @@ public class AuthController : BaseApiController
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static string HashPassword(string password, Guid userId)
+    private static List<string> ResolvePermissions(ApplicationUser user)
+        => user.Roles
+            .SelectMany(role => role.Permissions)
+            .Select(permission => permission.Code)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(code => code)
+            .ToList();
+
+    private static string HashPassword(ApplicationUser user, string password)
+        => new PasswordHasher<ApplicationUser>().HashPassword(user, password.Trim());
+
+    private static string LegacyHashPassword(string password, Guid userId)
         => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(password.Trim() + userId)));
 
     private static string HashToken(string token)

@@ -17,6 +17,7 @@ export type AuthState = {
   email: string;
   profilePictureUrl?: string | null;
   roles: Role[];
+  permissions: string[];
 };
 
 type AuthContextValue = {
@@ -26,6 +27,7 @@ type AuthContextValue = {
   refresh: () => Promise<void>;
   updateCurrentUser: (patch: Partial<Pick<AuthState, "fullName" | "email" | "profilePictureUrl">>) => void;
   hasRole: (...roles: Role[]) => boolean;
+  hasPermission: (...permissions: string[]) => boolean;
 };
 
 const STORAGE_KEY = "pmwds-client-auth";
@@ -40,6 +42,7 @@ function mapAuth(response: AuthResponse): AuthState {
     email: response.email,
     profilePictureUrl: response.profilePictureUrl,
     roles: response.roles,
+    permissions: response.permissions ?? [],
   };
 }
 
@@ -115,6 +118,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     hasRole(...roles) {
       if (!auth) return false;
       return roles.some((role) => auth.roles.includes(role));
+    },
+    hasPermission(...permissions) {
+      if (!auth) return false;
+      return permissions.some((permission) => (auth.permissions ?? []).includes(permission));
     },
   };
 

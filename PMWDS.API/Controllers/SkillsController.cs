@@ -49,7 +49,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Director,DepartmentHead")]
+    [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Create(
         [FromBody] CreateSkillDto dto,
         CancellationToken ct)
@@ -79,7 +79,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "SuperAdmin,Director,DepartmentHead")]
+    [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateSkillDto dto,
@@ -114,7 +114,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "SuperAdmin,Director")]
+    [Authorize(Policy = "Director")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var skill = await _uow.Skills.GetByIdAsync(id, ct);

@@ -3,10 +3,12 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Hangfire;
 using Hangfire.Dashboard;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using PMWDS.API.Auth;
 using PMWDS.API.Hubs;
 using PMWDS.API.Middleware;
 using PMWDS.API.Services;
@@ -85,14 +87,8 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization(opt =>
-{
-    opt.AddPolicy("SuperAdmin", p => p.RequireRole("SuperAdmin"));
-    opt.AddPolicy("Director", p => p.RequireRole("SuperAdmin", "Director"));
-    opt.AddPolicy("Manager", p => p.RequireRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead"));
-    opt.AddPolicy("TaskEditor", p => p.RequireRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead"));
-    opt.AddPolicy("Authenticated", p => p.RequireAuthenticatedUser());
-});
+builder.Services.AddAuthorization(PermissionPolicyRegistry.AddPolicies);
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserService, CurrentUserService>();
