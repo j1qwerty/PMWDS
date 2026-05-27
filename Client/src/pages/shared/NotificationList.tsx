@@ -11,7 +11,7 @@ export function NotificationList({
 
   if (!itemsArray.length) {
     return (
-      <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20">
+      <div className="bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20">
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
@@ -127,6 +127,8 @@ export function NotificationList({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
+                  <span className="text-sm text-primary font-semibold">{formatTime(item.createdDate)}</span>
+
                   <span className="text-[13px] text-on-surface font-semibold truncate">
                     {mainText}
                   </span>
@@ -145,7 +147,6 @@ export function NotificationList({
                   </p>
                 )}
                 <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[10px] text-outline">{formatTime(item.createdDate)}</span>
                   {!item.isRead && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
                   )}

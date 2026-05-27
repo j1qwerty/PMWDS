@@ -11,7 +11,7 @@ import { TasksPage } from "./pages/tasks/tasks";
 import { NotificationsPage } from "./pages/notifications/notifications";
 
 // Team
-import { OrganizationStructurePage } from "./pages/oraganisations/OrganizationStructurePage";
+import { OrganizationStructurePage } from "./pages/organisations/OrganizationStructurePage";
 import { DepartmentsPage } from "./pages/departments/DepartmentsPage";
 import { UsersPage } from "./pages/users/users";
 import { ProfilesPage } from "./pages/profiles/ProfilesPage";

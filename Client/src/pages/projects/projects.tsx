@@ -55,7 +55,7 @@ export function ProjectsPage() {
       title: "Projects",
       description: "Manage and track projects across departments",
       action: access.canManageProjects ? {
-        label: "Create New Project",
+        label: "New Project",
         onClick: () => setShowCreateModal(true),
         icon: "add_circle",
       } : undefined,

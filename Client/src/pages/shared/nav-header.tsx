@@ -29,6 +29,8 @@ export function NavActionButton() {
         padding: 'clamp(6px, 1vw, 16px) clamp(8px, 1.2vw, 16px)',
         fontSize: 'clamp(10px, 1.2vw, 13px)',
         gap: 'clamp(4px, 0.8vw, 6px)',
+        height: 'clamp(32px, 4.5vw, 44px)',
+        minHeight: 'clamp(32px, 4.5vw, 44px)',
       }}
     >
       {action.icon && (

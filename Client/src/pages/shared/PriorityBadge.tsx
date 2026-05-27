@@ -1,6 +1,7 @@
 import { classNames } from "../../ui";
 import { priorities } from "../constants";
 import type { Role } from "../../types";
+import { getPriorityColor } from "./colors";
 
 interface PriorityButtonsProps {
   currentPriority: string;
@@ -13,18 +14,11 @@ export function PriorityButtons({
   hasRole,
   onPriorityChange,
 }: PriorityButtonsProps) {
-  const priorityStyles: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-    Low: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-300", dot: "bg-slate-400" },
-    Medium: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", dot: "bg-blue-500" },
-    High: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", dot: "bg-orange-500" },
-    Critical: { bg: "bg-error-container", text: "text-error", border: "border-error/30", dot: "bg-error" },
-  };
-
   return (
     <div className="flex flex-wrap gap-2">
       {priorities.map((priority) => {
         const canUpdate = hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead");
-        const styles = priorityStyles[priority] || priorityStyles.Low;
+        const styles = getPriorityColor(priority);
         const isActive = currentPriority === priority;
 
         return (
@@ -60,14 +54,7 @@ interface PriorityBadgeProps {
 }
 
 export function PriorityBadge({ priority }: PriorityBadgeProps) {
-  const priorityStyles: Record<string, { bg: string; text: string; dot: string }> = {
-    Low: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
-    Medium: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
-    High: { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500" },
-    Critical: { bg: "bg-error-container", text: "text-error", dot: "bg-error" },
-  };
-
-  const styles = priorityStyles[priority] || priorityStyles.Low;
+  const styles = getPriorityColor(priority);
 
   return (
     <span className={classNames(
