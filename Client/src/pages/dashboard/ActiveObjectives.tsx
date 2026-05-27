@@ -93,7 +93,9 @@ export function ActiveObjectives({
                 </div>
                 <div className="flex items-center gap-sm">
                   {obj.assignees && obj.assignees.length > 0 && (
-                    <AvatarStack people={obj.assignees} limit={2} size="xs" className="mr-1" />
+                    <span className="mr-1">
+                      <AvatarStack people={obj.assignees} limit={2} size="xs" />
+                    </span>
                   )}
                   <span className="text-numeric text-[12px] text-on-surface-variant">
                     {obj.progressPercentage}%

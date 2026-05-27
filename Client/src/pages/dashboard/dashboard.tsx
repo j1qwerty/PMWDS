@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { NotificationItem, Task, Department, User } from "../../types";
+import type { NotificationItem, Task, Department, User, Project, Milestone } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { SimpleProjectList } from "../shared/SimpleProjectList";
 import { TaskList } from "../shared/TaskList";
@@ -10,15 +10,16 @@ import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent } from "../../ui";
-import { PageSkeleton, useNavHeader } from "../shared";
+import { ModalOverlay, PageSkeleton, useNavHeader } from "../shared";
 import { KpiCard } from "./kpiCard";
 import TaskStats from "../shared/dashboard/TaskStats";
 import TaskPerformance from "../shared/dashboard/TaskPerformance";
-import TaskProgressBoards from "../shared/dashboard/TaskProgressBoard";
 import TaskProgressBoards2 from "../shared/dashboard/TaskProgressBoards2";
+import { TaskDetail } from "../tasks/TaskDetail";
+import { TaskFormModal } from "../tasks/TaskFormModal";
 
 export function DashboardPage() {
-  const { auth, hasRole } = useAuth();
+  const { auth, hasRole, hasPermission } = useAuth();
   const { setNavHeader } = useNavHeader();
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<any>(null);
@@ -27,7 +28,11 @@ export function DashboardPage() {
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -52,15 +57,17 @@ export function DashboardPage() {
       api.getNotifications(auth.token, true),
       api.getDepartments(auth.token),
       api.getUsers(auth.token),
+      api.getProjects(auth.token),
       hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, overdueResult, escalatedResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
         if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
         if (usersResult.status === "fulfilled") setUsers(usersResult.value);
+        if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
         if (escalatedResult.status === "fulfilled") setEscalatedTasks(escalatedResult.value as Task[]);
         if (dashboardResult.status === "rejected") {
@@ -69,6 +76,49 @@ export function DashboardPage() {
       })
       .finally(() => setLoading(false));
   }, [auth]);
+
+  const canEditTasks = hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead") ||
+    hasPermission("TASK_EDIT", "TASK_CREATE", "TASK_ASSIGN");
+
+  const openTaskDetails = async (task: Task) => {
+    if (!auth) return;
+    try {
+      const freshTask = await api.getTask(auth.token, task.id);
+      setSelectedTask(freshTask);
+    } catch {
+      setSelectedTask(task);
+    }
+  };
+
+  const openTaskEditor = async (task: Task) => {
+    if (!auth) return;
+    setEditingTask(task);
+    if (task.projectId) {
+      try {
+        setMilestones(await api.getMilestonesByProject(auth.token, task.projectId));
+      } catch {
+        setMilestones([]);
+      }
+    }
+  };
+
+  const refreshTaskLists = async () => {
+    if (!auth) return;
+    const [tasks, escalated] = await Promise.all([
+      api.getMyTasks(auth.token),
+      canEditTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+    ]);
+    setMyTasks(tasks);
+    setEscalatedTasks(escalated);
+    if (selectedTask) {
+      setSelectedTask(await api.getTask(auth.token, selectedTask.id));
+    }
+  };
+
+  const updateSelectedTask = (patch: Partial<Task>) => {
+    setSelectedTask(current => current ? { ...current, ...patch } : current);
+    setMyTasks(current => current.map(task => task.id === selectedTask?.id ? { ...task, ...patch } : task));
+  };
 
   const departmentWorkload: WorkloadItem[] = useMemo(() => {
     return departments.map((dept) => {
@@ -109,7 +159,7 @@ export function DashboardPage() {
     <div>
 
       <section>
-        <TaskStats />
+        <TaskStats tasks={myTasks} />
 
         <div className="flex">
           {/* left */}
@@ -126,11 +176,78 @@ export function DashboardPage() {
 
         {/* <TaskProgressBoards/> */}
 
-        <TaskProgressBoards2/>
+        <TaskProgressBoards2
+          tasks={[...myTasks, ...overdue, ...escalatedTasks].filter((task, index, list) => list.findIndex(item => item.id === task.id) === index)}
+          onViewTask={openTaskDetails}
+          onEditTask={openTaskEditor}
+          canEdit={canEditTasks}
+        />
 
-        <TaskPerformance />
+        <TaskPerformance
+          tasks={[...myTasks, ...overdue, ...escalatedTasks].filter((task, index, list) => list.findIndex(item => item.id === task.id) === index)}
+          onViewTask={openTaskDetails}
+          onEditTask={openTaskEditor}
+          canEdit={canEditTasks}
+        />
 
       </section>
+
+      {selectedTask && (
+        <ModalOverlay onClose={() => setSelectedTask(null)}>
+          <div className="bg-white rounded-2xl p-6 w-[980px] max-w-[95vw] max-h-[92vh] overflow-hidden shadow-xl border border-slate-200">
+            <TaskDetail
+              task={selectedTask}
+              users={users}
+              allTasks={myTasks}
+              project={projects.find(project => project.id === selectedTask.projectId) ?? null}
+              milestone={milestones.find(milestone => milestone.id === selectedTask.milestoneId) ?? null}
+              isAdmin={canEditTasks}
+              hasRole={hasRole}
+              onStatusChange={async (status) => {
+                if (!auth) return;
+                await api.updateTaskStatus(auth.token, selectedTask.id, status);
+                updateSelectedTask({ status });
+              }}
+              onEdit={() => openTaskEditor(selectedTask)}
+              onUpdateProgress={async (progressPercentage, notes) => {
+                if (!auth) return;
+                const updated = await api.updateTaskProgress(auth.token, selectedTask.id, progressPercentage, notes);
+                setSelectedTask(updated);
+                setMyTasks(current => current.map(task => task.id === updated.id ? updated : task));
+              }}
+              onAddComment={async (comment) => {
+                if (!auth) return;
+                await api.addTaskComment(auth.token, selectedTask.id, comment);
+                await refreshTaskLists();
+              }}
+              onStartTimer={async (description) => {
+                if (!auth) return;
+                await api.startTaskTimer(auth.token, selectedTask.id, description);
+              }}
+              onRefresh={refreshTaskLists}
+            />
+          </div>
+        </ModalOverlay>
+      )}
+
+      {editingTask && (
+        <TaskFormModal
+          open
+          initialData={editingTask}
+          projects={projects}
+          departments={departments}
+          milestones={milestones}
+          users={users}
+          onClose={() => setEditingTask(null)}
+          onSubmit={async (payload) => {
+            if (!auth) return;
+            const updated = await api.updateTask(auth.token, editingTask.id, payload);
+            setMyTasks(current => current.map(task => task.id === updated.id ? updated : task));
+            setSelectedTask(current => current?.id === updated.id ? updated : current);
+            setEditingTask(null);
+          }}
+        />
+      )}
 
 
       <div>
