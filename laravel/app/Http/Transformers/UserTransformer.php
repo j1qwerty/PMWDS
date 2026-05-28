@@ -32,7 +32,7 @@ class UserTransformer
             'aiBurnoutRiskScore' => (float) $user->ai_burnout_risk_score,
             'aiPerformanceScore' => (float) $user->ai_performance_score,
             'activeTaskCount' => $user->taskAssignments()
-                ->whereHas('task', fn ($q) => $q->whereIn('status', ['InProgress', 'Assigned']))
+                ->whereHas('task', fn ($q) => $q->whereIn('status', ['InProgress']))
                 ->count(),
             'isActive' => (bool) $user->is_active,
             'lastLoginDate' => null,

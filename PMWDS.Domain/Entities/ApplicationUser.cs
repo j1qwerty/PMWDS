@@ -99,8 +99,7 @@ public class ApplicationUser : AuditableEntity
     public string FullName => $"{FirstName} {LastName}";
     public int GetActiveTaskCount()
     => _taskAssignments
-    .Count(t => t.Task?.Status == TaskStatus.InProgress
-    || t.Task?.Status == TaskStatus.Assigned);
+    .Count(t => t.Task?.Status == TaskStatus.InProgress);
     public void SetPassword(string passwordHash)
     {
         PasswordHash = passwordHash;

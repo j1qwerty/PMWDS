@@ -32,16 +32,6 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     badgeBg: "bg-slate-200",
     badgeText: "text-slate-600",
   },
-  Assigned: {
-    bg: "bg-primary-fixed/20",
-    border: "border-primary/30",
-    text: "text-primary",
-    dot: "bg-primary",
-    headerBg: "bg-primary-fixed/20",
-    headerText: "text-primary",
-    badgeBg: "bg-primary/10",
-    badgeText: "text-primary",
-  },
   InProgress: {
     bg: "bg-yellow-100",
     border: "border-yellow-200",

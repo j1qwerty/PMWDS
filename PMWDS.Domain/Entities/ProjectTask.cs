@@ -103,12 +103,11 @@ public class ProjectTask : AuditableEntity
             EstimatedHours = estimatedHours
         };
     }
-public void AssignTo(string userId, string assignedBy)
+    public void AssignTo(string userId, string assignedBy)
     {
         AssignedToUserId = userId;
         AssignedByUserId = assignedBy;
         AssignedDate = DateTime.UtcNow;
-        Status = TaskStatus.Assigned;
         _domainEvents.Add(new TaskAssignedEvent(
         Id, userId, assignedBy));
     }
@@ -131,6 +130,8 @@ public void AssignTo(string userId, string assignedBy)
     }
     public void UpdateStatus(TaskStatus status)
     {
+        if (!Enum.IsDefined(status))
+            throw new ArgumentException($"Invalid task status: {status}");
         Status = status;
         if (status == TaskStatus.Completed)
         {
@@ -140,8 +141,7 @@ public void AssignTo(string userId, string assignedBy)
     }
     public void Start()
     {
-        if (Status == TaskStatus.NotStarted
-        || Status == TaskStatus.Assigned)
+        if (Status == TaskStatus.NotStarted)
         {
             Status = TaskStatus.InProgress;
             _domainEvents.Add(

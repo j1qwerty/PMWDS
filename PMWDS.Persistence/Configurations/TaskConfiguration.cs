@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMWDS.Domain.Entities;
+using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Persistence.Configurations;
 
 public class TaskConfiguration
@@ -15,7 +17,11 @@ public class TaskConfiguration
         b.Property(e => e.Description)
         .HasMaxLength(4000);
         b.Property(e => e.Status)
-        .HasConversion<string>().HasMaxLength(20);
+        .HasConversion(new ValueConverter<TaskStatus, string>(
+            v => v.ToString(),
+            v => v == "Assigned" ? TaskStatus.NotStarted : Enum.Parse<TaskStatus>(v)
+        ))
+        .HasMaxLength(20);
         b.Property(e => e.Priority)
         .HasConversion<string>().HasMaxLength(20);
         b.Property(e => e.ProgressPercentage)

@@ -8,6 +8,7 @@
 - status stats for tasks and milestones in deparment cards
 - dark mode
 - role members and project manager - notification cards and notification list
+- timer api level pause and calculations instead if just local
 
 # reference - responsive.md
 

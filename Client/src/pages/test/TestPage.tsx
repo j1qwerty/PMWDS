@@ -159,7 +159,7 @@ export function TestPage() {
   const currentApiPage = Math.ceil(currentUserPage / 2);
   const cache = apiCache[currentApiPage];
   const offset = (currentUserPage - 1) % 2;
-  const entityData = cache?.[entityKey] as { items: Record<string, unknown>[]; totalCount: number } | undefined;
+  const entityData = cache?.[entityKey] as unknown as { items: Record<string, unknown>[]; totalCount: number } | undefined;
   const allItems = entityData?.items ?? [];
   const currentItems = allItems.slice(offset * userPageSize, offset * userPageSize + userPageSize);
   const totalCount = totals[entityKey] ?? 0;

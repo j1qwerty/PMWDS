@@ -15,7 +15,7 @@ export function NotificationList({
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
-            <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
+            <span className=" text-lg font-h2 text-on-surface">{title}</span>
           </div>
           <span className="bg-surface-container text-on-surface-variant text-[10px] font-semibold px-2 py-[2px] rounded-full">0 New</span>
         </div>
@@ -89,7 +89,7 @@ export function NotificationList({
       <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
           <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
-          <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
+            <span className=" text-lg font-h2 text-on-surface">{title}</span>
         </div>
         {unreadCount > 0 && (
           <span className="bg-primary text-white text-[10px] font-bold px-2 py-[2px] rounded-full">

@@ -150,6 +150,10 @@ class TasksController extends Controller
 
     public function updateStatus(Request $request, string $id): JsonResponse
     {
+        $validStatuses = ['NotStarted', 'InProgress', 'Completed', 'Delayed', 'OnHold', 'Cancelled'];
+        if (!in_array($request->newStatus, $validStatuses)) {
+            return response()->json(['message' => 'Invalid status value'], 400);
+        }
         $task = ProjectTask::findOrFail($id);
         $task->status = $request->newStatus;
         $task->modified_date = now();
@@ -169,7 +173,6 @@ class TasksController extends Controller
                 ['is_primary' => true, 'assigned_at' => now(), 'created_by' => $this->currentUser->userId() ?? 'api']
             );
         }
-        $task->status = 'Assigned';
         $task->save();
         $task->load(['assignments', 'subTasks']);
 

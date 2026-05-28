@@ -25,7 +25,7 @@ export function WorkloadBars({
     return (
       <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
-          <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
+            <span className=" text-lg font-h2 text-on-surface">{title}</span>
           <span className="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">more_horiz</span>
         </div>
         <div className="flex flex-col items-center justify-center py-lg text-center">
@@ -76,7 +76,7 @@ export function WorkloadBars({
   return (
     <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow">
       <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
-        <h2 className="font-h2 text-h2 text-on-surface">{title}</h2>
+            <span className=" text-lg font-h2 text-on-surface">{title}</span>
         <span className="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">more_horiz</span>
       </div>
       <div className="flex flex-col gap-lg mt-md">

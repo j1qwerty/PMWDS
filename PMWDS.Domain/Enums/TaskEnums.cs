@@ -3,12 +3,11 @@ namespace PMWDS.Domain.Enums;
 public enum TaskStatus
 {
     NotStarted = 0,
-    Assigned = 1,
-    InProgress = 2,
-    OnHold = 3,
-    Completed = 4,
-    Delayed = 5,
-    Cancelled = 6
+    InProgress = 1,
+    OnHold = 2,
+    Completed = 3,
+    Delayed = 4,
+    Cancelled = 5
 }
 public enum TaskPriority
 {

@@ -38,13 +38,6 @@ export function ProjectCard({ project, departments, organizations, users, select
         bgSelected: "bg-slate-50", textColor: "text-slate-600",
         shadow: "shadow-sm hover:shadow-md",
       },
-      Assigned: {
-        label: "Assigned", dot: "bg-blue-500", border: "border-blue-200",
-        borderSelected: "border-blue-400",
-        progressColor: "stroke-blue-500", bgHover: "hover:bg-blue-50",
-        bgSelected: "bg-blue-50", textColor: "text-blue-700",
-        shadow: "shadow-sm hover:shadow-md",
-      },
       InProgress: {
         label: "On Track", dot: "bg-primary", border: "border-outline-variant/30",
         borderSelected: "border-primary",
