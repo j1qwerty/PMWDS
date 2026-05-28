@@ -17,6 +17,7 @@ import TaskPerformance from "../shared/dashboard/TaskPerformance";
 import TaskProgressBoards2 from "../shared/dashboard/TaskProgressBoards2";
 import { TaskDetail } from "../tasks/TaskDetail";
 import { TaskFormModal } from "../tasks/TaskFormModal";
+import TaskProgressBoards from "../shared/dashboard/TaskProgressBoard";
 
 export function DashboardPage() {
   const { auth, hasRole, hasPermission } = useAuth();
@@ -174,7 +175,7 @@ export function DashboardPage() {
 
         </div>
 
-        {/* <TaskProgressBoards/> */}
+        <TaskProgressBoards/>
 
         <TaskProgressBoards2
           tasks={[...myTasks, ...overdue, ...escalatedTasks].filter((task, index, list) => list.findIndex(item => item.id === task.id) === index)}

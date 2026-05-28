@@ -4,8 +4,8 @@ import { getStatusColor, getPriorityColor } from "../colors";
 
 type TaskPerformanceProps = {
   tasks?: Task[];
-  onViewTask?: (task: Task) => void;
-  onEditTask?: (task: Task) => void;
+  onViewTask?: (task: Task) => void | Promise<void>;
+  onEditTask?: (task: Task) => void | Promise<void>;
   canEdit?: boolean;
 };
 

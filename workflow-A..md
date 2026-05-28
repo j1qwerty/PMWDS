@@ -257,7 +257,7 @@ Settings	PMWDS.Infrastructure/Settings/AppSettings.cs (with nested settings)
 
 
 # pagination
-- all data results fetched paginated (by default 10 of each)
+- all data results fetched paginated (by default 10 of each, )
 - option to set paginatied value for each role (user can selelct out of 10, 20,30,50, 100 results per page or can set their own number )
 
 # ui
@@ -302,3 +302,7 @@ and suggest improvements or better way  to manage it ( refactor, api improvement
 check all api and data incosistencies and all interface declarations and color declation and all dummy data , notice inconsistencies of ui and colors and interfaces defined on several places instead of one place and for dummy data also
 
 also check for location inconsistencies and other things which can be improved, like moving all modals at same place with proper naming and check for all other issues
+
+# API
+- CREATE ONE MORE API THAT SENDS ALL DATA (ROLE SPECIFIC FOR LOGGED IN USER (end point - pages , returns all the data that we send through all get api to frontend for all pages and features in single api , make sure the data is paginanted only 20 records for everythings are sent when the user pagintion settings are for 10 i.e we send double of what users settings are )
+

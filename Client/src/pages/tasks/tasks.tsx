@@ -500,14 +500,15 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
             onChange={(status) => setFilters({ ...filters, status })}
             allLabel="All Status"
             colorMap={{
-              NotStarted: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
-              InProgress: { bg: "bg-primary/10", text: "text-primary", dot: "bg-primary" },
-              Completed: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-              Delayed: { bg: "bg-error-container", text: "text-error", dot: "bg-error" },
-              OnHold: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
-              Cancelled: { bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" },
+              NotStarted: { bg: getStatusColor('Not Started').bg, text: getStatusColor('Not Started').text, dot: getStatusColor('Not Started').dot },
+              InProgress: { bg: getStatusColor('In Progress').bg, text: getStatusColor('In Progress').text, dot: getStatusColor('In Progress').dot },
+              Completed: { bg: getStatusColor('Completed').bg, text: getStatusColor('Completed').text, dot: getStatusColor('Completed').dot },
+              Delayed: { bg: getStatusColor('Delayed').bg, text: getStatusColor('Delayed').text, dot: getStatusColor('Delayed').dot },
+              OnHold: { bg: getStatusColor('On Hold').bg, text: getStatusColor('On Hold').text, dot: getStatusColor('On Hold').dot },
+              Cancelled: { bg: getStatusColor('Cancelled').bg, text: getStatusColor('Cancelled').text, dot: getStatusColor('Cancelled').dot },
             }}
           />
+          <span className="mx-4">|</span>
           <FilterButtons
             options={["Low", "Medium", "High", "Critical"]}
             selected={filters.priority}
