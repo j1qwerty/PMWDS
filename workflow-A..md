@@ -279,6 +279,30 @@ make commit on each step or feature
 
 
 # prompts
+## new goal from scratch
+MAKE A LIST OF ALL THE CHANGES TO BE DONE IN REACT APP TO INTEGRATE THIS NEW FLOW IN pmwdsS-ui-integration.md file
+list all the changes done in backend so far in the current branch and how it will be reflected in ui react app.
+
+our app will have two versions of app living in two separate branches
+the current version with this flow
+- existing flow : organizations -> departments(multiple) -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) 
+living in current branch pmwdsS
+
+### new version with different flow living in branch pmwdsA
+ ### new goal - important
+- new required flow (goal) : organizations -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) and also organizatoin -> departments(multiple) and projects (multiple) -> assign deprtments to projects 
+while keeping or updating the existings api to support this new flow.
+switch to new branch pmwdsA then start this implementation.
+react app is in client folder
+make commit on each step or feature
+MAKE A LIST OF ALL THE CHANGES TO BE DONE IN REACT APP TO INTEGRATE THIS NEW FLOW IN pmwdsA-ui-integration.md file
+list names, paths of every component and what part or api or api data or json response needs to change and in which component with proper explanation 
+numbered list
+-NOTE  skip everything in client/src/old those are old ui components ignore them and do not touch
+DO NOT RUN TEST FROM PROJECT
+
+DO NOT STOP TILL DONE
+IMPORTANT NOTE - GENERATE BOTH THE REPORTS FOR UI INTEGRATION FOR BOTH BRANCH AFTER THE BACKEND CHANGES FOR NEW BRANCH ARE ALSO COMPLETED
 
 ## analyse - report-backend-ds.md
 analyse the project for backend and how flow and scopes and roles and permissions are managed, hierarchy for roles , models intefaces repository dto 
