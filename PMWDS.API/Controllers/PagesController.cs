@@ -176,8 +176,8 @@ public class PagesController : BaseApiController
         => _db.Tasks.AsNoTracking()
             .Include(t => t.Project)
             .Include(t => t.Milestone)
-            .Include(t => t.Assignments).ThenInclude(a => a.User)
-            .Include(t => t.SubTasks)
+        .Include(t => t.Assignments)
+        .Include(t => t.SubTasks)
             .Where(t => projectIds.Contains(t.ProjectId));
 
     private async Task<PaginatedResponse<PageOrganizationDto>> GetOrganizationsAsync(

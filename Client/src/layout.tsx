@@ -36,6 +36,7 @@ import {
   RiWebhookLine,
   RiDashboard3Line,
   RiGitRepositoryLine,
+  RiBugLine,
 } from "react-icons/ri";
 import { SearchBar } from "./pages/shared/search";
 
@@ -69,6 +70,7 @@ const iconMap: Record<string, React.ReactNode> = {
   settings: <HiOutlineCog className={iconClass} />,
   roles: <VscSymbolProperty className={iconClass} />,
   permissions: <HiOutlineCube className={iconClass} />,
+  test: <RiBugLine className={iconClass} />,
 };
 
 // Section color themes matching status button intensity pattern
@@ -215,6 +217,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         items: [
           { path: "/roles", label: "Roles", icon: "roles", roles: ["SuperAdmin"] },
           { path: "/activity-logs", label: "Activity Logs", icon: "activity", roles: ["SuperAdmin", "Director"] },
+          { path: "/test-page", label: "Test Page", icon: "test", roles: [] },
           { path: "/settings", label: "Settings", icon: "settings", roles: ["SuperAdmin"] },
         ],
       },
@@ -485,7 +488,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Notifications button */}
               <Link
-                to="/notifications"
+                to="/notificationsPage"
                 className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
                 style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
               >

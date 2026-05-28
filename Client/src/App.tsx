@@ -25,6 +25,7 @@ import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { RolesPage } from "./pages/roles/RolesPage";
 import { ActivityLogsPage } from ".//pages/activity/ActivityLogsPage";
 import { SettingsPage } from "./pages/settings/settings";
+import { TestPage } from "./pages/test/TestPage";
 import { LoginPage } from "./pages/login/login";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -65,6 +66,7 @@ function AppRoutes() {
                 {/* System */}
                 <Route path="/roles" element={<RolesPage />} />
                 <Route path="/activity-logs" element={<ActivityLogsPage />} />
+                <Route path="/test-page" element={<TestPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
 
               

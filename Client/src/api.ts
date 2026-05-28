@@ -25,6 +25,7 @@ import type {
   NotificationTemplateRecord,
   AlertRuleRecord,
   OrganizationRecord,
+  PagesDataResponse,
   PermissionRecord,
   Project,
   ProjectDocument,
@@ -933,6 +934,12 @@ export const api = {
       token,
       method: "POST",
       body: settings,
+    });
+  },
+  getPagesData(token: string, page = 1, pageSize?: number) {
+    return request<PagesDataResponse>("pages", {
+      token,
+      query: { page, pageSize },
     });
   },
 };
