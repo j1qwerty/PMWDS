@@ -66,6 +66,6 @@ public class CreateProjectCommandHandler
         null, new { project.Id, project.Name },
         ct: ct);
         // Notify project manager
-        return ProjectDto.FromEntity(project);
+        return ProjectDto.FromEntity(project, manager.FullName);
     }
 }

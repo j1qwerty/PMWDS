@@ -81,7 +81,11 @@ public class ProjectsController : BaseApiController
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
             .ToListAsync(ct);
-        return Ok(PaginatedResponse<ProjectDto>.Create(projects.Select(ProjectDto.FromEntity).ToList(), pagination, totalCount));
+        var managerNames = await ResolveProjectManagerNamesAsync(projects, ct);
+        var items = projects
+            .Select(project => ProjectDto.FromEntity(project, managerNames.GetValueOrDefault(project.ProjectManagerId)))
+            .ToList();
+        return Ok(PaginatedResponse<ProjectDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]
@@ -329,6 +333,26 @@ public class ProjectsController : BaseApiController
              user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
              user.Department != null && user.Department.OrganizationId == organizationId),
             ct);
+    }
+
+    private async Task<Dictionary<string, string>> ResolveProjectManagerNamesAsync(IEnumerable<Project> projects, CancellationToken ct)
+    {
+        var managerIds = projects
+            .Select(project => project.ProjectManagerId)
+            .Where(id => Guid.TryParse(id, out _))
+            .Select(Guid.Parse)
+            .Distinct()
+            .ToList();
+
+        if (managerIds.Count == 0)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        return await _db.Users
+            .AsNoTracking()
+            .Where(user => managerIds.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id.ToString(), user => user.FullName, ct);
     }
 }
 

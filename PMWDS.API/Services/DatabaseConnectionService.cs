@@ -310,6 +310,11 @@ public static class DatabaseConnectionService
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Skills\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
             }
+
+            if (!await HasSqliteColumnAsync(connection, "Roles", "PaginationPageSize", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Roles\" ADD COLUMN \"PaginationPageSize\" INTEGER NOT NULL DEFAULT 10", ct);
+            }
         }
         finally
         {

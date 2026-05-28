@@ -55,6 +55,9 @@ public class UpdateProjectStatusCommandHandler
         ct: ct);
         await _notifications.SendProjectStatusChangedAsync(
         project.Id, oldStatus, req.NewStatus, ct);
-        return ProjectDto.FromEntity(project);
+        var projectManagerName = Guid.TryParse(project.ProjectManagerId, out var managerId)
+            ? (await _uow.Users.GetByIdAsync(managerId, ct))?.FullName
+            : null;
+        return ProjectDto.FromEntity(project, projectManagerName);
     }
 }

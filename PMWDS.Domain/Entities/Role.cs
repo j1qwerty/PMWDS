@@ -7,6 +7,7 @@ public class Role : AuditableEntity
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public int PermissionLevel { get; private set; }
+    public int PaginationPageSize { get; private set; } = 10;
     public ICollection<Permission> Permissions { get; private set; } = new List<Permission>();
     public ICollection<ApplicationUser> Users { get; private set; } = new List<ApplicationUser>();
 
@@ -28,6 +29,9 @@ public class Role : AuditableEntity
         Description = description.Trim();
         PermissionLevel = permissionLevel;
     }
+
+    public void UpdatePaginationPageSize(int pageSize)
+        => PaginationPageSize = Math.Clamp(pageSize, 1, 500);
 
     public void AddPermission(Permission permission)
     {

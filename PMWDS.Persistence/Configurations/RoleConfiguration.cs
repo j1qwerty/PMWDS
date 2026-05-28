@@ -12,6 +12,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         b.HasKey(e => e.Id);
         b.Property(e => e.Name).HasMaxLength(100).IsRequired();
         b.Property(e => e.Description).HasMaxLength(500);
+        b.Property(e => e.PaginationPageSize).HasDefaultValue(10);
         b.HasIndex(e => e.Name).IsUnique();
 
         b.HasMany(e => e.Permissions)

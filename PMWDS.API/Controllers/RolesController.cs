@@ -32,6 +32,7 @@ public class RolesController : BaseApiController
             r.Name,
             r.Description,
             r.PermissionLevel,
+            r.PaginationPageSize,
             r.Permissions.Select(MapPermission).ToList())));
     }
 
@@ -50,6 +51,7 @@ public class RolesController : BaseApiController
         }
 
         var role = Role.Create(req.Name, req.Description, req.PermissionLevel);
+        role.UpdatePaginationPageSize(req.PaginationPageSize ?? 10);
         role.SetCreatedBy("system");
 
         var permissions = await _context.Permissions
@@ -68,6 +70,7 @@ public class RolesController : BaseApiController
             role.Name,
             role.Description,
             role.PermissionLevel,
+            role.PaginationPageSize,
             permissions.Select(MapPermission).ToList()));
     }
 
@@ -84,6 +87,7 @@ public class RolesController : BaseApiController
         }
 
         role.Update(req.Name, req.Description, req.PermissionLevel);
+        role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
         var permissions = await _context.Permissions
             .Where(p => req.PermissionIds.Contains(p.Id))
@@ -97,7 +101,7 @@ public class RolesController : BaseApiController
 
         await _uow.Roles.UpdateAsync(role, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(new RoleResponse(role.Id, role.Name, role.Description, role.PermissionLevel, permissions.Select(MapPermission).ToList()));
+        return Ok(new RoleResponse(role.Id, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
     [HttpDelete("{id:guid}")]
@@ -159,6 +163,7 @@ public record RoleResponse(
     string Name,
     string Description,
     int PermissionLevel,
+    int PaginationPageSize,
     List<PermissionResponse> Permissions);
 
 public record PermissionResponse(
@@ -169,7 +174,7 @@ public record PermissionResponse(
     string Module,
     bool IsGlobal);
 
-public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds);
-public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds);
+public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
+public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
 public record CreatePermissionRequest(string Code, string Name, string Description, string Module, bool IsGlobal);
 public record UpdatePermissionRequest(string Name, string Description, string Module, bool IsGlobal);

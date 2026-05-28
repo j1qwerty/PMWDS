@@ -286,6 +286,7 @@ public static class SeedData
                 role.SetCreatedBy(SeedUser);
                 await context.Roles.AddAsync(role, ct);
             }
+            role.UpdatePaginationPageSize(spec.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ? 50 : 10);
 
             foreach (var code in spec.PermissionCodes)
             {

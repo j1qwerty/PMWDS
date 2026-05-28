@@ -22,6 +22,9 @@ public class GetProjectDetailsQueryHandler
         .GetWithDetailsAsync(request.ProjectId, ct)
         ?? throw new NotFoundException(
         nameof(Project), request.ProjectId);
-        return ProjectDto.FromEntity(project);
+        var projectManagerName = Guid.TryParse(project.ProjectManagerId, out var managerId)
+            ? (await _uow.Users.GetByIdAsync(managerId, ct))?.FullName
+            : null;
+        return ProjectDto.FromEntity(project, projectManagerName);
     }
 }

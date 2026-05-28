@@ -32,7 +32,7 @@ public record ProjectDto(
  int OverdueTasks,
  DateTime CreatedDate)
 {
-    public static ProjectDto FromEntity(Project p)
+    public static ProjectDto FromEntity(Project p, string? projectManagerName = null)
     => new(
     Id: p.Id,
     ProjectCode: p.ProjectCode,
@@ -56,7 +56,7 @@ public record ProjectDto(
     DepartmentId: p.DepartmentId,
     DepartmentName: p.Department?.Name,
     ProjectManagerId: p.ProjectManagerId,
-    ProjectManagerName: null,
+    ProjectManagerName: projectManagerName,
     TotalTasks: p.Tasks?.Count ?? 0,
     CompletedTasks: p.Tasks?.Count(t =>
     t.Status ==
