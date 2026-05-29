@@ -1,26 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { getPriorityColor, getStatusColor } from "../../shared"; 
-import type { Task, Milestone, OrganizationRecord, Department , User} from "../../../types";
-import { KanbanFilters } from "./KanbanFilters";
+import type { Task, Milestone } from "../../../types";
 
 interface TasksKanbanBoardProps {
   tasks: Task[];
   milestones: Milestone[];
-
-  organizations: OrganizationRecord[];
-  departments: Department[];
-  users: User[];  // Added users prop
-  selectedOrganizationId: string;
-  selectedDepartmentId: string;
-  onOrganizationChange: (id: string) => void;
-  onDepartmentChange: (id: string) => void;
-
   selectedMilestoneId: string;
-  onMilestoneFilterChange: (id: string) => void;
   canEdit: boolean;
   onViewTask?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
   onStatusChange: (taskId: string, status: string) => void;
+  searchTerm: string;
+  visibleBoards: Record<string, boolean>;
+  onToggleBoard: (title: string) => void;
 }
 
 interface BoardConfig {
@@ -33,7 +25,7 @@ interface BoardConfig {
   icon: JSX.Element;
 }
 
-const allBoards: BoardConfig[] = [
+export const allBoards: BoardConfig[] = [
   {
     status: "NotStarted",
     title: "Not Started",
@@ -102,25 +94,15 @@ const allBoards: BoardConfig[] = [
 export function TasksKanbanBoard({
   tasks,
   milestones,
-  organizations,
-  departments,
-  users,  // Added users prop
-  selectedOrganizationId,
-  selectedDepartmentId,
-  onOrganizationChange,
-  onDepartmentChange,
   selectedMilestoneId,
-  onMilestoneFilterChange,
   canEdit,
   onViewTask,
   onEditTask,
   onStatusChange,
+  searchTerm,
+  visibleBoards,
+  onToggleBoard,
 }: TasksKanbanBoardProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(true); 
-  const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>(
-    Object.fromEntries(allBoards.map((b) => [b.title, true]))
-  );
   const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null); 
 
@@ -189,39 +171,8 @@ export function TasksKanbanBoard({
     return "bg-slate-300";
   };
 
-  const toggleBoard = (boardTitle: string) => {
-    setVisibleBoards((prev) => ({
-      ...prev,
-      [boardTitle]: !prev[boardTitle],
-    }));
-  };
-
   return (
-    <div ref={containerRef} className="w-full my-4 py-4 rounded-xl ambient-glow bg-white shadow-lg px-1">
-      {/* Top Controls - Now using KanbanFilters component */}
-      <div className="flex items-center mb-4">
-        <span className="px-2 text-md font-bold text-slate-700">Tasks Board</span>
-        <KanbanFilters
-          organizations={organizations}
-          departments={departments}
-          users={users}  // Pass users to filters
-          selectedOrganizationId={selectedOrganizationId}
-          selectedDepartmentId={selectedDepartmentId}
-          onOrganizationChange={onOrganizationChange}
-          onDepartmentChange={onDepartmentChange}
-          milestones={milestones}
-          selectedMilestoneId={selectedMilestoneId}
-          onMilestoneFilterChange={onMilestoneFilterChange}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          allBoards={allBoards}
-          visibleBoards={visibleBoards}
-          onToggleBoard={toggleBoard}
-          autoHideSet={autoHideSet}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-        />
-      </div>
+    <div ref={containerRef} className="w-full my-4 py-4 rounded-xl ambient-glow  shadow-lg px-1">
 
       {/* Kanban Boards */}
       <div className="flex flex-col md:flex-row md:flex-wrap">

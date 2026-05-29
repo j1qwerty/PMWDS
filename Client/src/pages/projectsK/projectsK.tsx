@@ -25,7 +25,8 @@ import {
   type WorkspaceView,
   WorkspaceStats,
 } from "./components";
-import { OrgDeptFilterK } from "./components/OrgDeptFilterK";
+import { KanbanFilters } from "./components/KanbanFilters";
+import { allBoards } from "./components/TasksKanbanBoard";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -60,7 +61,11 @@ export function ProjectsKPage() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>("tasks");
   const [viewProject, setViewProject] = useState<Project | null>(null);
-  const [boardMilestoneFilter, setBoardMilestoneFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>(
+    Object.fromEntries(allBoards.map((b) => [b.title, true]))
+  );
+  const [showFilters, setShowFilters] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
@@ -123,10 +128,7 @@ export function ProjectsKPage() {
     ]);
     setMilestones(milestoneData);
     setTasks(taskData);
-    if (!selectedMilestoneId && milestoneData[0]) setSelectedMilestoneId(milestoneData[0].id);
-    else if (selectedMilestoneId && !milestoneData.some((m) => m.id === selectedMilestoneId)) {
-      setSelectedMilestoneId(milestoneData[0]?.id ?? "");
-    }
+    setSelectedMilestoneId("");
   };
 
   useEffect(() => {
@@ -142,7 +144,6 @@ export function ProjectsKPage() {
   useEffect(() => {
     void loadProjectWorkspace(selectedProjectId);
     setSelectedTaskId("");
-    setBoardMilestoneFilter("");
   }, [auth, selectedProjectId]);
 
   const filteredProjects = useMemo(() => {
@@ -349,7 +350,7 @@ export function ProjectsKPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <ViewTabs active={activeView} onChange={setActiveView} />
-            <OrgDeptFilterK
+            <KanbanFilters
               organizations={organizations}
               departments={departments}
               users={users}
@@ -364,6 +365,19 @@ export function ProjectsKPage() {
                 setSelectedDeptId(deptId);
                 setSelectedProjectId("");
               }}
+              milestones={milestones}
+              selectedMilestoneId={selectedMilestoneId}
+              onMilestoneFilterChange={setSelectedMilestoneId}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              allBoards={allBoards}
+              visibleBoards={visibleBoards}
+              onToggleBoard={(title) =>
+                setVisibleBoards((prev) => ({ ...prev, [title]: !prev[title] }))
+              }
+              autoHideSet={new Set()}
+              showFilters={showFilters}
+              onToggleFilters={() => setShowFilters((p) => !p)}
             />
           </div>
 
@@ -411,26 +425,16 @@ export function ProjectsKPage() {
                 <TasksKanbanBoard
                   tasks={tasks}
                   milestones={milestones}
-                  organizations={organizations}
-                  departments={departments}
-                  users={users}
-                  selectedOrganizationId={selectedOrgId}
-                  selectedDepartmentId={selectedDeptId}
-                  onOrganizationChange={(orgId) => {
-                    setSelectedOrgId(orgId);
-                    setSelectedDeptId("");
-                    setSelectedProjectId("");
-                  }}
-                  onDepartmentChange={(deptId) => {
-                    setSelectedDeptId(deptId);
-                    setSelectedProjectId("");
-                  }}
-                  selectedMilestoneId={boardMilestoneFilter}
-                  onMilestoneFilterChange={setBoardMilestoneFilter}
+                  selectedMilestoneId={selectedMilestoneId}
                   canEdit={access.canManageTasks}
                   onViewTask={(task) => setSelectedTaskId(task.id)}
                   onEditTask={(task) => setTaskModal({ open: true, edit: task })}
                   onStatusChange={handleTaskStatus}
+                  searchTerm={searchTerm}
+                  visibleBoards={visibleBoards}
+                  onToggleBoard={(title) =>
+                    setVisibleBoards((prev) => ({ ...prev, [title]: !prev[title] }))
+                  }
                 />
               )}
             </>

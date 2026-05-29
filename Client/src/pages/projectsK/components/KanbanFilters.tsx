@@ -266,7 +266,7 @@ export function KanbanFilters({
               placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl w-48 sm:w-64 focus:outline-none focus:border-cyan-400"
+              className="pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl w-48 sm:w-64 focus:outline-none focus:border-cyan-400"
             />
           </div>
         </>
