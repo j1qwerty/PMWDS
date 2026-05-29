@@ -1,10 +1,12 @@
-import type { Milestone, Task } from "../../../types";
-import { formatDate } from "../../../ui";
+import type { Milestone, Project, Task, User } from "../../../types";
 import { GlassCard, getStatusColor } from "../../shared";
+import { MilestoneDetail } from "../../milestones/MilestoneDetail";
 
 interface MilestonesPanelProps {
   milestones: Milestone[];
   tasks: Task[];
+  users: User[];
+  project?: Project | null;
   selectedMilestoneId: string;
   onSelectMilestone: (id: string) => void;
   canManage: boolean;
@@ -18,6 +20,8 @@ interface MilestonesPanelProps {
 export function MilestonesPanel({
   milestones,
   tasks,
+  users,
+  project,
   selectedMilestoneId,
   onSelectMilestone,
   canManage,
@@ -28,259 +32,149 @@ export function MilestonesPanel({
   onAddTask,
 }: MilestonesPanelProps) {
   const selected = milestones.find((m) => m.id === selectedMilestoneId) ?? null;
-  const milestoneTasks = selected ? tasks.filter((t) => t.milestoneId === selected.id && !t.parentTaskId) : [];
+  const milestoneTasks = selected ? tasks.filter((t) => t.milestoneId === selected.id) : [];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_1fr] gap-6">
       {/* Milestones List */}
-      <GlassCard className="p-4">
+      <GlassCard className="p-4 max-h-[calc(100vh-340px)] flex flex-col">
         <div className="flex items-center justify-between mb-3 px-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Milestones
           </span>
           {canManage && (
-            <button type="button" onClick={onAdd} className="text-indigo-600 hover:text-indigo-800">
-              <span className="material-symbols-outlined text-lg">add</span>
-            </button>
+             <button type="button" onClick={onAdd} className="text-indigo-600 hover:text-indigo-800">
+          <span className="material-symbols-outlined text-lg">add</span>
+      </button>
           )}
         </div>
-        <div className="flex flex-col gap-3 max-h-[calc(100vh-280px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {milestones.map((milestone) => {
+
+        <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+          {milestones.map((milestone, index) => {
             const isSelected = milestone.id === selectedMilestoneId;
-            const colors = getStatusColor(milestone.status);
-            
-            // Get the appropriate icon based on status
-            const getMilestoneIcon = () => {
-              switch (milestone.status) {
-                case "Completed":
-                  return (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  );
-                case "InProgress":
-                  return (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  );
-                case "Delayed":
-                  return (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  );
-                case "OnHold":
-                  return (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  );
-                case "Cancelled":
-                  return (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  );
-                default: // NotStarted
-                  return (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                  );
-              }
-            };
+            const statusColors = getStatusColor(milestone.status);
+            const progress = milestone.progressPercentage || 0;
 
             return (
-              <div
+              <button
                 key={milestone.id}
                 onClick={() => onSelectMilestone(milestone.id)}
-                className={`rounded-xl p-4 shadow-sm border cursor-pointer transition-all duration-200 ${
+                className={`text-left p-3 rounded-xl cursor-pointer transition-all duration-200 ${
                   isSelected
-                    ? "bg-indigo-100 border-indigo-200 hover:bg-indigo-100"
-                    : "bg-white border-slate-100 hover:bg-indigo-50 hover:shadow-md"
+                    ? "bg-indigo-50 border border-indigo-200 shadow-sm"
+                    : "bg-white border border-transparent hover:bg-slate-50 hover:border-slate-200"
                 }`}
+                style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}
               >
-                {/* Header with icon and name */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={milestone.isCritical ? "text-red-500" : milestone.status === "Completed" ? "text-emerald-500" : milestone.status === "InProgress" ? "text-blue-500" : milestone.status === "Delayed" ? "text-red-500" : milestone.status === "OnHold" ? "text-amber-500" : milestone.status === "Cancelled" ? "text-slate-400" : "text-slate-400"}>
-                    {getMilestoneIcon()}
-                  </span>
-                  <h4 className="text-sm font-medium leading-snug text-slate-700 flex-1">
-                    {milestone.name}
-                  </h4>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <div className="w-full bg-slate-100 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        (milestone.progressPercentage || 0) >= 75
-                          ? "bg-emerald-500"
-                          : (milestone.progressPercentage || 0) >= 50
-                          ? "bg-amber-500"
-                          : (milestone.progressPercentage || 0) >= 25
-                          ? "bg-orange-500"
-                          : "bg-red-500"
-                      }`}
-                      style={{ width: `${Math.min(milestone.progressPercentage || 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Status badge and progress percentage */}
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg border ${colors.bg} ${colors.text} ${colors.border}`}>
-                    {milestone.status}
-                  </span>
-                  <span className="text-[10px] font-semibold text-slate-600">
-                    {Math.round(milestone.progressPercentage || 0)}%
-                  </span>
-                </div>
-
-                {/* Due date if available */}
-                {milestone.dueDate && (
-                  <div className="mt-2 pt-2 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400">
-                      Due: {formatDate(milestone.dueDate)}
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    milestone.isCritical ? "bg-red-100" : "bg-slate-100"
+                  }`}>
+                    <span className={`material-symbols-outlined text-lg ${
+                      milestone.isCritical ? "text-red-500" : "text-slate-400"
+                    }`}>
+                      {milestone.status === "Completed" ? "check_circle" : "flag"}
                     </span>
                   </div>
-                )}
-              </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-sm text-slate-800 truncate">
+                        {milestone.name}
+                      </span>
+                      {milestone.isCritical && (
+                        <span className="text-[10px] font-bold text-red-500 uppercase bg-red-50 px-1.5 py-0.5 rounded">
+                          Critical
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${statusColors.dot}`}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums">
+                        {Math.round(progress)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-medium ${statusColors.text}`}>
+                        {milestone.status}
+                      </span>
+                      {milestone.dueDate && (
+                        <span className="text-[10px] text-slate-400">
+                          Due {new Date(milestone.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </button>
             );
           })}
+
           {milestones.length === 0 && (
-            <div className="text-center py-8">
-              <div className="text-slate-400 mb-2">
-                <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                </svg>
-              </div>
-              <p className="text-xs text-slate-400">No milestones yet</p>
+            <div className="text-center py-12 text-slate-400">
+              <span className="material-symbols-outlined text-4xl mb-3 block">flag</span>
+              <p className="text-sm font-medium">No milestones yet</p>
+              <p className="text-xs mt-1">Create your first milestone for this project</p>
             </div>
           )}
         </div>
       </GlassCard>
 
-      {/* Milestone Detail Panel */}
-      <GlassCard className="p-5">
+      {/* Milestone Detail */}
+      <div className="flex flex-col gap-5">
         {selected ? (
           <MilestoneDetail
             milestone={selected}
             tasks={milestoneTasks}
-            canManage={canManage}
+            project={project}
+            users={users}
+            onComplete={() => onComplete(selected.id)}
             onEdit={() => onEdit(selected)}
             onDelete={() => onDelete(selected)}
-            onComplete={() => onComplete(selected.id)}
             onAddTask={() => onAddTask(selected.id)}
+            isAdmin={canManage}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <span className="material-symbols-outlined text-4xl mb-2">flag</span>
-            <p className="text-sm font-medium">Select a milestone</p>
-            <p className="text-xs mt-1">View details and linked tasks</p>
-          </div>
+          <GlassCard className="p-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <StatCard label="Total Milestones" value={milestones.length} color="indigo" />
+              <StatCard label="Completed" value={milestones.filter((m) => m.status === "Completed").length} color="emerald" />
+              <StatCard label="Critical" value={milestones.filter((m) => m.isCritical).length} color="rose" />
+              <StatCard label="Avg Progress" value={milestones.length ? `${Math.round(milestones.reduce((s, m) => s + (m.progressPercentage || 0), 0) / milestones.length)}%` : "0%"} color="amber" />
+            </div>
+            <div className="text-center py-12">
+              <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-4 mx-auto">
+                <span className="material-symbols-outlined text-4xl text-slate-400">flag</span>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Milestone</h3>
+              <p className="text-sm text-slate-400  mx-auto">
+                Choose a milestone from the left panel to view its details and associated tasks
+              </p>
+            </div>
+          </GlassCard>
         )}
-      </GlassCard>
-    </div>
-  );
-}
-
-function MilestoneDetail({
-  milestone,
-  tasks,
-  canManage,
-  onEdit,
-  onDelete,
-  onComplete,
-  onAddTask,
-}: {
-  milestone: Milestone;
-  tasks: Task[];
-  canManage: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  onComplete: () => void;
-  onAddTask: () => void;
-}) {
-  const colors = getStatusColor(milestone.status);
-  const progress = milestone.progressPercentage || 0;
-
-  return (
-    <div>
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-lg font-bold text-slate-900">{milestone.name}</h3>
-          <div className="flex gap-2 mt-1 flex-wrap">
-            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg border ${colors.bg} ${colors.text} ${colors.border}`}>
-              {milestone.status}
-            </span>
-            {milestone.isCritical && (
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg bg-red-50 text-red-600 border border-red-100">
-                Critical
-              </span>
-            )}
-          </div>
-        </div>
-        {canManage && (
-          <div className="flex flex-wrap gap-2">
-            <ActionBtn onClick={onAddTask} label="Add task" icon="add" />
-            {milestone.status !== "Completed" && <ActionBtn onClick={onComplete} label="Complete" icon="check" />}
-            <ActionBtn onClick={onEdit} label="Edit" icon="edit" />
-            <ActionBtn onClick={onDelete} label="Delete" icon="delete" danger />
-          </div>
-        )}
-      </div>
-
-      {milestone.description && <p className="text-sm text-slate-600 mb-4">{milestone.description}</p>}
-
-      <div className="mb-4">
-        <div className="flex justify-between text-xs mb-1">
-          <span className="text-slate-500">Progress</span>
-          <span className="font-semibold">{Math.round(progress)}%</span>
-        </div>
-        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${progress}%` }} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 mb-5 text-sm">
-        <div className="p-3 rounded-xl bg-slate-50">
-          <p className="text-[10px] uppercase text-slate-400 font-semibold">Due</p>
-          <p className="font-medium text-slate-800">{milestone.dueDate ? formatDate(milestone.dueDate) : "—"}</p>
-        </div>
-        <div className="p-3 rounded-xl bg-slate-50">
-          <p className="text-[10px] uppercase text-slate-400 font-semibold">Tasks</p>
-          <p className="font-medium text-slate-800">{tasks.length}</p>
-        </div>
-      </div>
-
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Linked tasks</p>
-      <div className="space-y-2 max-h-48 overflow-y-auto">
-        {tasks.map((task) => (
-          <div key={task.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-            <span className="text-sm text-slate-700 truncate">{task.title}</span>
-            <span className="text-[10px] font-medium text-slate-500">{task.status}</span>
-          </div>
-        ))}
-        {tasks.length === 0 && <p className="text-xs text-slate-400">No tasks on this milestone</p>}
       </div>
     </div>
   );
 }
 
-function ActionBtn({ onClick, label, icon, danger }: { onClick: () => void; label: string; icon: string; danger?: boolean }) {
+function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
+  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
+    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
+    rose: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100" },
+    amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
+  };
+  const colors = colorMap[color] || colorMap.indigo;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border ${
-        danger ? "border-red-200 text-red-600 hover:bg-red-50" : "border-slate-200 text-slate-600 hover:bg-slate-50"
-      }`}
-    >
-      <span className="material-symbols-outlined text-sm">{icon}</span>
-      {label}
-    </button>
+    <div className={`rounded-xl border p-4 text-center ${colors.border} ${colors.bg}`}>
+      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
+    </div>
   );
 }

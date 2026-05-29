@@ -398,23 +398,23 @@ export function ProjectsKPage() {
           {selectedProject ? (
             <>
               {activeView === "milestones" && (
-                <div className="flex flex-col gap-4">
-                  <MilestonesPanel
-                    milestones={milestones}
-                    tasks={tasks}
-                    selectedMilestoneId={selectedMilestoneId}
-                    onSelectMilestone={setSelectedMilestoneId}
-                    canManage={access.canManageMilestones}
-                    onAdd={() => setMilestoneModal({ open: true })}
-                    onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
-                    onDelete={setDeleteMilestone}
-                    onComplete={handleCompleteMilestone}
-                    onAddTask={(milestoneId) => {
-                      setTaskModal({ open: true, milestoneId });
-                      setActiveView("tasks");
-                    }}
-                  />
-                </div>
+                <MilestonesPanel
+                  milestones={milestones}
+                  tasks={tasks}
+                  users={users}
+                  project={selectedProject}
+                  selectedMilestoneId={selectedMilestoneId}
+                  onSelectMilestone={setSelectedMilestoneId}
+                  canManage={access.canManageMilestones}
+                  onAdd={() => setMilestoneModal({ open: true })}
+                  onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
+                  onDelete={setDeleteMilestone}
+                  onComplete={handleCompleteMilestone}
+                  onAddTask={(milestoneId) => {
+                    setTaskModal({ open: true, milestoneId });
+                    setActiveView("tasks");
+                  }}
+                />
               )}
 
               {activeView === "tasks" && (
