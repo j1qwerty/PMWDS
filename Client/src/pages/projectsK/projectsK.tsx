@@ -171,7 +171,9 @@ export function ProjectsKPage() {
   }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
 
   useEffect(() => {
-    if (selectedProjectId && !filteredProjects.some((p) => p.id === selectedProjectId)) {
+    if (!selectedProjectId && filteredProjects.length > 0) {
+      setSelectedProjectId(filteredProjects[0].id);
+    } else if (selectedProjectId && !filteredProjects.some((p) => p.id === selectedProjectId)) {
       setSelectedProjectId(filteredProjects[0]?.id ?? "");
     }
   }, [filteredProjects, selectedProjectId]);
@@ -345,28 +347,28 @@ export function ProjectsKPage() {
 
         <div className="flex flex-col min-w-0 ">
 
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <ViewTabs active={activeView} onChange={setActiveView} />
+            <OrgDeptFilterK
+              organizations={organizations}
+              departments={departments}
+              users={users}
+              selectedOrganizationId={selectedOrgId}
+              selectedDepartmentId={selectedDeptId}
+              onOrganizationChange={(orgId) => {
+                setSelectedOrgId(orgId);
+                setSelectedDeptId("");
+                setSelectedProjectId("");
+              }}
+              onDepartmentChange={(deptId) => {
+                setSelectedDeptId(deptId);
+                setSelectedProjectId("");
+              }}
+            />
+          </div>
+
           {selectedProject ? (
             <>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <ViewTabs active={activeView} onChange={setActiveView} />
-                <OrgDeptFilterK
-                  organizations={organizations}
-                  departments={departments}
-                  users={users}
-                  selectedOrganizationId={selectedOrgId}
-                  selectedDepartmentId={selectedDeptId}
-                  onOrganizationChange={(orgId) => {
-                    setSelectedOrgId(orgId);
-                    setSelectedDeptId("");
-                    setSelectedProjectId("");
-                  }}
-                  onDepartmentChange={(deptId) => {
-                    setSelectedDeptId(deptId);
-                    setSelectedProjectId("");
-                  }}
-                />
-              </div>
               {activeView === "milestones" && (
                 <div className="flex flex-col gap-4">
                   {access.canManageMilestones && (
@@ -409,6 +411,20 @@ export function ProjectsKPage() {
                 <TasksKanbanBoard
                   tasks={tasks}
                   milestones={milestones}
+                  organizations={organizations}
+                  departments={departments}
+                  users={users}
+                  selectedOrganizationId={selectedOrgId}
+                  selectedDepartmentId={selectedDeptId}
+                  onOrganizationChange={(orgId) => {
+                    setSelectedOrgId(orgId);
+                    setSelectedDeptId("");
+                    setSelectedProjectId("");
+                  }}
+                  onDepartmentChange={(deptId) => {
+                    setSelectedDeptId(deptId);
+                    setSelectedProjectId("");
+                  }}
                   selectedMilestoneId={boardMilestoneFilter}
                   onMilestoneFilterChange={setBoardMilestoneFilter}
                   canEdit={access.canManageTasks}
