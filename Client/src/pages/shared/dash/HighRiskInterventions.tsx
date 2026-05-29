@@ -11,18 +11,18 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
   );
 
   return (
-    <section className=" max-w-150 flex flex-col gap-2 bg-surface-container-lowest rounded-xl p-md ambient-glow ">
-      <div className="flex items-center gap-2">
-        <span className="material-symbols-outlined text-error text-lg">warning</span>
-        <h2 className="text-lg font-semibold text-on-surface">High-Risk Interventions</h2>
+    <section className="max-w-150 flex flex-col gap-[clamp(1px,0.4vw,8px)] bg-surface-container-lowest rounded-xl p-[clamp(8px,2vw,32px)] ambient-glow">
+      <div className="flex items-center gap-[clamp(4px,1vw,8px)] border-b border-slate-300 pb-1">
+        <span className="material-symbols-outlined text-error text-[clamp(16px,2vw,24px)]">warning</span>
+        <h2 className="text-[clamp(12px,1.5vw,16px)] font-semibold text-on-surface">High-Risk Escalations</h2>
         {highRiskTasks.length > 0 && (
-          <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-bold">
+          <span className="px-[clamp(6px,1vw,8px)] py-[clamp(2px,0.4vw,4px)] rounded-full bg-red-100 text-red-600 text-[clamp(8px,1vw,10px)] font-bold">
             {highRiskTasks.length} critical
           </span>
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-[clamp(4px,0.8vw,6px)]">
         {highRiskTasks.slice(0, 4).map((task) => {
           const priorityColor = getPriorityColor(task.priority);
           const statusColor = getStatusColor(task.status);
@@ -31,18 +31,18 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
           return (
             <div
               key={task.id}
-              className={`p-3 rounded-xl border ${statusColor.border} ${statusColor.bg} relative overflow-hidden`}
+              className={`p-[clamp(8px,1.5vw,12px)] rounded-lg border ${statusColor.border} ${statusColor.bg} relative overflow-hidden`}
             >
-              <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${statusColor.dot}`} />
+              <div className={`absolute top-[clamp(6px,1vw,8px)] right-[clamp(6px,1vw,8px)] w-[clamp(6px,0.8vw,8px)] h-[clamp(6px,0.8vw,8px)] rounded-full ${statusColor.dot}`} />
               
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border} border`}>
+              <div className="flex items-center gap-[clamp(4px,0.8vw,8px)] mb-[clamp(2px,0.4vw,4px)]">
+                <span className={`px-[clamp(4px,0.8vw,6px)] py-[clamp(2px,0.4vw,4px)] rounded text-[clamp(8px,1vw,10px)] font-bold uppercase ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border} border`}>
                   {task.priority}
                 </span>
-                <h3 className="text-sm font-semibold text-on-surface truncate flex-1">{task.title}</h3>
+                <h3 className="text-[clamp(11px,1.4vw,14px)] font-semibold text-on-surface truncate flex-1">{task.title}</h3>
               </div>
               
-              <p className="text-xs text-on-surface-variant truncate">
+              <p className="text-[clamp(9px,1.1vw,11px)] text-on-surface-variant truncate">
                 {task.projectName || "General"}
                 {task.assignedToUserName && ` • ${task.assignedToUserName}`}
                 {task.dueDate && ` • Due ${new Date(task.dueDate).toLocaleDateString()}`}
@@ -52,9 +52,9 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
         })}
 
         {highRiskTasks.length === 0 && (
-          <div className="p-4 rounded-xl border border-slate-200 text-center">
-            <span className="material-symbols-outlined text-outline text-2xl mb-1">check_circle</span>
-            <p className="text-xs text-slate-500">No high-risk tasks</p>
+          <div className="p-[clamp(12px,2vw,16px)] rounded-lg border border-slate-200 text-center">
+            <span className="material-symbols-outlined text-outline text-[clamp(18px,2.5vw,24px)] mb-[clamp(2px,0.4vw,4px)]">check_circle</span>
+            <p className="text-[clamp(9px,1.1vw,11px)] text-slate-500">No high-risk tasks</p>
           </div>
         )}
       </div>

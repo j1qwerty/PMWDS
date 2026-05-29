@@ -189,6 +189,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         items: [
           { path: "/", label: "Dashboard", icon: "home", roles: [] },
           { path: "/projects", label: "Projects", icon: "projects", roles: [] },
+          { path: "/projectsK", label: "Workspace", icon: "projects", roles: [] },
           { path: "/milestonesPage", label: "Milestones", icon: "milestones", roles: [] },
           { path: "/tasks", label: "Tasks", icon: "tasks", roles: [] },
           { path: "/notificationsPage", label: "Notifications", icon: "inbox", roles: [] },

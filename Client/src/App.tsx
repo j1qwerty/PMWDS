@@ -6,6 +6,7 @@ import { ToastProvider } from "./pages/shared/Toast";
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
 import { ProjectsPage } from "./pages/projects/projects";
+import { ProjectsKPage } from "./pages/projectsK/projectsK";
 import { MilestonesPage } from "./pages/milestones/MilestonesPage";
 import { TasksPage } from "./pages/tasks/tasks";
 import { NotificationsPage } from "./pages/notifications/notifications";
@@ -48,6 +49,7 @@ function AppRoutes() {
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projectsK" element={<ProjectsKPage />} />
                 <Route path="/milestonesPage" element={<MilestonesPage />} />
                 <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/notificationsPage" element={<NotificationsPage />} />

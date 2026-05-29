@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import type { Department, OrganizationRecord, User } from "../../types";
-import { useRoleAccess } from "./RoleGate";
-import { useUserOrganization } from "./useUserOrganization";
+import type { Department, OrganizationRecord, User } from "../../../types";
+import { useRoleAccess } from "../../shared/RoleGate";
+import { useUserOrganization } from "../../shared/useUserOrganization";
 
-type OrganizationDepartmentFilterProps = {
+type OrgDeptFilterKProps = {
   organizations: OrganizationRecord[];
   departments: Department[];
   users: User[];
@@ -16,7 +16,7 @@ type OrganizationDepartmentFilterProps = {
   className?: string;
 };
 
-export function OrganizationDepartmentFilter({
+export function OrgDeptFilterK({
   organizations,
   departments,
   users,
@@ -27,7 +27,7 @@ export function OrganizationDepartmentFilter({
   allOrganizationsLabel = "All Organizations",
   allDepartmentsLabel = "All Departments",
   className = "",
-}: OrganizationDepartmentFilterProps) {
+}: OrgDeptFilterKProps) {
   const access = useRoleAccess();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
   const [search, setSearch] = useState("");

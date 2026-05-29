@@ -194,38 +194,38 @@ export function DashboardPage() {
 
       <section>
         <TaskStats tasks={myTasks} />
-     {/* Dashboard Overview Section */}
-<section className="my-4">
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    {/* High Risk Interventions  */}
-    <HighRiskInterventions tasks={escalatedTasks} />
+        {/* Dashboard Overview Section */}
+        <section className="my-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* High Risk Interventions  */}
+            <HighRiskInterventions tasks={escalatedTasks} />
 
-    {/* Version 2 - Department-based colors (Alternative design) */}
-    {/* <HighRiskInterventionsCompact tasks={escalatedTasks} /> */}
+            {/* Version 2 - Department-based colors (Alternative design) */}
+            {/* <HighRiskInterventionsCompact tasks={escalatedTasks} /> */}
 
-    {/* Project Overview*/}
-    <ProjectOverview
-      newProjects={(dashboard?.totalProjects ?? 0) - (dashboard?.activeProjects ?? 0) - ((dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0)}
-      pendingProjects={dashboard?.activeProjects ?? 0}
-      doneProjects={(dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0}
-    />
+            {/* Project Overview*/}
+            <ProjectOverview
+              newProjects={(dashboard?.totalProjects ?? 0) - (dashboard?.activeProjects ?? 0) - ((dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0)}
+              pendingProjects={dashboard?.activeProjects ?? 0}
+              doneProjects={(dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0}
+            />
 
-    {/* Activity Chart */}
-    <Activity 
-      data={activityData}
-      title="Activity"
-      filterOptions={["All Tasks", "My Tasks", "Team Tasks"]}
-      selectedFilter={selectedActivityFilter}
-      onFilterChange={setSelectedActivityFilter}
-    />
+            {/* Activity Chart */}
+            <Activity
+              data={activityData}
+              title="Activity"
+              filterOptions={["All Tasks", "My Tasks", "Team Tasks"]}
+              selectedFilter={selectedActivityFilter}
+              onFilterChange={setSelectedActivityFilter}
+            />
 
-    {/* Timer */}
-    <Timer tasks={myTasks} token={auth?.token ?? ''} />
-  </div>
-</section>
+            {/* Timer */}
+            <Timer tasks={myTasks} token={auth?.token ?? ''} />
+          </div>
+        </section>
 
 
-    {/* Active Objectives , Workload Distribution, Notifications */}
+        {/* Active Objectives , Workload Distribution, Notifications */}
         <section className="flex gap-4">
           {/* left - Active Objectives */}
           <div className="flex-1 py-4">
