@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
-interface NavHeaderAction {
+export interface NavHeaderAction {
   label: string;
   onClick: () => void;
   icon?: string;
@@ -10,6 +10,7 @@ interface NavHeaderState {
   title: string;
   description?: string;
   action?: NavHeaderAction;
+  actions?: NavHeaderAction[];
 }
 
 interface NavHeaderContextType extends NavHeaderState {

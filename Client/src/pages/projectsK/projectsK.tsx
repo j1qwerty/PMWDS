@@ -66,6 +66,7 @@ export function ProjectsKPage() {
     Object.fromEntries(allBoards.map((b) => [b.title, true]))
   );
   const [showFilters, setShowFilters] = useState(true);
+  const [resetMilestoneOnTabSwitch, setResetMilestoneOnTabSwitch] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
@@ -85,14 +86,22 @@ export function ProjectsKPage() {
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   useEffect(() => {
+    const actions = [];
+    if (access.canManageProjects) {
+      actions.push({ label: "New Project", onClick: () => setCreateProjectOpen(true), icon: "add_circle" });
+    }
+    if (selectedProjectId && access.canManageMilestones) {
+      actions.push({ label: "New milestone", onClick: () => setMilestoneModal({ open: true }), icon: "add_circle" });
+    }
+    if (selectedProjectId && access.canManageTasks) {
+      actions.push({ label: "New task", onClick: () => setTaskModal({ open: true, milestoneId: selectedMilestoneId }), icon: "add_circle" });
+    }
     setNavHeader({
       title: "Project Workspace",
       description: "Manage projects, milestones, and tasks in one place",
-      action: access.canManageProjects
-        ? { label: "New Project", onClick: () => setCreateProjectOpen(true), icon: "add_circle" }
-        : undefined,
+      actions,
     });
-  }, [setNavHeader, access.canManageProjects]);
+  }, [setNavHeader, access.canManageProjects, access.canManageMilestones, access.canManageTasks, selectedProjectId, selectedMilestoneId]);
 
   const loadProjects = async () => {
     if (!auth) return;
@@ -128,7 +137,9 @@ export function ProjectsKPage() {
     ]);
     setMilestones(milestoneData);
     setTasks(taskData);
-    setSelectedMilestoneId("");
+    if (resetMilestoneOnTabSwitch) {
+      setSelectedMilestoneId(activeView === "milestones" ? (milestoneData[0]?.id ?? "") : "");
+    }
   };
 
   useEffect(() => {
@@ -343,12 +354,13 @@ export function ProjectsKPage() {
             onViewProject={setViewProject}
             canEdit={access.canManageProjects}
             onEditProject={openEditProject}
+            onAdd={() => setCreateProjectOpen(true)}
           />
         </div>
 
         <div className="flex flex-col min-w-0 ">
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-2">
             <ViewTabs active={activeView} onChange={setActiveView} />
             <KanbanFilters
               organizations={organizations}
@@ -378,6 +390,8 @@ export function ProjectsKPage() {
               autoHideSet={new Set()}
               showFilters={showFilters}
               onToggleFilters={() => setShowFilters((p) => !p)}
+              resetMilestoneOnTabSwitch={resetMilestoneOnTabSwitch}
+              onResetMilestoneToggle={() => setResetMilestoneOnTabSwitch((p) => !p)}
             />
           </div>
 
@@ -385,24 +399,6 @@ export function ProjectsKPage() {
             <>
               {activeView === "milestones" && (
                 <div className="flex flex-col gap-4">
-                  {access.canManageMilestones && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setMilestoneModal({ open: true })}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
-                      >
-                        New milestone
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTaskModal({ open: true, milestoneId: selectedMilestoneId })}
-                        className="px-4 py-2 rounded-xl border border-indigo-200 text-indigo-700 text-sm font-medium hover:bg-white"
-                      >
-                        New task
-                      </button>
-                    </div>
-                  )}
                   <MilestonesPanel
                     milestones={milestones}
                     tasks={tasks}

@@ -1,4 +1,4 @@
-import { useNavHeader } from "./NavHeaderContext";
+import { useNavHeader, type NavHeaderAction } from "./NavHeaderContext";
 
 export function NavHeader() {
   const { title } = useNavHeader();
@@ -16,11 +16,7 @@ export function NavHeader() {
   );
 }
 
-export function NavActionButton() {
-  const { action } = useNavHeader();
-
-  if (!action) return null;
-
+function ActionButton({ action }: { action: NavHeaderAction }) {
   return (
     <button
       onClick={action.onClick}
@@ -40,5 +36,21 @@ export function NavActionButton() {
       )}
       {action.label}
     </button>
+  );
+}
+
+export function NavActionButton() {
+  const { action, actions } = useNavHeader();
+
+  const allActions = actions ?? (action ? [action] : []);
+
+  if (allActions.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      {allActions.map((a, i) => (
+        <ActionButton key={i} action={a} />
+      ))}
+    </div>
   );
 }

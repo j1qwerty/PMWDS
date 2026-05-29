@@ -32,49 +32,138 @@ export function MilestonesPanel({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-4">
+      {/* Milestones List */}
       <GlassCard className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Milestones</span>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Milestones
+          </span>
           {canManage && (
             <button type="button" onClick={onAdd} className="text-indigo-600 hover:text-indigo-800">
               <span className="material-symbols-outlined text-lg">add</span>
             </button>
           )}
         </div>
-        <div className="flex flex-col gap-1.5 max-h-[420px] overflow-y-auto">
+        <div className="flex flex-col gap-3 max-h-[calc(100vh-280px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {milestones.map((milestone) => {
             const isSelected = milestone.id === selectedMilestoneId;
             const colors = getStatusColor(milestone.status);
+            
+            // Get the appropriate icon based on status
+            const getMilestoneIcon = () => {
+              switch (milestone.status) {
+                case "Completed":
+                  return (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  );
+                case "InProgress":
+                  return (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  );
+                case "Delayed":
+                  return (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  );
+                case "OnHold":
+                  return (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  );
+                case "Cancelled":
+                  return (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  );
+                default: // NotStarted
+                  return (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                  );
+              }
+            };
+
             return (
-              <button
+              <div
                 key={milestone.id}
-                type="button"
                 onClick={() => onSelectMilestone(milestone.id)}
-                className={`p-3 rounded-xl text-left border-l-4 transition-all ${
-                  isSelected ? "bg-indigo-50 border-indigo-500" : "hover:bg-slate-50 border-transparent"
+                className={`rounded-xl p-4 shadow-sm border cursor-pointer transition-all duration-200 ${
+                  isSelected
+                    ? "bg-indigo-100 border-indigo-200 hover:bg-indigo-100"
+                    : "bg-white border-slate-100 hover:bg-indigo-50 hover:shadow-md"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={`material-symbols-outlined text-lg ${milestone.isCritical ? "text-red-500" : "text-slate-400"}`}>
-                    {milestone.status === "Completed" ? "check_circle" : "flag"}
+                {/* Header with icon and name */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={milestone.isCritical ? "text-red-500" : milestone.status === "Completed" ? "text-emerald-500" : milestone.status === "InProgress" ? "text-blue-500" : milestone.status === "Delayed" ? "text-red-500" : milestone.status === "OnHold" ? "text-amber-500" : milestone.status === "Cancelled" ? "text-slate-400" : "text-slate-400"}>
+                    {getMilestoneIcon()}
                   </span>
-                  <span className="text-sm font-semibold text-slate-800 truncate flex-1">{milestone.name}</span>
+                  <h4 className="text-sm font-medium leading-snug text-slate-700 flex-1">
+                    {milestone.name}
+                  </h4>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
+
+                {/* Progress Bar */}
+                <div className="mb-3">
+                  <div className="w-full bg-slate-100 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        (milestone.progressPercentage || 0) >= 75
+                          ? "bg-emerald-500"
+                          : (milestone.progressPercentage || 0) >= 50
+                          ? "bg-amber-500"
+                          : (milestone.progressPercentage || 0) >= 25
+                          ? "bg-orange-500"
+                          : "bg-red-500"
+                      }`}
+                      style={{ width: `${Math.min(milestone.progressPercentage || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status badge and progress percentage */}
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg border ${colors.bg} ${colors.text} ${colors.border}`}>
                     {milestone.status}
                   </span>
-                  <span className="text-[10px] text-slate-400">{Math.round(milestone.progressPercentage || 0)}%</span>
+                  <span className="text-[10px] font-semibold text-slate-600">
+                    {Math.round(milestone.progressPercentage || 0)}%
+                  </span>
                 </div>
-              </button>
+
+                {/* Due date if available */}
+                {milestone.dueDate && (
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400">
+                      Due: {formatDate(milestone.dueDate)}
+                    </span>
+                  </div>
+                )}
+              </div>
             );
           })}
           {milestones.length === 0 && (
-            <p className="text-xs text-slate-400 text-center py-6">No milestones yet</p>
+            <div className="text-center py-8">
+              <div className="text-slate-400 mb-2">
+                <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                </svg>
+              </div>
+              <p className="text-xs text-slate-400">No milestones yet</p>
+            </div>
           )}
         </div>
       </GlassCard>
 
+      {/* Milestone Detail Panel */}
       <GlassCard className="p-5">
         {selected ? (
           <MilestoneDetail

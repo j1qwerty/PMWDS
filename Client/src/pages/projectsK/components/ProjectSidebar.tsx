@@ -8,6 +8,7 @@ interface ProjectSidebarProps {
   onViewProject: (project: Project) => void;
   onEditProject?: (project: Project) => void;
   canEdit?: boolean;
+  onAdd?: () => void;
 }
 
 export function ProjectSidebar({
@@ -17,11 +18,19 @@ export function ProjectSidebar({
   onViewProject,
   onEditProject,
   canEdit = false,
+  onAdd,
 }: ProjectSidebarProps) {
   return (
     <GlassCard className="p-4">
-      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">
-        Projects
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          Projects
+        </span>
+        {canEdit && onAdd && (
+          <button type="button" onClick={onAdd} className="text-indigo-600 hover:text-indigo-800">
+          <span className="material-symbols-outlined text-lg">add</span>
+        </button>
+        )}
       </div>
       <div className="flex flex-col gap-3 max-h-[calc(100vh-280px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {projects.map((project) => {

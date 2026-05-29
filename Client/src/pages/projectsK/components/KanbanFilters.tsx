@@ -1,4 +1,4 @@
-import { useState, useMemo, type JSX } from "react";
+import { useState, useMemo, useRef, useEffect, type JSX } from "react";
 import { CustomDropdown } from "../../shared/customDropdown";
 import type { OrganizationRecord, Department, Milestone, User } from "../../../types";
 import { useRoleAccess } from "../../shared/RoleGate";
@@ -32,6 +32,8 @@ interface KanbanFiltersProps {
   // UI controls
   showFilters: boolean;
   onToggleFilters: () => void;
+  resetMilestoneOnTabSwitch: boolean;
+  onResetMilestoneToggle: () => void;
 }
 
 export function KanbanFilters({
@@ -53,9 +55,23 @@ export function KanbanFilters({
   autoHideSet,
   showFilters,
   onToggleFilters,
+  resetMilestoneOnTabSwitch,
+  onResetMilestoneToggle,
 }: KanbanFiltersProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [settingsOpen]);
   
   // Role-based access control
   const access = useRoleAccess();
@@ -139,7 +155,7 @@ export function KanbanFilters({
       </button>
 
       {/* Settings (board visibility) */}
-      <div className="relative">
+      <div className="relative" ref={settingsRef}>
         <button
           onClick={() => setSettingsOpen(!settingsOpen)}
           className={`p-2 rounded-xl transition-all duration-200 ${
@@ -208,6 +224,27 @@ export function KanbanFilters({
                   </button>
                 );
               })}
+            </div>
+
+            <hr className="my-3 border-slate-100" />
+
+            <div className="px-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-600">Reset milestone on tab switch</span>
+                <button
+                  type="button"
+                  onClick={onResetMilestoneToggle}
+                  className={`w-8 h-4 rounded-full transition-colors duration-200 ${
+                    resetMilestoneOnTabSwitch ? "bg-cyan-500" : "bg-slate-200"
+                  }`}
+                >
+                  <div
+                    className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform duration-200 mt-0.5 ${
+                      resetMilestoneOnTabSwitch ? "translate-x-4" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         )}
