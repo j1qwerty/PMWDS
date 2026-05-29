@@ -26,6 +26,7 @@ import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
 import { ActivityCompact } from "../shared/dash/ActivityCompact";
 import Timer from "../shared/dash/Timer";
+import { TimelinePredictions } from "../ai/TimelinePredictions";
 
 export function DashboardPage() {
   const { auth, hasRole, hasPermission } = useAuth();
@@ -263,6 +264,7 @@ export function DashboardPage() {
           <div className="flex-1 py-4">
             <NotificationList items={unread.slice(0, 6)} title="Notifications" />
           </div>
+          {/* <TimelinePredictions/> */}
         </section>
 
 

@@ -1,6 +1,7 @@
 import type { Milestone, Project, Task, User } from "../../../types";
-import { GlassCard, getStatusColor } from "../../shared";
+import { GlassCard } from "../../shared";
 import { MilestoneDetail } from "../../milestones/MilestoneDetail";
+import { MilestoneCard } from "./MilestoneCard";
 
 interface MilestonesPanelProps {
   milestones: Milestone[];
@@ -50,69 +51,18 @@ export function MilestonesPanel({
         </div>
 
         <div className="flex-1 overflow-y-auto flex flex-col gap-2">
-          {milestones.map((milestone, index) => {
-            const isSelected = milestone.id === selectedMilestoneId;
-            const statusColors = getStatusColor(milestone.status);
-            const progress = milestone.progressPercentage || 0;
-
-            return (
-              <button
-                key={milestone.id}
-                onClick={() => onSelectMilestone(milestone.id)}
-                className={`text-left p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                  isSelected
-                    ? "bg-indigo-50 border border-indigo-200 shadow-sm"
-                    : "bg-white border border-transparent hover:bg-slate-50 hover:border-slate-200"
-                }`}
-                style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                    milestone.isCritical ? "bg-red-100" : "bg-slate-100"
-                  }`}>
-                    <span className={`material-symbols-outlined text-lg ${
-                      milestone.isCritical ? "text-red-500" : "text-slate-400"
-                    }`}>
-                      {milestone.status === "Completed" ? "check_circle" : "flag"}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm text-slate-800 truncate">
-                        {milestone.name}
-                      </span>
-                      {milestone.isCritical && (
-                        <span className="text-[10px] font-bold text-red-500 uppercase bg-red-50 px-1.5 py-0.5 rounded">
-                          Critical
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${statusColors.dot}`}
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums">
-                        {Math.round(progress)}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-medium ${statusColors.text}`}>
-                        {milestone.status}
-                      </span>
-                      {milestone.dueDate && (
-                        <span className="text-[10px] text-slate-400">
-                          Due {new Date(milestone.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          {milestones.map((milestone, index) => (
+            <MilestoneCard
+              key={milestone.id}
+              milestone={milestone}
+              isSelected={milestone.id === selectedMilestoneId}
+              index={index}
+              onSelectMilestone={onSelectMilestone}
+              onViewMilestone={(milestone) => onSelectMilestone(milestone.id)}
+              onEditMilestone={onEdit}
+              canManage={canManage}
+            />
+          ))}
 
           {milestones.length === 0 && (
             <div className="text-center py-12 text-slate-400">

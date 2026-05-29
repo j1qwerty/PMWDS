@@ -11,7 +11,7 @@ export function HighRiskInterventionsCompact({ tasks = [] }: HighRiskInterventio
   );
 
   return (
-    <section className="w-full max-w-150 flex flex-col gap-2 bg-surface-container-lowest rounded-xl p-md ambient-glow ">
+    <section className="w-full max-w-150 flex flex-col gap-2 bg-surface-container-lowest rounded-xl p-md ambient-glow  shadow-md">
       <div className="flex items-center gap-2">
         <span className="material-symbols-outlined text-error text-lg">warning</span>
         <h2 className="text-lg font-semibold text-slate-700">High-Risk Interventions</h2>

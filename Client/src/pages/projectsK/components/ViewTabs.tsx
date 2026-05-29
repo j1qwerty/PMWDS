@@ -1,3 +1,5 @@
+import { HiOutlineFlag, HiOutlineClipboardList } from "react-icons/hi";
+
 export type WorkspaceView = "milestones" | "tasks";
 
 interface ViewTabsProps {
@@ -5,9 +7,11 @@ interface ViewTabsProps {
   onChange: (view: WorkspaceView) => void;
 }
 
-const tabs: { id: WorkspaceView; label: string; icon: string }[] = [
-  { id: "milestones", label: "Milestones", icon: "flag" },
-  { id: "tasks", label: "Tasks", icon: "view_kanban" },
+const iconClass = "h-[clamp(16px,2vw,18px)] w-[clamp(16px,2vw,18px)] shrink-0";
+
+const tabs: { id: WorkspaceView; label: string; icon: React.ReactNode }[] = [
+  { id: "milestones", label: "Milestones", icon: <HiOutlineFlag className={iconClass} /> },
+  { id: "tasks", label: "Tasks", icon: <HiOutlineClipboardList className={iconClass} /> },
 ];
 
 export function ViewTabs({ active, onChange }: ViewTabsProps) {
@@ -20,11 +24,11 @@ export function ViewTabs({ active, onChange }: ViewTabsProps) {
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               isActive ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 border border-slate-200 hover:text-slate-700"
             }`}
           >
-            <span className="material-symbols-outlined text-base">{tab.icon}</span>
+            {tab.icon}
             {tab.label}
           </button>
         );

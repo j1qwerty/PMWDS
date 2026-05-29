@@ -93,7 +93,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
               const progressTextColor = getProgressTextColor(progress);
 
               return (
-                <tr key={task.id} className="border-b border-slate-50 hover:bg-slate-50/60">
+                <tr key={task.id} className="border-b border-slate-50 hover:bg-slate-50/60 shadow-md">
                   <td className="py-4 px-2">
                     <button className="text-left" onClick={() => onViewTask?.(task)}>
                       <div className="font-medium text-slate-700">{task.title}</div>

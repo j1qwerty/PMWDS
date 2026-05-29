@@ -29,7 +29,7 @@ export function TaskDetailModal({
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
         <TaskDetailPanel
           task={task}
           milestone={milestone}

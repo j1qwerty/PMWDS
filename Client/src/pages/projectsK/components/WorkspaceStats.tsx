@@ -1,3 +1,4 @@
+import { HiOutlineFlag, HiOutlineClipboardList } from "react-icons/hi";
 import type { Milestone, Project, Task } from "../../../types";
 
 interface WorkspaceStatsProps {
@@ -17,8 +18,8 @@ export function WorkspaceStats({ project, projects, milestones, tasks }: Workspa
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Progress" value={`${Math.round(project.progressPercentage || 0)}%`} subtext={project.status} icon="trending_up" color="indigo" />
-        <StatCard label="Milestones" value={milestones.length} subtext={`${criticalMilestones} critical`} icon="flag" color="violet" />
-        <StatCard label="Tasks" value={rootTasks.length} subtext={`${inProgress} in progress`} icon="task_alt" color="emerald" />
+        <StatCard label="Milestones" value={milestones.length} subtext={`${criticalMilestones} critical`} icon={<HiOutlineFlag className="h-5 w-5" />} color="violet" />
+        <StatCard label="Tasks" value={rootTasks.length} subtext={`${inProgress} in progress`} icon={<HiOutlineClipboardList className="h-5 w-5" />} color="emerald" />
         <StatCard label="Completed" value={completed} subtext={`${rootTasks.length ? Math.round((completed / rootTasks.length) * 100) : 0}% done`} icon="check_circle" color="emerald" />
       </div>
     );
@@ -35,7 +36,7 @@ export function WorkspaceStats({ project, projects, milestones, tasks }: Workspa
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <StatCard label="Projects" value={projects.length} subtext={`${activeProjects} active`} icon="folder" color="indigo" />
       <StatCard label="Avg progress" value={`${Math.round(avgProgress)}%`} subtext="Across filtered projects" icon="trending_up" color="violet" />
-      <StatCard label="Total tasks" value={totalTasks} subtext="All projects" icon="task_alt" color="emerald" />
+      <StatCard label="Total tasks" value={totalTasks} subtext="All projects" icon={<HiOutlineClipboardList className="h-5 w-5" />} color="emerald" />
       <StatCard label="Completed" value={completedTasks} subtext={totalTasks ? `${Math.round((completedTasks / totalTasks) * 100)}% done` : "No tasks"} icon="check_circle" color="emerald" />
     </div>
   );
@@ -51,7 +52,7 @@ function StatCard({
   label: string;
   value: string | number;
   subtext: string;
-  icon: string;
+  icon: React.ReactNode;
   color: "indigo" | "emerald" | "violet";
 }) {
   const colorMap = {
@@ -65,7 +66,11 @@ function StatCard({
     <div className={`rounded-xl border ${colors.border} bg-white/90 backdrop-blur-sm p-3`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
-        <span className={`material-symbols-outlined text-lg ${colors.text}`}>{icon}</span>
+        {typeof icon === "string" ? (
+          <span className={`material-symbols-outlined text-lg ${colors.text}`}>{icon}</span>
+        ) : (
+          <span className={colors.text}>{icon}</span>
+        )}
       </div>
       <span className={`text-2xl font-bold ${colors.text}`}>{value}</span>
       <p className="text-xs text-slate-400 mt-1">{subtext}</p>

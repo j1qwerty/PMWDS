@@ -60,7 +60,7 @@ export function Activity({
   const areaPath = linePath + ` L${points[points.length - 1].x},${height} L${points[0].x},${height} Z`;
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
         {filterOptions.length > 0 && (

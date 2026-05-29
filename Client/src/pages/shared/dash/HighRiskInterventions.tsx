@@ -11,7 +11,7 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
   );
 
   return (
-    <section className="max-w-150 flex flex-col gap-[clamp(1px,0.4vw,8px)] bg-surface-container-lowest rounded-xl p-[clamp(8px,2vw,32px)] ambient-glow">
+    <section className="max-w-150 flex flex-col gap-[clamp(1px,0.4vw,8px)] bg-surface-container-lowest rounded-xl p-[clamp(8px,2vw,32px)] ambient-glow shadow-md ">
       <div className="flex items-center gap-[clamp(4px,1vw,8px)] border-b border-slate-300 pb-1">
         <span className="material-symbols-outlined text-error text-[clamp(16px,2vw,24px)]">warning</span>
         <h2 className="text-[clamp(12px,1.5vw,16px)] font-semibold text-on-surface">High-Risk Escalations</h2>

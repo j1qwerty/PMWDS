@@ -209,7 +209,7 @@ const Timer: React.FC<TimerProps> = ({ tasks, token }) => {
   const grandTotal = statEntries.reduce((sum, [, s]) => sum + s.totalSeconds, 0);
 
   return (
-    <div className="bg-gradient-to-br from-cyan-400 to-violet-500 rounded-2xl p-6 shadow-sm text-white relative overflow-hidden">
+    <div className="bg-gradient-to-br from-cyan-400 to-violet-500 rounded-2xl p-6 text-white relative overflow-hidden shadow-md hover:shadow-md   hover:shadow-blue-500 transition-shadow duration-200">
       <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10"></div>
       <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-10 -mb-10"></div>
 
