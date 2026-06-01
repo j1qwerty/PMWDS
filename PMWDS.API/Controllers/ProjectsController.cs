@@ -48,10 +48,15 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        var query = _db.Projects.Include(project => project.Department).AsQueryable();
+        var query = _db.Projects
+            .Include(project => project.Department)
+            .Include(project => project.ProjectDepartments).ThenInclude(assignment => assignment.Department)
+            .AsQueryable();
         if (departmentId.HasValue)
         {
-            query = query.Where(project => project.DepartmentId == departmentId.Value);
+            query = query.Where(project =>
+                project.DepartmentId == departmentId.Value ||
+                project.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId.Value));
         }
 
         query = await _scope.ScopeProjectsAsync(query, ct);
@@ -84,13 +89,16 @@ public class ProjectsController : BaseApiController
 
         var query = _db.Projects
             .Include(p => p.Department)
+            .Include(p => p.ProjectDepartments).ThenInclude(assignment => assignment.Department)
             .Include(p => p.Tasks)
             .Include(p => p.Milestones)
             .AsQueryable();
 
         if (departmentId.HasValue)
         {
-            query = query.Where(p => p.DepartmentId == departmentId.Value);
+            query = query.Where(p =>
+                p.DepartmentId == departmentId.Value ||
+                p.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId.Value));
         }
 
         query = await _scope.ScopeProjectsAsync(query, ct);
@@ -129,14 +137,15 @@ public class ProjectsController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken ct)
     {
-        if (!await _scope.CanAccessDepartmentAsync(dto.DepartmentId, ct))
+        var departmentIds = ResolveDepartmentIds(dto.DepartmentId, dto.DepartmentIds);
+        if (!await AreDepartmentsInScopeAsync(departmentIds, ct))
         {
             return Forbid();
         }
 
-        if (!await IsUserInDepartmentOrganizationAsync(dto.ProjectManagerId, dto.DepartmentId, ct))
+        if (!await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
         {
-            return BadRequest(new { message = "Project manager must belong to the selected department organization." });
+            return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
 
         var result = await Mediator.Send(new CreateProjectCommand(dto), ct);
@@ -152,14 +161,15 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        if (!await _scope.CanAccessDepartmentAsync(dto.DepartmentId, ct))
+        var departmentIds = ResolveDepartmentIds(dto.DepartmentId, dto.DepartmentIds);
+        if (!await AreDepartmentsInScopeAsync(departmentIds, ct))
         {
             return Forbid();
         }
 
-        if (!await IsUserInDepartmentOrganizationAsync(dto.ProjectManagerId, dto.DepartmentId, ct))
+        if (!await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
         {
-            return BadRequest(new { message = "Project manager must belong to the selected department organization." });
+            return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
 
         return Ok(await Mediator.Send(new UpdateProjectCommand(id, dto), ct));
@@ -335,28 +345,48 @@ public class ProjectsController : BaseApiController
         return NoContent();
     }
 
-    private async Task<bool> IsUserInDepartmentOrganizationAsync(string userId, Guid departmentId, CancellationToken ct)
+    private async Task<bool> AreDepartmentsInScopeAsync(IReadOnlyCollection<Guid> departmentIds, CancellationToken ct)
+    {
+        foreach (var departmentId in departmentIds)
+        {
+            if (!await _scope.CanAccessDepartmentAsync(departmentId, ct))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<Guid> ResolveDepartmentIds(Guid primaryDepartmentId, IReadOnlyCollection<Guid>? assignedDepartmentIds)
+        => (assignedDepartmentIds ?? Array.Empty<Guid>())
+            .Append(primaryDepartmentId)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+    private async Task<bool> IsUserInDepartmentOrganizationsAsync(string userId, IReadOnlyCollection<Guid> departmentIds, CancellationToken ct)
     {
         if (!Guid.TryParse(userId, out var parsedUserId))
         {
             return false;
         }
 
-        var organizationId = await _db.Departments
-            .Where(department => department.Id == departmentId)
+        var organizationIds = await _db.Departments
+            .Where(department => departmentIds.Contains(department.Id) && department.OrganizationId.HasValue)
             .Select(department => department.OrganizationId)
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
 
-        if (!organizationId.HasValue)
+        if (organizationIds.Count == 0)
         {
             return false;
         }
 
         return await _db.Users.AnyAsync(user =>
             user.Id == parsedUserId &&
-            ((user.OrganizationId.HasValue && user.OrganizationId == organizationId) ||
-             user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
-             user.Department != null && user.Department.OrganizationId == organizationId),
+            ((user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId)) ||
+             user.DepartmentAssignments.Any(assignment => organizationIds.Contains(assignment.Department.OrganizationId)) ||
+             user.Department != null && organizationIds.Contains(user.Department.OrganizationId)),
             ct);
     }
 

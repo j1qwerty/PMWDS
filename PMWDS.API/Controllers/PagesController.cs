@@ -92,6 +92,7 @@ public class PagesController : BaseApiController
         var projectsQuery = await _scope.ScopeProjectsAsync(
             _db.Projects.AsNoTracking()
                 .Include(p => p.Department)
+                .Include(p => p.ProjectDepartments).ThenInclude(pd => pd.Department)
                 .Include(p => p.Tasks)
                 .OrderBy(p => p.Name),
             ct);

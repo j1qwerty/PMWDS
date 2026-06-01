@@ -37,6 +37,8 @@ public class Project : AuditableEntity
    public DateTime? LastAIAnalysis { get; private set; }
    // Navigation
    public Department? Department { get; private set; }
+   public IReadOnlyCollection<ProjectDepartment> ProjectDepartments =>
+   _projectDepartments.AsReadOnly();
    public IReadOnlyCollection<Milestone> Milestones => _milestones.AsReadOnly();
    public IReadOnlyCollection<ProjectTask> Tasks => _tasks.AsReadOnly();
    public IReadOnlyCollection<ProjectDocument> Documents =>
@@ -44,6 +46,7 @@ public class Project : AuditableEntity
    private readonly List<Milestone> _milestones = new();
    private readonly List<ProjectTask> _tasks = new();
    private readonly List<ProjectDocument> _documents = new();
+   private readonly List<ProjectDepartment> _projectDepartments = new();
    private readonly List<IDomainEvent> _domainEvents = new();
    public IReadOnlyList<IDomainEvent> DomainEvents =>
    _domainEvents.AsReadOnly();
@@ -79,6 +82,7 @@ public class Project : AuditableEntity
          ProgressPercentage = 0,
          AIHealthScore = 100
       };
+      project.AssignDepartments(new[] { departmentId });
       project._domainEvents.Add(
       new ProjectCreatedEvent(project.Id, project.Name));
       return project;
@@ -126,6 +130,37 @@ public class Project : AuditableEntity
       PlannedEndDate = plannedEndDate;
       PlannedBudget = plannedBudget;
       Priority = priority;
+      AssignDepartments(new[] { departmentId });
+   }
+   public void AssignDepartments(IEnumerable<Guid> departmentIds)
+   {
+      var requested = departmentIds
+      .Append(DepartmentId)
+      .Where(id => id != Guid.Empty)
+      .Distinct()
+      .ToList();
+
+      var primary = requested.Contains(DepartmentId)
+      ? DepartmentId
+      : requested.FirstOrDefault();
+      if (primary != Guid.Empty)
+      {
+         DepartmentId = primary;
+      }
+
+      _projectDepartments.RemoveAll(assignment => !requested.Contains(assignment.DepartmentId));
+      foreach (var assignment in _projectDepartments)
+      {
+         if (assignment.DepartmentId == DepartmentId)
+            assignment.MarkPrimary();
+         else
+            assignment.ClearPrimary();
+      }
+
+      foreach (var departmentId in requested.Where(id => _projectDepartments.All(assignment => assignment.DepartmentId != id)))
+      {
+         _projectDepartments.Add(ProjectDepartment.Create(Id, departmentId, departmentId == DepartmentId));
+      }
    }
    public void UpdateStatus(ProjectStatus newStatus)
    {

@@ -25,6 +25,8 @@ public record ProjectDto(
  string? AIInsightsSummary,
  Guid DepartmentId,
  string? DepartmentName,
+ List<Guid> DepartmentIds,
+ List<ProjectDepartmentDto> Departments,
  string ProjectManagerId,
  string? ProjectManagerName,
  int TotalTasks,
@@ -55,6 +57,18 @@ public record ProjectDto(
     AIInsightsSummary: p.AIInsightsSummary,
     DepartmentId: p.DepartmentId,
     DepartmentName: p.Department?.Name,
+    DepartmentIds: p.ProjectDepartments.Any()
+        ? p.ProjectDepartments.Select(assignment => assignment.DepartmentId).Distinct().ToList()
+        : new List<Guid> { p.DepartmentId },
+    Departments: p.ProjectDepartments.Any()
+        ? p.ProjectDepartments.Select(assignment => new ProjectDepartmentDto(
+        assignment.DepartmentId,
+        assignment.Department?.Name,
+        assignment.IsPrimary)).ToList()
+        : new List<ProjectDepartmentDto>
+        {
+            new(p.DepartmentId, p.Department?.Name, true)
+        },
     ProjectManagerId: p.ProjectManagerId,
     ProjectManagerName: projectManagerName,
     TotalTasks: p.Tasks?.Count ?? 0,
@@ -67,6 +81,10 @@ public record ProjectDto(
     CreatedDate: p.CreatedDate
     );
 }
+public record ProjectDepartmentDto(
+ Guid DepartmentId,
+ string? DepartmentName,
+ bool IsPrimary);
 public record ProjectDetailDto(
  Guid Id,
  string ProjectCode,
@@ -91,6 +109,8 @@ public record ProjectDetailDto(
 
 
 string? DepartmentName,
+ List<Guid> DepartmentIds,
+ List<ProjectDepartmentDto> Departments,
  string ProjectManagerId,
  string? ProjectManagerName,
  List<TaskDto> Tasks,
@@ -133,6 +153,7 @@ public record CreateProjectDto(
  decimal PlannedBudget,
  Guid DepartmentId,
  string ProjectManagerId,
+ IReadOnlyCollection<Guid>? DepartmentIds = null,
  Domain.Enums.ProjectPriority Priority =
  Domain.Enums.ProjectPriority.Medium);
 public record UpdateProjectDto(
@@ -144,4 +165,5 @@ public record UpdateProjectDto(
  decimal PlannedBudget,
  Guid DepartmentId,
  string ProjectManagerId,
- Domain.Enums.ProjectPriority Priority);
+ Domain.Enums.ProjectPriority Priority,
+ IReadOnlyCollection<Guid>? DepartmentIds = null);

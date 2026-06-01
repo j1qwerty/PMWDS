@@ -19,9 +19,12 @@ public class Department : AuditableEntity
     _members.AsReadOnly();
     public IReadOnlyCollection<Project> Projects =>
     _projects.AsReadOnly();
+    public IReadOnlyCollection<ProjectDepartment> ProjectDepartments =>
+    _projectDepartments.AsReadOnly();
     private readonly List<Department> _subDepartments = new();
     private readonly List<ApplicationUser> _members = new();
     private readonly List<Project> _projects = new();
+    private readonly List<ProjectDepartment> _projectDepartments = new();
     protected Department() { }
     public static Department Create(
     string name,

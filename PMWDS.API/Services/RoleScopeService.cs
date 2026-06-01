@@ -63,9 +63,13 @@ public class RoleScopeService
 
         var organizationIds = await GetOrganizationIdsAsync(ct);
         return query.Where(project =>
-            project.Department != null &&
-            project.Department.OrganizationId.HasValue &&
-            organizationIds.Contains(project.Department.OrganizationId.Value));
+            (project.Department != null &&
+                project.Department.OrganizationId.HasValue &&
+                organizationIds.Contains(project.Department.OrganizationId.Value)) ||
+            project.ProjectDepartments.Any(assignment =>
+                assignment.Department != null &&
+                assignment.Department.OrganizationId.HasValue &&
+                organizationIds.Contains(assignment.Department.OrganizationId.Value)));
     }
 
     public async Task<IQueryable<ApplicationUser>> ScopeUsersAsync(IQueryable<ApplicationUser> query, CancellationToken ct)
@@ -176,7 +180,11 @@ public class RoleScopeService
             {
                 item.ProjectManagerId,
                 item.DepartmentId,
-                OrganizationId = item.Department != null ? item.Department.OrganizationId : null
+                OrganizationId = item.Department != null ? item.Department.OrganizationId : null,
+                AssignedOrganizationIds = item.ProjectDepartments
+                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
+                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
+                    .ToList()
             })
             .FirstOrDefaultAsync(ct);
 
@@ -190,9 +198,21 @@ public class RoleScopeService
             return true;
         }
 
-        if ((IsDirector || IsDepartmentHead) && project.OrganizationId.HasValue)
+        if ((IsDirector || IsDepartmentHead) && project.OrganizationId.HasValue &&
+            await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
         {
-            return await CanAccessOrganizationAsync(project.OrganizationId.Value, ct);
+            return true;
+        }
+
+        if (IsDirector || IsDepartmentHead)
+        {
+            foreach (var organizationId in project.AssignedOrganizationIds)
+            {
+                if (await CanAccessOrganizationAsync(organizationId, ct))
+                {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -205,12 +225,38 @@ public class RoleScopeService
             return true;
         }
 
-        var organizationId = await _db.Projects
+        var projectOrganizations = await _db.Projects
             .Where(project => project.Id == projectId)
-            .Select(project => project.Department != null ? project.Department.OrganizationId : null)
+            .Select(project => new
+            {
+                PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
+                AssignedOrganizationIds = project.ProjectDepartments
+                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
+                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
+                    .ToList()
+            })
             .FirstOrDefaultAsync(ct);
 
-        return organizationId.HasValue && await CanAccessOrganizationAsync(organizationId.Value, ct);
+        if (projectOrganizations == null)
+        {
+            return false;
+        }
+
+        if (projectOrganizations.PrimaryOrganizationId.HasValue &&
+            await CanAccessOrganizationAsync(projectOrganizations.PrimaryOrganizationId.Value, ct))
+        {
+            return true;
+        }
+
+        foreach (var organizationId in projectOrganizations.AssignedOrganizationIds)
+        {
+            if (await CanAccessOrganizationAsync(organizationId, ct))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public async Task<bool> CanAccessUserAsync(Guid userId, CancellationToken ct)

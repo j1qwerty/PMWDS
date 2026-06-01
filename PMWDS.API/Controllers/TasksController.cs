@@ -757,21 +757,43 @@ public class TasksController : BaseApiController
             return false;
         }
 
-        var organizationId = await _db.Projects
+        var organizationIds = await _db.Projects
             .Where(project => project.Id == projectId)
-            .Select(project => project.Department != null ? project.Department.OrganizationId : null)
+            .Select(project => new
+            {
+                PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
+                AssignedOrganizationIds = project.ProjectDepartments
+                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
+                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
+                    .ToList()
+            })
             .FirstOrDefaultAsync(ct);
 
-        if (!organizationId.HasValue)
+        if (organizationIds == null)
+        {
+            return false;
+        }
+
+        var validOrganizationIds = organizationIds.AssignedOrganizationIds.ToHashSet();
+        if (organizationIds.PrimaryOrganizationId.HasValue)
+        {
+            validOrganizationIds.Add(organizationIds.PrimaryOrganizationId.Value);
+        }
+
+        if (validOrganizationIds.Count == 0)
         {
             return false;
         }
 
         return await _db.Users.AnyAsync(user =>
             user.Id == parsedUserId &&
-            (user.OrganizationId == organizationId ||
-             user.DepartmentAssignments.Any(assignment => assignment.Department.OrganizationId == organizationId) ||
-             user.Department != null && user.Department.OrganizationId == organizationId),
+            ((user.OrganizationId.HasValue && validOrganizationIds.Contains(user.OrganizationId.Value)) ||
+             user.DepartmentAssignments.Any(assignment =>
+                assignment.Department.OrganizationId.HasValue &&
+                validOrganizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
+             user.Department != null &&
+                user.Department.OrganizationId.HasValue &&
+                validOrganizationIds.Contains(user.Department.OrganizationId.Value)),
             ct);
     }
 }

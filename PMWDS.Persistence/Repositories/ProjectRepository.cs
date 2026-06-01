@@ -21,13 +21,18 @@ public class ProjectRepository
     .ThenInclude(t => t.Comments)
     .Include(p => p.Documents)
     .Include(p => p.Department)
+    .Include(p => p.ProjectDepartments)
+    .ThenInclude(pd => pd.Department)
     .FirstOrDefaultAsync(p => p.Id == projectId, ct);
     public async Task<IEnumerable<Project>>
     GetByDepartmentAsync(
     Guid departmentId,
     CancellationToken ct = default)
     => await _dbSet
-    .Where(p => p.DepartmentId == departmentId)
+    .Where(p => p.DepartmentId == departmentId || p.ProjectDepartments.Any(pd => pd.DepartmentId == departmentId))
+    .Include(p => p.Department)
+    .Include(p => p.ProjectDepartments)
+    .ThenInclude(pd => pd.Department)
     .Include(p => p.Milestones)
     .OrderByDescending(p => p.CreatedDate)
     .ToListAsync(ct);
@@ -70,7 +75,7 @@ public class ProjectRepository
     CancellationToken ct = default)
     {
         var projects = await _dbSet
-        .Where(p => p.DepartmentId == departmentId)
+        .Where(p => p.DepartmentId == departmentId || p.ProjectDepartments.Any(pd => pd.DepartmentId == departmentId))
         .ToListAsync(ct);
         return projects.Any()
         ? projects.Average(p => p.ProgressPercentage)

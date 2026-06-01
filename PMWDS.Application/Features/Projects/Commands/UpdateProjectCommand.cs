@@ -25,7 +25,7 @@ public class UpdateProjectCommandHandler
     CancellationToken ct)
     {
         var project = await _uow.Projects
-        .GetByIdAsync(req.Id, ct)
+        .GetWithDetailsAsync(req.Id, ct)
         ?? throw new NotFoundException(
         "Project", req.Id);
         var oldValues = new
@@ -46,6 +46,7 @@ public class UpdateProjectCommandHandler
         dto.Priority,
         dto.DepartmentId,
         dto.ProjectManagerId);
+        project.AssignDepartments(dto.DepartmentIds ?? new[] { dto.DepartmentId });
         project.SetModified(
         _currentUser.UserId ?? "system");
         await _uow.Projects.UpdateAsync(project, ct);
