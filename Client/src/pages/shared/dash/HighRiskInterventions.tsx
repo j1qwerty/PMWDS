@@ -52,7 +52,7 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
         })}
 
         {highRiskTasks.length === 0 && (
-          <div className="p-[clamp(12px,2vw,16px)] rounded-lg border border-slate-200 text-center">
+          <div className="p-[clamp(12px,2vw,16px)]  text-center">
             <span className="material-symbols-outlined text-outline text-[clamp(18px,2.5vw,24px)] mb-[clamp(2px,0.4vw,4px)]">check_circle</span>
             <p className="text-[clamp(9px,1.1vw,11px)] text-slate-500">No high-risk tasks</p>
           </div>

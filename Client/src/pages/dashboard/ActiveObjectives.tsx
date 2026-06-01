@@ -54,7 +54,7 @@ export function ActiveObjectives({
           <span className="material-symbols-outlined text-outline text-4xl mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
             track_changes
           </span>
-          <p className="text-on-surface-variant text-sm">No active objectives</p>
+          <p className="text-on-surface-variant text-sm">No active Tasks</p>
         </div>
       </div>
     );

@@ -75,7 +75,9 @@
 1. **API Integrations**
    - Single-page API integrations for all GET methods (only those called on page load)
    - UI renders each component based on permissions from API (instead of hardcoded roles and permissions on each page and each component)
-
+    - pages api proper response for all required data
+    - pages partial api for partial requested data only and update that component only (firstly org specific only)
+    
 2. **Roles & Permissions**
    - Role scope check for each controller method (permissions in groups, e.g., users.manage includes all user-related permissions)
    - Role scope check for each element in each component (separate hasRole and hasPermission)

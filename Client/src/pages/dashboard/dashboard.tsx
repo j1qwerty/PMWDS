@@ -232,7 +232,7 @@ export function DashboardPage() {
           {/* left - Active Objectives */}
           <div className="flex-1 py-4">
             <ActiveObjectives
-              objectives={myTasks.slice(0, 3).map((task) => {
+              objectives={myTasks.slice(0, 6).map((task) => {
                 const assignedUser = task.assignedToUserId ? users.find((user) => user.id === task.assignedToUserId) : null;
 
                 return {
@@ -247,8 +247,8 @@ export function DashboardPage() {
                       : [],
                 };
               })}
-              title="Active Objectives"
-              subtitle={`${myTasks.length} Objectives`}
+              title="My Tasks"
+              subtitle={`${myTasks.length} tasks`}
             />
           </div>
 
