@@ -26,12 +26,12 @@ export function PermissionsTable({ permissions, onEdit, onDelete, onCreate, isAd
           <h3 className="text-sm font-bold text-slate-800">Permissions</h3>
           <p className="text-xs text-slate-400">Module-level permissions used by roles</p>
         </div>
-        {isAdmin && (
-          <GradientButton onClick={onCreate}>
+        {/* {isAdmin && (
+          <GradientButton onClick={onCreate} className="hidden">
             <span className="material-symbols-outlined text-sm">add</span>
             Create Permission
           </GradientButton>
-        )}
+        )} */}
       </div>
 
     <div className="overflow-x-auto">
@@ -42,13 +42,13 @@ export function PermissionsTable({ permissions, onEdit, onDelete, onCreate, isAd
         <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Module</th>
         <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Scope</th>
         <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Description</th>
-        <th className="text-right px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>
+        <th className="text-right px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider hidden">Actions</th>
       </tr>
     </thead>
     <tbody className="divide-y divide-slate-100">
       {Object.entries(groupedPermissions).map(([module, modulePermissions]) => (
         <React.Fragment key={module}>
-          {/* Only show module header if there are multiple permissions in this module */}
+          {/* Only show module header if there are multiple permissions in this module */}  
           {modulePermissions.length > 1 && (
             <tr className="bg-slate-50/50">
               <td colSpan={5} className="px-6 py-2">
@@ -94,7 +94,7 @@ export function PermissionsTable({ permissions, onEdit, onDelete, onCreate, isAd
                   {permission.description || "—"}
                 </p>
               </td>
-              <td className="px-6 py-3 text-right">
+              <td className="px-6 py-3 text-right hidden">
                 {isAdmin && (
                   <div className="flex justify-end gap-2">
                     <button
@@ -128,12 +128,12 @@ export function PermissionsTable({ permissions, onEdit, onDelete, onCreate, isAd
       <p className="text-xs text-slate-400 mx-auto">
         Create permissions to define granular access controls
       </p>
-      {isAdmin && (
-        <button onClick={onCreate} className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-2">
+      {/* {isAdmin && (
+        <button onClick={onCreate} className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-2 hidden">
           <span className="material-symbols-outlined text-lg">add</span>
           Create Permission
         </button>
-      )}
+      )} */}
     </div>
   )}
 </div>

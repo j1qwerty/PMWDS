@@ -5,6 +5,7 @@ using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using PMWDS.Domain.Enums;
 using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
@@ -119,6 +120,33 @@ public class MilestonesController : BaseApiController
         return Ok(MilestoneDto.FromEntity(milestone));
     }
 
+    [HttpPatch("{id:guid}/status")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetMilestoneStatusDto dto, CancellationToken ct)
+    {
+        var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
+        if (milestone == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _scope.CanManageProjectAsync(milestone.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!Enum.TryParse<MilestoneStatus>(dto.Status, ignoreCase: true, out var status))
+        {
+            return BadRequest(new { error = $"Invalid status: {dto.Status}. Valid values: Pending, InProgress, Completed, Delayed" });
+        }
+
+        milestone.SetStatus(status);
+        milestone.SetModified("system");
+        await _uow.Milestones.UpdateAsync(milestone, ct);
+        await _uow.SaveChangesAsync(ct);
+        return Ok(MilestoneDto.FromEntity(milestone));
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
@@ -140,6 +168,8 @@ public class MilestonesController : BaseApiController
         return NoContent();
     }
 }
+
+public record SetMilestoneStatusDto(string Status);
 
 public record CreateMilestoneDto(
     Guid ProjectId,

@@ -43,6 +43,14 @@ public class Milestone : AuditableEntity
         CompletedDate = DateTime.UtcNow;
         ProgressPercentage = 100;
     }
+    public void SetStatus(MilestoneStatus status)
+    {
+        Status = status;
+        if (status == MilestoneStatus.Completed)
+        {
+            CompletedDate ??= DateTime.UtcNow;
+        }
+    }
     public void Update(
     string name,
     string description,

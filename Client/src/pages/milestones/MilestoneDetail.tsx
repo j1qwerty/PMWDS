@@ -9,6 +9,7 @@ interface MilestoneDetailProps {
   project?: Project | null;
   users: User[];
   onComplete: () => void;
+  onStatusChange: (status: string) => void;
   onEdit: () => void;
   onDelete: () => void;
   onAddTask: () => void;
@@ -21,6 +22,7 @@ export function MilestoneDetail({
   project, 
   users, 
   onComplete, 
+  onStatusChange,
   onEdit, 
   onDelete,
   onAddTask,
@@ -216,6 +218,39 @@ export function MilestoneDetail({
         </span>
       )}
     </div>
+
+    {/* Status changer */}
+    {isAdmin && (
+      <div className="mb-4">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Change Status</p>
+        <div className="flex flex-wrap gap-1">
+          {["Pending", "InProgress", "Completed", "Delayed"].map((status) => {
+            const st = getStatusColor(status);
+            return (
+              <button
+                key={status}
+                type="button"
+                disabled={milestone.status === status}
+                onClick={() => {
+                  if (status === "Completed") {
+                    onComplete();
+                  } else {
+                    onStatusChange(status);
+                  }
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-all ${
+                  milestone.status === status
+                    ? `${st.bg} ${st.text} ${st.border} cursor-default`
+                    : "border-slate-200 text-slate-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+                }`}
+              >
+                {status}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
     {/* Description */}
     {milestone.description && (

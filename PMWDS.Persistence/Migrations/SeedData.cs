@@ -1082,8 +1082,7 @@ public static class SeedData
         return new[]
         {
             new TaskSpec(project.Id, Milestone(0), null, "Map workflow and ownership", "Document current-state workflow and accountable owners", TaskPriority.High, start, start.AddDays(10), 24, User(0), project.ProjectManagerId, TaskStatus.Completed, 100, 0.12, 0, "Discovery complete"),
-            new TaskSpec(project.Id, Milestone(1), null, "Build primary API integration", "Connect the main operational API to the workflow", TaskPriority.Critical, start.AddDays(4), start.AddDays(25), 48, User(1), project.ProjectManagerId, TaskStatus.InProgress, 55, 0.44, 3, "Integration in progress"),
-            new TaskSpec(project.Id, null, null, "Prepare stakeholder demo", "Create a standalone demo task outside milestones", TaskPriority.Medium, start.AddDays(8), start.AddDays(18), 16, User(2), project.ProjectManagerId, TaskStatus.NotStarted, 20, 0.24, 1, "Demo outline ready")
+            new TaskSpec(project.Id, Milestone(1), null, "Build primary API integration", "Connect the main operational API to the workflow", TaskPriority.Critical, start.AddDays(4), start.AddDays(25), 48, User(1), project.ProjectManagerId, TaskStatus.InProgress, 55, 0.44, 3, "Integration in progress")
         };
     }
 

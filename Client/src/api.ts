@@ -225,6 +225,9 @@ export const api = {
   completeMilestone(token: string, id: string) {
     return request<Milestone>(`milestones/${id}/complete`, { token, method: "PATCH" });
   },
+  setMilestoneStatus(token: string, id: string, status: string) {
+    return request<Milestone>(`milestones/${id}/status`, { token, method: "PATCH", body: { status } });
+  },
   deleteMilestone(token: string, id: string) {
     return request<void>(`milestones/${id}`, { token, method: "DELETE" });
   },

@@ -34,16 +34,22 @@ export function StatusButtons({
             disabled={!canUpdate}
             className={classNames(
               "px-3 py-1.5 text-xs font-bold rounded-full border transition-all flex items-center gap-1.5",
-              styles.bg,
-              styles.text,
-              isActive ? `${styles.border} ring-2 ring-offset-1 ${styles.border}` : "border-transparent",
+              isActive 
+                ? `${styles.bg} ${styles.text} ${styles.border} ring-2 ring-offset-1`
+                : "bg-white text-slate-400 border-slate-200",
+              canUpdate && !isActive && `hover:${styles.bg} hover:${styles.text} hover:${styles.border}`,
+              canUpdate && !isActive && "hover:shadow-sm hover:scale-105",
               canUpdate
-                ? "cursor-pointer hover:shadow-md hover:scale-105"
+                ? "cursor-pointer"
                 : "cursor-default opacity-90"
             )}
             title={canUpdate ? `Change status to ${status}` : `Status: ${status}`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${styles.dot}`}></span>
+            <span className={classNames(
+              "w-1.5 h-1.5 rounded-full",
+              isActive ? styles.dot : "bg-slate-300",
+              !isActive && `hover:${styles.dot}`
+            )}></span>
             {status}
             {isActive && (
               <span className="material-symbols-outlined text-[14px]">check</span>

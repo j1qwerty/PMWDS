@@ -1,7 +1,7 @@
 import type { Milestone, Project, Task, User } from "../../../types";
 import { GlassCard } from "../../shared";
-import { MilestoneDetail } from "../../milestones/MilestoneDetail";
 import { MilestoneCard } from "./MilestoneCard";
+import { MilestoneDetailk } from "./MilestoneDetailk";
 
 interface MilestonesPanelProps {
   milestones: Milestone[];
@@ -15,6 +15,7 @@ interface MilestonesPanelProps {
   onEdit: (milestone: Milestone) => void;
   onDelete: (milestone: Milestone) => void;
   onComplete: (milestoneId: string) => void;
+  onStatusChange: (milestoneId: string, status: string) => void;
   onAddTask: (milestoneId: string) => void;
 }
 
@@ -30,6 +31,7 @@ export function MilestonesPanel({
   onEdit,
   onDelete,
   onComplete,
+  onStatusChange,
   onAddTask,
 }: MilestonesPanelProps) {
   const selected = milestones.find((m) => m.id === selectedMilestoneId) ?? null;
@@ -38,19 +40,19 @@ export function MilestonesPanel({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_1fr] gap-6">
       {/* Milestones List */}
-      <GlassCard className="p-4 max-h-[calc(100vh-340px)] flex flex-col">
+      <GlassCard className="p-4">
         <div className="flex items-center justify-between mb-3 px-1">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             Milestones
           </span>
           {canManage && (
-             <button type="button" onClick={onAdd} className="text-indigo-600 hover:text-indigo-800">
-          <span className="material-symbols-outlined text-lg">add</span>
-      </button>
+            <button type="button" onClick={onAdd} className="text-indigo-600 hover:text-indigo-800">
+              <span className="material-symbols-outlined text-lg">add</span>
+            </button>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+        <div className="flex flex-col gap-2 max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {milestones.map((milestone, index) => (
             <MilestoneCard
               key={milestone.id}
@@ -75,14 +77,15 @@ export function MilestonesPanel({
       </GlassCard>
 
       {/* Milestone Detail */}
-      <div className="flex flex-col gap-5">
+      <div className="max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {selected ? (
-          <MilestoneDetail
+          <MilestoneDetailk
             milestone={selected}
             tasks={milestoneTasks}
             project={project}
             users={users}
             onComplete={() => onComplete(selected.id)}
+            onStatusChange={(status) => onStatusChange(selected.id, status)}
             onEdit={() => onEdit(selected)}
             onDelete={() => onDelete(selected)}
             onAddTask={() => onAddTask(selected.id)}
@@ -101,7 +104,7 @@ export function MilestonesPanel({
                 <span className="material-symbols-outlined text-4xl text-slate-400">flag</span>
               </div>
               <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Milestone</h3>
-              <p className="text-sm text-slate-400  mx-auto">
+              <p className="text-sm text-slate-400 mx-auto">
                 Choose a milestone from the left panel to view its details and associated tasks
               </p>
             </div>

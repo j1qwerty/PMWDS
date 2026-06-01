@@ -282,6 +282,13 @@ export function ProjectsKPage() {
     await loadProjectWorkspace(selectedProjectId);
   };
 
+  const handleMilestoneStatus = async (milestoneId: string, status: string) => {
+    if (!auth) return;
+    await api.setMilestoneStatus(auth.token, milestoneId, status);
+    addToast(`Milestone status updated to ${status}`);
+    await loadProjectWorkspace(selectedProjectId);
+  };
+
   const handleDeleteMilestone = async () => {
     if (!auth || !deleteMilestone) return;
     await api.deleteMilestone(auth.token, deleteMilestone.id);
@@ -410,6 +417,7 @@ export function ProjectsKPage() {
                   onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
                   onDelete={setDeleteMilestone}
                   onComplete={handleCompleteMilestone}
+                  onStatusChange={handleMilestoneStatus}
                   onAddTask={(milestoneId) => {
                     setTaskModal({ open: true, milestoneId });
                     setActiveView("tasks");
