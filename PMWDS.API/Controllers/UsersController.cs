@@ -370,6 +370,11 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
+        if (_currentUser.UserId != parsedId.ToString() && !await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
+        }
+
         user.UpdateAvailability(req.Status, req.AvailabilityPercentage);
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
@@ -392,6 +397,11 @@ public class UsersController : BaseApiController
         if (user == null)
         {
             return NotFound();
+        }
+
+        if (_currentUser.UserId != parsedId.ToString() && !await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
         }
 
         var existing = user.Skills.FirstOrDefault(s => s.SkillId == req.SkillId);
@@ -448,6 +458,11 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
+        if (_currentUser.UserId != parsedId.ToString() && !await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
+        }
+
         var existing = user.Skills.FirstOrDefault(s => s.SkillId == skillId);
         if (existing == null)
         {
@@ -490,6 +505,11 @@ public class UsersController : BaseApiController
         if (user == null)
         {
             return NotFound();
+        }
+
+        if (_currentUser.UserId != parsedId.ToString() && !await _scope.CanManageUserAsync(parsedId, ct))
+        {
+            return Forbid();
         }
 
         var existing = user.Skills.FirstOrDefault(s => s.SkillId == skillId);

@@ -42,7 +42,32 @@ public class ProjectsController : BaseApiController
     [HttpGet("dashboard")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? departmentId, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetProjectDashboardQuery(departmentId), ct));
+    {
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var query = _db.Projects.Include(project => project.Department).AsQueryable();
+        if (departmentId.HasValue)
+        {
+            query = query.Where(project => project.DepartmentId == departmentId.Value);
+        }
+
+        query = await _scope.ScopeProjectsAsync(query, ct);
+        var list = await query.ToListAsync(ct);
+        return Ok(new ProjectDashboardDto(
+            TotalProjects: list.Count,
+            ActiveProjects: list.Count(project => project.Status == ProjectStatus.InProgress),
+            CompletedProjects: list.Count(project => project.Status == ProjectStatus.Completed),
+            OverdueProjects: list.Count(project => project.GetDelayDays() > 0),
+            HighRiskProjects: list.Count(project => project.AIDelayRiskScore >= 0.7),
+            AverageHealthScore: list.Any() ? list.Average(project => project.AIHealthScore) : 0,
+            TotalBudget: list.Sum(project => project.PlannedBudget),
+            TotalActualCost: list.Sum(project => project.ActualCost),
+            RecentProjects: list.OrderByDescending(project => project.CreatedDate).Take(5).Select(ProjectSummaryDto.FromEntity).ToList(),
+            AtRiskProjects: list.Where(project => project.AIDelayRiskScore >= 0.7).OrderByDescending(project => project.AIDelayRiskScore).Take(10).Select(ProjectSummaryDto.FromEntity).ToList()));
+    }
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
@@ -104,7 +129,7 @@ public class ProjectsController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken ct)
     {
-        if (!await _scope.CanAccessDepartmentAsync(dto.DepartmentId, ct) || !_scope.IsSuperAdmin && !_scope.IsDirector)
+        if (!await _scope.CanAccessDepartmentAsync(dto.DepartmentId, ct))
         {
             return Forbid();
         }

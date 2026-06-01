@@ -291,7 +291,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
         }
@@ -313,7 +313,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
         }
@@ -341,7 +341,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
         }
@@ -365,7 +365,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
         }
@@ -456,6 +456,11 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        if (dto.ProjectId != parentTask.ProjectId)
+        {
+            return BadRequest(new { message = "Subtask project must match the parent task project." });
+        }
+
         if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
             !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
         {
@@ -535,7 +540,7 @@ public class TasksController : BaseApiController
         if (task == null || task.ParentTaskId == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
         }
@@ -641,8 +646,8 @@ public class TasksController : BaseApiController
         if (successor == null)
             return BadRequest(new { message = "Successor task not found." });
 
-        if (!await _scope.CanAccessProjectAsync(predecessor.ProjectId, ct) ||
-            !await _scope.CanAccessProjectAsync(successor.ProjectId, ct))
+        if (!await _scope.CanManageProjectAsync(predecessor.ProjectId, ct) ||
+            !await _scope.CanManageProjectAsync(successor.ProjectId, ct))
         {
             return Forbid();
         }
@@ -661,8 +666,8 @@ public class TasksController : BaseApiController
         if (dependency == null)
             return NotFound();
 
-        if (!await CanAccessTaskAsync(dependency.PredecessorTaskId, ct) ||
-            !await CanAccessTaskAsync(dependency.SuccessorTaskId, ct))
+        if (!await CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await CanManageTaskAsync(dependency.SuccessorTaskId, ct))
         {
             return Forbid();
         }
@@ -681,8 +686,8 @@ public class TasksController : BaseApiController
         if (dependency == null)
             return NotFound();
 
-        if (!await CanAccessTaskAsync(dependency.PredecessorTaskId, ct) ||
-            !await CanAccessTaskAsync(dependency.SuccessorTaskId, ct))
+        if (!await CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await CanManageTaskAsync(dependency.SuccessorTaskId, ct))
         {
             return Forbid();
         }

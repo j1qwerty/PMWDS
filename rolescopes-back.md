@@ -372,3 +372,52 @@ The `Manager` named policy's `RequireAny` logic means a user who has `REPORT_CRE
 9. **GAP-9**: Wire up unused permission codes (`NOTIFICATION_*`, `INTEGRATION_*`, `AI_*`, `REPORT_*` CRUD) into `PermissionPolicyRegistry`
 10. **GAP-11**: Refactor `DepartmentsController.GetAll()` to use IQueryable scoping instead of in-memory filtering
 11. **GAP-13**: Standardize policy usage – use granular CRUD policies everywhere instead of mixing with named policies
+ 
+---
+
+## 8. Fixes Applied - 2026-06-01
+
+Scope handled in this pass: Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks and Subtasks, Notifications, Activity Logs.
+
+### Issues Fixed
+
+1. Duplicate permission aliases were removed from seed creation for the scoped modules.
+   - Replaced dotted legacy aliases such as `USERS.PROFILE_PICTURE.MANAGE`, `USERS.DEPARTMENTS.MANAGE`, `SYSTEM.ADMIN`, `SYSTEM.DATABASE.VIEW`, `PROJECTS.MANAGE`, `TASKS.MANAGE`, `ORGS.MANAGE`, `ROLES.MANAGE`, and `ACTIVITY_LOGS.VIEW` with canonical codes such as `USER_PROFILE_PICTURE_MANAGE`, `USER_DEPARTMENT_MANAGE`, `SYSTEM_ADMIN`, `SYSTEM_DATABASE_VIEW`, `PROJECT_MANAGE`, `TASK_MANAGE`, `ORGANIZATION_MANAGE`, `ROLE_MANAGE`, and `ACTIVITY_LOG_VIEW`.
+   - Added seed cleanup that migrates existing role assignments from legacy permissions to canonical permissions and deletes the legacy duplicate permission rows.
+
+2. Module-level manage permissions were normalized.
+   - Added canonical manage permissions for Authentication, Organizations, Departments, Projects, Milestones, Tasks, Subtasks, Users, Roles, Permissions, Notifications, and Activity Logs.
+   - Updated policies so each module's `*.Manage` permission implies that module's CRUD/action permissions.
+   - Updated seeded non-SuperAdmin roles so a role with a module manage permission no longer also stores all covered scoped permissions.
+
+3. Roles and permissions API output was restricted to the required modules.
+   - `RolesController.GetPermissions()` now returns only Authentication, Authorization, System, Organization, Departments, Projects, Milestones, Tasks, Subtasks, Users, Notifications, and Audit permissions.
+   - Role responses suppress scoped permissions already covered by a selected module manage permission.
+   - Role create/update normalizes submitted permission IDs so covered scoped permissions are not saved when the module manage permission is present.
+   - Role and permission write endpoints now use granular `Roles.*` and `Permissions.*` policies.
+
+4. Pages API output was restricted to the required modules.
+   - `PagesController` now returns empty pages for Skills, Reports, Integrations, KnowledgeArticles, and LessonsLearned.
+   - Roles and permissions inside the pages payload are filtered to the required permission modules.
+   - Pages permission checks now recognize module manage permissions as covering their scoped permissions.
+
+5. User mutation scope gaps were fixed.
+   - `PATCH /users/{id}/availability`, `POST /users/{id}/skills`, `PUT /users/{id}/skills/{skillId}`, and `DELETE /users/{id}/skills/{skillId}` now allow self-service or require `CanManageUserAsync()` for other users.
+
+6. Project scope gaps were fixed.
+   - `GET /projects/dashboard` now scopes all dashboard totals and project lists through `RoleScopeService`, including when no department filter is supplied.
+   - `POST /projects` no longer hard-denies scoped non-Director managers after the policy passes; it validates department scope and project-manager organization membership.
+
+7. Task and subtask gaps were fixed.
+   - Comments, attachments, timer start, and timer stop now require project manage access.
+   - Dependency create/update/delete now require manage-level access to the involved tasks/projects.
+   - Subtask creation now rejects a `ProjectId` that does not match the parent task's project.
+
+8. Department list scoping was fixed.
+   - `DepartmentsController.GetAll()` now applies `ScopeDepartmentsAsync()` to an EF query before pagination instead of loading all departments and filtering in memory.
+
+### Verification
+
+1. Ran `dotnet build PMWDS.slnx`.
+2. Build succeeded.
+3. No project tests were run, per instruction.

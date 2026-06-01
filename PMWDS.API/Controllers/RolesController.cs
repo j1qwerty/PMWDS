@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
@@ -9,6 +10,37 @@ namespace PMWDS.API.Controllers;
 
 public class RolesController : BaseApiController
 {
+    private static readonly HashSet<string> VisiblePermissionModules = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Authentication",
+        "Authorization",
+        "System",
+        "Organization",
+        "Departments",
+        "Projects",
+        "Milestones",
+        "Tasks",
+        "Subtasks",
+        "Users",
+        "Notifications",
+        "Audit"
+    };
+
+    private static readonly Dictionary<string, string[]> ManagePermissionCoverage = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
+        [PermissionCodes.DepartmentManage] = new[] { PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete },
+        [PermissionCodes.ProjectManage] = new[] { PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete },
+        [PermissionCodes.MilestoneManage] = new[] { PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete },
+        [PermissionCodes.TaskManage] = new[] { PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack },
+        [PermissionCodes.SubtaskManage] = new[] { PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete },
+        [PermissionCodes.UserManage] = new[] { PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete, PermissionCodes.UserDepartmentManage, PermissionCodes.UserProfilePictureManage },
+        [PermissionCodes.RoleManage] = new[] { PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete },
+        [PermissionCodes.PermissionManage] = new[] { PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete },
+        [PermissionCodes.NotificationManage] = new[] { PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage },
+        [PermissionCodes.ActivityLogManage] = new[] { PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate }
+    };
+
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _context;
 
@@ -33,16 +65,16 @@ public class RolesController : BaseApiController
             r.Description,
             r.PermissionLevel,
             r.PaginationPageSize,
-            r.Permissions.Select(MapPermission).ToList())));
+            VisiblePermissions(r.Permissions).Select(MapPermission).ToList())));
     }
 
     [HttpGet("permissions")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetPermissions(CancellationToken ct)
-        => Ok((await _context.Permissions.OrderBy(p => p.Module).ThenBy(p => p.Name).ToListAsync(ct)).Select(MapPermission));
+        => Ok((await VisiblePermissionQuery().OrderBy(p => p.Module).ThenBy(p => p.Name).ToListAsync(ct)).Select(MapPermission));
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Roles.Create")]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest req, CancellationToken ct)
     {
         if (await _context.Roles.AnyAsync(r => r.Name == req.Name, ct))
@@ -54,9 +86,7 @@ public class RolesController : BaseApiController
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? 10);
         role.SetCreatedBy("system");
 
-        var permissions = await _context.Permissions
-            .Where(p => req.PermissionIds.Contains(p.Id))
-            .ToListAsync(ct);
+        var permissions = await LoadNormalizedPermissionsAsync(req.PermissionIds, ct);
         foreach (var permission in permissions)
         {
             role.AddPermission(permission);
@@ -75,7 +105,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Roles.Edit")]
     public async Task<IActionResult> UpdateRole(Guid id, [FromBody] UpdateRoleRequest req, CancellationToken ct)
     {
         var role = await _context.Roles
@@ -89,9 +119,7 @@ public class RolesController : BaseApiController
         role.Update(req.Name, req.Description, req.PermissionLevel);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
-        var permissions = await _context.Permissions
-            .Where(p => req.PermissionIds.Contains(p.Id))
-            .ToListAsync(ct);
+        var permissions = await LoadNormalizedPermissionsAsync(req.PermissionIds, ct);
 
         role.Permissions.Clear();
         foreach (var permission in permissions)
@@ -105,7 +133,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Roles.Delete")]
     public async Task<IActionResult> DeleteRole(Guid id, CancellationToken ct)
     {
         await _uow.Roles.DeleteAsync(id, ct);
@@ -114,7 +142,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPost("permissions")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Permissions.Create")]
     public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequest req, CancellationToken ct)
     {
         if (await _context.Permissions.AnyAsync(p => p.Code == req.Code.ToUpper(), ct))
@@ -130,7 +158,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPut("permissions/{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Permissions.Edit")]
     public async Task<IActionResult> UpdatePermission(Guid id, [FromBody] UpdatePermissionRequest req, CancellationToken ct)
     {
         var permission = await _uow.Permissions.GetByIdAsync(id, ct);
@@ -146,7 +174,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpDelete("permissions/{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "Permissions.Delete")]
     public async Task<IActionResult> DeletePermission(Guid id, CancellationToken ct)
     {
         await _uow.Permissions.DeleteAsync(id, ct);
@@ -156,6 +184,28 @@ public class RolesController : BaseApiController
 
     private static PermissionResponse MapPermission(Permission permission)
         => new(permission.Id, permission.Code, permission.Name, permission.Description, permission.Module, permission.IsGlobal);
+
+    private IQueryable<Permission> VisiblePermissionQuery()
+        => _context.Permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
+
+    private static IEnumerable<Permission> VisiblePermissions(IEnumerable<Permission> permissions)
+        => permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
+
+    private async Task<List<Permission>> LoadNormalizedPermissionsAsync(IReadOnlyCollection<Guid> permissionIds, CancellationToken ct)
+    {
+        var selected = await VisiblePermissionQuery()
+            .Where(permission => permissionIds.Contains(permission.Id))
+            .ToListAsync(ct);
+        var selectedCodes = selected.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var coveredCodes = ManagePermissionCoverage
+            .Where(pair => selectedCodes.Contains(pair.Key))
+            .SelectMany(pair => pair.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return selected
+            .Where(permission => !coveredCodes.Contains(permission.Code))
+            .ToList();
+    }
 }
 
 public record RoleResponse(

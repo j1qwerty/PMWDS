@@ -12,51 +12,62 @@ public static class PermissionPolicyRegistry
         options.AddPolicy("Director", policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
+            PermissionCodes.OrganizationManage,
             PermissionCodes.OrganizationView,
             PermissionCodes.OrganizationEdit,
+            PermissionCodes.ActivityLogManage,
             PermissionCodes.ActivityLogView));
         options.AddPolicy("Manager", policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
+            PermissionCodes.ProjectManage,
             PermissionCodes.ProjectCreate,
             PermissionCodes.ProjectEdit,
+            PermissionCodes.TaskManage,
             PermissionCodes.TaskCreate,
             PermissionCodes.TaskEdit,
-            PermissionCodes.ReportCreate,
-            PermissionCodes.KnowledgeCreate));
+            PermissionCodes.MilestoneManage,
+            PermissionCodes.SubtaskManage));
         options.AddPolicy("TaskEditor", policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
+            PermissionCodes.TaskManage,
             PermissionCodes.TaskCreate,
             PermissionCodes.TaskEdit,
             PermissionCodes.TaskAssign,
+            PermissionCodes.SubtaskManage,
             PermissionCodes.SubtaskCreate,
             PermissionCodes.SubtaskEdit));
 
-        AddCrud(options, "Organizations", PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete);
-        AddCrud(options, "Departments", PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete);
-        AddCrud(options, "Projects", PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete);
-        AddCrud(options, "Milestones", PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete);
-        AddCrud(options, "Tasks", PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete);
-        AddCrud(options, "Subtasks", PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete);
-        AddCrud(options, "Users", PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete);
-        AddCrud(options, "Roles", PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete);
-        AddCrud(options, "Permissions", PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
+        AddCrud(options, "Organizations", PermissionCodes.OrganizationManage, PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete);
+        AddCrud(options, "Departments", PermissionCodes.DepartmentManage, PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete);
+        AddCrud(options, "Projects", PermissionCodes.ProjectManage, PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete);
+        AddCrud(options, "Milestones", PermissionCodes.MilestoneManage, PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete);
+        AddCrud(options, "Tasks", PermissionCodes.TaskManage, PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete);
+        AddCrud(options, "Subtasks", PermissionCodes.SubtaskManage, PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete);
+        AddCrud(options, "Users", PermissionCodes.UserManage, PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete);
+        AddCrud(options, "Roles", PermissionCodes.RoleManage, PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete);
+        AddCrud(options, "Permissions", PermissionCodes.PermissionManage, PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
+        AddCrud(options, "Notifications", PermissionCodes.NotificationManage, PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage);
+        options.AddPolicy("ActivityLogs.View", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogView));
+        options.AddPolicy("ActivityLogs.Create", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogCreate));
+        options.AddPolicy("ActivityLogs.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage));
     }
 
     private static void AddCrud(
         AuthorizationOptions options,
         string prefix,
+        string manage,
         string view,
         string create,
         string edit,
         string delete)
     {
-        options.AddPolicy($"{prefix}.View", policy => RequireAny(policy, PermissionCodes.SystemAdmin, view));
-        options.AddPolicy($"{prefix}.Create", policy => RequireAny(policy, PermissionCodes.SystemAdmin, create));
-        options.AddPolicy($"{prefix}.Edit", policy => RequireAny(policy, PermissionCodes.SystemAdmin, edit));
-        options.AddPolicy($"{prefix}.Delete", policy => RequireAny(policy, PermissionCodes.SystemAdmin, delete));
-        options.AddPolicy($"{prefix}.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, create, edit, delete));
+        options.AddPolicy($"{prefix}.View", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, view));
+        options.AddPolicy($"{prefix}.Create", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, create));
+        options.AddPolicy($"{prefix}.Edit", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, edit));
+        options.AddPolicy($"{prefix}.Delete", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, delete));
+        options.AddPolicy($"{prefix}.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage));
     }
 
     private static void RequireAny(AuthorizationPolicyBuilder policy, params string[] permissionCodes)

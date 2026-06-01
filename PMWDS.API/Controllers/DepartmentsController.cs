@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
@@ -11,35 +13,32 @@ public class DepartmentsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly RoleScopeService _scope;
+    private readonly ApplicationDbContext _db;
 
-    public DepartmentsController(IUnitOfWork uow, RoleScopeService scope)
+    public DepartmentsController(IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db)
     {
         _uow = uow;
         _scope = scope;
+        _db = db;
     }
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var departments = (await _uow.Departments.GetAllAsync(ct)).ToList();
-        if (!_scope.IsSuperAdmin)
-        {
-            var organizationIds = await _scope.GetOrganizationIdsAsync(ct);
-            departments = departments
-                .Where(d => d.OrganizationId.HasValue && organizationIds.Contains(d.OrganizationId.Value))
-                .ToList();
-        }
+        var query = await _scope.ScopeDepartmentsAsync(_db.Departments.AsNoTracking(), ct);
 
-        var totalCount = departments.Count;
-        var items = departments
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
             .OrderBy(department => department.Name)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var mapped = items
             .Select(MapDepartment)
             .ToList();
 
-        return Ok(PaginatedResponse<DepartmentDto>.Create(items, pagination, totalCount));
+        return Ok(PaginatedResponse<DepartmentDto>.Create(mapped, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]
