@@ -7,6 +7,7 @@ export { MilestonesPanel } from "./MilestonesPanel";
 export { TasksKanbanBoard } from "./TasksKanbanBoard";
 export { TaskDetailPanel } from "./TaskDetailPanel";
 export { TaskDetailModal } from "./TaskDetailModal";
+export { TaskSubtaskCard } from "./TaskSubtaskCard";
 export { ProjectFormModal, type ProjectFormState } from "./ProjectFormModal";
 export { MilestoneFormModal } from "./MilestoneFormModal";
 export { TaskFormModal } from "./TaskFormModal";

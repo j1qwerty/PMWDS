@@ -13,6 +13,11 @@ import { MilestonesPage } from "./pages/milestones/MilestonesPage";
 import { TasksPage } from "./pages/tasks/tasks";
 import { NotificationsPage } from "./pages/notifications/notifications";
 
+// Project-nested views
+import { ProjectTasksPage } from "./pages/nested/ProjectTasksPage";
+import { ProjectMilestonesPage } from "./pages/nested/ProjectMilestonesPage";
+import { ProjectNotFound } from "./pages/nested/ProjectNotFound";
+
 // Team
 import { OrganizationStructurePage } from "./pages/organisations/OrganizationStructurePage";
 import { DepartmentsPage } from "./pages/departments/DepartmentsPage";
@@ -28,7 +33,7 @@ import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { RolesPage } from "./pages/roles/RolesPage";
 import { ActivityLogsPage } from ".//pages/activity/ActivityLogsPage";
 import { SettingsPage } from "./pages/settings/settings";
-import { TestPage } from "./pages/test/TestPage";
+import { TestPage } from "./pages/temp/TestPage";
 import { LoginPage } from "./pages/login/login";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +64,14 @@ function AppRoutes() {
                 <Route path="/milestonesPage" element={<MilestonesPage />} />
                 <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/notificationsPage" element={<NotificationsPage />} />
+
+                {/* Project-nested deep links */}
+                <Route path="/projects/:projectId/tasks" element={<ProjectTasksPage />} />
+                <Route
+                  path="/projects/:projectId/milestones"
+                  element={<ProjectMilestonesPage />}
+                />
+                <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
 
                 {/* Team */}
                 <Route path="/organizationStructure" element={<OrganizationStructurePage />} />

@@ -18,6 +18,7 @@
 - Workspace with compact sidebar for screens <1200px (hide some trivial boards depending on screen size and can be enabled from the settings icon )
 - Task performance table UI update — hover, view/edit modals, sort filters based on columns, cursor-pointer
 - Space utilization and header updates
+- sidebar project wise nested links for milestones tasks, for each project create nested compactable menu items (in those pages only data related to that particular porject is shown)
 
 ## Modals
 - Update all modals — X button, outside click dismiss, shared overlay
@@ -77,7 +78,7 @@
    - UI renders each component based on permissions from API (instead of hardcoded roles and permissions on each page and each component)
     - pages api proper response for all required data
     - pages partial api for partial requested data only and update that component only (firstly org specific only)
-    
+
 2. **Roles & Permissions**
    - Role scope check for each controller method (permissions in groups, e.g., users.manage includes all user-related permissions)
    - Role scope check for each element in each component (separate hasRole and hasPermission)

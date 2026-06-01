@@ -38,6 +38,7 @@ import {
   RiBugLine,
 } from "react-icons/ri";
 import { SearchBar } from "./pages/shared/search";
+import { ProjectsGroup } from "./pages/shared/ProjectsGroup";
 
 // ─── Helper: classNames ────────────────────────────────────────────
 function classNames(...classes: (string | boolean | undefined | null)[]) {
@@ -132,6 +133,18 @@ const sectionThemes: Record<string, {
     iconActive: "text-error",
     iconDefault: "text-outline",
     dot: "bg-error",
+  },
+  Projects: {
+    active: "bg-violet-50 text-violet-600 font-semibold",
+    hover: "hover:bg-violet-50/60 hover:text-violet-600",
+    bgHover: "hover:bg-violet-50/40",
+    borderActive: "border-r-[3px] border-violet-500",
+    textActive: "text-violet-600",
+    textHover: "hover:text-violet-600",
+    textDefault: "text-on-surface-variant",
+    iconActive: "text-violet-500",
+    iconDefault: "text-outline",
+    dot: "bg-violet-500",
   },
 };
 
@@ -406,6 +419,10 @@ function Layout({ children }: { children: React.ReactNode }) {
               </div>
             );
           })}
+
+          {!sidebarCompact && (
+            <ProjectsGroup theme={sectionThemes.Projects} iconClass={iconClass} />
+          )}
         </div>
 
         {/* Logout */}
