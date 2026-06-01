@@ -416,8 +416,3 @@ Scope handled in this pass: Auth, Users, Profiles, Roles/Permissions, Organizati
 8. Department list scoping was fixed.
    - `DepartmentsController.GetAll()` now applies `ScopeDepartmentsAsync()` to an EF query before pagination instead of loading all departments and filtering in memory.
 
-### Verification
-
-1. Ran `dotnet build PMWDS.slnx`.
-2. Build succeeded.
-3. No project tests were run, per instruction.

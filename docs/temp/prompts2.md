@@ -1,6 +1,6 @@
 # config 
 ## flow
-- existing flow : organizations -> departments(multiple) -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) 
+existing flow : organizations -> departments(multiple) -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) 
 
 
 ### heirarchy 
@@ -280,9 +280,6 @@ make commit on each step or feature
 
 # prompts
 ## new goal from scratch
-MAKE A LIST OF ALL THE CHANGES TO BE DONE IN REACT APP TO INTEGRATE THIS NEW FLOW IN pmwdsS-ui-integration.md file
-list all the changes done in backend so far in the current branch and how it will be reflected in ui react app.
-
 our app will have two versions of app living in two separate branches
 the current version with this flow
 - existing flow : organizations -> departments(multiple) -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) 
@@ -292,17 +289,20 @@ living in current branch pmwdsS
  ### new goal - important
 - new required flow (goal) : organizations -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) and also organizatoin -> departments(multiple) and projects (multiple) -> assign deprtments to projects 
 while keeping or updating the existings api to support this new flow.
-switch to new branch pmwdsA then start this implementation.
+NOTE - switch to new branch pmwdsA then start this implementation.
+make sure both versions work in this new structure depending on what the ui passes ( simple solution would be to make sure that multiple departments can be assigned to any project, as if we provide single department then it follows old structure and if we provide multiple departments it follows new structure)
+- update other controllers also such that when we have list of departments assigned to any project then details related to all departments are passed through other api which need this updated 
+NOTE - api updates only related to Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks (with subtasks), Notifications, Activity Logs 
+
+
 react app is in client folder
 make commit on each step or feature
 MAKE A LIST OF ALL THE CHANGES TO BE DONE IN REACT APP TO INTEGRATE THIS NEW FLOW IN pmwdsA-ui-integration.md file
 list names, paths of every component and what part or api or api data or json response needs to change and in which component with proper explanation 
 numbered list
--NOTE  skip everything in client/src/old those are old ui components ignore them and do not touch
 DO NOT RUN TEST FROM PROJECT
 
 DO NOT STOP TILL DONE
-IMPORTANT NOTE - GENERATE BOTH THE REPORTS FOR UI INTEGRATION FOR BOTH BRANCH AFTER THE BACKEND CHANGES FOR NEW BRANCH ARE ALSO COMPLETED
 
 ## analyse - report-backend-ds.md
 analyse the project for backend and how flow and scopes and roles and permissions are managed, hierarchy for roles , models intefaces repository dto 
@@ -327,6 +327,27 @@ check all api and data incosistencies and all interface declarations and color d
 
 also check for location inconsistencies and other things which can be improved, like moving all modals at same place with proper naming and check for all other issues
 
-# API
+## API
 - CREATE ONE MORE API THAT SENDS ALL DATA (ROLE SPECIFIC FOR LOGGED IN USER (end point - pages , returns all the data that we send through all get api to frontend for all pages and features in single api , make sure the data is paginanted only 20 records for everythings are sent when the user pagintion settings are for 10 i.e we send double of what users settings are )
+
+## prompt rolescope fixes
+- [rolescopes-back.md](rolescopes-back.md) contains all the issues we need to fix.
+NOTE : ONLY CONSIDER THESE FOR ANY CHANGES Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks (with subtasks), Notifications, Activity Logs, 
+NOTE IMP - DO NOT STOP TILL DONE
+fix all these issues and update the document  list all the issues and mentions all the changes
+
+- there are duplicate permissions in permissions like the USERS.PROFILE_PICTURE.MANAGE USER_PROFILE_PICTURE_MANAGE , USERS.DEPARTMENTS.MANAGE USER_DEPARTMENT_MANAGE , SYSTEM.ADMIN SYSTEM_ADMIN , SYSTEM.DATABASE.VIEW SYSTEM_DATABASE_VIEW 
+similarly  for all these Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks (with subtasks), Notifications, Activity Logs 
+
+check permissions and duplicates related to all these modules and fix it. 
+
+- each module has a manage global scope ( which has all the permission related to that module, and if that scope is assigned to any role we do not need to separately assign other scoped permissions)
+- fix all global and scoped permissions (all superadmin only permission will be global)
+
+- if a role is assigned global manage permission (it mean means it contains all other crud and other permission related to that module, no need to separately mention other permissions for that)
+
+- roles and permission controller and pages controller sends the data related to other modules like the ( integration, web hooks, dasbboards, knowledge ) hide this for now, we do not need to send these now
+
+- only data related to Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks (with subtasks), Notifications, Activity Logs  
+
 

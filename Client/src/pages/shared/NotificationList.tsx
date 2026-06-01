@@ -124,7 +124,13 @@ export function NotificationList({
                 <span className={`material-symbols-outlined ${config.iconColor} text-[18px]`} style={{ fontVariationSettings: "'FILL' 1" }}>
                   {config.icon}
                 </span>
+                <div className="flex items-center gap-2 mt-1.5">
+                  {!item.isRead && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  )}
+                </div>
               </div>
+               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-primary font-semibold">{formatTime(item.createdDate)}</span>
@@ -146,11 +152,7 @@ export function NotificationList({
                     {item.message.slice(0, 80)}
                   </p>
                 )}
-                <div className="flex items-center gap-2 mt-1.5">
-                  {!item.isRead && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                  )}
-                </div>
+               
               </div>
             </div>
           );

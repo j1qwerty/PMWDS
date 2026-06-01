@@ -870,7 +870,7 @@ export interface PageRoleDto {
   description: string;
   permissionLevel: number;
   paginationPageSize: number;
-  permissions: string[];
+  permissionCodes: string[];
 }
 
 export interface PagePermissionDto {

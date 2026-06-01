@@ -273,7 +273,7 @@ export function DashboardPage() {
 
 
 
-        <TaskProgressBoards />
+        {/* <TaskProgressBoards /> */}
 
         <DashboardStats dashboard={dashboard} />
 

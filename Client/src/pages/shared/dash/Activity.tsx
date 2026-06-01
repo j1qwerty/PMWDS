@@ -42,7 +42,8 @@ export function Activity({
   const points = activityData.map((point, index) => {
     const x = padding + (index / (activityData.length - 1)) * chartWidth;
     const maxValue = Math.max(...activityData.map(d => d.value));
-    const y = padding + chartHeight - (point.value / maxValue) * chartHeight;
+    const normalizedValue = maxValue > 0 ? point.value / maxValue : 0;
+    const y = padding + chartHeight - normalizedValue * chartHeight;
     return { x, y, ...point };
   });
 

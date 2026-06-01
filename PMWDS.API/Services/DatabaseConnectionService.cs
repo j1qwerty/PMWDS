@@ -225,6 +225,7 @@ public static class DatabaseConnectionService
         var expectedTables = new[]
         {
             "Organizations",
+            "Departments",
             "Roles",
             "AIModels",
             "PredictionResults",
@@ -238,7 +239,8 @@ public static class DatabaseConnectionService
             "KnowledgeArticles",
             "ActivityLogs",
             "AIProviderCredentials",
-            "UserDepartments"
+            "UserDepartments",
+            "ProjectDepartments"
         };
 
         var connection = db.Database.GetDbConnection();

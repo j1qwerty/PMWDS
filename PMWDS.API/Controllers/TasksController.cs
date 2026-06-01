@@ -11,6 +11,7 @@ using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
 using TaskDependency = PMWDS.Domain.Entities.TaskDependency;
+using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 
 namespace PMWDS.API.Controllers;
 
@@ -66,16 +67,36 @@ public class TasksController : BaseApiController
         if (string.IsNullOrWhiteSpace(_currentUser.UserId))
             return Unauthorized();
 
-        var tasks = await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct);
         var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        tasks = tasks.Where(task => allowedProjectIds.Contains(task.ProjectId)).ToList();
-        var visibleTasks = tasks.OrderByDescending(task => task.CreatedDate).ToList();
-        var items = visibleTasks
+        List<ProjectTask> tasks;
+        if (_scope.IsSuperAdmin)
+        {
+            tasks = await _db.Tasks
+                .Include(t => t.Assignments)
+                .Include(t => t.SubTasks)
+                .Include(t => t.Comments)
+                .Include(t => t.Attachments)
+                .Include(t => t.Dependencies)
+                .Include(t => t.TimeEntries)
+                .Include(t => t.Project)
+                .Where(t => allowedProjectIds.Contains(t.ProjectId))
+                .OrderByDescending(t => t.CreatedDate)
+                .ToListAsync(ct);
+        }
+        else
+        {
+            tasks = (await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct))
+                .Where(task => allowedProjectIds.Contains(task.ProjectId))
+                .OrderByDescending(task => task.CreatedDate)
+                .ToList();
+        }
+
+        var items = tasks
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
             .Select(TaskDto.FromEntity)
             .ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, visibleTasks.Count));
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
     }
 
     [HttpGet("{id:guid}")]

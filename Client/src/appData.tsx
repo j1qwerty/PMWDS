@@ -78,7 +78,7 @@ function mapRoleRecords(pages: PagesDataResponse): RoleRecord[] {
     name: role.name,
     description: role.description,
     permissionLevel: role.permissionLevel,
-    permissions: role.permissions
+    permissions: (role.permissionCodes ?? [])
       .map((code) => permissionsByCode.get(code))
       .filter((permission): permission is PermissionRecord => Boolean(permission)),
   }));
