@@ -23,11 +23,17 @@ export interface ProjectsGroupTheme {
   textDefault: string;
   iconActive: string;
   iconDefault: string;
+  initialBg: string;
+  initialText: string;
+  initialActiveBg: string;
+  initialActiveText: string;
 }
 
 interface ProjectsGroupProps {
   theme: ProjectsGroupTheme;
   iconClass: string;
+  compact?: boolean;
+  onRequestExpand?: () => void;
 }
 
 const STORAGE_KEY = "pmwds.sidebar.expandedProjects";
@@ -53,7 +59,21 @@ function saveExpanded(ids: string[]) {
   }
 }
 
-export function ProjectsGroup({ theme, iconClass }: ProjectsGroupProps) {
+function getInitials(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "?";
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+export function ProjectsGroup({
+  theme,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  iconClass,
+  compact = false,
+  onRequestExpand,
+}: ProjectsGroupProps) {
   const location = useLocation();
   const { data } = useAppData();
   const access = useRoleAccess();
@@ -107,17 +127,49 @@ export function ProjectsGroup({ theme, iconClass }: ProjectsGroupProps) {
     );
   };
 
+  const handleCompactClick = (projectId: string) => {
+    setExpandedIds((prev) =>
+      prev.includes(projectId) ? prev : [...prev, projectId],
+    );
+    onRequestExpand?.();
+  };
+
   if (!visibleProjects.length) return null;
+
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-1 border-t border-surface-variant/60 pt-2">
+        {visibleProjects.map((project) => {
+          const active = isChildActive(project.id);
+          return (
+            <button
+              key={project.id}
+              type="button"
+              onClick={() => handleCompactClick(project.id)}
+              title={project.name}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold uppercase transition-all duration-200 hover:scale-110 ${
+                active
+                  ? `${theme.initialActiveBg} ${theme.initialActiveText} ring-2 ring-violet-300`
+                  : `${theme.initialBg} ${theme.initialText}`
+              }`}
+            >
+              {getInitials(project.name)}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div
       className="border-t border-surface-variant/60"
-      style={{ paddingTop: "clamp(16px, 2.5vw, 20px)" }}
+      style={{ paddingTop: "clamp(4px, 0.6vw, 6px)" }}
     >
       <div
-        className={`px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}
+        className={`px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-cyan-600 text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}
       >
-        Projects
+        Projects  
       </div>
 
       <div className="space-y-[clamp(1px,0.3vw,2px)]">
@@ -132,14 +184,19 @@ export function ProjectsGroup({ theme, iconClass }: ProjectsGroupProps) {
               <button
                 type="button"
                 onClick={() => toggle(project.id)}
-                className={`relative flex items-center gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(7px,1vw,9px)] rounded-md transition-all duration-200 group ${
+                className={`relative flex items-center gap-[clamp(2px,1.5vw,6px)] px-[clamp(2px,1.5vw,4px)] py-[clamp(7px,1vw,9px)] rounded-md transition-all duration-200 group ${
                   parentActive
                     ? `${theme.active} ${theme.borderActive}`
                     : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
                 }`}
+                
                 title={project.name}
               >
                 <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`}
+                  title={project.status}
+                />
+                {/* <span
                   className={`shrink-0 transition-all duration-300 ${
                     parentActive
                       ? `${theme.iconActive} scale-110`
@@ -147,14 +204,11 @@ export function ProjectsGroup({ theme, iconClass }: ProjectsGroupProps) {
                   }`}
                 >
                   <HiOutlineFolder className={iconClass} />
-                </span>
+                </span> */}
                 <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em] truncate flex-1 text-left">
                   {project.name}
                 </span>
-                <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`}
-                  title={project.status}
-                />
+                
                 <HiOutlineChevronRight
                   className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
                     expanded ? "rotate-90" : ""

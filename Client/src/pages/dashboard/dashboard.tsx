@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { NotificationItem, Task, Department, User, Project, Milestone } from "../../types";
+import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { SimpleProjectList } from "../shared/SimpleProjectList";
 import { TaskList } from "../shared/TaskList";
@@ -10,8 +11,9 @@ import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent } from "../../ui";
-import { ModalOverlay, PageSkeleton, priorityColorPalette, statusColorPalette, useNavHeader } from "../shared";
+import { ModalOverlay, PageSkeleton, priorityColorPalette, statusColorPalette, useNavHeader, useToast } from "../shared";
 import { Permission, useRoleAccess } from "../shared";
+import { useUserOrganization } from "../shared/useUserOrganization";
 import { KpiCard } from "./kpiCard";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
@@ -28,17 +30,36 @@ import { Activity } from "../shared/dash/Activity";
 import { ActivityCompact } from "../shared/dash/ActivityCompact";
 import Timer from "../shared/dash/Timer";
 import { TimelinePredictions } from "../ai/TimelinePredictions";
+import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
+
+const emptyProjectForm = (): ProjectFormState => ({
+  projectCode: "",
+  name: "",
+  description: "",
+  category: "Monitoring",
+  plannedStartDate: "",
+  plannedEndDate: "",
+  plannedBudget: 25000,
+  organizationId: "",
+  departmentId: "",
+  departmentIds: [],
+  projectManagerId: "",
+  priority: "Medium",
+});
 
 export function DashboardPage() {
   const { auth } = useAuth();
   const access = useRoleAccess();
   const { setNavHeader } = useNavHeader();
   const navigate = useNavigate();
+  const { refresh: refreshAppData } = useAppData();
+  const { addToast } = useToast();
   const [dashboard, setDashboard] = useState<any>(null);
   const [myTasks, setMyTasks] = useState<Task[]>([]);
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -49,17 +70,42 @@ export function DashboardPage() {
   const [error, setError] = useState("");
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("All Tasks");
 
+
+   const [showCreateModal, setShowCreateModal] = useState(false);
+   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
+   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+
   useEffect(() => {
     setNavHeader({
       title: "Dashboard",
       description: "Overview of projects, tasks, and key metrics",
-      action: {
-        label: "Reports",
-        onClick: () => navigate("/reports"),
-        icon: "assessment",
-      },
+     action: access.canManageProjects ? {
+        label: "New Project",
+        onClick: () => {
+          setProjectForm({
+            ...emptyProjectForm(),
+            organizationId: shouldFilterByOrg && userOrganizationId ? userOrganizationId : "",
+          });
+          setShowCreateModal(true);
+        },
+        icon: "add_circle",
+      } : undefined,
     });
-  }, [setNavHeader, navigate]);
+  }, [setNavHeader, navigate, access.canManageProjects, shouldFilterByOrg, userOrganizationId]);
+
+  const handleCreateProject = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!auth) return;
+    try {
+      await api.createProject(auth.token, projectForm);
+      setShowCreateModal(false);
+      setProjectForm(emptyProjectForm());
+      addToast("Project created");
+      await refreshAppData();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to create project", "error");
+    }
+  };
 
   useEffect(() => {
     if (!auth) return;
@@ -69,16 +115,18 @@ export function DashboardPage() {
       api.getMyTasks(auth.token),
       api.getNotifications(auth.token, true),
       api.getDepartments(auth.token),
+      api.getOrganizations(auth.token),
       api.getUsers(auth.token),
       api.getProjects(auth.token),
       access.can(Permission.TaskView) ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       access.can(Permission.TaskView) ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
         if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
+        if (organizationsResult.status === "fulfilled") setOrganizations(organizationsResult.value as OrganizationRecord[]);
         if (usersResult.status === "fulfilled") setUsers(usersResult.value);
         if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
@@ -350,6 +398,23 @@ export function DashboardPage() {
           }}
         />
       )}
+
+      <ProjectFormModal
+        open={showCreateModal}
+        title="Create Project"
+        submitLabel="Create"
+        form={projectForm}
+        setForm={setProjectForm}
+        departments={access.isAdmin ? departments : departments.filter((d) => !shouldFilterByOrg || d.organizationId === userOrganizationId)}
+        organizations={organizations}
+        showOrganizationFilter={access.isAdmin}
+        users={users}
+        onSubmit={handleCreateProject}
+        onClose={() => {
+          setShowCreateModal(false);
+          setProjectForm(emptyProjectForm());
+        }}
+      />
 
     </div>
   );

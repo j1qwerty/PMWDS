@@ -85,6 +85,10 @@ const sectionThemes: Record<string, {
   iconActive: string;
   iconDefault: string;
   dot: string;
+  initialBg: string;
+  initialText: string;
+  initialActiveBg: string;
+  initialActiveText: string;
 }> = {
   Overview: {
     active: "bg-primary/10 text-primary font-semibold",
@@ -97,6 +101,10 @@ const sectionThemes: Record<string, {
     iconActive: "text-primary",
     iconDefault: "text-outline",
     dot: "bg-primary",
+    initialBg: "bg-primary/10",
+    initialText: "text-primary",
+    initialActiveBg: "bg-primary",
+    initialActiveText: "text-white",
   },
   Team: {
     active: "bg-secondary/10 text-secondary font-semibold",
@@ -109,6 +117,10 @@ const sectionThemes: Record<string, {
     iconActive: "text-secondary",
     iconDefault: "text-outline",
     dot: "bg-secondary",
+    initialBg: "bg-secondary/10",
+    initialText: "text-secondary",
+    initialActiveBg: "bg-secondary",
+    initialActiveText: "text-white",
   },
   Tools: {
     active: "bg-green-50 text-green-500 font-semibold",
@@ -121,6 +133,10 @@ const sectionThemes: Record<string, {
     iconActive: "text-tertiary",
     iconDefault: "text-outline",
     dot: "bg-tertiary",
+    initialBg: "bg-tertiary/10",
+    initialText: "text-tertiary",
+    initialActiveBg: "bg-tertiary",
+    initialActiveText: "text-white",
   },
   System: {
     active: "bg-error/10 text-error font-semibold",
@@ -133,6 +149,10 @@ const sectionThemes: Record<string, {
     iconActive: "text-error",
     iconDefault: "text-outline",
     dot: "bg-error",
+    initialBg: "bg-error/10",
+    initialText: "text-error",
+    initialActiveBg: "bg-error",
+    initialActiveText: "text-white",
   },
   Projects: {
     active: "bg-violet-50 text-violet-600 font-semibold",
@@ -145,6 +165,10 @@ const sectionThemes: Record<string, {
     iconActive: "text-violet-500",
     iconDefault: "text-outline",
     dot: "bg-violet-500",
+    initialBg: "bg-violet-100",
+    initialText: "text-violet-700",
+    initialActiveBg: "bg-violet-500",
+    initialActiveText: "text-white",
   },
 };
 
@@ -196,7 +220,6 @@ function Layout({ children }: { children: React.ReactNode }) {
       {
         title: "Overview",
         items: [
-          { path: "/", label: "Dashboard", icon: "home", permissions: [] },
           { path: "/projects", label: "Projects", icon: "projects", permissions: [Permission.ProjectView] },
           { path: "/projectsK", label: "Workspace", icon: "projects", permissions: [Permission.ProjectView] },
           { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [Permission.MilestoneView] },
@@ -345,7 +368,52 @@ function Layout({ children }: { children: React.ReactNode }) {
             sidebarCompact ? "px-[clamp(2px,0.5vw,4px)]" : "px-[clamp(8px,1.5vw,12px)] pr-[clamp(8px,2vw,16px)]"
           )}
         >
-          {newUiNavGroups.map((group, index) => {
+         {/* Dashboard — standalone, no group wrapper */}
+{(() => {
+  const theme = sectionThemes.Overview;
+  const active = isActive("/");
+  return (
+    <Link
+      to="/"
+      onClick={() => setMobileSidebarOpen(false)}
+      className={classNames(
+        "relative flex items-center rounded-md transition-all duration-200 group",
+        sidebarCompact
+          ? "justify-center px-0 ]"
+          : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(4px,0.8vw,7px)]",
+        active
+          ? `${theme.active} ${theme.borderActive}`
+          : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+      )}
+      title={sidebarCompact ? "Dashboard" : undefined}
+    >
+      <span
+        className={classNames(
+          "transition-all duration-300 shrink-0",
+          active
+            ? `${theme.iconActive} scale-110`
+            : `${theme.iconDefault} group-hover:scale-110`
+        )}
+      >
+        {iconMap.home}
+      </span>
+      {!sidebarCompact && (
+        <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+          Dashboard
+        </span>
+      )}
+    </Link>
+  );
+})()}
+
+          <ProjectsGroup
+            theme={sectionThemes.Projects}
+            iconClass={iconClass}
+            compact={sidebarCompact}
+            onRequestExpand={() => setSidebarCompact(false)}
+          />
+
+          {newUiNavGroups.map((group) => {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
             const visibleItems = group.items.filter(
               (item) =>
@@ -355,7 +423,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
             return (
               <div key={group.title} className="space-y-[clamp(4px,0.8vw,6px)]">
-                {!sidebarCompact && index !== 0 && (
+                {!sidebarCompact && (
                   <div className={classNames(
                     "px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold",
                     theme.textDefault
@@ -419,10 +487,6 @@ function Layout({ children }: { children: React.ReactNode }) {
               </div>
             );
           })}
-
-          {!sidebarCompact && (
-            <ProjectsGroup theme={sectionThemes.Projects} iconClass={iconClass} />
-          )}
         </div>
 
         {/* Logout */}
