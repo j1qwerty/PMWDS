@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { api } from "./api";
 import { useAuth } from "./auth";
-import type { Role } from "./types";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton } from "./pages/shared";
+import { useAppData } from "./appData";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, Permission, useRoleAccess } from "./pages/shared";
 
 import {
   HiOutlineHome,
@@ -138,9 +137,10 @@ const sectionThemes: Record<string, {
 
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const { auth, logout, hasRole } = useAuth();
+  const { auth, logout } = useAuth();
+  const access = useRoleAccess();
+  const { data } = useAppData();
 
-  const [unreadCount, setUnreadCount] = useState(0);
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
@@ -148,14 +148,10 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
 
-  useEffect(() => {
-    if (!auth) return;
-
-    api
-      .getUnreadNotificationCount(auth.token)
-      .then((res) => setUnreadCount(res.count))
-      .catch(() => setUnreadCount(0));
-  }, [auth]);
+  const unreadCount = useMemo(
+    () => data.notifications.filter((notification) => !notification.isRead).length,
+    [data.notifications],
+  );
 
   // Responsive breakpoint detection
   useEffect(() => {
@@ -181,45 +177,45 @@ function Layout({ children }: { children: React.ReactNode }) {
       path: string;
       label: string;
       icon: string;
-      roles: Role[];
+      permissions: string[];
     }>;
   }> = [
       {
         title: "Overview",
         items: [
-          { path: "/", label: "Dashboard", icon: "home", roles: [] },
-          { path: "/projects", label: "Projects", icon: "projects", roles: [] },
-          { path: "/projectsK", label: "Workspace", icon: "projects", roles: [] },
-          { path: "/milestonesPage", label: "Milestones", icon: "milestones", roles: [] },
-          { path: "/tasks", label: "Tasks", icon: "tasks", roles: [] },
-          { path: "/notificationsPage", label: "Notifications", icon: "inbox", roles: [] },
-          { path: "/chat", label: "Chats", icon: "chat", roles: [] },
+          { path: "/", label: "Dashboard", icon: "home", permissions: [] },
+          { path: "/projects", label: "Projects", icon: "projects", permissions: [Permission.ProjectView] },
+          { path: "/projectsK", label: "Workspace", icon: "projects", permissions: [Permission.ProjectView] },
+          { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [Permission.MilestoneView] },
+          { path: "/tasks", label: "Tasks", icon: "tasks", permissions: [Permission.TaskView] },
+          { path: "/notificationsPage", label: "Notifications", icon: "inbox", permissions: [Permission.NotificationView] },
+          { path: "/chat", label: "Chats", icon: "chat", permissions: [] },
         ],
       },
       {
         title: "Team",
         items: [
-          { path: "/organizationStructure", label: "Organizations", icon: "organization", roles: ["SuperAdmin", "Director", "DepartmentHead", "ProjectManager", "TeamMember"] },
-          { path: "/departmentsPage", label: "Departments", icon: "departments", roles: ["SuperAdmin", "Director", "DepartmentHead", "ProjectManager", "TeamMember"] },
-          { path: "/users", label: "Users", icon: "users", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead"] },
-          { path: "/profiles", label: "Profiles", icon: "users", roles: [] },
-          { path: "/skills", label: "Skills", icon: "skill", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember"] },
+          { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [Permission.OrganizationView] },
+          { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [Permission.DepartmentView] },
+          { path: "/users", label: "Users", icon: "users", permissions: [Permission.UserView] },
+          { path: "/profiles", label: "Profiles", icon: "users", permissions: [] },
+          { path: "/skills", label: "Skills", icon: "skill", permissions: [] },
         ],
       },
       {
         title: "Tools",
         items: [
-          { path: "/reports", label: "Reports", icon: "reports", roles: ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead"] },
-          { path: "/ai", label: "AI Insights", icon: "ai", roles: [] },
+          { path: "/reports", label: "Reports", icon: "reports", permissions: [] },
+          { path: "/ai", label: "AI Insights", icon: "ai", permissions: [] },
         ],
       },
       {
         title: "System",
         items: [
-          { path: "/roles", label: "Roles", icon: "roles", roles: ["SuperAdmin", "Director"] },
-          { path: "/activity-logs", label: "Activity Logs", icon: "activity", roles: ["SuperAdmin", "Director"] },
-          { path: "/test-page", label: "Test Page", icon: "test", roles: [] },
-          { path: "/settings", label: "Settings", icon: "settings", roles: ["SuperAdmin"] },
+          { path: "/roles", label: "Roles", icon: "roles", permissions: [Permission.RoleView] },
+          { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [Permission.ActivityLogView] },
+          { path: "/test-page", label: "Test Page", icon: "test", permissions: [] },
+          { path: "/settings", label: "Settings", icon: "settings", permissions: [Permission.SystemAdmin] },
         ],
       },
     ];
@@ -340,7 +336,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
             const visibleItems = group.items.filter(
               (item) =>
-                item.roles.length === 0 || hasRole(...item.roles)
+                item.permissions.length === 0 || access.can(...item.permissions)
             );
             if (visibleItems.length === 0) return null;
 

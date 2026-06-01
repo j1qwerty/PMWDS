@@ -1,6 +1,6 @@
 // components/DepartmentCards.tsx
 import type { Department, Project } from "../../../types";
-import { getDepartmentColor } from "../../shared";
+import { getDepartmentColor, projectBelongsToAnyDepartment, projectBelongsToDepartment } from "../../shared";
 
 interface DepartmentCardsProps {
   departments: Department[];
@@ -20,7 +20,7 @@ export function DepartmentCards({
   onClearFilters,
 }: DepartmentCardsProps) {
   const filteredProjects = selectedOrgId
-    ? projects.filter(p => departments.some(d => d.id === p.departmentId))
+    ? projects.filter(p => projectBelongsToAnyDepartment(p, departments.map((department) => department.id)))
     : projects;
 
   return (
@@ -69,7 +69,7 @@ export function DepartmentCards({
         </button>
 
         {departments.map((dept, index) => {
-          const deptProjects = filteredProjects.filter(p => p.departmentId === dept.id);
+          const deptProjects = filteredProjects.filter(p => projectBelongsToDepartment(p, dept.id));
           const colors = getDepartmentColor(index);
           const isSelected = selectedDepartmentId === dept.id;
 

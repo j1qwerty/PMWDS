@@ -146,12 +146,20 @@ export interface Project {
   aiInsightsSummary?: string | null;
   departmentId: string;
   departmentName?: string | null;
+  departmentIds?: string[];
+  departments?: ProjectDepartmentAssignment[];
   projectManagerId: string;
   projectManagerName?: string | null;
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
   createdDate: string;
+}
+
+export interface ProjectDepartmentAssignment {
+  departmentId: string;
+  departmentName?: string | null;
+  isPrimary: boolean;
 }
 
 export interface Task {
@@ -801,6 +809,8 @@ export interface ProjectDto {
   priority: string;
   departmentId: string;
   departmentName: string | null;
+  departmentIds?: string[];
+  departments?: ProjectDepartmentAssignment[];
   projectManagerId: string;
   projectManagerName: string | null;
   progressPercentage: number;

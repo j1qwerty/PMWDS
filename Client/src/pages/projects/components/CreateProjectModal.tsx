@@ -12,6 +12,7 @@ type ProjectFormState = {
   plannedBudget: number;
   organizationId: string;
   departmentId: string;
+  departmentIds: string[];
   projectManagerId: string;
   priority: string;
 };
@@ -44,6 +45,17 @@ export function CreateProjectModal({
     ? departments.filter((department) => department.organizationId === form.organizationId)
     : departments;
   const selectedDepartment = departments.find((department) => department.id === form.departmentId);
+  const selectedDepartmentIds = new Set(form.departmentIds?.length ? form.departmentIds : form.departmentId ? [form.departmentId] : []);
+  const updateDepartmentSelection = (departmentId: string, checked: boolean) => {
+    const nextDepartmentIds = checked
+      ? Array.from(new Set([...selectedDepartmentIds, departmentId]))
+      : Array.from(selectedDepartmentIds).filter((id) => id !== departmentId);
+    setForm({
+      ...form,
+      departmentIds: nextDepartmentIds,
+      departmentId: nextDepartmentIds.includes(form.departmentId) ? form.departmentId : nextDepartmentIds[0] || "",
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -94,7 +106,7 @@ export function CreateProjectModal({
               <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Organization</span>
               <select
                 value={form.organizationId}
-                onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "", projectManagerId: "" })}
+                onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "", departmentIds: [], projectManagerId: "" })}
                 className="border border-outline-variant rounded-lg p-2 text-sm"
               >
                 <option value="">Choose</option>
@@ -106,11 +118,40 @@ export function CreateProjectModal({
           )}
           <label className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Department</span>
-            <select value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })} className="border border-outline-variant rounded-lg p-2 text-sm">
+            <select
+              value={form.departmentId}
+              onChange={(e) => {
+                const departmentId = e.target.value;
+                setForm({
+                  ...form,
+                  departmentId,
+                  departmentIds: departmentId ? Array.from(new Set([...(form.departmentIds ?? []), departmentId])) : form.departmentIds ?? [],
+                });
+              }}
+              className="border border-outline-variant rounded-lg p-2 text-sm"
+            >
               <option value="">Choose</option>
               {filteredDepartments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </label>
+          <div className="md:col-span-2">
+            <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Assigned Departments</span>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-outline-variant p-3">
+              {filteredDepartments.map((department) => (
+                <label key={department.id} className="flex items-center gap-2 text-sm text-on-surface-variant">
+                  <input
+                    type="checkbox"
+                    checked={selectedDepartmentIds.has(department.id)}
+                    onChange={(event) => updateDepartmentSelection(department.id, event.target.checked)}
+                  />
+                  <span>{department.name}</span>
+                </label>
+              ))}
+              {filteredDepartments.length === 0 && (
+                <span className="text-xs text-outline">No departments available.</span>
+              )}
+            </div>
+          </div>
           <div className="md:col-span-2">
             <ScopedUserSelect
               users={users}

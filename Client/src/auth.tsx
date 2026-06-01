@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   startTransition,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -32,6 +34,28 @@ type AuthContextValue = {
 
 const STORAGE_KEY = "pmwds-client-auth";
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const permissionCoverage: Record<string, string[]> = {
+  ORGANIZATION_MANAGE: ["ORGANIZATION_VIEW", "ORGANIZATION_CREATE", "ORGANIZATION_EDIT", "ORGANIZATION_DELETE"],
+  DEPARTMENT_MANAGE: ["DEPARTMENT_VIEW", "DEPARTMENT_CREATE", "DEPARTMENT_EDIT", "DEPARTMENT_DELETE"],
+  PROJECT_MANAGE: ["PROJECT_VIEW", "PROJECT_CREATE", "PROJECT_EDIT", "PROJECT_DELETE"],
+  MILESTONE_MANAGE: ["MILESTONE_VIEW", "MILESTONE_CREATE", "MILESTONE_EDIT", "MILESTONE_DELETE"],
+  TASK_MANAGE: ["TASK_VIEW", "TASK_CREATE", "TASK_EDIT", "TASK_DELETE", "TASK_ASSIGN", "TASK_COMMENT_CREATE", "TASK_ATTACHMENT_CREATE", "TASK_TIME_TRACK"],
+  SUBTASK_MANAGE: ["SUBTASK_VIEW", "SUBTASK_CREATE", "SUBTASK_EDIT", "SUBTASK_DELETE"],
+  USER_MANAGE: ["USER_VIEW", "USER_CREATE", "USER_EDIT", "USER_DELETE", "USER_DEPARTMENT_MANAGE", "USER_PROFILE_PICTURE_MANAGE"],
+  ROLE_MANAGE: ["ROLE_VIEW", "ROLE_CREATE", "ROLE_EDIT", "ROLE_DELETE"],
+  PERMISSION_MANAGE: ["PERMISSION_VIEW", "PERMISSION_CREATE", "PERMISSION_EDIT", "PERMISSION_DELETE"],
+  NOTIFICATION_MANAGE: ["NOTIFICATION_VIEW", "NOTIFICATION_BROADCAST", "NOTIFICATION_TEMPLATE_MANAGE", "NOTIFICATION_RULE_MANAGE"],
+  ACTIVITY_LOG_MANAGE: ["ACTIVITY_LOG_VIEW", "ACTIVITY_LOG_CREATE"],
+};
+
+function hasCoveredPermission(userPermissions: readonly string[], requested: string) {
+  if (userPermissions.includes("SYSTEM_ADMIN") || userPermissions.includes(requested)) return true;
+  return Object.entries(permissionCoverage).some(
+    ([managePermission, covered]) =>
+      userPermissions.includes(managePermission) && covered.includes(requested),
+  );
+}
 
 function mapAuth(response: AuthResponse): AuthState {
   return {
@@ -94,36 +118,48 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => window.clearTimeout(timer);
   }, [auth]);
 
-  const value: AuthContextValue = {
+  const login = useCallback(async (email: string, password: string) => {
+    const response = await api.login(email, password);
+    setAuth(mapAuth(response));
+  }, []);
+
+  const logout = useCallback(() => {
+    setAuth(null);
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!auth) return;
+    const refreshed = await api.refresh(auth.token);
+    setAuth({
+      ...auth,
+      token: refreshed.token,
+      expiry: refreshed.expiry,
+    });
+  }, [auth]);
+
+  const updateCurrentUser = useCallback((patch: Partial<Pick<AuthState, "fullName" | "email" | "profilePictureUrl">>) => {
+    setAuth((current) => current ? { ...current, ...patch } : current);
+  }, []);
+
+  const hasRole = useCallback((...roles: Role[]) => {
+    if (!auth) return false;
+    return roles.some((role) => auth.roles.includes(role));
+  }, [auth]);
+
+  const hasPermission = useCallback((...permissions: string[]) => {
+    if (!auth) return false;
+    return permissions.some((permission) => hasCoveredPermission(auth.permissions ?? [], permission));
+  }, [auth]);
+
+  const value: AuthContextValue = useMemo(() => ({
     auth,
-    async login(email, password) {
-      const response = await api.login(email, password);
-      setAuth(mapAuth(response));
-    },
-    logout() {
-      setAuth(null);
-    },
-    async refresh() {
-      if (!auth) return;
-      const refreshed = await api.refresh(auth.token);
-      setAuth({
-        ...auth,
-        token: refreshed.token,
-        expiry: refreshed.expiry,
-      });
-    },
-    updateCurrentUser(patch) {
-      setAuth((current) => current ? { ...current, ...patch } : current);
-    },
-    hasRole(...roles) {
-      if (!auth) return false;
-      return roles.some((role) => auth.roles.includes(role));
-    },
-    hasPermission(...permissions) {
-      if (!auth) return false;
-      return permissions.some((permission) => (auth.permissions ?? []).includes(permission));
-    },
-  };
+    login,
+    logout,
+    refresh,
+    updateCurrentUser,
+    hasRole,
+    hasPermission,
+  }), [auth, login, logout, refresh, updateCurrentUser, hasRole, hasPermission]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

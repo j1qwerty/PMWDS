@@ -9,16 +9,18 @@ import {
   useNavHeader,
   ModalOverlay,
   useToast,
+  useRoleAccess,
 } from "../shared";
 import { ProfileList } from "./ProfileList";
 import { ProfileDetail } from "./ProfileDetail";
 import { ProfileFormModal } from "./ProfileFormModal";
 
 export function ProfilesPage() {
-  const { auth, hasRole, updateCurrentUser } = useAuth();
+  const { auth, updateCurrentUser } = useAuth();
+  const access = useRoleAccess();
   const { addToast } = useToast();
-  const canViewProfileList = hasRole("SuperAdmin", "Director", "DepartmentHead");
-  const canManageProfiles = hasRole("SuperAdmin", "Director");
+  const canViewProfileList = access.can("USER_VIEW");
+  const canManageProfiles = access.can("USER_EDIT");
   const isOwnProfile = !canViewProfileList;
 
   const [users, setUsers] = useState<User[]>([]);

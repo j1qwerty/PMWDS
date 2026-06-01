@@ -11,6 +11,7 @@ import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent } from "../../ui";
 import { ModalOverlay, PageSkeleton, priorityColorPalette, statusColorPalette, useNavHeader } from "../shared";
+import { Permission, useRoleAccess } from "../shared";
 import { KpiCard } from "./kpiCard";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
@@ -29,7 +30,8 @@ import Timer from "../shared/dash/Timer";
 import { TimelinePredictions } from "../ai/TimelinePredictions";
 
 export function DashboardPage() {
-  const { auth, hasRole, hasPermission } = useAuth();
+  const { auth } = useAuth();
+  const access = useRoleAccess();
   const { setNavHeader } = useNavHeader();
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<any>(null);
@@ -69,8 +71,8 @@ export function DashboardPage() {
       api.getDepartments(auth.token),
       api.getUsers(auth.token),
       api.getProjects(auth.token),
-      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
-      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+      access.can(Permission.TaskView) ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
+      access.can(Permission.TaskView) ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
       .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
@@ -86,10 +88,9 @@ export function DashboardPage() {
         }
       })
       .finally(() => setLoading(false));
-  }, [auth]);
+  }, [auth, access]);
 
-  const canEditTasks = hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead") ||
-    hasPermission("TASK_EDIT", "TASK_CREATE", "TASK_ASSIGN");
+  const canEditTasks = access.can(Permission.TaskEdit, Permission.TaskCreate, "TASK_ASSIGN");
 
   const openTaskDetails = async (task: Task) => {
     if (!auth) return;
@@ -304,7 +305,6 @@ export function DashboardPage() {
               project={projects.find(project => project.id === selectedTask.projectId) ?? null}
               milestone={milestones.find(milestone => milestone.id === selectedTask.milestoneId) ?? null}
               isAdmin={canEditTasks}
-              hasRole={hasRole}
               onStatusChange={async (status) => {
                 if (!auth) return;
                 await api.updateTaskStatus(auth.token, selectedTask.id, status);

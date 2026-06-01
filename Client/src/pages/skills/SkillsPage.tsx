@@ -9,17 +9,20 @@ import {
   useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
+  Permission,
+  useRoleAccess,
 } from "../shared";
 import { SkillFormModal } from "./SkillFormModal";
 
 export function SkillsPage() {
-  const { auth, hasRole } = useAuth();
-  const canManage = hasRole("SuperAdmin", "Director", "DepartmentHead");
-  const canWrite = hasRole("SuperAdmin", "Director", "DepartmentHead");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const canManage = access.can(Permission.SystemAdmin, Permission.UserEdit);
+  const canWrite = canManage;
 
   const canDeleteSkill = (skill: SkillRecord) =>
-    hasRole("SuperAdmin") ||
-    (hasRole("Director") && (skill.createdBy === auth?.userId || Boolean(skill.organizationId)));
+    access.can(Permission.SystemAdmin) ||
+    (access.can(Permission.UserEdit) && (skill.createdBy === auth?.userId || Boolean(skill.organizationId)));
 
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [message, setMessage] = useState("");
@@ -182,7 +185,7 @@ export function SkillsPage() {
                 <h4 className="text-sm font-semibold text-slate-700 mb-2">
                   {searchTerm ? "No skills found" : "No skills yet"}
                 </h4>
-                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                <p className="text-xs text-slate-400 mx-auto">
                   {searchTerm 
                     ? "Try adjusting your search or filters" 
                     : "Create your first skill to build the expertise catalogue"}

@@ -225,6 +225,18 @@ export function MilestonesPage() {
         }
     };
 
+    const handleMilestoneStatus = async (milestoneId: string, status: string) => {
+        if (!auth) return;
+        try {
+            await api.setMilestoneStatus(auth.token, milestoneId, status);
+            setMessage("Milestone status updated.");
+            const milestoneData = await api.getMilestonesByProject(auth.token, selectedProjectId);
+            setMilestones(milestoneData);
+        } catch (e) {
+            setMessage(`Error: ${e instanceof Error ? e.message : "Action failed"}`);
+        }
+    };
+
     const handleDeleteMilestone = (milestone: Milestone) => {
         setDeleteConfirm({ open: true, milestone });
     };
@@ -525,6 +537,7 @@ export function MilestonesPage() {
                             onEdit={() => setMilestoneModal({ open: true, editMilestone: selectedMilestone })}
                             onDelete={() => handleDeleteMilestone(selectedMilestone)}
                             onAddTask={() => setTaskModal({ open: true })}
+                            onStatusChange={(status) => handleMilestoneStatus(selectedMilestone.id, status)}
                             isAdmin={isAdmin}
                         />
                     ) : selectedProjectId ? (

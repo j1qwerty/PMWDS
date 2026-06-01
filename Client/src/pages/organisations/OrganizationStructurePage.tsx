@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { AnimatedBackground } from "../shared/AnimatedBackground";
@@ -10,15 +11,16 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage, useRoleAccess, useNavHeader } from "../shared";
+import { LoadingPage, Permission, useRoleAccess, useNavHeader } from "../shared";
 
 export function OrganizationStructurePage() {
-  const { auth, hasRole } = useAuth();
+  const { auth } = useAuth();
+  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const access = useRoleAccess();
-  const isAdmin = hasRole("SuperAdmin");
-  const canManageOrganization = hasRole("SuperAdmin", "Director");
-  const canManageDepartments = hasRole("SuperAdmin", "Director", "DepartmentHead");
-  const canCreateDepartments = hasRole("SuperAdmin", "Director");
+  const isAdmin = access.can(Permission.SystemAdmin, Permission.OrganizationCreate);
+  const canManageOrganization = access.can(Permission.OrganizationCreate, Permission.OrganizationEdit, Permission.OrganizationDelete);
+  const canManageDepartments = access.canManageDepartments;
+  const canCreateDepartments = access.canCreateDepartments;
 
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -41,19 +43,14 @@ export function OrganizationStructurePage() {
   const loadData = () => {
     if (!auth) return;
     setLoading(true);
-    Promise.all([
-      api.getOrganizations(auth.token),
-      api.getDepartments(auth.token),
-      canManageDepartments ? api.getUsers(auth.token) : Promise.resolve([]),
-    ]).then(([orgData, deptData, userData]) => {
-      setOrganizations(orgData);
-      setDepartments(deptData);
-      setUsers(userData as User[]);
-      if (!selectedOrgId && orgData.length) setSelectedOrgId(orgData[0].id);
-    }).finally(() => setLoading(false));
+    setOrganizations(data.organizations);
+    setDepartments(data.departments);
+    setUsers(canManageDepartments ? data.users : []);
+    if (!selectedOrgId && data.organizations.length) setSelectedOrgId(data.organizations[0].id);
+    setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, [auth]);
+  useEffect(() => { loadData(); }, [auth, data, canManageDepartments]);
 
   const selectedOrg = organizations.find((o) => o.id === selectedOrgId) ?? null;
   const orgDepartments = departments.filter((d) => d.organizationId === selectedOrgId);
@@ -82,7 +79,7 @@ export function OrganizationStructurePage() {
       }
       setMessage(`${deleteConfirm.type === "org" ? "Organization" : "Department"} deleted successfully.`);
       setDeleteConfirm({ open: false, type: "org", id: "", name: "" });
-      loadData();
+      await refreshAppData();
     } catch (e) {
       setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
     }
@@ -98,7 +95,7 @@ export function OrganizationStructurePage() {
         setSelectedOrgId((newOrg as any).id || selectedOrgId);
       }
       setOrgModal({ open: false });
-      loadData();
+      await refreshAppData();
       setMessage(orgModal.editOrg ? "Organization updated." : "Organization created.");
     } catch (e) {
       setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
@@ -115,7 +112,7 @@ export function OrganizationStructurePage() {
         await api.createDepartment(auth.token, payload);
       }
       setDeptModal({ open: false });
-      loadData();
+      await refreshAppData();
       setMessage(deptModal.editDept ? "Department updated." : "Department created.");
     } catch (e) {
       setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
@@ -136,7 +133,7 @@ export function OrganizationStructurePage() {
     });
   }, [setNavHeader, isAdmin]);
 
-  if (loading) return <LoadingPage label="Loading organizations..." />;
+  if (loading || appDataLoading) return <LoadingPage label="Loading organizations..." />;
 
   return (
     <div>
@@ -175,13 +172,11 @@ export function OrganizationStructurePage() {
               departments={orgDepartments}
               users={users}
               isAdmin={canManageOrganization}
-              canDeleteOrg={access.isAdmin}
+              canDeleteOrg={access.can(Permission.OrganizationDelete)}
               canManageDepartments={canManageDepartments}
               canCreateDepartments={canCreateDepartments}
               canEditDepartment={(department) =>
-                access.isAdmin ||
-                access.isDirector ||
-                (access.isDepartmentHead && department.departmentHeadUserId === auth?.userId)}
+                access.can(Permission.DepartmentEdit) || department.departmentHeadUserId === auth?.userId}
               onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
               onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
               onAddDept={() => setDeptModal({ open: true })}
@@ -194,7 +189,7 @@ export function OrganizationStructurePage() {
                 <span className="material-symbols-outlined text-4xl text-indigo-400">corporate_fare</span>
               </div>
               <h3 className="text-lg font-semibold text-slate-700 mb-2">Select an Organization</h3>
-              <p className="text-sm text-slate-400 max-w-xs">
+              <p className="text-sm text-slate-400 ">
                 Choose an organization from the left panel to view its details and manage departments
               </p>
             </GlassCard>

@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
+import { AppDataProvider, useAppData } from "./appData";
 import { Layout } from "./layout";
 import { ToastProvider } from "./pages/shared/Toast";
+import { LoadingPage } from "./pages/shared";
 
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
@@ -31,7 +33,11 @@ import { LoginPage } from "./pages/login/login";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
-  return auth ? <>{children}</> : <Navigate to="/login" />;
+  const { pages, loading } = useAppData();
+
+  if (!auth) return <Navigate to="/login" />;
+  if (loading && !pages) return <LoadingPage label="Loading workspace permissions..." />;
+  return <>{children}</>;
 }
 
 function AppRoutes() {
@@ -85,9 +91,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <AppRoutes />
-        </ToastProvider>
+        <AppDataProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </AppDataProvider>
       </AuthProvider>
     </BrowserRouter>
   );

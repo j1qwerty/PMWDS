@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
-import { GlassCard, LoadingPage, useNavHeader, getDepartmentColor, OrganizationDepartmentFilter, useRoleAccess } from "../shared";
+import { GlassCard, LoadingPage, useNavHeader, OrganizationDepartmentFilter, useRoleAccess, getProjectDepartmentIds, projectBelongsToAnyDepartment, projectBelongsToDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
   ProjectsBoard,
@@ -17,7 +18,8 @@ import { DepartmentCards } from "./components/DepartmentCards";
 
 
 export function ProjectsPage() {
-  const { auth, hasRole } = useAuth();
+  const { auth } = useAuth();
+  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const access = useRoleAccess();
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -44,6 +46,7 @@ export function ProjectsPage() {
     plannedBudget: 25000,
     organizationId: "",
     departmentId: "",
+    departmentIds: [] as string[],
     projectManagerId: "",
     priority: "Medium",
   });
@@ -71,10 +74,10 @@ export function ProjectsPage() {
     setLoading(true);
     try {
       const [projectData, departmentData, orgData, userData] = await Promise.all([
-        api.getProjects(auth.token),
-        api.getDepartments(auth.token),
-        api.getOrganizations(auth.token),
-        api.getUsers(auth.token),
+        Promise.resolve(data.projects),
+        Promise.resolve(data.departments),
+        Promise.resolve(data.organizations),
+        Promise.resolve(data.users),
       ]);
       setProjects(projectData);
       setDepartments(departmentData);
@@ -90,7 +93,7 @@ export function ProjectsPage() {
 
   useEffect(() => {
     void loadProjects();
-  }, [auth]);
+  }, [auth, data]);
 
   useEffect(() => {
     if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -121,18 +124,18 @@ export function ProjectsPage() {
       const orgDepartmentIds = departments
         .filter(d => d.organizationId === userOrganizationId)
         .map(d => d.id);
-      filtered = filtered.filter(p => orgDepartmentIds.includes(p.departmentId));
+      filtered = filtered.filter(p => projectBelongsToAnyDepartment(p, orgDepartmentIds));
     }
 
     if (selectedOrgId) {
       const orgDepartmentIds = departments
         .filter(d => d.organizationId === selectedOrgId)
         .map(d => d.id);
-      filtered = filtered.filter(p => orgDepartmentIds.includes(p.departmentId));
+      filtered = filtered.filter(p => projectBelongsToAnyDepartment(p, orgDepartmentIds));
     }
 
     if (selectedDepartmentId) {
-      filtered = filtered.filter(p => p.departmentId === selectedDepartmentId);
+      filtered = filtered.filter(p => projectBelongsToDepartment(p, selectedDepartmentId));
     }
 
     return filtered;
@@ -156,7 +159,7 @@ export function ProjectsPage() {
     await api.createProject(auth.token, form);
     setMessage("Project created.");
     setShowCreateModal(false);
-    await loadProjects();
+    await refreshAppData();
   }
 
   async function handleEditProject(event: FormEvent) {
@@ -165,7 +168,7 @@ export function ProjectsPage() {
     await api.updateProject(auth.token, selectedProject.id, form);
     setMessage("Project updated.");
     setShowEditModal(false);
-    await loadProjects();
+    await refreshAppData();
   }
 
   async function handleDeleteProject() {
@@ -174,7 +177,7 @@ export function ProjectsPage() {
     setMessage("Project deleted.");
     setShowDeleteConfirm(false);
     setSelectedProjectId("");
-    await loadProjects();
+    await refreshAppData();
   }
 
   const openEditModal = () => {
@@ -187,8 +190,9 @@ export function ProjectsPage() {
       plannedStartDate: selectedProject.plannedStartDate ? selectedProject.plannedStartDate.split('T')[0] : "",
       plannedEndDate: selectedProject.plannedEndDate ? selectedProject.plannedEndDate.split('T')[0] : "",
       plannedBudget: selectedProject.plannedBudget || 0,
-      organizationId: departments.find((department) => department.id === selectedProject.departmentId)?.organizationId || "",
+      organizationId: departments.find((department) => department.id === (selectedProject.departmentId || getProjectDepartmentIds(selectedProject)[0]))?.organizationId || "",
       departmentId: selectedProject.departmentId || "",
+      departmentIds: getProjectDepartmentIds(selectedProject),
       projectManagerId: selectedProject.projectManagerId || "",
       priority: selectedProject.priority || "Medium",
     });
@@ -198,10 +202,10 @@ export function ProjectsPage() {
   const handleStatusChange = async (status: string) => {
     if (!auth || !selectedProject) return;
     await api.updateProjectStatus(auth.token, selectedProject.id, status);
-    await loadProjects();
+    await refreshAppData();
   };
 
-  if (loading) return <LoadingPage label="Loading projects..." />;
+  if (loading || appDataLoading) return <LoadingPage label="Loading projects..." />;
 
   return (
     <div className="flex flex-col gap-5">
@@ -250,7 +254,6 @@ export function ProjectsPage() {
               project={selectedProject}
               health={health}
               insights={insights}
-              hasRole={hasRole}
               canUpdateProject={() => { }}
               onStatusChange={handleStatusChange}
               onEdit={access.canManageProjects ? openEditModal : undefined}

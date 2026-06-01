@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import { useAuth } from "../../auth";
 import type { Department, User } from "../../types";
-
-const globalAdminRoles = ["SuperAdmin"] as const;
+import { Permission } from "./RoleGate";
 
 export function useUserOrganization(users: User[], departments: Department[]) {
-  const { auth, hasRole } = useAuth();
+  const { auth, hasPermission } = useAuth();
 
-  const isOrgAdmin = hasRole(...globalAdminRoles);
+  const isOrgAdmin = hasPermission(Permission.SystemAdmin, Permission.OrganizationCreate, Permission.OrganizationEdit, Permission.OrganizationDelete);
 
   const userOrganizationId = useMemo(() => {
     if (isOrgAdmin || !auth) return null;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, Task, User } from "../../types";
 import {
@@ -8,6 +9,9 @@ import {
   useNavHeader,
   useRoleAccess,
   useToast,
+  getProjectDepartmentIds,
+  projectBelongsToAnyDepartment,
+  projectBelongsToDepartment,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
@@ -38,12 +42,14 @@ const emptyProjectForm = (): ProjectFormState => ({
   plannedBudget: 25000,
   organizationId: "",
   departmentId: "",
+  departmentIds: [],
   projectManagerId: "",
   priority: "Medium",
 });
 
 export function ProjectsKPage() {
   const { auth } = useAuth();
+  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const access = useRoleAccess();
   const { addToast } = useToast();
 
@@ -108,10 +114,10 @@ export function ProjectsKPage() {
     setLoading(true);
     try {
       const [projectData, deptData, orgData, userData] = await Promise.all([
-        api.getProjects(auth.token),
-        api.getDepartments(auth.token),
-        api.getOrganizations(auth.token),
-        api.getUsers(auth.token),
+        Promise.resolve(data.projects),
+        Promise.resolve(data.departments),
+        Promise.resolve(data.organizations),
+        Promise.resolve(data.users),
       ]);
       setProjects(projectData);
       setDepartments(deptData);
@@ -144,7 +150,7 @@ export function ProjectsKPage() {
 
   useEffect(() => {
     void loadProjects();
-  }, [auth]);
+  }, [auth, data]);
 
   useEffect(() => {
     if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -161,14 +167,14 @@ export function ProjectsKPage() {
     let filtered = projects;
     if (shouldFilterByOrg && userOrganizationId) {
       const orgDeptIds = departments.filter((d) => d.organizationId === userOrganizationId).map((d) => d.id);
-      filtered = filtered.filter((p) => orgDeptIds.includes(p.departmentId));
+      filtered = filtered.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
     }
     if (selectedOrgId) {
       const orgDeptIds = departments.filter((d) => d.organizationId === selectedOrgId).map((d) => d.id);
-      filtered = filtered.filter((p) => orgDeptIds.includes(p.departmentId));
+      filtered = filtered.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
     }
     if (selectedDeptId) {
-      filtered = filtered.filter((p) => p.departmentId === selectedDeptId);
+      filtered = filtered.filter((p) => projectBelongsToDepartment(p, selectedDeptId));
     }
     return filtered;
   }, [projects, selectedOrgId, selectedDeptId, departments, shouldFilterByOrg, userOrganizationId]);
@@ -205,8 +211,9 @@ export function ProjectsKPage() {
       plannedStartDate: target.plannedStartDate?.split("T")[0] || "",
       plannedEndDate: target.plannedEndDate?.split("T")[0] || "",
       plannedBudget: target.plannedBudget || 0,
-      organizationId: departments.find((d) => d.id === target.departmentId)?.organizationId || "",
+      organizationId: departments.find((d) => d.id === (target.departmentId || getProjectDepartmentIds(target)[0]))?.organizationId || "",
       departmentId: target.departmentId || "",
+      departmentIds: getProjectDepartmentIds(target),
       projectManagerId: target.projectManagerId || "",
       priority: target.priority || "Medium",
     });
@@ -220,7 +227,7 @@ export function ProjectsKPage() {
     setCreateProjectOpen(false);
     setProjectForm(emptyProjectForm());
     addToast("Project created");
-    await loadProjects();
+    await refreshAppData();
   };
 
   const handleEditProject = async (e: FormEvent) => {
@@ -231,7 +238,7 @@ export function ProjectsKPage() {
     setEditProjectOpen(false);
     setViewProject(null);
     addToast("Project updated");
-    await loadProjects();
+    await refreshAppData();
     await loadProjectWorkspace(targetId);
   };
 
@@ -243,7 +250,7 @@ export function ProjectsKPage() {
     setViewProject(null);
     if (selectedProjectId === target.id) setSelectedProjectId("");
     addToast("Project deleted");
-    await loadProjects();
+    await refreshAppData();
   };
 
   const handleProjectStatus = async (status: string) => {
@@ -252,7 +259,7 @@ export function ProjectsKPage() {
     const updated = await api.updateProjectStatus(auth.token, target.id, status);
     addToast("Status updated");
     if (viewProject?.id === target.id) setViewProject(updated);
-    await loadProjects();
+    await refreshAppData();
   };
 
   useEffect(() => {
@@ -336,7 +343,7 @@ export function ProjectsKPage() {
     await loadProjectWorkspace(selectedProjectId);
   };
 
-  if (loading) return <LoadingPage label="Loading workspace..." />;
+  if (loading || appDataLoading) return <LoadingPage label="Loading workspace..." />;
 
   return (
     <div>

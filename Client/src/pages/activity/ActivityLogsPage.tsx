@@ -8,16 +8,18 @@ import {
   GradientButton, 
   LoadingPage,
   useNavHeader,
+  useRoleAccess,
 } from "../shared";
 import { ActivityList } from "./ActivityList";
 import { ActivityForm } from "./ActivityForm";
 import { ActivityFilters } from "./ActivityFilters";
 
 export function ActivityLogsPage() {
-  const { auth, hasRole } = useAuth();
-  const isAdmin = hasRole("SuperAdmin");
-  const isManager = hasRole("Director");
-  const canViewAll = hasRole("SuperAdmin", "Director");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const isAdmin = access.can("SYSTEM_ADMIN");
+  const isManager = access.can("ACTIVITY_LOG_VIEW");
+  const canViewAll = access.can("ACTIVITY_LOG_VIEW");
 
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLogRecord[]>([]);

@@ -7,6 +7,7 @@ import {
   DeleteConfirmationModal, 
   useNavHeader,
   PageSkeleton,
+  useRoleAccess,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
 import { WorkloadView } from "./WorkloadView";
@@ -15,9 +16,10 @@ import { UserSkillsPanel } from "./UserSkillsPanel"
 import { UserEditModal } from "./UserEditModal";
 
 export function UsersPage() {
-  const { auth, hasRole } = useAuth();
-  const isAdmin = hasRole("SuperAdmin");
-  const canManageUsers = hasRole("SuperAdmin", "Director");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const isAdmin = access.can("SYSTEM_ADMIN");
+  const canManageUsers = access.canManageUsers;
 
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);

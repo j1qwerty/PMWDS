@@ -12,6 +12,7 @@ import {
   LoadingPage,
   useNavHeader,
   ModalOverlay,
+  useRoleAccess,
 } from "../shared";
 import { NotificationInbox } from "./NotificationInbox";
 import { NotificationTemplates } from "./NotificationTemplates";
@@ -22,9 +23,10 @@ import { RuleFormModal } from "./RuleFormModal";
 import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 
 export function NotificationsPage() {
-  const { auth, hasRole } = useAuth();
-  const canConfigure = hasRole("SuperAdmin");
-  const canBroadcast = hasRole("SuperAdmin", "Director", "DepartmentHead");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const canConfigure = access.canConfigureNotifications;
+  const canBroadcast = access.canBroadcast;
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
+import { Permission, useRoleAccess } from "../shared";
 import {
   MetricRow,
   Panel,
@@ -12,7 +13,8 @@ import {
 } from "../../ui";
 
 export function Departments() {
-  const { auth, hasRole } = useAuth();
+  const { auth } = useAuth();
+  const access = useRoleAccess();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -34,7 +36,7 @@ export function Departments() {
     const [data, organizationData, userData] = await Promise.all([
       api.getDepartments(auth.token),
       api.getOrganizations(auth.token),
-      hasRole("SuperAdmin", "ProjectManager", "DepartmentHead") ? api.getUsers(auth.token) : Promise.resolve([]),
+      access.can(Permission.UserView, Permission.DepartmentEdit) ? api.getUsers(auth.token) : Promise.resolve([]),
     ]);
     setDepartments(data);
     setOrganizations(organizationData);
@@ -50,9 +52,9 @@ export function Departments() {
   }, [auth]);
 
   useEffect(() => {
-    if (!auth || !selectedId || !hasRole("SuperAdmin", "ProjectManager", "DepartmentHead")) return;
+    if (!auth || !selectedId || !access.canViewManagementData) return;
     api.getDepartmentDashboard(auth.token, selectedId).then(setDashboard);
-  }, [auth, selectedId]);
+  }, [auth, selectedId, access.canViewManagementData]);
 
   const selectedDepartment = departments.find((department) => department.id === selectedId) ?? null;
   const selectedOrganization = organizations.find((organization) => organization.id === selectedDepartment?.organizationId);
@@ -113,7 +115,7 @@ export function Departments() {
         </div>
       </Panel>
 
-      {hasRole("SuperAdmin") ? (
+      {access.canManageDepartments ? (
         <Panel title="Department Admin" subtitle="Create or remove organizational units">
           <form
             className="grid grid-cols-1 gap-4 md:grid-cols-2"

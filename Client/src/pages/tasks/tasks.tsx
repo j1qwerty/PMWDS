@@ -18,13 +18,16 @@ import {
   FilterButtons,
   AnimatedBackground,
   OrganizationDepartmentFilter,
+  projectBelongsToAnyDepartment,
+  projectBelongsToDepartment,
+  getProjectDepartments,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { TaskDetail } from "./TaskDetail";
 import { TaskFormModal } from "./TaskFormModal";
 
 export function TasksPage() {
-  const { auth, hasRole } = useAuth();
+  const { auth } = useAuth();
   const access = useRoleAccess();
   const { addToast } = useToast();
   const isAdmin = access.canManageTasks;
@@ -146,16 +149,16 @@ export function TasksPage() {
       const orgDeptIds = departments
         .filter(d => d.organizationId === userOrganizationId)
         .map(d => d.id);
-      filtered = filtered.filter(p => orgDeptIds.includes(p.departmentId));
+      filtered = filtered.filter(p => projectBelongsToAnyDepartment(p, orgDeptIds));
     }
     if (selectedOrgId) {
       const orgDeptIds = departments
         .filter(d => d.organizationId === selectedOrgId)
         .map(d => d.id);
-      filtered = filtered.filter(p => orgDeptIds.includes(p.departmentId));
+      filtered = filtered.filter(p => projectBelongsToAnyDepartment(p, orgDeptIds));
     }
     if (selectedDeptId) {
-      filtered = filtered.filter(p => p.departmentId === selectedDeptId);
+      filtered = filtered.filter(p => projectBelongsToDepartment(p, selectedDeptId));
     }
     return filtered;
   }, [projects, selectedOrgId, selectedDeptId, departments, shouldFilterByOrg, userOrganizationId]);
@@ -172,7 +175,7 @@ export function TasksPage() {
         .filter(d => d.organizationId === selectedOrgId)
         .map(d => d.id);
       const orgProjectIds = projects
-        .filter(p => orgDeptIds.includes(p.departmentId))
+        .filter(p => projectBelongsToAnyDepartment(p, orgDeptIds))
         .map(p => p.id);
       result = result.filter(m => {
         const milestoneProjectId = (m as any).projectId || m.projectId;
@@ -183,7 +186,7 @@ export function TasksPage() {
         .filter(d => d.organizationId === userOrganizationId)
         .map(d => d.id);
       const orgProjectIds = projects
-        .filter(p => orgDeptIds.includes(p.departmentId))
+        .filter(p => projectBelongsToAnyDepartment(p, orgDeptIds))
         .map(p => p.id);
       result = result.filter(m => {
         const milestoneProjectId = (m as any).projectId || m.projectId;
@@ -204,7 +207,7 @@ export function TasksPage() {
         .filter(d => d.organizationId === selectedOrgId)
         .map(d => d.id);
       const orgProjectIds = projects
-        .filter(p => orgDeptIds.includes(p.departmentId))
+        .filter(p => projectBelongsToAnyDepartment(p, orgDeptIds))
         .map(p => p.id);
       result = result.filter(t => orgProjectIds.includes(t.projectId));
     } else if (shouldFilterByOrg && userOrganizationId) {
@@ -212,7 +215,7 @@ export function TasksPage() {
         .filter(d => d.organizationId === userOrganizationId)
         .map(d => d.id);
       const orgProjectIds = projects
-        .filter(p => orgDeptIds.includes(p.departmentId))
+        .filter(p => projectBelongsToAnyDepartment(p, orgDeptIds))
         .map(p => p.id);
       result = result.filter(t => orgProjectIds.includes(t.projectId));
     }
@@ -251,7 +254,7 @@ export function TasksPage() {
     return tasks
       .filter(t => {
         const proj = getProject(t.projectId);
-        const dept = proj ? departments.find(d => d.id === proj.departmentId) : null;
+        const dept = proj ? getProjectDepartments(proj, departments)[0] : null;
         return (
           t.title.toLowerCase().includes(query) ||
           (t.description && t.description.toLowerCase().includes(query)) ||
@@ -454,8 +457,8 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
             {filters.search && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-slate-200 shadow-lg shadow-slate-200/50 max-h-72 overflow-y-auto z-50">
                 {searchResults.map((task) => {
-                  const dept = departments.find(d => d.id === getProject(task.projectId)?.departmentId);
                   const proj = getProject(task.projectId);
+                  const dept = proj ? getProjectDepartments(proj, departments)[0] : null;
                   return (
                     <button
                       key={task.id}
@@ -710,7 +713,7 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
           };
         });
         const proj = getProject(task.projectId);
-        const dept = proj ? departments.find(d => d.id === proj.departmentId) : null;
+        const dept = proj ? getProjectDepartments(proj, departments)[0] : null;
 
         return (
           <button
@@ -823,7 +826,6 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
         recommendation={recommendation}
         delay={delay}
         isAdmin={isAdmin}
-        hasRole={hasRole}
         onStatusChange={(status) => handleStatusChange(selectedTask.id, status)}
         onEdit={() => setTaskModal({ open: true, editTask: selectedTask })}
         onUpdateProgress={async (progress, notes) => {

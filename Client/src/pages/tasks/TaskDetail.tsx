@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiEdit, FiTrash2, FiClock, FiBarChart2, FiMessageSquare, FiChevronDown, FiX, FiAlertTriangle, FiCalendar, FiFlag, FiNavigation, FiPlus } from "react-icons/fi";
-import type { Milestone, Project, Task, User, Role } from "../../types";
+import type { Milestone, Project, Task, User } from "../../types";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useToast } from "../shared";
@@ -18,7 +18,6 @@ interface TaskDetailProps {
   recommendation?: any;
   delay?: any;
   isAdmin: boolean;
-  hasRole: (...roles: Role[]) => boolean;
   onStatusChange: (status: string) => void;
   onEdit: () => void;
   onUpdateProgress: (progress: number, notes: string) => void;
@@ -38,7 +37,6 @@ export function TaskDetail({
   recommendation,
   delay,
   isAdmin,
-  hasRole,
   onStatusChange,
   onEdit,
   onUpdateProgress,
@@ -221,7 +219,7 @@ export function TaskDetail({
 
         {/* Status Buttons */}
         <div className="mt-4">
-          <StatusButtons currentStatus={task.status} hasRole={hasRole} onStatusChange={onStatusChange} variant="task" />
+          <StatusButtons currentStatus={task.status} onStatusChange={onStatusChange} variant="task" />
         </div>
 
         {/* Alerts */}

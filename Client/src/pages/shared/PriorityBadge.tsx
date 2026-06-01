@@ -2,22 +2,24 @@ import { classNames } from "../../ui";
 import { priorities } from "../constants";
 import type { Role } from "../../types";
 import { getPriorityColor } from "./colors";
+import { Permission, useRoleAccess } from "./RoleGate";
 
 interface PriorityButtonsProps {
   currentPriority: string;
-  hasRole: (...roles: Role[]) => boolean;
+  hasRole?: (...roles: Role[]) => boolean;
   onPriorityChange: (priority: string) => void;
 }
 
 export function PriorityButtons({
   currentPriority,
-  hasRole,
   onPriorityChange,
 }: PriorityButtonsProps) {
+  const access = useRoleAccess();
+  const canUpdate = access.can(Permission.TaskEdit, Permission.ProjectEdit);
+
   return (
     <div className="flex flex-wrap gap-2">
       {priorities.map((priority) => {
-        const canUpdate = hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead");
         const styles = getPriorityColor(priority);
         const isActive = currentPriority === priority;
 

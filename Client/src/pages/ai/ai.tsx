@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Department, OrganizationRecord, Project, ProjectHealth } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter } from "../shared";
+import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter, Permission, getProjectDepartmentIds, projectBelongsToDepartment, useRoleAccess } from "../shared";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -16,8 +16,9 @@ import { NeuralHeatmap } from "./NeuralHeatmap";
 import { AnomalyFeed } from "./AnomalyFeed";
 
 export function AIPage() {
-  const { auth, hasRole } = useAuth();
-  const isSuperAdmin = hasRole("SuperAdmin");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const canViewOrganizations = access.can(Permission.SystemAdmin, Permission.OrganizationView);
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -46,7 +47,7 @@ export function AIPage() {
     Promise.all([
       api.getProjects(auth.token),
       api.getDepartments(auth.token),
-      isSuperAdmin ? api.getOrganizations(auth.token) : Promise.resolve([]),
+      canViewOrganizations ? api.getOrganizations(auth.token) : Promise.resolve([]),
       api.getMyTasks(auth.token),
       api.getAISettings(auth.token),
     ]).then(([projectData, departmentData, organizationData, taskData, settings]) => {
@@ -58,7 +59,7 @@ export function AIPage() {
       if (projectData[0]) setSelectedProjectId(projectData[0].id);
       if (taskData[0]) setSelectedTaskId(taskData[0].id);
     }).finally(() => setLoading(false));
-  }, [auth, isSuperAdmin]);
+  }, [auth, canViewOrganizations]);
 
   useEffect(() => {
     if (!auth) return;
@@ -75,12 +76,12 @@ export function AIPage() {
 
   const visibleProjects = useMemo(() => {
     if (selectedDepartmentId) {
-      return projects.filter((project) => project.departmentId === selectedDepartmentId);
+      return projects.filter((project) => projectBelongsToDepartment(project, selectedDepartmentId));
     }
 
     if (selectedOrganizationId) {
       const departmentIds = new Set(visibleDepartments.map((department) => department.id));
-      return projects.filter((project) => departmentIds.has(project.departmentId));
+      return projects.filter((project) => getProjectDepartmentIds(project).some((departmentId) => departmentIds.has(departmentId)));
     }
 
     return projects;

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
 import {
@@ -11,20 +12,21 @@ import {
     ModalOverlay,
     DeleteConfirmationModal,
     DeptFormModal,
+    Permission,
     useRoleAccess,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
 import { DepartmentList } from "./DepartmentList";
-import { getDepartmentColor } from "../shared";
 
 
 export function DepartmentsPage() {
     const { auth } = useAuth();
+    const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
     const access = useRoleAccess();
-    const canManageDepartments = access.canManageDepartments;
-    const canCreateDepartments = access.isAdmin || access.isDirector;
-    const canDeleteDepartments = access.isAdmin;
+    const canCreateDepartments = access.canCreateDepartments;
+    const canDeleteDepartments = access.canDeleteDepartments;
+    const canEditDepartments = access.can(Permission.DepartmentEdit);
 
     const [departments, setDepartments] = useState<Department[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -62,23 +64,17 @@ export function DepartmentsPage() {
     const loadData = () => {
         if (!auth) return;
         setLoading(true);
-        Promise.all([
-            api.getDepartments(auth.token),
-            api.getOrganizations(auth.token),
-            access.canViewManagementData ? api.getUsers(auth.token) : Promise.resolve([]),
-        ]).then(([deptData, orgData, userData]) => {
-            setDepartments(deptData);
-            setOrganizations(orgData);
-            setUsers(userData as User[]);
+        setDepartments(data.departments);
+        setOrganizations(data.organizations);
+        setUsers(access.canViewManagementData ? data.users : []);
 
-            // Auto-select first department if none selected and departments exist
-            if (!selectedDeptId && deptData.length) {
-                setSelectedDeptId(deptData[0].id);
-            }
-        }).finally(() => setLoading(false));
+        if (!selectedDeptId && data.departments.length) {
+            setSelectedDeptId(data.departments[0].id);
+        }
+        setLoading(false);
     };
 
-    useEffect(() => { loadData(); }, [auth]);
+    useEffect(() => { loadData(); }, [auth, data, access.canViewManagementData]);
 
     useEffect(() => {
         if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -112,9 +108,7 @@ export function DepartmentsPage() {
         : [];
     const canEditSelectedDepartment = Boolean(
         selectedDepartment &&
-        (access.isAdmin ||
-            access.isDirector ||
-            (access.isDepartmentHead && selectedDepartment.departmentHeadUserId === auth?.userId))
+        (canEditDepartments || selectedDepartment.departmentHeadUserId === auth?.userId)
     );
 
     const departmentHead = selectedDepartment?.departmentHeadUserId
@@ -134,7 +128,7 @@ export function DepartmentsPage() {
             setMessage("Department deleted successfully.");
             setDeleteConfirm({ open: false, id: "", name: "" });
             if (selectedDeptId === deleteConfirm.id) setSelectedDeptId("");
-            loadData();
+            await refreshAppData();
         } catch (e) {
             setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
         }
@@ -151,14 +145,14 @@ export function DepartmentsPage() {
                 setSelectedDeptId((newDept as any).id || selectedDeptId);
             }
             setDeptModal({ open: false });
-            loadData();
+            await refreshAppData();
             setMessage(deptModal.editDept ? "Department updated." : "Department created.");
         } catch (e) {
             setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
         }
     };
 
-    if (loading) return <LoadingPage label="Loading departments..." />;
+    if (loading || appDataLoading) return <LoadingPage label="Loading departments..." />;
 
     return (
         <div>
@@ -315,7 +309,7 @@ export function DepartmentsPage() {
                                 <span className="material-symbols-outlined text-4xl text-slate-400">groups</span>
                             </div>
                             <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Department</h3>
-                            <p className="text-sm text-slate-400 max-w-xs">
+                            <p className="text-sm text-slate-400 ">
                                 Choose a department from the left panel to view its details and metrics
                             </p>
                         </GlassCard>

@@ -7,14 +7,19 @@ import {
   LoadingPage,
   useNavHeader,
   OrganizationDepartmentFilter,
+  Permission,
+  getProjectDepartmentIds,
+  projectBelongsToDepartment,
+  useRoleAccess,
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
 import { RecentExports } from "./RecentExports";
 
 export function ReportsPage() {
-  const { auth, hasRole } = useAuth();
-  const isSuperAdmin = hasRole("SuperAdmin");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const canViewOrganizations = access.can(Permission.SystemAdmin, Permission.OrganizationView);
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -42,7 +47,7 @@ export function ReportsPage() {
     Promise.all([
       api.getProjects(auth.token), 
       api.getDepartments(auth.token),
-      isSuperAdmin ? api.getOrganizations(auth.token) : Promise.resolve([]),
+      canViewOrganizations ? api.getOrganizations(auth.token) : Promise.resolve([]),
     ]).then(([projectData, departmentData, organizationData]) => {
       setProjects(projectData);
       setDepartments(departmentData);
@@ -50,7 +55,7 @@ export function ReportsPage() {
       if (projectData[0]) setFilters((current) => ({ ...current, projectId: projectData[0].id }));
       if (departmentData[0]) setFilters((current) => ({ ...current, departmentId: departmentData[0].id }));
     }).finally(() => setLoading(false));
-  }, [auth, isSuperAdmin]);
+  }, [auth, canViewOrganizations]);
 
   const visibleDepartments = useMemo(() => {
     return filters.organizationId
@@ -60,12 +65,12 @@ export function ReportsPage() {
 
   const visibleProjects = useMemo(() => {
     if (filters.departmentId) {
-      return projects.filter((project) => project.departmentId === filters.departmentId);
+      return projects.filter((project) => projectBelongsToDepartment(project, filters.departmentId));
     }
 
     if (filters.organizationId) {
       const departmentIds = new Set(visibleDepartments.map((department) => department.id));
-      return projects.filter((project) => departmentIds.has(project.departmentId));
+      return projects.filter((project) => getProjectDepartmentIds(project).some((departmentId) => departmentIds.has(departmentId)));
     }
 
     return projects;

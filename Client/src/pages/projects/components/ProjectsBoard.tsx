@@ -1,6 +1,6 @@
 import { ProjectCard } from "./ProjectCard";
 import type { Department, OrganizationRecord, Project, User } from "../../../types";
-import { GlassCard } from "../../shared";
+import { GlassCard, projectBelongsToDepartment } from "../../shared";
 
 interface ProjectsBoardProps {
   projects: Project[];
@@ -22,7 +22,7 @@ export function ProjectsBoard({
   onSelectProject 
 }: ProjectsBoardProps) {
   const filteredProjects = selectedDepartmentId
-    ? projects.filter(p => p.departmentId === selectedDepartmentId)
+    ? projects.filter(p => projectBelongsToDepartment(p, selectedDepartmentId))
     : projects;
 
   return (

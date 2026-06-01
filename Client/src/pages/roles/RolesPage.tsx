@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { PermissionRecord, RoleRecord } from "../../types";
 import { 
@@ -9,6 +10,7 @@ import {
   useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
+  useRoleAccess,
 } from "../shared";
 import { RolesTable } from "./RolesTable";
 import { PermissionsTable } from "./PermissionsTable";
@@ -16,8 +18,10 @@ import { RoleFormModal } from "./RoleFormModal";
 import { PermissionFormModal } from "./PermissionFormModal";
 
 export function RolesPage() {
-  const { auth, hasRole } = useAuth();
-  const isAdmin = hasRole("SuperAdmin");
+  const { auth } = useAuth();
+  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
+  const access = useRoleAccess();
+  const isAdmin = access.canManageRoles || access.canManagePermissions;
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
@@ -44,19 +48,12 @@ export function RolesPage() {
   const loadData = () => {
     if (!auth) return;
     setLoading(true);
-    Promise.all([
-      api.getRoles(auth.token),
-      api.getPermissions(auth.token),
-    ])
-      .then(([roleData, permissionData]) => {
-        setRoles(roleData);
-        setPermissions(permissionData);
-      })
-      .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load data."))
-      .finally(() => setLoading(false));
+    setRoles(data.roles);
+    setPermissions(data.permissions);
+    setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, [auth]);
+  useEffect(() => { loadData(); }, [auth, data]);
 
   const handleRoleSubmit = async (payload: Record<string, unknown>) => {
     if (!auth) return;
@@ -69,7 +66,7 @@ export function RolesPage() {
         setMessage("Role created successfully.");
       }
       setRoleModal({ open: false });
-      loadData();
+      await refreshAppData();
     } catch (e) {
       setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
     }
@@ -86,7 +83,7 @@ export function RolesPage() {
         setMessage("Permission created successfully.");
       }
       setPermissionModal({ open: false });
-      loadData();
+      await refreshAppData();
     } catch (e) {
       setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
     }
@@ -102,13 +99,13 @@ export function RolesPage() {
       }
       setMessage(`${deleteConfirm.type === "role" ? "Role" : "Permission"} deleted.`);
       setDeleteConfirm({ open: false, type: "role", id: "", name: "" });
-      loadData();
+      await refreshAppData();
     } catch (e) {
       setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
     }
   };
 
-  if (loading) return <LoadingPage label="Loading roles and permissions..." />;
+  if (loading || appDataLoading) return <LoadingPage label="Loading roles and permissions..." />;
 
   return (
     <div>

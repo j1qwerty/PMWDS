@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../types";
-import { ModalOverlay, InputF, SelectF, ScopedUserSelect } from "../shared";
+import { ModalOverlay, InputF, SelectF, ScopedUserSelect, getProjectDepartmentIds } from "../shared";
 
 interface TaskFormModalProps {
   open: boolean;
@@ -90,7 +90,9 @@ export function TaskFormModal({
   };
 
   const selectedProject = projects.find((project) => project.id === form.projectId);
-  const selectedDepartment = departments.find((department) => department.id === selectedProject?.departmentId);
+  const selectedDepartment = selectedProject
+    ? departments.find((department) => department.id === getProjectDepartmentIds(selectedProject)[0])
+    : undefined;
 
   return (
     <ModalOverlay onClose={onClose}>

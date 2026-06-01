@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type {
   AlertRuleRecord,
@@ -12,7 +13,8 @@ import {
   LoadingPage,
   useNavHeader,
   ModalOverlay,
-} from "../shared";
+  useRoleAccess,
+  } from "../shared";
 
 import { NotificationInbox } from "./NotificationInbox";
 import { NotificationTemplates } from "./NotificationTemplates";
@@ -23,9 +25,11 @@ import { RuleFormModal } from "./RuleFormModal";
 import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 
 export function NotificationsPage() {
-  const { auth, hasRole } = useAuth();
-  const canConfigure = hasRole("SuperAdmin");
-  const canBroadcast = hasRole("SuperAdmin", "Director", "DepartmentHead");
+  const { auth } = useAuth();
+  const access = useRoleAccess();
+  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
+  const canConfigure = access.canConfigureNotifications;
+  const canBroadcast = access.canBroadcast;
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
@@ -63,22 +67,14 @@ export function NotificationsPage() {
   const loadData = () => {
     if (!auth) return;
     setLoading(true);
-    Promise.all([
-      api.getNotifications(auth.token),
-      canConfigure ? api.getNotificationTemplates(auth.token) : Promise.resolve([]),
-      canConfigure ? api.getAlertRules(auth.token) : Promise.resolve([]),
-      canBroadcast ? api.getDepartments(auth.token) : Promise.resolve([]),
-    ])
-      .then(([notificationData, templateData, ruleData, departmentData]) => {
-        setItems(notificationData);
-        setTemplates(templateData);
-        setRules(ruleData);
-        setDepartments(departmentData);
-      })
-      .finally(() => setLoading(false));
+    setItems(data.notifications);
+    setTemplates(canConfigure ? data.notificationTemplates : []);
+    setRules(canConfigure ? data.alertRules : []);
+    setDepartments(canBroadcast ? data.departments : []);
+    setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, [auth, canBroadcast, canConfigure]);
+  useEffect(() => { loadData(); }, [auth, canBroadcast, canConfigure, data]);
 
   useEffect(() => {
     if (!canConfigure && activeTab !== "inbox") {
@@ -92,20 +88,20 @@ export function NotificationsPage() {
     if (!auth) return;
     await api.markAllNotificationsRead(auth.token);
     setMessage("All notifications marked as read.");
-    loadData();
+    await refreshAppData();
   };
 
   const handleMarkRead = async (id: string) => {
     if (!auth) return;
     await api.markNotificationRead(auth.token, id);
-    loadData();
+    await refreshAppData();
   };
 
   const handleDeleteNotification = async (id: string) => {
     if (!auth) return;
     await api.deleteNotification(auth.token, id);
     setMessage("Notification deleted.");
-    loadData();
+    await refreshAppData();
   };
 
   const handleBroadcast = async (payload: Record<string, unknown>) => {
@@ -125,7 +121,7 @@ export function NotificationsPage() {
       setMessage("Template created.");
     }
     setTemplateModal({ open: false });
-    loadData();
+    await refreshAppData();
   };
 
   const handleRuleSubmit = async (payload: Record<string, unknown>) => {
@@ -138,7 +134,7 @@ export function NotificationsPage() {
       setMessage("Rule created.");
     }
     setRuleModal({ open: false });
-    loadData();
+    await refreshAppData();
   };
 
   const handleDelete = async () => {
@@ -150,10 +146,10 @@ export function NotificationsPage() {
     }
     setMessage(`${deleteConfirm.type === "template" ? "Template" : "Rule"} deleted.`);
     setDeleteConfirm({ open: false, type: "template", id: "", name: "" });
-    loadData();
+    await refreshAppData();
   };
 
-  if (loading) return <LoadingPage label="Loading notifications..." />;
+  if (loading || appDataLoading) return <LoadingPage label="Loading notifications..." />;
 
   return (
     <div>

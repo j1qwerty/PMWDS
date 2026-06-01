@@ -2,28 +2,29 @@ import { classNames } from "../../ui";
 import { projectStatuses, taskStatuses } from "../constants";
 import type { Role } from "../../types";
 import { getStatusColor } from "./colors";
+import { Permission, useRoleAccess } from "./RoleGate";
 
 interface StatusButtonsProps {
   currentStatus: string;
-  hasRole: (...roles: Role[]) => boolean;
+  hasRole?: (...roles: Role[]) => boolean;
   onStatusChange: (status: string) => void;
   variant?: "project" | "task";
 }
 
 export function StatusButtons({
   currentStatus,
-  hasRole,
   onStatusChange,
   variant = "project",
 }: StatusButtonsProps) {
+  const access = useRoleAccess();
   const statuses = variant === "task" ? taskStatuses : projectStatuses;
+  const canUpdate = variant === "task"
+    ? access.can(Permission.TaskEdit)
+    : access.can(Permission.ProjectEdit);
 
   return (
     <div className="flex flex-wrap gap-2">
       {statuses.map((status) => {
-        const canUpdate = variant === "task"
-          ? hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead")
-          : hasRole("SuperAdmin", "Director", "ProjectManager", "DepartmentHead");
         const styles = getStatusColor(status);
         const isActive = currentStatus === status;
 

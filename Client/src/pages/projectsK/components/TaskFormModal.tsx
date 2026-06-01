@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../../types";
 import { priorities } from "../../constants";
-import { ModalOverlay, InputF, SelectF, ScopedUserSelect } from "../../shared";
+import { ModalOverlay, InputF, SelectF, ScopedUserSelect, getProjectDepartmentIds } from "../../shared";
 
 interface TaskFormModalProps {
   open: boolean;
@@ -62,7 +62,9 @@ export function TaskFormModal({
 
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
-  const selectedDepartment = departments.find((d) => d.id === selectedProject?.departmentId);
+  const selectedDepartment = selectedProject
+    ? departments.find((d) => d.id === getProjectDepartmentIds(selectedProject)[0])
+    : undefined;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

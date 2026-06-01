@@ -26,7 +26,7 @@ export function MilestoneList({
           <span className="material-symbols-outlined text-3xl text-slate-400">flag</span>
         </div>
         <h4 className="text-sm font-semibold text-slate-700 mb-2">No milestones</h4>
-        <p className="text-xs text-slate-400 max-w-xs">
+        <p className="text-xs text-slate-400">
           Create milestones to group tasks and track delivery checkpoints.
         </p>
       </div>

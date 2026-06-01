@@ -1,6 +1,6 @@
 import { classNames } from "../../../ui";
 import type { Department, OrganizationRecord, Project, User } from "../../../types";
-import { AvatarStack } from "../../shared";
+import { AvatarStack, getProjectDepartments } from "../../shared";
 
 interface ProjectCardProps {
   project: Project;
@@ -16,8 +16,12 @@ export function ProjectCard({ project, departments, organizations, users, select
   const rawHealth = project.aiHealthScore ?? null;
   const projHealth = rawHealth == null ? null : Math.min(Math.round(rawHealth > 1 ? rawHealth : rawHealth * 100), 100);
   const isSelected = project.id === selectedProjectId;
-  const department = departments.find((item) => item.id === project.departmentId);
+  const assignedDepartments = getProjectDepartments(project, departments);
+  const department = assignedDepartments[0] ?? departments.find((item) => item.id === project.departmentId);
   const organization = organizations.find((item) => item.id === department?.organizationId);
+  const departmentLabel = assignedDepartments.length > 1
+    ? `${assignedDepartments[0].name} +${assignedDepartments.length - 1}`
+    : department?.name || "No department";
 
   const getStatusStyles = (status: string) => {
     const styles: Record<string, {
@@ -114,7 +118,7 @@ export function ProjectCard({ project, departments, organizations, users, select
             {project.name}
           </h3>
           <span className="mt-1 truncate text-[11px] font-medium text-slate-400">
-            {department?.name || "No department"} {organization ? `- ${organization.name}` : ""}
+            {departmentLabel} {organization ? `- ${organization.name}` : ""}
           </span>
         </div>
 

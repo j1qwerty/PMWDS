@@ -5,6 +5,8 @@ import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "..
 import { 
   AnimatedBackground, 
   LoadingPage,
+  Permission,
+  useRoleAccess,
   useNavHeader,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
@@ -13,8 +15,9 @@ import { ProviderMatrix } from "./ProviderMatrix";
 import { DatabaseStatusSection } from "./DatabaseStatusSection";
 
 export function SettingsPage() {
-  const { logout, auth, hasRole } = useAuth();
-  const isSuperAdmin = hasRole("SuperAdmin");
+  const { logout, auth } = useAuth();
+  const access = useRoleAccess();
+  const canManageSystem = access.can(Permission.SystemAdmin);
 
   const [saved, setSaved] = useState("");
   const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database">("profile");
@@ -51,7 +54,7 @@ export function SettingsPage() {
   const [testResult, setTestResult] = useState<{ provider: string; model: string; success: boolean; message: string; rawResponse?: string } | null>(null);
 
   useEffect(() => {
-    if (!isSuperAdmin || !auth) return;
+    if (!canManageSystem || !auth) return;
     setAiLoading(true);
     api.getAISettings(auth.token)
       .then(settings => {
@@ -66,10 +69,10 @@ export function SettingsPage() {
       })
       .catch(e => setAiError(e instanceof Error ? e.message : "Failed to load AI settings"))
       .finally(() => setAiLoading(false));
-  }, [auth, isSuperAdmin]);
+  }, [auth, canManageSystem]);
 
   const fetchDatabaseStatus = async () => {
-    if (!auth || !isSuperAdmin) return;
+    if (!auth || !canManageSystem) return;
     setDatabaseLoading(true);
     setDatabaseError("");
     try {
@@ -83,7 +86,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     fetchDatabaseStatus();
-  }, [auth, isSuperAdmin]);
+  }, [auth, canManageSystem]);
 
   useEffect(() => {
     if (aiSettings?.defaultProvider === "OpenRouter" && !openRouterModels.length) {
@@ -208,7 +211,7 @@ export function SettingsPage() {
     setTestResults(prev => { const next = { ...prev }; delete next[provider]; return next; });
   };
 
-  if (aiLoading && isSuperAdmin) return <LoadingPage label="Loading settings..." />;
+  if (aiLoading && canManageSystem) return <LoadingPage label="Loading settings..." />;
 
   return (
     <div>
@@ -239,7 +242,7 @@ export function SettingsPage() {
             icon="person"
             label="Profile"
           />
-          {isSuperAdmin && (
+          {canManageSystem && (
             <>
               <TabButton
                 active={activeTab === "ai"}
@@ -274,7 +277,7 @@ export function SettingsPage() {
           />
         )}
 
-        {activeTab === "ai" && isSuperAdmin && (
+        {activeTab === "ai" && canManageSystem && (
           <AIConfiguration
             aiSettings={aiSettings}
             aiError={aiError}
@@ -296,7 +299,7 @@ export function SettingsPage() {
           />
         )}
 
-        {activeTab === "matrix" && isSuperAdmin && (
+        {activeTab === "matrix" && canManageSystem && (
           <ProviderMatrix
             matrixProviders={matrixProviders}
             matrixProvider={matrixProvider}
@@ -312,7 +315,7 @@ export function SettingsPage() {
           />
         )}
 
-        {activeTab === "database" && isSuperAdmin && (
+        {activeTab === "database" && canManageSystem && (
           <DatabaseStatusSection
             status={databaseStatus}
             loading={databaseLoading}

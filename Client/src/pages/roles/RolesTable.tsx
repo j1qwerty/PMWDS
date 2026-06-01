@@ -104,7 +104,7 @@ export function RolesTable({ roles, onEdit, onDelete, onCreate, isAdmin }: Roles
               <span className="material-symbols-outlined text-3xl text-slate-400">shield</span>
             </div>
             <h4 className="text-sm font-semibold text-slate-700 mb-2">No roles defined</h4>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+            <p className="text-xs text-slate-400  mx-auto">
               Create roles to manage permission levels and access control
             </p>
             {isAdmin && (

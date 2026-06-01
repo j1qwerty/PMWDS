@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ActivityLogRecord, Project, ProjectHealth, Role, User } from "../../../types";
+import type { ActivityLogRecord, Project, ProjectHealth, User } from "../../../types";
 import { api } from "../../../api";
 import { Avatar, StatusButtons } from "../../shared";
 
@@ -7,7 +7,6 @@ interface ProjectDetailPaneProps {
   project: Project | null;
   health: ProjectHealth | null;
   insights: string[];
-  hasRole: (...roles: Role[]) => boolean;
   canUpdateProject: () => void;
   onStatusChange: (status: string) => void;
   onEdit?: () => void;
@@ -22,7 +21,6 @@ export function ProjectDetailPane({
   project,
   health,
   insights,
-  hasRole,
   onStatusChange,
   onEdit,
   onDelete,
@@ -91,7 +89,6 @@ export function ProjectDetailPane({
 
       <StatusButtons 
         currentStatus={project.status} 
-        hasRole={hasRole} 
         onStatusChange={onStatusChange}
       />
 
