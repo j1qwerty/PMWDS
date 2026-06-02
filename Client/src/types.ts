@@ -194,6 +194,7 @@ export interface Task {
   attachments?: TaskAttachment[];
   timeEntries?: TaskTimeEntry[];
   subTasks?: Task[];
+  hasSubTasks?: boolean;
   aiOptimalAssigneeScore?: number;
   aiPredictedCompletionDate?: string | null;
   aiRecommendedAssigneeId?: string | null;

@@ -1,7 +1,7 @@
 # reference - responsive.md
 
-# TODO 
-## Status & Progress
+## TODO 
+### Status & Progress
 - 3 different versions of status components
 - Status updates with critical indicators and reasons in milestones and tasks pages
 - Status colors and conditions for progress (gray, yellow, orange, red, green)
@@ -9,7 +9,7 @@
 - Status stats for tasks and milestones in department cards
 - all statuse warnings states and error states
 
-## UI Components & Styling
+### UI Components & Styling
 - Responsive design for all elements
 - Dark mode (later)
 - Hover and shadow effects matching color for all components: `hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200`
@@ -20,55 +20,53 @@
 - Space utilization and header updates
 - sidebar project wise nested links for milestones tasks, for each project create nested compactable menu items (in those pages only data related to that particular porject is shown)
 
-## Modals
+### Modals
 - Update all modals — X button, outside click dismiss, shared overlay
 - Move all modals to shared/modal folder
 
-## Pages & Navigation
+### Pages & Navigation
 - Combined milestone and task page
 - Combined organization and departments page
 - Kanban board for tasks and milestones
 - New ui for all features
 
-## Avatars & Cards
+### Avatars & Cards
 - Avatar stacks on all cards and detail modals
 - Avatar stack on project, milestone, tasks, subtask cards and modals for each
 - Avatar stack for organisaiton and departments
 - Role members and project manager — notification cards and notification list
 
-## Timer
+### Timer
 - Timer API-level pause and calculations instead of local only (later, trivial feature )
 
-## Milestones
+### Milestones
 - Milestone order auto-assigned (editable, currently hidden in UI)
 
-## Document Upload
+### Document Upload
 - new proper Document upload option in ui 
 
-## Cleanup
+### Cleanup
 - Standalone tasks cleanup from seeder
 - refactor seeder to make it modular
 
-## API Integrations
+### API Integrations
 - Single-page API integrations for all GET methods (only those called on page load)
 - UI renders each component based on permissions from API (instead of hardcoded roles and permissions on each page and and each component in ui)
 
-## Roles & Permissions
+### Roles & Permissions
 - Role scope check for each controller method (role controller sends permissions in groups, e.g., users.manage includes all user-related permissions instead of separate create, edit, delete)
 - Role scope check for each element in each component (separate hasRole and hasPermission)
 - permissions section in role page - Remove delete permissions from UI permissions; remove create and edit permissions (view-only permissions)
 
-## Project, Milestone & Task Creation
+### Project, Milestone & Task Creation
 - Create new project even without filling all details
 - Auto-generate code for project, milestone, tasks, subtasks
 - Create new milestone or task similarly (without all details)
 
-## Implementation Plan
+## Plan
 - New pages for all features
 - API integrations
 - Update roles and permissions controller for UI-independent role and permission management
-- all statuse warnings states and error states
-
 
 ## Implementation Plan
 
@@ -146,3 +144,5 @@
     - Refactor seeder to make it modular
 
 14. **Dark Mode** — later
+
+

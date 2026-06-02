@@ -262,8 +262,12 @@ export const api = {
       body: { progressPercentage, notes },
     });
   },
-  updateTaskStatus(token: string, id: string, newStatus: string) {
-    return request<Task>(`tasks/${id}/status`, { token, method: "PATCH", body: { newStatus } });
+  updateTaskStatus(token: string, id: string, newStatus: string, options?: { confirmReset?: boolean }) {
+    return request<Task>(`tasks/${id}/status`, {
+      token,
+      method: "PATCH",
+      body: { newStatus, confirmReset: options?.confirmReset ?? false },
+    });
   },
   assignTask(token: string, id: string, assigneeId: string, useAIRecommendation = false) {
     return request<Task>(`tasks/${id}/assign`, {
@@ -332,11 +336,11 @@ export const api = {
       body: { progressPercentage, notes },
     });
   },
-  updateSubtaskStatus(token: string, id: string, newStatus: string) {
+  updateSubtaskStatus(token: string, id: string, newStatus: string, options?: { confirmReset?: boolean }) {
     return request<Task>(`tasks/subtasks/${id}/status`, {
       token,
       method: "PATCH",
-      body: { newStatus },
+      body: { newStatus, confirmReset: options?.confirmReset ?? false },
     });
   },
   assignSubtask(token: string, id: string, assigneeId: string, useAIRecommendation = false) {

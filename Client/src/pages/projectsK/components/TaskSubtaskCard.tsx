@@ -103,8 +103,9 @@ export function TaskSubtaskCard({
     }
   };
 
-  const toggleExpanded = () => {
-    if (hasSubtasks) setExpanded((p) => !p);
+  const handleCardOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onViewTask?.(task);
   };
 
   const stopRowClick = (handler?: () => void) => (e: React.MouseEvent) => {
@@ -114,18 +115,18 @@ export function TaskSubtaskCard({
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200">
-      {/* Whole top region: title + progress + subtask strip + expanded list — clickable to toggle */}
+      {/* Title + progress — clickable to open the task details modal */}
       <div
-        role={hasSubtasks ? "button" : undefined}
-        tabIndex={hasSubtasks ? 0 : -1}
-        onClick={toggleExpanded}
+        className={onViewTask ? "cursor-pointer" : ""}
+        onClick={handleCardOpen}
+        role={onViewTask ? "button" : undefined}
+        tabIndex={onViewTask ? 0 : -1}
         onKeyDown={(e) => {
-          if (hasSubtasks && (e.key === "Enter" || e.key === " ")) {
+          if (onViewTask && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
-            toggleExpanded();
+            onViewTask(task);
           }
         }}
-        className={hasSubtasks ? "cursor-pointer" : ""}
       >
         <h4 className="text-sm font-medium text-slate-700 mb-3 leading-snug">{task.title}</h4>
 
@@ -143,29 +144,43 @@ export function TaskSubtaskCard({
             />
           </div>
         </div>
+      </div>
 
-        {hasSubtasks && (
-          <div
-            className={`mb-3 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${
-              expanded ? "bg-indigo-50/60" : "bg-slate-50"
-            }`}
+      {/* Subtask strip + expanded list — interactions do NOT open the modal */}
+      {hasSubtasks && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`mb-3 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${
+            expanded ? "bg-indigo-50/60" : "bg-slate-50"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setExpanded((p) => !p)}
+            className="flex items-center gap-2 min-w-0 flex-1 text-left"
+            aria-expanded={expanded}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                Subtasks
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Subtasks
+            </span>
+            <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+              {subtasks.length}
+            </span>
+            {!expanded && subtasks.length > 0 && (
+              <span className="text-[10px] text-slate-500 truncate">
+                {subtasks.slice(0, 2).map((s) => s.title).join(", ")}
+                {subtasks.length > 2 ? "…" : ""}
               </span>
-              <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                {subtasks.length}
-              </span>
-              {!expanded && subtasks.length > 0 && (
-                <span className="text-[10px] text-slate-500 truncate">
-                  {subtasks.slice(0, 2).map((s) => s.title).join(", ")}
-                  {subtasks.length > 2 ? "…" : ""}
-                </span>
-              )}
-            </div>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded((p) => !p)}
+            className="shrink-0"
+            aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
+          >
             <svg
-              className={`w-4 h-4 shrink-0 transition-transform duration-200 text-slate-500 ${
+              className={`w-4 h-4 transition-transform duration-200 text-slate-500 ${
                 expanded ? "rotate-90 text-indigo-600" : ""
               }`}
               fill="none"
@@ -174,114 +189,114 @@ export function TaskSubtaskCard({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
-          </div>
-        )}
+          </button>
+        </div>
+      )}
 
-        {expanded && hasSubtasks && (
-          <div className="mb-3 space-y-2 border-t border-slate-100 pt-3">
-            {loading && (
-              <div className="text-[10px] text-slate-400 px-1">Loading subtasks…</div>
-            )}
-            {!loading &&
-              subtasks.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColors.dot}`}
-                      title={sub.status}
-                    />
-                    <span className="text-xs text-slate-700 truncate">{sub.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden">
-                      <div
-                        className={`${getProgressColor(sub.progressPercentage || 0)} h-1 rounded-full`}
-                        style={{ width: `${sub.progressPercentage || 0}%` }}
-                      />
-                    </div>
-                    {canEdit ? (
-                      <select
-                        value={sub.status}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => handleSubtaskStatus(sub.id, e.target.value)}
-                        className="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white"
-                      >
-                        {["NotStarted", "InProgress", "Completed", "Delayed", "OnHold", "Cancelled"].map(
-                          (s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    ) : (
-                      <span className={`text-[10px] font-medium ${statusColors.text}`}>
-                        {sub.status}
-                      </span>
-                    )}
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={stopRowClick(() => handleDeleteSubtask(sub.id))}
-                        className="p-1 text-slate-400 hover:text-red-500"
-                        title="Delete subtask"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
+      {((expanded && hasSubtasks) || showInlineForm) && (
+        <div className="mb-3 space-y-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+          {loading && (
+            <div className="text-[10px] text-slate-400 px-1">Loading subtasks…</div>
+          )}
+          {!loading &&
+            subtasks.map((sub) => (
+              <div
+                key={sub.id}
+                className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColors.dot}`}
+                    title={sub.status}
+                  />
+                  <span className="text-xs text-slate-700 truncate">{sub.title}</span>
                 </div>
-              ))}
-
-            {canEdit && !onAddSubtask && showInlineForm && (
-              <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                <input
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void handleCreateSubtask();
-                    }
-                  }}
-                  placeholder="New subtask title"
-                  className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-400"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={handleCreateSubtask}
-                  className="px-3 py-1.5 bg-indigo-600 text-white text-[11px] rounded-lg font-medium hover:bg-indigo-700"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowInlineForm(false);
-                    setNewTitle("");
-                  }}
-                  className="px-2 py-1.5 text-slate-500 text-[11px] rounded-lg hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden">
+                    <div
+                      className={`${getProgressColor(sub.progressPercentage || 0)} h-1 rounded-full`}
+                      style={{ width: `${sub.progressPercentage || 0}%` }}
+                    />
+                  </div>
+                  {canEdit ? (
+                    <select
+                      value={sub.status}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleSubtaskStatus(sub.id, e.target.value)}
+                      className="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white"
+                    >
+                      {["NotStarted", "InProgress", "Completed", "Delayed", "OnHold", "Cancelled"].map(
+                        (s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  ) : (
+                    <span className={`text-[10px] font-medium ${statusColors.text}`}>
+                      {sub.status}
+                    </span>
+                  )}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={stopRowClick(() => handleDeleteSubtask(sub.id))}
+                      className="p-1 text-slate-400 hover:text-red-500"
+                      title="Delete subtask"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+            ))}
 
-      {/* Bottom action row: priority, view, edit, add subtask, assignee */}
+          {canEdit && !onAddSubtask && showInlineForm && (
+            <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+              <input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleCreateSubtask();
+                  }
+                }}
+                placeholder="New subtask title"
+                className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-400"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleCreateSubtask}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-[11px] rounded-lg font-medium hover:bg-indigo-700"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInlineForm(false);
+                  setNewTitle("");
+                }}
+                className="px-2 py-1.5 text-slate-500 text-[11px] rounded-lg hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bottom action row: priority, edit, add subtask, assignee */}
       <div
         className="flex items-center justify-between border-t border-slate-100 pt-3"
         onClick={(e) => e.stopPropagation()}
@@ -314,7 +329,10 @@ export function TaskSubtaskCard({
               <button
                 type="button"
                 title="Add subtask"
-                onClick={() => setShowInlineForm(true)}
+                onClick={() => {
+                  setShowInlineForm(true);
+                  setExpanded(true);
+                }}
                 className="p-1 text-slate-400 hover:text-indigo-500 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,30 +346,6 @@ export function TaskSubtaskCard({
               </button>
             ))}
 
-          {onViewTask && (
-            <button
-              type="button"
-              title="View task"
-              onClick={() => onViewTask(task)}
-              className="p-1 text-slate-400 hover:text-cyan-500 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
-            </button>
-          )}
-
           {canEdit && onEditTask && (
             <button
               type="button"
@@ -360,12 +354,7 @@ export function TaskSubtaskCard({
               className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
           )}

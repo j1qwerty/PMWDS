@@ -8,6 +8,8 @@ import { useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
 import { AvatarStack, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { DependencyManagement } from "./DependencyManagement";
+import { StatusButtonsMin } from "../shared/StatusBadgeMininmal";
+import { StatusBadgeK, StatusButtonsK } from "../shared/StatusBadgeK";
 
 interface TaskDetailProps {
   task: Task;
@@ -162,6 +164,7 @@ export function TaskDetail({
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={task.status} />
               <PriorityBadge priority={task.priority} />
+              <StatusBadgeK status={task.status} />sasassaa
               {task.isOverdue && (
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 animate-pulse">
                   Overdue
@@ -219,7 +222,8 @@ export function TaskDetail({
 
         {/* Status Buttons */}
         <div className="mt-4">
-          <StatusButtons currentStatus={task.status} onStatusChange={onStatusChange} variant="task" />
+          <StatusButtonsMin currentStatus={task.status} onStatusChange={onStatusChange} variant="task" />
+          <StatusButtonsK currentStatus={task.status} onStatusChange={onStatusChange} variant="task" />
         </div>
 
         {/* Alerts */}

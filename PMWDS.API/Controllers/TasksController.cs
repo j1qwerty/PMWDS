@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Tasks;
+using PMWDS.Application.Exceptions;
 using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Tasks.Commands;
 using PMWDS.Application.Interfaces.Services;
@@ -185,7 +186,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         if (task == null)
             return NotFound();
 
@@ -194,11 +195,9 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        task.UpdateStatus(req.NewStatus);
-        task.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Tasks.UpdateAsync(task, ct);
-        await _uow.SaveChangesAsync(ct);
-        return Ok(TaskDto.FromEntity(task));
+        await ApplyStatusChangeAsync(task, req, ct);
+        var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
 
     [HttpPost("{id:guid}/assign")]
@@ -557,7 +556,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateSubtaskStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         if (task == null || task.ParentTaskId == null)
             return NotFound();
 
@@ -566,11 +565,9 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        task.UpdateStatus(req.NewStatus);
-        task.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Tasks.UpdateAsync(task, ct);
-        await _uow.SaveChangesAsync(ct);
-        return Ok(TaskDto.FromEntity(task));
+        await ApplyStatusChangeAsync(task, req, ct);
+        var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
 
     [HttpPost("subtasks/{id:guid}/assign")]
@@ -718,6 +715,50 @@ public class TasksController : BaseApiController
         return NoContent();
     }
 
+    private async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)
+    {
+        if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.NotStarted
+            && task.ProgressPercentage > 0
+            && !req.ConfirmReset)
+        {
+            throw new ConflictException(
+                $"Task '{task.Title}' currently has {Math.Round(task.ProgressPercentage)}% progress. " +
+                "Switching to Not Started will reset this task and all of its subtasks to 0% progress. " +
+                "Re-submit with confirmReset=true to proceed.");
+        }
+
+        task.UpdateStatus(req.NewStatus);
+
+        if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.NotStarted
+            && req.ConfirmReset)
+        {
+            task.ResetAllProgress();
+        }
+        else if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.Completed)
+        {
+            task.MarkSubtaskCompleted();
+        }
+
+        task.SetModified(_currentUser.UserId ?? "system");
+        await _uow.Tasks.UpdateAsync(task, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        if (task.ParentTaskId.HasValue)
+        {
+            var parent = await _uow.Tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
+            if (parent != null)
+            {
+                parent.RecalculateProgressFromSubtasks();
+                if (parent.ProgressPercentage >= 100)
+                {
+                    parent.MarkSubtaskCompleted();
+                }
+                parent.SetModified(_currentUser.UserId ?? "system");
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
+    }
+
     private async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
     {
         var projectId = await _db.Tasks
@@ -819,7 +860,7 @@ public class TasksController : BaseApiController
     }
 }
 
-public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus);
+public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus, bool ConfirmReset = false);
 public record AssignTaskRequest(string? AssigneeId, bool UseAIRecommendation = false, List<string>? AssigneeIds = null);
 public record AddCommentRequest(string Comment);
 public record StartTimerRequest(string Description, bool IsBillable = false);

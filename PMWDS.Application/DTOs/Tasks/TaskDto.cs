@@ -35,6 +35,7 @@ public record TaskDto(
     List<TaskAttachmentDto> Attachments,
     List<TaskTimeEntryDto> TimeEntries,
     List<TaskDto> SubTasks,
+    bool HasSubTasks,
     double AIOptimalAssigneeScore,
     DateTime? AIPredictedCompletionDate,
     string? AIRecommendedAssigneeId)
@@ -48,8 +49,9 @@ public record TaskDto(
             var timeEntries = t.TimeEntries ?? new List<TimeEntry>();
             var subTasks = t.SubTasks ?? new List<ProjectTask>();
 
-            var progress = subTasks.Count > 0
-                ? Math.Round((subTasks.Count(st => st.Status == TaskStatus.Completed) / (double)subTasks.Count) * 100, 1)
+            var hasSubTasks = subTasks.Count > 0;
+            var progress = hasSubTasks
+                ? Math.Round(subTasks.Average(st => Math.Clamp(st.ProgressPercentage, 0, 100)), 1)
                 : t.ProgressPercentage;
 
             return new(
@@ -100,6 +102,7 @@ public record TaskDto(
             SubTasks: subTasks
             .Select(st => FromEntity(st))
             .ToList(),
+            HasSubTasks: hasSubTasks,
             AIOptimalAssigneeScore: t.AIOptimalAssigneeScore,
             AIPredictedCompletionDate: t.AIPredictedCompletionDate,
             AIRecommendedAssigneeId: t.AIRecommendedAssigneeId

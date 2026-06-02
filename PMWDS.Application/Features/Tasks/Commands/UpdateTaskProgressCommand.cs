@@ -1,5 +1,6 @@
 using MediatR;
 using PMWDS.Application.DTOs.Tasks;
+using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Services;
 namespace PMWDS.Application.Features.Tasks.Commands;
 
@@ -23,9 +24,16 @@ public class UpdateTaskProgressCommandHandler
     CancellationToken ct)
     {
         var task = await _uow.Tasks
-        .GetByIdAsync(req.Id, ct)
+        .GetWithDetailsAsync(req.Id, ct)
         ?? throw new NotFoundException(
         "Task", req.Id);
+
+        if (task.HasSubTasks && task.ParentTaskId == null)
+        {
+            throw new ConflictException(
+            "Task progress is derived from its subtasks and cannot be updated manually. Update the progress of each subtask instead.");
+        }
+
         task.UpdateProgress(
         req.Dto.ProgressPercentage,
         req.Dto.Notes);
@@ -39,6 +47,23 @@ public class UpdateTaskProgressCommandHandler
             await _uow.SaveChangesAsync(ct);
         }
 
-        return TaskDto.FromEntity(task);
+        if (task.ParentTaskId.HasValue)
+        {
+            var parent = await _uow.Tasks
+                .GetWithDetailsAsync(task.ParentTaskId.Value, ct);
+            if (parent != null)
+            {
+                parent.RecalculateProgressFromSubtasks();
+                if (parent.ProgressPercentage >= 100)
+                {
+                    parent.MarkSubtaskCompleted();
+                }
+                parent.SetModified(_currentUser.UserId ?? "system");
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
+
+        var refreshed = await _uow.Tasks.GetWithDetailsAsync(req.Id, ct);
+        return TaskDto.FromEntity(refreshed ?? task);
     }
 }

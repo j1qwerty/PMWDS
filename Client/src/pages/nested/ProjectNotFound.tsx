@@ -16,7 +16,7 @@ export function ProjectNotFound() {
 
   return (
     <div className="flex items-center justify-center py-16">
-      <GlassCard className="p-8 max-w-md w-full text-center">
+      <GlassCard className="p-8  w-full text-center">
         <div className="w-16 h-16 rounded-2xl bg-slate-100 mx-auto mb-4 flex items-center justify-center">
           <span className="material-symbols-outlined text-4xl text-slate-400">error</span>
         </div>

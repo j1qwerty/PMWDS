@@ -13,7 +13,7 @@ import {
 import {
   MilestonesPanel,
   TaskSubtaskCard,
-  TaskDetailModal,
+  TaskSubtaskDetailsModal,
   TaskFormModal,
   MilestoneFormModal,
   ConfirmDeleteModal,
@@ -40,6 +40,7 @@ export function ProjectMilestonesPage() {
   }>({ open: false });
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [viewTask, setViewTask] = useState<Task | null>(null);
 
   const { setNavHeader } = useNavHeader();
 
@@ -175,17 +176,6 @@ export function ProjectMilestonesPage() {
     }
   };
 
-  const handleTaskStatus = async (taskId: string, status: string) => {
-    if (!auth) return;
-    try {
-      await api.updateTaskStatus(auth.token, taskId, status);
-      addToast("Task status updated");
-      await ws.refresh();
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to update task status", "error");
-    }
-  };
-
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -281,7 +271,7 @@ export function ProjectMilestonesPage() {
                       key={task.id}
                       task={task}
                       canEdit={access.canManageTasks}
-                      onViewTask={(t) => setSelectedTaskId(t.id)}
+                      onViewTask={(t) => setViewTask(t)}
                       onEditTask={(t) => setTaskModal({ open: true, edit: t })}
                       getProgressColor={getProgressColor}
                     />
@@ -347,16 +337,29 @@ export function ProjectMilestonesPage() {
         onClose={() => setDeleteTask(null)}
       />
 
-      <TaskDetailModal
-        task={selectedTask}
-        milestone={selectedMilestone}
+      <TaskSubtaskDetailsModal
+        task={viewTask}
+        project={ws.project}
+        milestone={
+          viewTask
+            ? ws.milestones.find((m) => m.id === viewTask.milestoneId) ?? selectedMilestone
+            : null
+        }
         users={ws.users}
-        canManage={access.canManageTasks}
-        onEdit={() => selectedTask && setTaskModal({ open: true, edit: selectedTask })}
-        onDelete={() => selectedTask && setDeleteTask(selectedTask)}
-        onStatusChange={(status) => selectedTask && handleTaskStatus(selectedTask.id, status)}
-        onRefresh={() => ws.refresh()}
-        onClose={() => setSelectedTaskId("")}
+        isAdmin={access.canManageTasks}
+        onClose={() => setViewTask(null)}
+        onEdit={(task) => {
+          setTaskModal({ open: true, edit: task });
+          setViewTask(null);
+        }}
+        onDelete={(task) => {
+          setDeleteTask(task);
+          setViewTask(null);
+        }}
+        onEscalate={() => {
+          void ws.refresh();
+        }}
+        onMessage={() => {}}
       />
     </div>
   );

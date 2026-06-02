@@ -13,7 +13,7 @@ import {
   getStatusColor,
 } from "../shared";
 import TaskProgressBoards from "../shared/dash/TaskProgressBoards2";
-import { TaskDetailModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
+import { TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 
@@ -28,6 +28,7 @@ export function ProjectTasksPage() {
     open: false,
   });
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
 
   const { setNavHeader } = useNavHeader();
 
@@ -95,23 +96,6 @@ export function ProjectTasksPage() {
     }
   };
 
-  const handleTaskStatus = async (taskId: string, status: string) => {
-    if (!auth) return;
-    try {
-      await api.updateTaskStatus(auth.token, taskId, status);
-      addToast("Task status updated");
-      await ws.refresh();
-      if (selectedTaskId === taskId) {
-        const updated = await api.getTask(auth.token, taskId);
-        if (updated) {
-          setSelectedTaskId(updated.id);
-        }
-      }
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to update status", "error");
-    }
-  };
-
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -138,7 +122,7 @@ export function ProjectTasksPage() {
         key={milestoneId}
         tasks={tasks}
         canEdit={access.canManageTasks}
-        onViewTask={(t) => setSelectedTaskId(t.id)}
+        onViewTask={(t) => setViewTask(t)}
         onEditTask={(t) => setTaskModal({ open: true, edit: t })}
       />
     );
@@ -263,16 +247,29 @@ export function ProjectTasksPage() {
         )}
       </div>
 
-      <TaskDetailModal
-        task={selectedTask}
-        milestone={selectedMilestone}
+      <TaskSubtaskDetailsModal
+        task={viewTask}
+        project={ws.project}
+        milestone={
+          viewTask
+            ? ws.milestones.find((m) => m.id === viewTask.milestoneId) ?? selectedMilestone
+            : null
+        }
         users={ws.users}
-        canManage={access.canManageTasks}
-        onEdit={() => selectedTask && setTaskModal({ open: true, edit: selectedTask })}
-        onDelete={() => selectedTask && setDeleteTask(selectedTask)}
-        onStatusChange={(status) => selectedTask && handleTaskStatus(selectedTask.id, status)}
-        onRefresh={() => ws.refresh()}
-        onClose={() => setSelectedTaskId("")}
+        isAdmin={access.canManageTasks}
+        onClose={() => setViewTask(null)}
+        onEdit={(task) => {
+          setTaskModal({ open: true, edit: task });
+          setViewTask(null);
+        }}
+        onDelete={(task) => {
+          setDeleteTask(task);
+          setViewTask(null);
+        }}
+        onEscalate={() => {
+          void ws.refresh();
+        }}
+        onMessage={() => {}}
       />
 
       <TaskFormModal

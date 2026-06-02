@@ -1,5 +1,5 @@
 # config 
-## flow
+# flow
 existing flow : organizations -> departments(multiple) -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) 
 
 
@@ -279,7 +279,7 @@ make commit on each step or feature
 
 
 # prompts
-## new goal from scratch
+### new goal from scratch
 our app will have two versions of app living in two separate branches
 the current version with this flow
 - existing flow : organizations -> departments(multiple) -> projects (multiple) -> milestones ( multiple) -> tasks(multiple) -> sub tasks(multiple) 
@@ -304,7 +304,7 @@ DO NOT RUN TEST FROM PROJECT
 
 DO NOT STOP TILL DONE
 
-## analyse - report-backend-ds.md
+### analyse - report-backend-ds.md
 analyse the project for backend and how flow and scopes and roles and permissions are managed, hierarchy for roles , models intefaces repository dto 
 controllers sending data for what api and any page specific api that send all data role wise with single api while keeping the other api as it is 
 
@@ -319,7 +319,7 @@ only make reports for : projects, organization, departments , milestones, tasks,
 
 do not miss anything for the project
 
-## analyse frontend - report-frontend-ds.md
+### analyse frontend - report-frontend-ds.md
 analyse client react project agenerate a full comprehensive report while also mentioning the file names where it is implements with path,
 and suggest improvements or better way  to manage it ( refactor, api improvements , models interface dto etc improvemetns, security etc )
 
@@ -327,10 +327,10 @@ check all api and data incosistencies and all interface declarations and color d
 
 also check for location inconsistencies and other things which can be improved, like moving all modals at same place with proper naming and check for all other issues
 
-## API
+### API
 - CREATE ONE MORE API THAT SENDS ALL DATA (ROLE SPECIFIC FOR LOGGED IN USER (end point - pages , returns all the data that we send through all get api to frontend for all pages and features in single api , make sure the data is paginanted only 20 records for everythings are sent when the user pagintion settings are for 10 i.e we send double of what users settings are )
 
-## prompt rolescope fixes
+### prompt rolescope fixes
 - [rolescopes-back.md](rolescopes-back.md) contains all the issues we need to fix.
 NOTE : ONLY CONSIDER THESE FOR ANY CHANGES Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks (with subtasks), Notifications, Activity Logs, 
 NOTE IMP - DO NOT STOP TILL DONE
@@ -351,3 +351,61 @@ check permissions and duplicates related to all these modules and fix it.
 - only data related to Auth, Users, Profiles, Roles/Permissions, Organizations, Departments, Projects, Milestones, Tasks (with subtasks), Notifications, Activity Logs  
 
 
+### task and subtasks and ui
+- all statuse warnings states and error states
+- new tasksubtaskdetails.tsx has update task progress based on Client\src\pages\tasks\TaskDetail.tsx , it has option to update task progress with slider and input box , way to update status of task, comment , escalate task option, timer and dependency options, shows subtasks and has update for subtasks also same way progress, comment only
+subasks will only have progress and comment
+for task update - if tasks has subtasks then no option to manually update task progress (progress of task is cummulative progress of subtasks)
+if we delete a subtask then task progress remains as it was , if we change status of task to not started but ealier it had some progress >0 , give warning and if still changed to not started then set progress of all subtask to 0 and task progress also 0
+change subtask status - to completed (with checkbox) (sets progress of subtask to 100% , and hides progress update section for that subtask, )
+
+
+- NOTE : THESE ARE ALREADY IMPLEMENTED
+New Frontend Component
+Client/src/pages/tasks/TaskSubtaskDetails.tsx — replaces the old TaskDetail.tsx in the tasks page. Same visual layout (header card, status buttons, tabs, alerts, AI recommendation) but with new subtask-aware behavior.
+
+Task Progress Rules
+No subtasks → task shows a slider + number input for manual progress update.
+Has subtasks → manual update is hidden; progress is shown as (cumulative of subtasks) and is read-only.
+Subtask Behavior (per row)
+Checkbox toggles subtask between Completed / reopens to InProgress (server forces progress to 100% on complete).
+Progress slider + input + Save button for non-completed subtasks.
+Comment input for adding a comment to the subtask.
+Status pills (NotStarted / InProgress / OnHold / Completed / Delayed / Cancelled) for explicit status change.
+When a subtask is Completed, the progress controls are hidden and a green "Completed at 100%" badge shows instead.
+Delete subtask → parent progress is intentionally left as-is (no recalculation).
+Status Change to "Not Started" Warning
+If the task currently has any progress (> 0) and user picks NotStarted, an inline amber warning appears with two buttons: "Yes, reset to 0%" and "Cancel". Confirming sends confirmReset: true in the PATCH body, which resets the task and all subtasks to 0% on the server.
+Other Header Actions
+Edit, Escalate, Delete (kept from original).
+Backend Changes (no behavior regressions for other modules)
+ProjectTask entity (PMWDS.Domain/Entities/ProjectTask.cs):
+RecalculateProgressFromSubtasks() — averages subtask progress.
+ResetAllProgress() — resets own + all subtasks' progress to 0.
+MarkSubtaskCompleted() — sets status Completed, progress 100%, CompletedDate.
+HasSubTasks flag.
+TaskDto now exposes HasSubTasks and reports ProgressPercentage as the average of subtask progress when subtasks exist (instead of just counting Completed).
+UpdateTaskProgressCommand throws ConflictException (HTTP 409) if a task with subtasks is updated manually; otherwise it updates progress and recalculates the parent's progress from its subtasks.
+TasksController:
+New private helper ApplyStatusChangeAsync used by both PATCH /tasks/{id}/status and PATCH /tasks/subtasks/{id}/status:
+If NewStatus == NotStarted and progress > 0 and ConfirmReset is false → returns 409 with warning message.
+If confirmed reset, calls ResetAllProgress() (which also resets subtasks).
+If status becomes Completed, calls MarkSubtaskCompleted() (progress = 100%).
+After change, if the task is a subtask, recalculates the parent's progress.
+UpdateTaskStatusRequest extended with bool ConfirmReset = false.
+GetWithDetailsAsync is now used in both status endpoints (was GetByIdAsync) so subtasks are available for the recalculation logic.
+API & Types
+Client/src/types.ts: Task now has optional hasSubTasks?: boolean.
+Client/src/api.ts: updateTaskStatus and updateSubtaskStatus accept an optional { confirmReset } second arg.
+Page Wiring
+Client/src/pages/tasks/tasks.tsx: now imports and renders TaskSubtaskDetails instead of TaskDetail. handleStatusChange forwards { confirmReset } to the API. New handleEscalate and handleUpdateProgress handlers wired up.
+Dependency section is not rendered in the new component (per requirement).
+
+ABOVE ARE IMPLEMENTED
+now do the following: 
+aslo use this @Client/src/pages/tasks/TaskSubtaskDetails.tsx for our new nested projects pages that we created earlier to show this , create a shared overlay(if do not exist) for modals , this overlay has x icon button on top right to close the modal and close the modal if we click outside this. 
+
+open this modal onclick on card (other than the buttons on cards and subtask section) and then we can update the task related info
+do this for both @Client/src/pages/projectsK/components/TaskCard.tsx and @Client/src/pages/projectsK/components/TaskSubtaskCard.tsx
+
+### 

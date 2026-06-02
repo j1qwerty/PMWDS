@@ -139,6 +139,20 @@ public class ProjectTask : AuditableEntity
             ProgressPercentage = 100;
         }
     }
+    public void MarkSubtaskCompleted()
+    {
+        Status = TaskStatus.Completed;
+        ProgressPercentage = 100;
+        CompletedDate = DateTime.UtcNow;
+    }
+    public void ResetAllProgress()
+    {
+        ProgressPercentage = 0;
+        foreach (var sub in _subTasks)
+        {
+            sub.ResetAllProgress();
+        }
+    }
     public void Start()
     {
         if (Status == TaskStatus.NotStarted)
@@ -158,6 +172,17 @@ public class ProjectTask : AuditableEntity
             CompletionNotes = notes;
         if (percentage >= 100) Complete();
     }
+    public void RecalculateProgressFromSubtasks()
+    {
+        if (_subTasks.Count == 0)
+        {
+            return;
+        }
+        var total = _subTasks.Count;
+        var sum = _subTasks.Sum(st => Math.Clamp(st.ProgressPercentage, 0, 100));
+        ProgressPercentage = Math.Round(sum / total, 1);
+    }
+    public bool HasSubTasks => _subTasks.Count > 0;
     public void AddComment(TaskComment comment)
         => _comments.Add(comment);
     public void AddAttachment(TaskAttachment attachment)

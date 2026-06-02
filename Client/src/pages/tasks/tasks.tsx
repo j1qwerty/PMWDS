@@ -23,7 +23,7 @@ import {
   getProjectDepartments,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { TaskDetail } from "./TaskDetail";
+import { TaskSubtaskDetails } from "./TaskSubtaskDetails";
 import { TaskFormModal } from "./TaskFormModal";
 
 export function TasksPage() {
@@ -354,12 +354,45 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
     }
 };
 
-  const handleStatusChange = async (taskId: string, status: string) => {
+  const handleStatusChange = async (taskId: string, status: string, options?: { confirmReset?: boolean }) => {
     if (!auth) return;
     try {
-      await api.updateTaskStatus(auth.token, taskId, status);
-      setMessage("Status updated.");
-      addToast("Status updated.");
+      await api.updateTaskStatus(auth.token, taskId, status, { confirmReset: options?.confirmReset });
+      if (options?.confirmReset) {
+        addToast("Status updated and progress reset.");
+        setMessage("Status updated and progress reset.");
+      } else {
+        addToast("Status updated.");
+        setMessage("Status updated.");
+      }
+      loadData();
+    } catch (e) {
+      const errorMsg = `Error: ${e instanceof Error ? e.message : "Update failed"}`;
+      setMessage(errorMsg);
+      addToast(errorMsg, "error");
+    }
+  };
+
+  const handleEscalate = async (taskId: string) => {
+    if (!auth) return;
+    try {
+      await api.escalateTask(auth.token, taskId);
+      addToast("Task escalated.");
+      setMessage("Task escalated.");
+      loadData();
+    } catch (e) {
+      const errorMsg = `Error: ${e instanceof Error ? e.message : "Escalation failed"}`;
+      setMessage(errorMsg);
+      addToast(errorMsg, "error");
+    }
+  };
+
+  const handleUpdateProgress = async (taskId: string, progress: number, notes: string) => {
+    if (!auth) return;
+    try {
+      await api.updateTaskProgress(auth.token, taskId, progress, notes);
+      addToast("Progress updated.");
+      setMessage("Progress updated.");
       loadData();
     } catch (e) {
       const errorMsg = `Error: ${e instanceof Error ? e.message : "Update failed"}`;
@@ -817,22 +850,17 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
   {/* Column 3: Task Detail (40%) */}
   <div className="overflow-hidden">
     {selectedTask ? (
-      <TaskDetail
+      <TaskSubtaskDetails
         task={selectedTask}
         users={users}
-        allTasks={tasks}
         project={projects.find(p => p.id === selectedTask.projectId)}
         milestone={milestones.find(m => m.id === selectedTask.milestoneId)}
         recommendation={recommendation}
         delay={delay}
         isAdmin={isAdmin}
-        onStatusChange={(status) => handleStatusChange(selectedTask.id, status)}
+        onStatusChange={(status, options) => handleStatusChange(selectedTask.id, status, options)}
         onEdit={() => setTaskModal({ open: true, editTask: selectedTask })}
-        onUpdateProgress={async (progress, notes) => {
-          if (!auth) return;
-          await api.updateTaskProgress(auth.token, selectedTask.id, progress, notes);
-          loadData();
-        }}
+        onUpdateProgress={(progress, notes) => handleUpdateProgress(selectedTask.id, progress, notes)}
         onAddComment={async (comment) => {
           if (!auth) return;
           await api.addTaskComment(auth.token, selectedTask.id, comment);
@@ -846,6 +874,7 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
           addToast("Timer started.");
         }}
         onRefresh={loadData}
+        onEscalate={() => handleEscalate(selectedTask.id)}
         onMessage={setMessage}
       />
     ) : (

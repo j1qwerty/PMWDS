@@ -24,6 +24,7 @@ import {
   ProjectSidebar,
   TaskDetailModal,
   TaskFormModal,
+  TaskSubtaskDetailsModal,
   TasksKanbanBoard,
   ViewTabs,
   type WorkspaceView,
@@ -87,6 +88,7 @@ export function ProjectsKPage() {
 
   const [taskModal, setTaskModal] = useState<{ open: boolean; edit?: Task; milestoneId?: string }>({ open: false });
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
 
   const { setNavHeader } = useNavHeader();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
@@ -323,14 +325,18 @@ export function ProjectsKPage() {
     await loadProjectWorkspace(selectedProjectId);
   };
 
-  const handleTaskStatus = async (taskId: string, status: string) => {
+  const handleTaskStatus = async (taskId: string, status: string, options?: { confirmReset?: boolean }) => {
     if (!auth) return;
-    await api.updateTaskStatus(auth.token, taskId, status);
+    await api.updateTaskStatus(auth.token, taskId, status, { confirmReset: options?.confirmReset });
     addToast("Task status updated");
     await loadProjectWorkspace(selectedProjectId);
     if (selectedTaskId === taskId) {
       const updated = await api.getTask(auth.token, taskId);
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+    }
+    if (viewTask?.id === taskId) {
+      const updated = await api.getTask(auth.token, taskId);
+      setViewTask(updated);
     }
   };
 
@@ -438,7 +444,7 @@ export function ProjectsKPage() {
                   milestones={milestones}
                   selectedMilestoneId={selectedMilestoneId}
                   canEdit={access.canManageTasks}
-                  onViewTask={(task) => setSelectedTaskId(task.id)}
+                  onViewTask={(task) => setViewTask(task)}
                   onEditTask={(task) => setTaskModal({ open: true, edit: task })}
                   onStatusChange={handleTaskStatus}
                   searchTerm={searchTerm}
@@ -580,6 +586,31 @@ export function ProjectsKPage() {
         onStatusChange={(status) => selectedTask && handleTaskStatus(selectedTask.id, status)}
         onRefresh={() => loadProjectWorkspace(selectedProjectId)}
         onClose={() => setSelectedTaskId("")}
+      />
+
+      <TaskSubtaskDetailsModal
+        task={viewTask}
+        project={selectedProject}
+        milestone={
+          viewTask
+            ? milestones.find((m) => m.id === viewTask.milestoneId) ?? selectedMilestone
+            : null
+        }
+        users={users}
+        isAdmin={access.canManageTasks}
+        onClose={() => setViewTask(null)}
+        onEdit={(task) => {
+          setTaskModal({ open: true, edit: task });
+          setViewTask(null);
+        }}
+        onDelete={(task) => {
+          setDeleteTask(task);
+          setViewTask(null);
+        }}
+        onEscalate={() => {
+          void loadProjectWorkspace(selectedProjectId);
+        }}
+        onMessage={() => {}}
       />
     </div>
   );
