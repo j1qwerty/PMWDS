@@ -12,7 +12,8 @@ import {
     ModalOverlay,
     DeleteConfirmationModal,
     DeptFormModal,
-    Permission,
+    PERMISSION_GROUPS,
+    usePermission,
     useRoleAccess,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
@@ -24,9 +25,10 @@ export function DepartmentsPage() {
     const { auth } = useAuth();
     const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
     const access = useRoleAccess();
+    const perm = usePermission();
     const canCreateDepartments = access.canCreateDepartments;
     const canDeleteDepartments = access.canDeleteDepartments;
-    const canEditDepartments = access.can(Permission.DepartmentEdit);
+    const canEditDepartments = perm.has(PERMISSION_GROUPS.department.edit);
 
     const [departments, setDepartments] = useState<Department[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

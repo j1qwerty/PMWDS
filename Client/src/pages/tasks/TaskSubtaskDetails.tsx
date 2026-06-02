@@ -4,7 +4,7 @@ import { FiEdit, FiTrash2, FiClock, FiBarChart2, FiMessageSquare, FiChevronDown,
 import type { Milestone, Project, Task, User } from "../../types";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { useToast } from "../shared";
+import { usePermission, useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
 import { AvatarStack, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { StatusBadgeMinimal, StatusButtonsMin } from "../shared/StatusBadgeMininmal";
@@ -19,7 +19,8 @@ interface TaskSubtaskDetailsProps {
   milestone?: Milestone | null;
   recommendation?: any;
   delay?: any;
-  isAdmin: boolean;
+  isAdmin?: boolean;
+  permissionEdit?: string;
   onStatusChange: (status: string, options?: { confirmReset?: boolean }) => void;
   onEdit: () => void;
   onUpdateProgress: (progress: number, notes: string) => void;
@@ -40,6 +41,7 @@ export function TaskSubtaskDetails({
   recommendation,
   delay,
   isAdmin,
+  permissionEdit,
   onStatusChange,
   onEdit,
   onUpdateProgress,
@@ -51,6 +53,8 @@ export function TaskSubtaskDetails({
   onClose,
   hideCloseButton = false,
 }: TaskSubtaskDetailsProps) {
+  const perm = usePermission();
+  const mayEdit = isAdmin ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { auth } = useAuth();
   const { addToast } = useToast();
   const assignedUsers = (task.assignees && task.assignees.length > 0)
@@ -255,7 +259,7 @@ export function TaskSubtaskDetails({
               )}
             </div>
           </div>
-          {isAdmin && (
+          {mayEdit && (
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={onEdit} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors" title="Edit task">
                 <FiEdit className="w-4 h-4" />
@@ -511,7 +515,7 @@ export function TaskSubtaskDetails({
                   return (
                     <div key={subtask.id} className="rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100">
                       <div className="flex items-center gap-3 p-2.5">
-                        {isAdmin && (
+                        {mayEdit && (
                           <button
                             onClick={() => handleSubtaskToggleCompleted(subtask.id, isCompleted)}
                             className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
@@ -534,7 +538,7 @@ export function TaskSubtaskDetails({
                         <motion.span animate={{ rotate: isOpen ? 180 : 0 }}>
                           <FiChevronDown className="w-4 h-4 text-slate-400" />
                         </motion.span>
-                        {isAdmin && (
+                        {mayEdit && (
                           <button
                             onClick={() => handleDeleteSubtask(subtask.id)}
                             className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-500"
@@ -553,7 +557,7 @@ export function TaskSubtaskDetails({
                           <div className="px-3 pb-3 pt-2 border-t border-slate-200/70">
                             <SubtaskUpdatePanel
                               subtask={subtask}
-                              isAdmin={isAdmin}
+                              isAdmin={mayEdit}
                               onUpdateProgress={handleSubtaskProgressUpdate}
                               onUpdateStatus={handleSubtaskStatusChange}
                               onAddComment={handleSubtaskAddComment}
@@ -564,7 +568,7 @@ export function TaskSubtaskDetails({
                     </div>
                   );
                 })}
-                {isAdmin && (
+                {mayEdit && (
                   showSubtaskForm ? (
                     <div className="flex gap-2">
                       <input

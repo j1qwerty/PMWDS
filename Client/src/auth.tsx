@@ -9,6 +9,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { api } from "./api";
+import { coversAnyPermission, coversManagedPermission } from "./permissions";
 import type { AuthResponse, Role } from "./types";
 
 export type AuthState = {
@@ -30,32 +31,11 @@ type AuthContextValue = {
   updateCurrentUser: (patch: Partial<Pick<AuthState, "fullName" | "email" | "profilePictureUrl">>) => void;
   hasRole: (...roles: Role[]) => boolean;
   hasPermission: (...permissions: string[]) => boolean;
+  hasAllPermissions: (...permissions: string[]) => boolean;
 };
 
 const STORAGE_KEY = "pmwds-client-auth";
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-const permissionCoverage: Record<string, string[]> = {
-  ORGANIZATION_MANAGE: ["ORGANIZATION_VIEW", "ORGANIZATION_CREATE", "ORGANIZATION_EDIT", "ORGANIZATION_DELETE"],
-  DEPARTMENT_MANAGE: ["DEPARTMENT_VIEW", "DEPARTMENT_CREATE", "DEPARTMENT_EDIT", "DEPARTMENT_DELETE"],
-  PROJECT_MANAGE: ["PROJECT_VIEW", "PROJECT_CREATE", "PROJECT_EDIT", "PROJECT_DELETE"],
-  MILESTONE_MANAGE: ["MILESTONE_VIEW", "MILESTONE_CREATE", "MILESTONE_EDIT", "MILESTONE_DELETE"],
-  TASK_MANAGE: ["TASK_VIEW", "TASK_CREATE", "TASK_EDIT", "TASK_DELETE", "TASK_ASSIGN", "TASK_COMMENT_CREATE", "TASK_ATTACHMENT_CREATE", "TASK_TIME_TRACK"],
-  SUBTASK_MANAGE: ["SUBTASK_VIEW", "SUBTASK_CREATE", "SUBTASK_EDIT", "SUBTASK_DELETE"],
-  USER_MANAGE: ["USER_VIEW", "USER_CREATE", "USER_EDIT", "USER_DELETE", "USER_DEPARTMENT_MANAGE", "USER_PROFILE_PICTURE_MANAGE"],
-  ROLE_MANAGE: ["ROLE_VIEW", "ROLE_CREATE", "ROLE_EDIT", "ROLE_DELETE"],
-  PERMISSION_MANAGE: ["PERMISSION_VIEW", "PERMISSION_CREATE", "PERMISSION_EDIT", "PERMISSION_DELETE"],
-  NOTIFICATION_MANAGE: ["NOTIFICATION_VIEW", "NOTIFICATION_BROADCAST", "NOTIFICATION_TEMPLATE_MANAGE", "NOTIFICATION_RULE_MANAGE"],
-  ACTIVITY_LOG_MANAGE: ["ACTIVITY_LOG_VIEW", "ACTIVITY_LOG_CREATE"],
-};
-
-function hasCoveredPermission(userPermissions: readonly string[], requested: string) {
-  if (userPermissions.includes("SYSTEM_ADMIN") || userPermissions.includes(requested)) return true;
-  return Object.entries(permissionCoverage).some(
-    ([managePermission, covered]) =>
-      userPermissions.includes(managePermission) && covered.includes(requested),
-  );
-}
 
 function mapAuth(response: AuthResponse): AuthState {
   return {
@@ -148,7 +128,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const hasPermission = useCallback((...permissions: string[]) => {
     if (!auth) return false;
-    return permissions.some((permission) => hasCoveredPermission(auth.permissions ?? [], permission));
+    return coversAnyPermission(auth.permissions ?? [], permissions);
+  }, [auth]);
+
+  const hasAllPermissions = useCallback((...permissions: string[]) => {
+    if (!auth) return false;
+    if (!permissions.length) return true;
+    return permissions.every((permission) => coversManagedPermission(auth.permissions ?? [], permission));
   }, [auth]);
 
   const value: AuthContextValue = useMemo(() => ({
@@ -159,7 +145,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     updateCurrentUser,
     hasRole,
     hasPermission,
-  }), [auth, login, logout, refresh, updateCurrentUser, hasRole, hasPermission]);
+    hasAllPermissions,
+  }), [auth, login, logout, refresh, updateCurrentUser, hasRole, hasPermission, hasAllPermissions]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

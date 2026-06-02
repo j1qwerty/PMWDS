@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { useAppData } from "./appData";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, Permission, useRoleAccess } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, useRoleAccess } from "./pages/shared";
+import { PERMISSION_GROUPS } from "./permissions";
 
 import {
   HiOutlineHome,
@@ -220,20 +221,20 @@ function Layout({ children }: { children: React.ReactNode }) {
       {
         title: "Overview",
         items: [
-          { path: "/projects", label: "Projects", icon: "projects", permissions: [Permission.ProjectView] },
-          { path: "/projectsK", label: "Workspace", icon: "projects", permissions: [Permission.ProjectView] },
-          { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [Permission.MilestoneView] },
-          { path: "/tasks", label: "Tasks", icon: "tasks", permissions: [Permission.TaskView] },
-          { path: "/notificationsPage", label: "Notifications", icon: "inbox", permissions: [Permission.NotificationView] },
+          { path: "/projects", label: "Projects", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
+          { path: "/projectsK", label: "Workspace", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
+          { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [PERMISSION_GROUPS.milestone.view] },
+          { path: "/tasks", label: "Tasks", icon: "tasks", permissions: [PERMISSION_GROUPS.task.view] },
+          { path: "/notificationsPage", label: "Notifications", icon: "inbox", permissions: [PERMISSION_GROUPS.notification.view] },
           { path: "/chat", label: "Chats", icon: "chat", permissions: [] },
         ],
       },
       {
         title: "Team",
         items: [
-          { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [Permission.OrganizationView] },
-          { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [Permission.DepartmentView] },
-          { path: "/users", label: "Users", icon: "users", permissions: [Permission.UserView] },
+          { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [PERMISSION_GROUPS.organization.view] },
+          { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
+          { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
           { path: "/profiles", label: "Profiles", icon: "users", permissions: [] },
           { path: "/skills", label: "Skills", icon: "skill", permissions: [] },
         ],
@@ -248,10 +249,10 @@ function Layout({ children }: { children: React.ReactNode }) {
       {
         title: "System",
         items: [
-          { path: "/roles", label: "Roles", icon: "roles", permissions: [Permission.RoleView] },
-          { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [Permission.ActivityLogView] },
+          { path: "/roles", label: "Roles", icon: "roles", permissions: [PERMISSION_GROUPS.role.view] },
+          { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [PERMISSION_GROUPS.activityLog.view] },
           { path: "/test-page", label: "Test Page", icon: "test", permissions: [] },
-          { path: "/settings", label: "Settings", icon: "settings", permissions: [Permission.SystemAdmin] },
+          { path: "/settings", label: "Settings", icon: "settings", permissions: [PERMISSION_GROUPS.system.manage] },
         ],
       },
     ];

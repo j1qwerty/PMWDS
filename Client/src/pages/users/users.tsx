@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, SkillRecord, User, WorkloadReport } from "../../types";
-import { 
-  AnimatedBackground, 
-  DeleteConfirmationModal, 
+import {
+  AnimatedBackground,
+  DeleteConfirmationModal,
   useNavHeader,
   PageSkeleton,
+  usePermission,
   useRoleAccess,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
@@ -18,7 +19,8 @@ import { UserEditModal } from "./UserEditModal";
 export function UsersPage() {
   const { auth } = useAuth();
   const access = useRoleAccess();
-  const isAdmin = access.can("SYSTEM_ADMIN");
+  const perm = usePermission();
+  const isAdmin = perm.isAdmin;
   const canManageUsers = access.canManageUsers;
 
   const [users, setUsers] = useState<User[]>([]);

@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAppData } from "../../appData";
 import type { Project } from "../../types";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { Permission, useRoleAccess } from "../shared/RoleGate";
+import { PERMISSION_GROUPS, useRoleAccess } from "../shared/RoleGate";
 import { getStatusColor } from "../shared/colors";
 import { projectBelongsToAnyDepartment } from "../shared/projectDepartments";
 import {
@@ -89,7 +89,7 @@ export function ProjectsGroup({
   }, [expandedIds]);
 
   const visibleProjects = useMemo<Project[]>(() => {
-    if (!access.can(Permission.ProjectView)) return [];
+    if (!access.has(PERMISSION_GROUPS.project.view)) return [];
     let filtered = data.projects;
     if (shouldFilterByOrg && userOrganizationId) {
       const orgDeptIds = data.departments

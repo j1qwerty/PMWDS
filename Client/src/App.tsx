@@ -4,6 +4,9 @@ import { AppDataProvider, useAppData } from "./appData";
 import { Layout } from "./layout";
 import { ToastProvider } from "./pages/shared/Toast";
 import { LoadingPage } from "./pages/shared";
+import { NoAccessPage } from "./pages/shared/NoAccessPage";
+import { RoutePermissionGuard } from "./pages/shared/PermissionControls";
+import { PERMISSION_GROUPS, Permission } from "./permissions";
 
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
@@ -45,6 +48,28 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const ROUTE_GUARDS = {
+  projects: PERMISSION_GROUPS.project.view,
+  projectsK: PERMISSION_GROUPS.project.view,
+  milestonesPage: PERMISSION_GROUPS.milestone.view,
+  tasks: PERMISSION_GROUPS.task.view,
+  notificationsPage: PERMISSION_GROUPS.notification.view,
+  organizationStructure: PERMISSION_GROUPS.organization.view,
+  departmentsPage: PERMISSION_GROUPS.department.view,
+  users: PERMISSION_GROUPS.user.view,
+  roles: PERMISSION_GROUPS.role.view,
+  activityLogs: PERMISSION_GROUPS.activityLog.view,
+  settings: Permission.SystemAdmin,
+} as const;
+
+function Guarded({ permission, children }: { permission?: string; children: React.ReactNode }) {
+  return (
+    <RoutePermissionGuard permission={permission} fallback={<NoAccessPage />}>
+      {children}
+    </RoutePermissionGuard>
+  );
+}
+
 function AppRoutes() {
   const { auth } = useAuth();
 
@@ -59,11 +84,26 @@ function AppRoutes() {
               <Routes>
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projectsK" element={<ProjectsKPage />} />
-                <Route path="/milestonesPage" element={<MilestonesPage />} />
-                <Route path="/tasks" element={<TasksPage />} />
-                <Route path="/notificationsPage" element={<NotificationsPage />} />
+                <Route
+                  path="/projects"
+                  element={<Guarded permission={ROUTE_GUARDS.projects}><ProjectsPage /></Guarded>}
+                />
+                <Route
+                  path="/projectsK"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsKPage /></Guarded>}
+                />
+                <Route
+                  path="/milestonesPage"
+                  element={<Guarded permission={ROUTE_GUARDS.milestonesPage}><MilestonesPage /></Guarded>}
+                />
+                <Route
+                  path="/tasks"
+                  element={<Guarded permission={ROUTE_GUARDS.tasks}><TasksPage /></Guarded>}
+                />
+                <Route
+                  path="/notificationsPage"
+                  element={<Guarded permission={ROUTE_GUARDS.notificationsPage}><NotificationsPage /></Guarded>}
+                />
 
                 {/* Project-nested deep links */}
                 <Route path="/projects/:projectId/tasks" element={<ProjectTasksPage />} />
@@ -74,23 +114,41 @@ function AppRoutes() {
                 <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
 
                 {/* Team */}
-                <Route path="/organizationStructure" element={<OrganizationStructurePage />} />
-                <Route path="/departmentsPage" element={<DepartmentsPage />} />
-                <Route path="/users" element={<UsersPage />} />
+                <Route
+                  path="/organizationStructure"
+                  element={<Guarded permission={ROUTE_GUARDS.organizationStructure}><OrganizationStructurePage /></Guarded>}
+                />
+                <Route
+                  path="/departmentsPage"
+                  element={<Guarded permission={ROUTE_GUARDS.departmentsPage}><DepartmentsPage /></Guarded>}
+                />
+                <Route
+                  path="/users"
+                  element={<Guarded permission={ROUTE_GUARDS.users}><UsersPage /></Guarded>}
+                />
                 <Route path="/profiles" element={<ProfilesPage />} />
                 <Route path="/skills" element={<SkillsPage />} />
 
-                {/* Tools */}
+                {/* Tools (open to all authenticated users) */}
                 <Route path="/ai" element={<CoreAIPage />} />
                 <Route path="/reports" element={<CoreReportsPage />} />
 
                 {/* System */}
-                <Route path="/roles" element={<RolesPage />} />
-                <Route path="/activity-logs" element={<ActivityLogsPage />} />
+                <Route
+                  path="/roles"
+                  element={<Guarded permission={ROUTE_GUARDS.roles}><RolesPage /></Guarded>}
+                />
+                <Route
+                  path="/activity-logs"
+                  element={<Guarded permission={ROUTE_GUARDS.activityLogs}><ActivityLogsPage /></Guarded>}
+                />
                 <Route path="/test-page" element={<TestPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                  path="/settings"
+                  element={<Guarded permission={ROUTE_GUARDS.settings}><SettingsPage /></Guarded>}
+                />
 
-              
+                <Route path="*" element={<NoAccessPage />} />
               </Routes>
             </Layout>
           </PrivateRoute>

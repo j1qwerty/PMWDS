@@ -1,15 +1,18 @@
-import { getPriorityColor } from "../../shared";
+import { getPriorityColor, usePermission } from "../../shared";
 import type { Task } from "../../../types";
 
 interface TaskCardProps {
   task: Task;
-  canEdit: boolean;
+  canEdit?: boolean;
+  permissionEdit?: string;
   onViewTask?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
   getProgressColor: (progress: number) => string;
 }
 
-export function TaskCard({ task, canEdit, onViewTask, onEditTask, getProgressColor }: TaskCardProps) {
+export function TaskCard({ task, canEdit, permissionEdit, onViewTask, onEditTask, getProgressColor }: TaskCardProps) {
+  const perm = usePermission();
+  const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const priorityColor = getPriorityColor(task.priority);
 
   const handleCardOpen = (e: React.MouseEvent) => {
@@ -62,7 +65,7 @@ export function TaskCard({ task, canEdit, onViewTask, onEditTask, getProgressCol
         </span>
 
         <div className="flex items-center gap-2">
-          {canEdit && onEditTask && (
+          {mayEdit && onEditTask && (
             <button
               title="Edit task"
               className="p-1 text-slate-400 hover:text-amber-500 transition-colors"

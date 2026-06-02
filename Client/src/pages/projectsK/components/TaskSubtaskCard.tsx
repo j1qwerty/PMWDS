@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import type { Task } from "../../../types";
-import { getPriorityColor, getStatusColor, useToast } from "../../shared";
+import { getPriorityColor, getStatusColor, usePermission, useToast } from "../../shared";
 
 interface TaskSubtaskCardProps {
   task: Task;
-  canEdit: boolean;
+  canEdit?: boolean;
+  permissionEdit?: string;
   onViewTask?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
   getProgressColor: (progress: number) => string;
@@ -16,11 +17,14 @@ interface TaskSubtaskCardProps {
 export function TaskSubtaskCard({
   task,
   canEdit,
+  permissionEdit,
   onViewTask,
   onEditTask,
   getProgressColor,
   onAddSubtask,
 }: TaskSubtaskCardProps) {
+  const perm = usePermission();
+  const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { auth } = useAuth();
   const { addToast } = useToast();
   const priorityColor = getPriorityColor(task.priority);
@@ -218,7 +222,7 @@ export function TaskSubtaskCard({
                       style={{ width: `${sub.progressPercentage || 0}%` }}
                     />
                   </div>
-                  {canEdit ? (
+                  {mayEdit ? (
                     <select
                       value={sub.status}
                       onClick={(e) => e.stopPropagation()}
@@ -238,7 +242,7 @@ export function TaskSubtaskCard({
                       {sub.status}
                     </span>
                   )}
-                  {canEdit && (
+                  {mayEdit && (
                     <button
                       type="button"
                       onClick={stopRowClick(() => handleDeleteSubtask(sub.id))}
@@ -259,7 +263,7 @@ export function TaskSubtaskCard({
               </div>
             ))}
 
-          {canEdit && !onAddSubtask && showInlineForm && (
+          {mayEdit && !onAddSubtask && showInlineForm && (
             <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
               <input
                 value={newTitle}
@@ -308,7 +312,7 @@ export function TaskSubtaskCard({
         </span>
 
         <div className="flex items-center gap-1.5">
-          {canEdit &&
+          {mayEdit &&
             (onAddSubtask ? (
               <button
                 type="button"
@@ -346,7 +350,7 @@ export function TaskSubtaskCard({
               </button>
             ))}
 
-          {canEdit && onEditTask && (
+          {mayEdit && onEditTask && (
             <button
               type="button"
               title="Edit task"

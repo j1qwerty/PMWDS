@@ -3,14 +3,15 @@ import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { PermissionRecord, RoleRecord } from "../../types";
-import { 
-  AnimatedBackground, 
-  GlassCard, 
+import {
+  AnimatedBackground,
+  GlassCard,
   LoadingPage,
+  PERMISSION_GROUPS,
   useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
-  useRoleAccess,
+  usePermission,
 } from "../shared";
 import { RolesTable } from "./RolesTable";
 import { PermissionsTable } from "./PermissionsTable";
@@ -20,8 +21,9 @@ import { PermissionFormModal } from "./PermissionFormModal";
 export function RolesPage() {
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
-  const access = useRoleAccess();
-  const isAdmin = access.canManageRoles || access.canManagePermissions;
+  const perm = usePermission();
+  const canManageRoles = perm.has(PERMISSION_GROUPS.role.manage);
+  const canManagePermissions = perm.has(PERMISSION_GROUPS.permission.manage);
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
@@ -173,7 +175,7 @@ export function RolesPage() {
             onEdit={(role) => setRoleModal({ open: true, editRole: role })}
             onDelete={(role) => setDeleteConfirm({ open: true, type: "role", id: role.id, name: role.name })}
             onCreate={() => setRoleModal({ open: true })}
-            isAdmin={isAdmin}
+            isAdmin={canManageRoles}
           />
         )}
 
@@ -183,7 +185,7 @@ export function RolesPage() {
             onEdit={(perm) => setPermissionModal({ open: true, editPermission: perm })}
             onDelete={(perm) => setDeleteConfirm({ open: true, type: "permission", id: perm.id, name: perm.code })}
             onCreate={() => setPermissionModal({ open: true })}
-            isAdmin={isAdmin}
+            isAdmin={canManagePermissions}
           />
         )}
       </div>

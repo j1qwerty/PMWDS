@@ -24,7 +24,7 @@ import { MilestoneFormModal } from "./MilestoneFormModal";
 export function MilestonesPage() {
     const { auth } = useAuth();
     const access = useRoleAccess();
-    const isAdmin = access.canManageMilestones;
+    const canManageMilestones = access.canManageMilestones;
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -53,13 +53,13 @@ export function MilestonesPage() {
       setNavHeader({
         title: "Milestones",
         description: "Track project milestones, critical paths, and delivery progress",
-        action: isAdmin && selectedProjectId ? {
+        action: canManageMilestones && selectedProjectId ? {
           label: "New Milestone",
           onClick: () => setMilestoneModal({ open: true }),
           icon: "flag",
         } : undefined,
       });
-    }, [setNavHeader, isAdmin, selectedProjectId]);
+    }, [setNavHeader, canManageMilestones, selectedProjectId]);
 
     const loadData = () => {
         if (!auth) return;
@@ -538,7 +538,7 @@ export function MilestonesPage() {
                             onDelete={() => handleDeleteMilestone(selectedMilestone)}
                             onAddTask={() => setTaskModal({ open: true })}
                             onStatusChange={(status) => handleMilestoneStatus(selectedMilestone.id, status)}
-                            isAdmin={isAdmin}
+                            isAdmin={canManageMilestones}
                         />
                     ) : selectedProjectId ? (
                         // Stats Card when project is selected but no milestone

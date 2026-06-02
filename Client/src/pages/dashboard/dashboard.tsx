@@ -12,7 +12,7 @@ import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent } from "../../ui";
 import { ModalOverlay, PageSkeleton, priorityColorPalette, statusColorPalette, useNavHeader, useToast } from "../shared";
-import { Permission, useRoleAccess } from "../shared";
+import { PERMISSION_GROUPS, usePermission, useRoleAccess } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { KpiCard } from "./kpiCard";
 import TaskStats from "../shared/dash/TaskStats";
@@ -50,6 +50,7 @@ const emptyProjectForm = (): ProjectFormState => ({
 export function DashboardPage() {
   const { auth } = useAuth();
   const access = useRoleAccess();
+  const perm = usePermission();
   const { setNavHeader } = useNavHeader();
   const navigate = useNavigate();
   const { refresh: refreshAppData } = useAppData();
@@ -118,8 +119,8 @@ export function DashboardPage() {
       api.getOrganizations(auth.token),
       api.getUsers(auth.token),
       api.getProjects(auth.token),
-      access.can(Permission.TaskView) ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
-      access.can(Permission.TaskView) ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+      access.can(PERMISSION_GROUPS.task.view) ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
+      access.can(PERMISSION_GROUPS.task.view) ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
       .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
@@ -138,7 +139,11 @@ export function DashboardPage() {
       .finally(() => setLoading(false));
   }, [auth, access]);
 
-  const canEditTasks = access.can(Permission.TaskEdit, Permission.TaskCreate, "TASK_ASSIGN");
+  const canEditTasks = perm.hasAny(
+    PERMISSION_GROUPS.task.edit,
+    PERMISSION_GROUPS.task.create,
+    PERMISSION_GROUPS.task.assign,
+  );
 
   const openTaskDetails = async (task: Task) => {
     if (!auth) return;

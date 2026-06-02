@@ -11,7 +11,7 @@ export { OrgFormModal } from "./OrgFormModal";
 export { DeptFormModal } from "./DeptFormModal";
 export { NavHeaderProvider, useNavHeader } from "./NavHeaderContext";
 export { NavHeader, NavActionButton } from "./nav-header";
-export { RoleGate, Permission, canUseRole, useRoleAccess } from "./RoleGate";
+export { RoleGate, Permission, PERMISSION_GROUPS, canUseRole, useRoleAccess, usePermission } from "./RoleGate";
 export { getProjectDepartmentIds, projectBelongsToDepartment, projectBelongsToAnyDepartment, getProjectDepartments } from "./projectDepartments";
 export { LoadingPage, PageSkeleton, Skeleton } from "./Skeleton";
 export { NotificationList } from "./NotificationList";
@@ -25,11 +25,14 @@ export { PriorityButtons, PriorityBadge } from "./PriorityBadge";
 export { FilterButtons } from "./FilterButtons";
 export { OrganizationDepartmentFilter } from "./OrganizationDepartmentFilter";
 export { ScopedUserSelect } from "./ScopedUserSelect";
-export { 
-  departmentColorPalette, 
-  statusColorPalette, 
+export { Can, CanAny, CanAll, RoutePermissionGuard } from "./PermissionControls";
+export { NoAccessPage } from "./NoAccessPage";
+export { resolveFlag, useResolvedFlag } from "./permissionProps";
+export {
+  departmentColorPalette,
+  statusColorPalette,
   priorityColorPalette,
   getDepartmentColor,
   getStatusColor,
-  getPriorityColor 
+  getPriorityColor
 } from "./colors";

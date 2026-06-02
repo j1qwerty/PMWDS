@@ -1,6 +1,16 @@
 import { useMemo, type ReactNode } from "react";
 import { useAuth } from "../../auth";
+import {
+  PERMISSION_GROUPS,
+  Permission,
+  isSuperAdmin,
+  type PermissionCode,
+  type PermissionModule,
+} from "../../permissions";
 import type { Role } from "../../types";
+
+export { Permission, PERMISSION_GROUPS };
+export type { PermissionCode, PermissionModule };
 
 type RoleGateProps = {
   allow?: Role[];
@@ -9,50 +19,6 @@ type RoleGateProps = {
   fallback?: ReactNode;
   children: ReactNode;
 };
-
-export const Permission = {
-  SystemAdmin: "SYSTEM_ADMIN",
-  OrganizationView: "ORGANIZATION_VIEW",
-  OrganizationCreate: "ORGANIZATION_CREATE",
-  OrganizationEdit: "ORGANIZATION_EDIT",
-  OrganizationDelete: "ORGANIZATION_DELETE",
-  DepartmentView: "DEPARTMENT_VIEW",
-  DepartmentCreate: "DEPARTMENT_CREATE",
-  DepartmentEdit: "DEPARTMENT_EDIT",
-  DepartmentDelete: "DEPARTMENT_DELETE",
-  ProjectView: "PROJECT_VIEW",
-  ProjectCreate: "PROJECT_CREATE",
-  ProjectEdit: "PROJECT_EDIT",
-  ProjectDelete: "PROJECT_DELETE",
-  MilestoneView: "MILESTONE_VIEW",
-  MilestoneCreate: "MILESTONE_CREATE",
-  MilestoneEdit: "MILESTONE_EDIT",
-  MilestoneDelete: "MILESTONE_DELETE",
-  TaskView: "TASK_VIEW",
-  TaskCreate: "TASK_CREATE",
-  TaskEdit: "TASK_EDIT",
-  TaskDelete: "TASK_DELETE",
-  UserView: "USER_VIEW",
-  UserCreate: "USER_CREATE",
-  UserEdit: "USER_EDIT",
-  UserDelete: "USER_DELETE",
-  UserDepartmentManage: "USER_DEPARTMENT_MANAGE",
-  UserProfilePictureManage: "USER_PROFILE_PICTURE_MANAGE",
-  RoleView: "ROLE_VIEW",
-  RoleCreate: "ROLE_CREATE",
-  RoleEdit: "ROLE_EDIT",
-  RoleDelete: "ROLE_DELETE",
-  PermissionView: "PERMISSION_VIEW",
-  PermissionCreate: "PERMISSION_CREATE",
-  PermissionEdit: "PERMISSION_EDIT",
-  PermissionDelete: "PERMISSION_DELETE",
-  NotificationView: "NOTIFICATION_VIEW",
-  NotificationBroadcast: "NOTIFICATION_BROADCAST",
-  NotificationTemplateManage: "NOTIFICATION_TEMPLATE_MANAGE",
-  NotificationRuleManage: "NOTIFICATION_RULE_MANAGE",
-  ActivityLogView: "ACTIVITY_LOG_VIEW",
-  ActivityLogCreate: "ACTIVITY_LOG_CREATE",
-} as const;
 
 export function canUseRole(userRoles: readonly string[] | undefined, allow?: readonly string[], deny?: readonly string[]) {
   if (!userRoles?.length) return false;
@@ -68,30 +34,124 @@ export function RoleGate({ allow, deny, permissions, fallback = null, children }
   return allowedByPermission && allowedByRole ? <>{children}</> : <>{fallback}</>;
 }
 
-export function useRoleAccess() {
-  const { auth, hasPermission } = useAuth();
+type ModuleActions = {
+  view: () => boolean;
+  create: () => boolean;
+  edit: () => boolean;
+  delete: () => boolean;
+  manage: () => boolean;
+  [key: string]: () => boolean;
+};
+
+function buildModuleActions(
+  module: PermissionModule,
+  hasPermission: (...perms: string[]) => boolean,
+): ModuleActions {
+  const group = PERMISSION_GROUPS[module] as Record<string, string | undefined>;
+  const make = (key: string) => () => {
+    const code = group[key];
+    return code ? hasPermission(code) : false;
+  };
+  const actions: ModuleActions = {
+    view: make("view"),
+    create: make("create"),
+    edit: make("edit"),
+    delete: make("delete"),
+    manage: make("manage"),
+  };
+  for (const key of Object.keys(group)) {
+    if (key in actions) continue;
+    actions[key] = make(key);
+  }
+  return actions;
+}
+
+export type UsePermissionResult = {
+  roles: Role[];
+  permissions: readonly string[];
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  has: (permission: string) => boolean;
+  hasAny: (...permissions: string[]) => boolean;
+  hasAll: (...permissions: string[]) => boolean;
+  can: (...permissions: string[]) => boolean;
+  canModule: (action: string, module: PermissionModule) => boolean;
+  module: (name: PermissionModule) => ModuleActions;
+};
+
+export function usePermission(): UsePermissionResult {
+  const { auth, hasPermission, hasAllPermissions } = useAuth();
+  const permissions = auth?.permissions ?? [];
   const roles = auth?.roles ?? [];
 
-  return useMemo(() => ({
-    roles,
-    can: (...permissions: string[]) => hasPermission(...permissions),
-    isAdmin: hasPermission(Permission.SystemAdmin),
-    isDirector: canUseRole(roles, ["Director"]),
-    isDepartmentHead: canUseRole(roles, ["DepartmentHead"]),
-    canManageDepartments: hasPermission(Permission.DepartmentCreate, Permission.DepartmentEdit, Permission.DepartmentDelete),
-    canCreateDepartments: hasPermission(Permission.DepartmentCreate),
-    canDeleteDepartments: hasPermission(Permission.DepartmentDelete),
-    canManageProjects: hasPermission(Permission.ProjectCreate, Permission.ProjectEdit, Permission.ProjectDelete),
-    canManageMilestones: hasPermission(Permission.MilestoneCreate, Permission.MilestoneEdit, Permission.MilestoneDelete),
-    canManageTasks: hasPermission(Permission.TaskCreate, Permission.TaskEdit, Permission.TaskDelete),
-    canManageUsers: hasPermission(Permission.UserCreate, Permission.UserEdit, Permission.UserDelete),
-    canUploadProfilePictures: hasPermission(Permission.UserProfilePictureManage),
-    canManageRoles: hasPermission(Permission.RoleCreate, Permission.RoleEdit, Permission.RoleDelete),
-    canManagePermissions: hasPermission(Permission.PermissionCreate, Permission.PermissionEdit, Permission.PermissionDelete),
-    canBroadcast: hasPermission(Permission.NotificationBroadcast),
-    canConfigureNotifications: hasPermission(Permission.NotificationTemplateManage, Permission.NotificationRuleManage),
-    canViewActivityLogs: hasPermission(Permission.ActivityLogView),
-    canViewManagementData: hasPermission(Permission.ProjectView, Permission.DepartmentView, Permission.UserView),
-    hasAny: (allow: Role[]) => canUseRole(roles, allow),
-  }), [roles, hasPermission]);
+  return useMemo<UsePermissionResult>(() => {
+    const result: UsePermissionResult = {
+      roles,
+      permissions,
+      isAdmin: isSuperAdmin(permissions),
+      isSuperAdmin: isSuperAdmin(permissions),
+      has: (permission: string) => hasPermission(permission),
+      hasAny: (...perms: string[]) => hasPermission(...perms),
+      hasAll: (...perms: string[]) => hasAllPermissions(...perms),
+      can: (...perms: string[]) => hasPermission(...perms),
+      canModule: (action: string, module: PermissionModule) => {
+        const group = PERMISSION_GROUPS[module] as Record<string, string | undefined>;
+        const code = group[action];
+        if (code) return hasPermission(code);
+        const manage = group.manage;
+        return manage ? hasPermission(manage) : false;
+      },
+      module: (name: PermissionModule) => buildModuleActions(name, hasPermission),
+    };
+    return result;
+  }, [roles, permissions, hasPermission, hasAllPermissions]);
+}
+
+export type RoleAccess = Omit<UsePermissionResult, "hasAny"> & {
+  isDirector: boolean;
+  isDepartmentHead: boolean;
+  canManageDepartments: boolean;
+  canCreateDepartments: boolean;
+  canDeleteDepartments: boolean;
+  canManageProjects: boolean;
+  canManageMilestones: boolean;
+  canManageTasks: boolean;
+  canManageUsers: boolean;
+  canUploadProfilePictures: boolean;
+  canManageRoles: boolean;
+  canManagePermissions: boolean;
+  canBroadcast: boolean;
+  canConfigureNotifications: boolean;
+  canViewActivityLogs: boolean;
+  canViewManagementData: boolean;
+  hasAny: (allow: Role[]) => boolean;
+};
+
+export function useRoleAccess(): RoleAccess {
+  const perm = usePermission();
+
+  return useMemo<RoleAccess>(() => ({
+    ...perm,
+    isDirector: canUseRole(perm.roles, ["Director"]),
+    isDepartmentHead: canUseRole(perm.roles, ["DepartmentHead"]),
+    canManageDepartments: perm.has(PERMISSION_GROUPS.department.manage),
+    canCreateDepartments: perm.has(PERMISSION_GROUPS.department.create),
+    canDeleteDepartments: perm.has(PERMISSION_GROUPS.department.delete),
+    canManageProjects: perm.has(PERMISSION_GROUPS.project.manage),
+    canManageMilestones: perm.has(PERMISSION_GROUPS.milestone.manage),
+    canManageTasks: perm.has(PERMISSION_GROUPS.task.manage),
+    canManageUsers: perm.has(PERMISSION_GROUPS.user.manage),
+    canUploadProfilePictures: perm.has(PERMISSION_GROUPS.user.profilePicture),
+    canManageRoles: perm.has(PERMISSION_GROUPS.role.manage),
+    canManagePermissions: perm.has(PERMISSION_GROUPS.permission.manage),
+    canBroadcast: perm.has(PERMISSION_GROUPS.notification.broadcast),
+    canConfigureNotifications: perm.has(PERMISSION_GROUPS.notification.template) || perm.has(PERMISSION_GROUPS.notification.rule),
+    canViewActivityLogs: perm.has(PERMISSION_GROUPS.activityLog.view),
+    canViewManagementData: perm.hasAny(
+      PERMISSION_GROUPS.project.view,
+      PERMISSION_GROUPS.department.view,
+      PERMISSION_GROUPS.user.view,
+    ),
+    hasAny: (allow: Role[]) => canUseRole(perm.roles, allow),
+  }), [perm]);
 }

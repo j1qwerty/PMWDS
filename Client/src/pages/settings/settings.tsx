@@ -2,11 +2,11 @@ import { useEffect, useState, useDeferredValue } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "../../types";
-import { 
-  AnimatedBackground, 
+import {
+  AnimatedBackground,
   LoadingPage,
-  Permission,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
   useNavHeader,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
@@ -16,8 +16,8 @@ import { DatabaseStatusSection } from "./DatabaseStatusSection";
 
 export function SettingsPage() {
   const { logout, auth } = useAuth();
-  const access = useRoleAccess();
-  const canManageSystem = access.can(Permission.SystemAdmin);
+  const perm = usePermission();
+  const canManageSystem = perm.has(PERMISSION_GROUPS.system.manage);
 
   const [saved, setSaved] = useState("");
   const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database">("profile");

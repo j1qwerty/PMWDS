@@ -2,13 +2,14 @@ import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { ActivityLogRecord, User } from "../../types";
-import { 
-  AnimatedBackground, 
-  GlassCard, 
-  GradientButton, 
+import {
+  AnimatedBackground,
+  GlassCard,
+  GradientButton,
   LoadingPage,
+  PERMISSION_GROUPS,
   useNavHeader,
-  useRoleAccess,
+  usePermission,
 } from "../shared";
 import { ActivityList } from "./ActivityList";
 import { ActivityForm } from "./ActivityForm";
@@ -16,10 +17,10 @@ import { ActivityFilters } from "./ActivityFilters";
 
 export function ActivityLogsPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
-  const isAdmin = access.can("SYSTEM_ADMIN");
-  const isManager = access.can("ACTIVITY_LOG_VIEW");
-  const canViewAll = access.can("ACTIVITY_LOG_VIEW");
+  const perm = usePermission();
+  const isAdmin = perm.isAdmin;
+  const isManager = perm.has(PERMISSION_GROUPS.activityLog.view);
+  const canViewAll = perm.has(PERMISSION_GROUPS.activityLog.view);
 
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLogRecord[]>([]);

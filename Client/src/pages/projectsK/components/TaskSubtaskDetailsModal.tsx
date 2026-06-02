@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import type { Milestone, Project, Task, User } from "../../../types";
-import { useToast } from "../../shared";
+import { usePermission, useToast } from "../../shared";
 import { ModalOverlay } from "../../shared/ModalOverlay";
 import { TaskSubtaskDetails } from "../../tasks/TaskSubtaskDetails";
 
@@ -11,7 +11,8 @@ interface TaskSubtaskDetailsModalProps {
   project?: Project | null;
   milestone?: Milestone | null;
   users: User[];
-  isAdmin: boolean;
+  isAdmin?: boolean;
+  permissionEdit?: string;
   onClose: () => void;
   onEdit?: (task: Task) => void;
   onEscalate?: (task: Task) => void;
@@ -25,6 +26,7 @@ export function TaskSubtaskDetailsModal({
   milestone,
   users,
   isAdmin,
+  permissionEdit,
   onClose,
   onEdit,
   onEscalate,
@@ -32,6 +34,8 @@ export function TaskSubtaskDetailsModal({
   onMessage,
 }: TaskSubtaskDetailsModalProps) {
   const { auth } = useAuth();
+  const perm = usePermission();
+  const mayEdit = isAdmin ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { addToast } = useToast();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [recommendation, setRecommendation] = useState<any>(null);
@@ -45,7 +49,7 @@ export function TaskSubtaskDetailsModal({
   }, [task]);
 
   useEffect(() => {
-    if (!auth || !task || !isAdmin) {
+    if (!auth || !task || !mayEdit) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRecommendation(null);
       setDelay(null);
@@ -64,7 +68,7 @@ export function TaskSubtaskDetailsModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, task?.id, isAdmin]);
+  }, [auth, task?.id, mayEdit]);
 
   if (!task) return null;
 
@@ -157,7 +161,7 @@ export function TaskSubtaskDetailsModal({
           milestone={milestone}
           recommendation={recommendation}
           delay={delay}
-          isAdmin={isAdmin}
+          isAdmin={mayEdit}
           onStatusChange={handleStatusChange}
           onEdit={() => onEdit?.(task)}
           onUpdateProgress={handleUpdateProgress}
@@ -169,7 +173,7 @@ export function TaskSubtaskDetailsModal({
           onClose={onClose}
           hideCloseButton
         />
-        {isAdmin && onDelete && (
+        {mayEdit && onDelete && (
           <div className="border-t border-slate-100 pt-3 mt-2 flex justify-end">
             <button
               type="button"

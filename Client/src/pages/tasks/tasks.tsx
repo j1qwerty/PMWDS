@@ -30,7 +30,7 @@ export function TasksPage() {
   const { auth } = useAuth();
   const access = useRoleAccess();
   const { addToast } = useToast();
-  const isAdmin = access.canManageTasks;
+  const canManageTasks = access.canManageTasks;
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -63,13 +63,13 @@ export function TasksPage() {
     setNavHeader({
       title: "Tasks",
       description: "Manage and track all tasks across projects and milestones",
-      action: isAdmin ? {
+      action: canManageTasks ? {
         label: "New Task",
         onClick: () => setTaskModal({ open: true }),
         icon: "add_task",
       } : undefined,
     });
-  }, [setNavHeader, isAdmin]);
+  }, [setNavHeader, canManageTasks]);
 
   const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
   const [recommendation, setRecommendation] = useState<any>(null);
@@ -129,7 +129,7 @@ export function TasksPage() {
 
   // Load AI insights for selected task
   useEffect(() => {
-    if (!auth || !selectedTaskId || !isAdmin) return;
+    if (!auth || !selectedTaskId || !canManageTasks) return;
     Promise.all([
       api.getTaskRecommendation(auth.token, selectedTaskId),
       api.getTaskDelayPrediction(auth.token, selectedTaskId),
@@ -857,7 +857,7 @@ const handleTaskSubmit = async (form: Record<string, unknown>) => {
         milestone={milestones.find(m => m.id === selectedTask.milestoneId)}
         recommendation={recommendation}
         delay={delay}
-        isAdmin={isAdmin}
+        isAdmin={canManageTasks}
         onStatusChange={(status, options) => handleStatusChange(selectedTask.id, status, options)}
         onEdit={() => setTaskModal({ open: true, editTask: selectedTask })}
         onUpdateProgress={(progress, notes) => handleUpdateProgress(selectedTask.id, progress, notes)}

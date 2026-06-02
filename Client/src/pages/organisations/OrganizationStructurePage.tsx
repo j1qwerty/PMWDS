@@ -11,14 +11,19 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage, Permission, useRoleAccess, useNavHeader } from "../shared";
+import { LoadingPage, PERMISSION_GROUPS, usePermission, useRoleAccess, useNavHeader } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const access = useRoleAccess();
-  const isAdmin = access.can(Permission.SystemAdmin, Permission.OrganizationCreate);
-  const canManageOrganization = access.can(Permission.OrganizationCreate, Permission.OrganizationEdit, Permission.OrganizationDelete);
+  const perm = usePermission();
+  const canCreateOrganization = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.create);
+  const canManageOrganization = perm.hasAny(
+    PERMISSION_GROUPS.organization.create,
+    PERMISSION_GROUPS.organization.edit,
+    PERMISSION_GROUPS.organization.delete,
+  );
   const canManageDepartments = access.canManageDepartments;
   const canCreateDepartments = access.canCreateDepartments;
 
@@ -125,13 +130,13 @@ export function OrganizationStructurePage() {
     setNavHeader({
       title: "structure",
       description: "Manage organizations and their departments",
-      action: isAdmin ? {
+      action: canCreateOrganization ? {
         label: "New Organization",
         onClick: () => setOrgModal({ open: true }),
         icon: "add_business",
       } : undefined,
     });
-  }, [setNavHeader, isAdmin]);
+  }, [setNavHeader, canCreateOrganization]);
 
   if (loading || appDataLoading) return <LoadingPage label="Loading organizations..." />;
 
@@ -154,8 +159,8 @@ export function OrganizationStructurePage() {
       )}
 
       {/* Main Layout */}
-      <div className={`${isAdmin ? "grid grid-cols-[320px_1fr]" : "grid grid-cols-1"} gap-6 relative z-10`}>
-        {isAdmin && (
+      <div className={`${canCreateOrganization ? "grid grid-cols-[320px_1fr]" : "grid grid-cols-1"} gap-6 relative z-10`}>
+        {canCreateOrganization && (
           <OrganizationList
             organizations={organizations}
             selectedOrgId={selectedOrgId}
@@ -172,11 +177,11 @@ export function OrganizationStructurePage() {
               departments={orgDepartments}
               users={users}
               isAdmin={canManageOrganization}
-              canDeleteOrg={access.can(Permission.OrganizationDelete)}
+              canDeleteOrg={perm.has(PERMISSION_GROUPS.organization.delete)}
               canManageDepartments={canManageDepartments}
               canCreateDepartments={canCreateDepartments}
               canEditDepartment={(department) =>
-                access.can(Permission.DepartmentEdit) || department.departmentHeadUserId === auth?.userId}
+                perm.has(PERMISSION_GROUPS.department.edit) || department.departmentHeadUserId === auth?.userId}
               onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
               onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
               onAddDept={() => setDeptModal({ open: true })}

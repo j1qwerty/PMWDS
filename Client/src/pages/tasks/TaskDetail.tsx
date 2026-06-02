@@ -4,7 +4,7 @@ import { FiEdit, FiTrash2, FiClock, FiBarChart2, FiMessageSquare, FiChevronDown,
 import type { Milestone, Project, Task, User } from "../../types";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { useToast } from "../shared";
+import { usePermission, useToast } from "../shared";
 import { formatPercent, formatDate } from "../../ui";
 import { AvatarStack, getStatusColor, StatusButtons, StatusBadge, PriorityBadge } from "../shared";
 import { DependencyManagement } from "./DependencyManagement";
@@ -19,7 +19,8 @@ interface TaskDetailProps {
   milestone?: Milestone | null;
   recommendation?: any;
   delay?: any;
-  isAdmin: boolean;
+  isAdmin?: boolean;
+  permissionEdit?: string;
   onStatusChange: (status: string) => void;
   onEdit: () => void;
   onUpdateProgress: (progress: number, notes: string) => void;
@@ -39,6 +40,7 @@ export function TaskDetail({
   recommendation,
   delay,
   isAdmin,
+  permissionEdit,
   onStatusChange,
   onEdit,
   onUpdateProgress,
@@ -48,6 +50,8 @@ export function TaskDetail({
   onMessage,
   onClose,
 }: TaskDetailProps) {
+  const perm = usePermission();
+  const mayEdit = isAdmin ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { auth } = useAuth();
   const { addToast } = useToast();
   const statusColors = getStatusColor(task.status);
@@ -172,7 +176,7 @@ export function TaskDetail({
               )}
             </div>
           </div>
-          {isAdmin && (
+          {mayEdit && (
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={onEdit} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors">
                 <FiEdit className="w-4 h-4" />
@@ -349,14 +353,14 @@ export function TaskDetail({
                     <div key={subtask.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                       <span className="text-sm text-slate-700 flex-1 truncate">{subtask.title}</span>
                       <StatusBadge status={subtask.status} />
-                      {isAdmin && (
+                      {mayEdit && (
                         <button onClick={() => handleDeleteSubtask(subtask.id)} className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-500">
                           <FiX className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   ))}
-                  {isAdmin && (
+                  {mayEdit && (
                     showSubtaskForm ? (
                       <div className="flex gap-2">
                         <input

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { Permission, useRoleAccess } from "../shared";
+import { PERMISSION_GROUPS, usePermission, useRoleAccess } from "../shared";
 import {
   MetricRow,
   Panel,
@@ -15,6 +15,7 @@ import {
 export function Departments() {
   const { auth } = useAuth();
   const access = useRoleAccess();
+  const perm = usePermission();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -36,7 +37,7 @@ export function Departments() {
     const [data, organizationData, userData] = await Promise.all([
       api.getDepartments(auth.token),
       api.getOrganizations(auth.token),
-      access.can(Permission.UserView, Permission.DepartmentEdit) ? api.getUsers(auth.token) : Promise.resolve([]),
+      perm.hasAny(PERMISSION_GROUPS.user.view, PERMISSION_GROUPS.department.edit) ? api.getUsers(auth.token) : Promise.resolve([]),
     ]);
     setDepartments(data);
     setOrganizations(organizationData);
