@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import type { ActivityLogRecord, User } from "../../types";
 import {
   AnimatedBackground,
+  Can,
   GlassCard,
   GradientButton,
   LoadingPage,
@@ -187,7 +188,9 @@ export function ActivityLogsPage() {
 
         {/* Right: Log Activity Form */}
         <div className="lg:sticky lg:top-7 h-fit">
-          <ActivityForm onSubmit={handleCreateLog} />
+          <Can permission={PERMISSION_GROUPS.activityLog.create}>
+            <ActivityForm onSubmit={handleCreateLog} />
+          </Can>
         </div>
       </div>
     </div>

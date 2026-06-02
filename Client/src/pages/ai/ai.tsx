@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Department, OrganizationRecord, Project, ProjectHealth } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter, Permission, getProjectDepartmentIds, projectBelongsToDepartment, useRoleAccess } from "../shared";
+import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter, PERMISSION_GROUPS, getProjectDepartmentIds, projectBelongsToDepartment, usePermission } from "../shared";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -17,8 +17,8 @@ import { AnomalyFeed } from "./AnomalyFeed";
 
 export function AIPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
-  const canViewOrganizations = access.can(Permission.SystemAdmin, Permission.OrganizationView);
+  const perm = usePermission();
+  const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

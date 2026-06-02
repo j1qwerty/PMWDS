@@ -2,15 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, Project } from "../../types";
-import { 
-  AnimatedBackground, 
+import {
+  AnimatedBackground,
   LoadingPage,
   useNavHeader,
   OrganizationDepartmentFilter,
-  Permission,
+  PERMISSION_GROUPS,
   getProjectDepartmentIds,
   projectBelongsToDepartment,
-  useRoleAccess,
+  usePermission,
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
@@ -18,8 +18,8 @@ import { RecentExports } from "./RecentExports";
 
 export function ReportsPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
-  const canViewOrganizations = access.can(Permission.SystemAdmin, Permission.OrganizationView);
+  const perm = usePermission();
+  const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

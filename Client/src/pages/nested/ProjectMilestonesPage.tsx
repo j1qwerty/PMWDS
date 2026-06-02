@@ -7,7 +7,8 @@ import {
   GlassCard,
   LoadingPage,
   useNavHeader,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
   useToast,
 } from "../shared";
 import {
@@ -25,7 +26,9 @@ export function ProjectMilestonesPage() {
   const ws = useProjectWorkspace();
   const { auth } = useAuth();
   const { addToast } = useToast();
-  const access = useRoleAccess();
+  const perm = usePermission();
+  const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
+  const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
 
   const [pickedMilestoneId, setPickedMilestoneId] = useState("");
 
@@ -55,14 +58,14 @@ export function ProjectMilestonesPage() {
       return;
     }
     const actions = [];
-    if (access.canManageMilestones) {
+    if (canManageMilestones) {
       actions.push({
         label: "New milestone",
         onClick: () => setMilestoneModal({ open: true }),
         icon: "flag",
       });
     }
-    if (access.canManageTasks) {
+    if (canManageTasks) {
       actions.push({
         label: "New task",
         onClick: () =>
@@ -78,8 +81,8 @@ export function ProjectMilestonesPage() {
   }, [
     setNavHeader,
     ws.project,
-    access.canManageMilestones,
-    access.canManageTasks,
+    canManageMilestones,
+    canManageTasks,
     selectedMilestoneId,
   ]);
 
@@ -218,7 +221,7 @@ export function ProjectMilestonesPage() {
           project={ws.project}
           selectedMilestoneId={selectedMilestoneId}
           onSelectMilestone={setPickedMilestoneId}
-          canManage={access.canManageMilestones}
+          canManage={canManageMilestones}
           onAdd={() => setMilestoneModal({ open: true })}
           onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
           onDelete={setDeleteMilestone}
@@ -236,7 +239,7 @@ export function ProjectMilestonesPage() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   Tasks for {selectedMilestone.name}
                 </span>
-                {access.canManageTasks && (
+                {canManageTasks && (
                   <button
                     type="button"
                     onClick={() =>
@@ -258,7 +261,7 @@ export function ProjectMilestonesPage() {
                     </span>
                     <p className="text-sm font-medium text-slate-600">No tasks yet</p>
                     <p className="text-xs mt-1">
-                      {access.canManageTasks
+                      {canManageTasks
                         ? "Add tasks to this milestone to track its progress."
                         : "Tasks for this milestone will appear here."}
                     </p>
@@ -270,7 +273,7 @@ export function ProjectMilestonesPage() {
                     <TaskSubtaskCard
                       key={task.id}
                       task={task}
-                      canEdit={access.canManageTasks}
+                      canEdit={canManageTasks}
                       onViewTask={(t) => setViewTask(t)}
                       onEditTask={(t) => setTaskModal({ open: true, edit: t })}
                       getProgressColor={getProgressColor}
@@ -284,11 +287,11 @@ export function ProjectMilestonesPage() {
               <div className="text-center text-slate-400">
                 <span className="material-symbols-outlined text-5xl mb-3 block">flag</span>
                 <p className="text-sm font-medium text-slate-600">No milestones yet</p>
-                <p className="text-xs mt-1">
-                  {access.canManageMilestones
-                    ? "Create your first milestone to start tracking tasks."
-                    : "Milestones for this project will appear here."}
-                </p>
+                    <p className="text-xs mt-1">
+                      {canManageMilestones
+                        ? "Create your first milestone to start tracking tasks."
+                        : "Milestones for this project will appear here."}
+                    </p>
               </div>
             </GlassCard>
           )}
@@ -346,7 +349,7 @@ export function ProjectMilestonesPage() {
             : null
         }
         users={ws.users}
-        isAdmin={access.canManageTasks}
+        isAdmin={canManageTasks}
         onClose={() => setViewTask(null)}
         onEdit={(task) => {
           setTaskModal({ open: true, edit: task });

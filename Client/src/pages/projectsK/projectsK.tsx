@@ -7,7 +7,8 @@ import {
   AnimatedBackground,
   LoadingPage,
   useNavHeader,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
   useToast,
   getProjectDepartmentIds,
   projectBelongsToAnyDepartment,
@@ -51,7 +52,11 @@ const emptyProjectForm = (): ProjectFormState => ({
 export function ProjectsKPage() {
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
-  const access = useRoleAccess();
+  const perm = usePermission();
+  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+  const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
+  const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
+  const isSuperAdmin = perm.isSuperAdmin;
   const { addToast } = useToast();
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -95,13 +100,13 @@ export function ProjectsKPage() {
 
   useEffect(() => {
     const actions = [];
-    if (access.canManageProjects) {
+    if (canManageProjects) {
       actions.push({ label: "New Project", onClick: () => setCreateProjectOpen(true), icon: "add_circle" });
     }
-    if (selectedProjectId && access.canManageMilestones) {
+    if (selectedProjectId && canManageMilestones) {
       actions.push({ label: "New milestone", onClick: () => setMilestoneModal({ open: true }), icon: "add_circle" });
     }
-    if (selectedProjectId && access.canManageTasks) {
+    if (selectedProjectId && canManageTasks) {
       actions.push({ label: "New task", onClick: () => setTaskModal({ open: true, milestoneId: selectedMilestoneId }), icon: "add_circle" });
     }
     setNavHeader({
@@ -109,7 +114,7 @@ export function ProjectsKPage() {
       description: "Manage projects, milestones, and tasks in one place",
       actions,
     });
-  }, [setNavHeader, access.canManageProjects, access.canManageMilestones, access.canManageTasks, selectedProjectId, selectedMilestoneId]);
+  }, [setNavHeader, canManageProjects, canManageMilestones, canManageTasks, selectedProjectId, selectedMilestoneId]);
 
   const loadProjects = async () => {
     if (!auth) return;
@@ -372,7 +377,7 @@ export function ProjectsKPage() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             onViewProject={setViewProject}
-            canEdit={access.canManageProjects}
+            canEdit={canManageProjects}
             onEditProject={openEditProject}
             onAdd={() => setCreateProjectOpen(true)}
           />
@@ -425,7 +430,7 @@ export function ProjectsKPage() {
                   project={selectedProject}
                   selectedMilestoneId={selectedMilestoneId}
                   onSelectMilestone={setSelectedMilestoneId}
-                  canManage={access.canManageMilestones}
+                  canManage={canManageMilestones}
                   onAdd={() => setMilestoneModal({ open: true })}
                   onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
                   onDelete={setDeleteMilestone}
@@ -443,7 +448,7 @@ export function ProjectsKPage() {
                   tasks={tasks}
                   milestones={milestones}
                   selectedMilestoneId={selectedMilestoneId}
-                  canEdit={access.canManageTasks}
+                  canEdit={canManageTasks}
                   onViewTask={(task) => setViewTask(task)}
                   onEditTask={(task) => setTaskModal({ open: true, edit: task })}
                   onStatusChange={handleTaskStatus}
@@ -478,9 +483,9 @@ export function ProjectsKPage() {
         submitLabel="Create"
         form={projectForm}
         setForm={setProjectForm}
-        departments={access.isAdmin ? departments : filteredDepartments}
+        departments={isSuperAdmin ? departments : filteredDepartments}
         organizations={organizations}
-        showOrganizationFilter={access.isAdmin}
+        showOrganizationFilter={isSuperAdmin}
         users={users}
         onSubmit={handleCreateProject}
         onClose={() => setCreateProjectOpen(false)}
@@ -492,9 +497,9 @@ export function ProjectsKPage() {
         submitLabel="Save"
         form={projectForm}
         setForm={setProjectForm}
-        departments={access.isAdmin ? departments : filteredDepartments}
+        departments={isSuperAdmin ? departments : filteredDepartments}
         organizations={organizations}
-        showOrganizationFilter={access.isAdmin}
+        showOrganizationFilter={isSuperAdmin}
         users={users}
         onSubmit={handleEditProject}
         onClose={() => setEditProjectOpen(false)}
@@ -502,10 +507,10 @@ export function ProjectsKPage() {
 
       <ProjectDetailModal
         project={viewProject}
-        canManage={access.canManageProjects}
+        canManage={canManageProjects}
         onClose={() => setViewProject(null)}
         onEdit={
-          access.canManageProjects && viewProject
+          canManageProjects && viewProject
             ? () => {
               openEditProject(viewProject);
               setViewProject(null);
@@ -513,14 +518,14 @@ export function ProjectsKPage() {
             : undefined
         }
         onDelete={
-          access.canManageProjects && viewProject
+          canManageProjects && viewProject
             ? () => {
               setDeleteProjectTarget(viewProject);
               setDeleteProjectOpen(true);
             }
             : undefined
         }
-        onStatusChange={access.canManageProjects ? handleProjectStatus : undefined}
+        onStatusChange={canManageProjects ? handleProjectStatus : undefined}
       />
 
       <ConfirmDeleteModal
@@ -580,7 +585,7 @@ export function ProjectsKPage() {
         task={selectedTask}
         milestone={selectedMilestone}
         users={users}
-        canManage={access.canManageTasks}
+        canManage={canManageTasks}
         onEdit={() => selectedTask && setTaskModal({ open: true, edit: selectedTask })}
         onDelete={() => selectedTask && setDeleteTask(selectedTask)}
         onStatusChange={(status) => selectedTask && handleTaskStatus(selectedTask.id, status)}
@@ -597,7 +602,7 @@ export function ProjectsKPage() {
             : null
         }
         users={users}
-        isAdmin={access.canManageTasks}
+        isAdmin={canManageTasks}
         onClose={() => setViewTask(null)}
         onEdit={(task) => {
           setTaskModal({ open: true, edit: task });

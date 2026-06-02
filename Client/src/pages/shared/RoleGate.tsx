@@ -20,7 +20,7 @@ type RoleGateProps = {
   children: ReactNode;
 };
 
-export function canUseRole(userRoles: readonly string[] | undefined, allow?: readonly string[], deny?: readonly string[]) {
+function canUseRole(userRoles: readonly string[] | undefined, allow?: readonly string[], deny?: readonly string[]) {
   if (!userRoles?.length) return false;
   if (deny?.some((role) => userRoles.includes(role))) return false;
   if (!allow?.length) return true;
@@ -105,53 +105,4 @@ export function usePermission(): UsePermissionResult {
     };
     return result;
   }, [roles, permissions, hasPermission, hasAllPermissions]);
-}
-
-export type RoleAccess = Omit<UsePermissionResult, "hasAny"> & {
-  isDirector: boolean;
-  isDepartmentHead: boolean;
-  canManageDepartments: boolean;
-  canCreateDepartments: boolean;
-  canDeleteDepartments: boolean;
-  canManageProjects: boolean;
-  canManageMilestones: boolean;
-  canManageTasks: boolean;
-  canManageUsers: boolean;
-  canUploadProfilePictures: boolean;
-  canManageRoles: boolean;
-  canManagePermissions: boolean;
-  canBroadcast: boolean;
-  canConfigureNotifications: boolean;
-  canViewActivityLogs: boolean;
-  canViewManagementData: boolean;
-  hasAny: (allow: Role[]) => boolean;
-};
-
-export function useRoleAccess(): RoleAccess {
-  const perm = usePermission();
-
-  return useMemo<RoleAccess>(() => ({
-    ...perm,
-    isDirector: canUseRole(perm.roles, ["Director"]),
-    isDepartmentHead: canUseRole(perm.roles, ["DepartmentHead"]),
-    canManageDepartments: perm.has(PERMISSION_GROUPS.department.manage),
-    canCreateDepartments: perm.has(PERMISSION_GROUPS.department.create),
-    canDeleteDepartments: perm.has(PERMISSION_GROUPS.department.delete),
-    canManageProjects: perm.has(PERMISSION_GROUPS.project.manage),
-    canManageMilestones: perm.has(PERMISSION_GROUPS.milestone.manage),
-    canManageTasks: perm.has(PERMISSION_GROUPS.task.manage),
-    canManageUsers: perm.has(PERMISSION_GROUPS.user.manage),
-    canUploadProfilePictures: perm.has(PERMISSION_GROUPS.user.profilePicture),
-    canManageRoles: perm.has(PERMISSION_GROUPS.role.manage),
-    canManagePermissions: perm.has(PERMISSION_GROUPS.permission.manage),
-    canBroadcast: perm.has(PERMISSION_GROUPS.notification.broadcast),
-    canConfigureNotifications: perm.has(PERMISSION_GROUPS.notification.template) || perm.has(PERMISSION_GROUPS.notification.rule),
-    canViewActivityLogs: perm.has(PERMISSION_GROUPS.activityLog.view),
-    canViewManagementData: perm.hasAny(
-      PERMISSION_GROUPS.project.view,
-      PERMISSION_GROUPS.department.view,
-      PERMISSION_GROUPS.user.view,
-    ),
-    hasAny: (allow: Role[]) => canUseRole(perm.roles, allow),
-  }), [perm]);
 }

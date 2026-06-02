@@ -8,12 +8,13 @@ import type {
   NotificationItem,
   NotificationTemplateRecord,
 } from "../../types";
-import { 
-  AnimatedBackground, 
+import {
+  AnimatedBackground,
   LoadingPage,
   useNavHeader,
   ModalOverlay,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
   } from "../shared";
 
 import { NotificationInbox } from "./NotificationInbox";
@@ -26,10 +27,10 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 
 export function NotificationsPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
-  const canConfigure = access.canConfigureNotifications;
-  const canBroadcast = access.canBroadcast;
+  const canConfigure = perm.hasAny(PERMISSION_GROUPS.notification.template, PERMISSION_GROUPS.notification.rule);
+  const canBroadcast = perm.has(PERMISSION_GROUPS.notification.broadcast);
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, type JSX } from "react";
 import { CustomDropdown } from "../../shared/customDropdown";
 import type { OrganizationRecord, Department, Milestone, User } from "../../../types";
-import { useRoleAccess } from "../../shared/RoleGate";
+import { usePermission } from "../../shared/RoleGate";
 import { useUserOrganization } from "../../shared/useUserOrganization";
 
 interface KanbanFiltersProps {
@@ -74,14 +74,14 @@ export function KanbanFilters({
   }, [settingsOpen]);
   
   // Role-based access control
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   const effectiveOrganizationId = shouldFilterByOrg 
     ? userOrganizationId ?? selectedOrganizationId 
     : selectedOrganizationId;
   
-  const showOrganizationFilter = access.isAdmin;
+  const showOrganizationFilter = perm.isSuperAdmin;
 
   // Filter organizations based on role and search
   const visibleOrganizations = useMemo(() => {

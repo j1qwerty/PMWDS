@@ -8,7 +8,8 @@ import {
   GlassCard,
   LoadingPage,
   useNavHeader,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
   useToast,
   getStatusColor,
 } from "../shared";
@@ -21,7 +22,8 @@ export function ProjectTasksPage() {
   const ws = useProjectWorkspace();
   const { auth } = useAuth();
   const { addToast } = useToast();
-  const access = useRoleAccess();
+  const perm = usePermission();
+  const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
 
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [taskModal, setTaskModal] = useState<{ open: boolean; edit?: Task; milestoneId?: string }>({
@@ -38,7 +40,7 @@ export function ProjectTasksPage() {
       return;
     }
     const actions = [];
-    if (access.canManageTasks) {
+    if (canManageTasks) {
       actions.push({
         label: "New task",
         onClick: () => setTaskModal({ open: true }),
@@ -50,7 +52,7 @@ export function ProjectTasksPage() {
       description: "Tasks grouped by milestone",
       actions,
     });
-  }, [setNavHeader, ws.project, access.canManageTasks]);
+  }, [setNavHeader, ws.project, canManageTasks]);
 
   const groupedTasks = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -121,7 +123,7 @@ export function ProjectTasksPage() {
       <TaskProgressBoards
         key={milestoneId}
         tasks={tasks}
-        canEdit={access.canManageTasks}
+        canEdit={canManageTasks}
         onViewTask={(t) => setViewTask(t)}
         onEditTask={(t) => setTaskModal({ open: true, edit: t })}
       />
@@ -238,7 +240,7 @@ export function ProjectTasksPage() {
               </span>
               <p className="text-sm font-medium text-slate-600">No tasks yet</p>
               <p className="text-xs mt-1">
-                {access.canManageTasks
+                {canManageTasks
                   ? "Click 'New task' above to create the first one."
                   : "Tasks for this project will appear here."}
               </p>
@@ -256,7 +258,7 @@ export function ProjectTasksPage() {
             : null
         }
         users={ws.users}
-        isAdmin={access.canManageTasks}
+        isAdmin={canManageTasks}
         onClose={() => setViewTask(null)}
         onEdit={(task) => {
           setTaskModal({ open: true, edit: task });

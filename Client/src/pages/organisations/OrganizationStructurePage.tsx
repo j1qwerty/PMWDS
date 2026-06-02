@@ -11,12 +11,11 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage, PERMISSION_GROUPS, usePermission, useRoleAccess, useNavHeader } from "../shared";
+import { LoadingPage, PERMISSION_GROUPS, usePermission, useNavHeader } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
-  const access = useRoleAccess();
   const perm = usePermission();
   const canCreateOrganization = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.create);
   const canManageOrganization = perm.hasAny(
@@ -24,8 +23,8 @@ export function OrganizationStructurePage() {
     PERMISSION_GROUPS.organization.edit,
     PERMISSION_GROUPS.organization.delete,
   );
-  const canManageDepartments = access.canManageDepartments;
-  const canCreateDepartments = access.canCreateDepartments;
+  const canManageDepartments = perm.has(PERMISSION_GROUPS.department.manage);
+  const canCreateDepartments = perm.has(PERMISSION_GROUPS.department.create);
 
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -180,8 +179,7 @@ export function OrganizationStructurePage() {
               canDeleteOrg={perm.has(PERMISSION_GROUPS.organization.delete)}
               canManageDepartments={canManageDepartments}
               canCreateDepartments={canCreateDepartments}
-              canEditDepartment={(department) =>
-                perm.has(PERMISSION_GROUPS.department.edit) || department.departmentHeadUserId === auth?.userId}
+              canEditDepartment={() => perm.has(PERMISSION_GROUPS.department.edit)}
               onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
               onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
               onAddDept={() => setDeptModal({ open: true })}

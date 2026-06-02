@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { useAppData } from "./appData";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, useRoleAccess } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 
 import {
@@ -176,7 +176,7 @@ const sectionThemes: Record<string, {
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { data } = useAppData();
 
   const [sidebarCompact, setSidebarCompact] = useState(false);
@@ -235,15 +235,15 @@ function Layout({ children }: { children: React.ReactNode }) {
           { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [PERMISSION_GROUPS.organization.view] },
           { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
           { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
-          { path: "/profiles", label: "Profiles", icon: "users", permissions: [] },
-          { path: "/skills", label: "Skills", icon: "skill", permissions: [] },
+          { path: "/profiles", label: "Profiles", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
+          { path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] },
         ],
       },
       {
         title: "Tools",
         items: [
-          { path: "/reports", label: "Reports", icon: "reports", permissions: [] },
-          { path: "/ai", label: "AI Insights", icon: "ai", permissions: [] },
+          { path: "/reports", label: "Reports", icon: "reports", permissions: [PERMISSION_GROUPS.report.view] },
+          { path: "/ai", label: "AI Insights", icon: "ai", permissions: [PERMISSION_GROUPS.ai.view] },
         ],
       },
       {
@@ -418,7 +418,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
             const visibleItems = group.items.filter(
               (item) =>
-                item.permissions.length === 0 || access.can(...item.permissions)
+                item.permissions.length === 0 || perm.has(...item.permissions)
             );
             if (visibleItems.length === 0) return null;
 

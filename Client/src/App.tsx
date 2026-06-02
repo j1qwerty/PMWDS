@@ -57,6 +57,10 @@ const ROUTE_GUARDS = {
   organizationStructure: PERMISSION_GROUPS.organization.view,
   departmentsPage: PERMISSION_GROUPS.department.view,
   users: PERMISSION_GROUPS.user.view,
+  profiles: PERMISSION_GROUPS.user.view,
+  skills: PERMISSION_GROUPS.user.edit,
+  reports: PERMISSION_GROUPS.report.view,
+  ai: PERMISSION_GROUPS.ai.view,
   roles: PERMISSION_GROUPS.role.view,
   activityLogs: PERMISSION_GROUPS.activityLog.view,
   settings: Permission.SystemAdmin,
@@ -126,12 +130,12 @@ function AppRoutes() {
                   path="/users"
                   element={<Guarded permission={ROUTE_GUARDS.users}><UsersPage /></Guarded>}
                 />
-                <Route path="/profiles" element={<ProfilesPage />} />
-                <Route path="/skills" element={<SkillsPage />} />
+                <Route path="/profiles" element={<Guarded permission={ROUTE_GUARDS.profiles}><ProfilesPage /></Guarded>} />
+                <Route path="/skills" element={<Guarded permission={ROUTE_GUARDS.skills}><SkillsPage /></Guarded>} />
 
                 {/* Tools (open to all authenticated users) */}
-                <Route path="/ai" element={<CoreAIPage />} />
-                <Route path="/reports" element={<CoreReportsPage />} />
+                <Route path="/ai" element={<Guarded permission={ROUTE_GUARDS.ai}><CoreAIPage /></Guarded>} />
+                <Route path="/reports" element={<Guarded permission={ROUTE_GUARDS.reports}><CoreReportsPage /></Guarded>} />
 
                 {/* System */}
                 <Route

@@ -3,7 +3,7 @@ import type { Department, OrganizationRecord, User } from "../../types";
 import { InputF } from "./InputF";
 import { SelectF } from "./SelectF";
 import { ScopedUserSelect } from "./ScopedUserSelect";
-import { useRoleAccess } from "./RoleGate";
+import { usePermission } from "./RoleGate";
 
 interface DeptFormModalProps {
   initialData?: Department;
@@ -33,7 +33,7 @@ export function DeptFormModal({
     maxCapacity: initialData?.maxCapacity ?? 24,
   });
 
-  const access = useRoleAccess();
+  const perm = usePermission();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -74,7 +74,7 @@ export function DeptFormModal({
           onChange={(v) => setForm({ ...form, description: v })} 
         />
 
-        {access.isAdmin ? (
+        {perm.isSuperAdmin ? (
           <SelectF
             label="Organization"
             value={form.organizationId}

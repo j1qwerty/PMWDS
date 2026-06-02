@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { PERMISSION_GROUPS, usePermission, useRoleAccess } from "../shared";
+import { PERMISSION_GROUPS, usePermission } from "../shared";
 import {
   MetricRow,
   Panel,
@@ -14,8 +14,13 @@ import {
 
 export function Departments() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
   const perm = usePermission();
+  const canManageDepartments = perm.has(PERMISSION_GROUPS.department.manage);
+  const canViewManagementData = perm.hasAny(
+    PERMISSION_GROUPS.project.view,
+    PERMISSION_GROUPS.department.view,
+    PERMISSION_GROUPS.user.view,
+  );
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -53,9 +58,9 @@ export function Departments() {
   }, [auth]);
 
   useEffect(() => {
-    if (!auth || !selectedId || !access.canViewManagementData) return;
+    if (!auth || !selectedId || !canViewManagementData) return;
     api.getDepartmentDashboard(auth.token, selectedId).then(setDashboard);
-  }, [auth, selectedId, access.canViewManagementData]);
+  }, [auth, selectedId, canViewManagementData]);
 
   const selectedDepartment = departments.find((department) => department.id === selectedId) ?? null;
   const selectedOrganization = organizations.find((organization) => organization.id === selectedDepartment?.organizationId);
@@ -116,7 +121,7 @@ export function Departments() {
         </div>
       </Panel>
 
-      {access.canManageDepartments ? (
+      {canManageDepartments ? (
         <Panel title="Department Admin" subtitle="Create or remove organizational units">
           <form
             className="grid grid-cols-1 gap-4 md:grid-cols-2"

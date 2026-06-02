@@ -3,14 +3,15 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, Task, User } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { 
-  GlassCard, 
-  GradientButton, 
+import {
+  GlassCard,
+  GradientButton,
   useNavHeader,
   LoadingPage,
   Avatar,
   AvatarStack,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
   getStatusColor,
   useToast,
   StatusBadge,
@@ -28,9 +29,9 @@ import { TaskFormModal } from "./TaskFormModal";
 
 export function TasksPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { addToast } = useToast();
-  const canManageTasks = access.canManageTasks;
+  const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

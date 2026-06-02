@@ -5,7 +5,7 @@ import { useAuth } from "../../auth";
 import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
-import { GlassCard, LoadingPage, useNavHeader, OrganizationDepartmentFilter, useRoleAccess, getProjectDepartmentIds, projectBelongsToAnyDepartment, projectBelongsToDepartment } from "../shared";
+import { GlassCard, LoadingPage, useNavHeader, OrganizationDepartmentFilter, PERMISSION_GROUPS, usePermission, getProjectDepartmentIds, projectBelongsToAnyDepartment, projectBelongsToDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
   ProjectsBoard,
@@ -20,7 +20,9 @@ import { DepartmentCards } from "./components/DepartmentCards";
 export function ProjectsPage() {
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
-  const access = useRoleAccess();
+  const perm = usePermission();
+  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+  const isSuperAdmin = perm.isSuperAdmin;
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -57,13 +59,13 @@ export function ProjectsPage() {
     setNavHeader({
       title: "Projects",
       description: "Manage and track projects across departments",
-      action: access.canManageProjects ? {
+      action: canManageProjects ? {
         label: "New Project",
         onClick: () => setShowCreateModal(true),
         icon: "add_circle",
       } : undefined,
     });
-  }, [setNavHeader, access.canManageProjects]);
+  }, [setNavHeader, canManageProjects]);
 
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
@@ -106,7 +108,7 @@ export function ProjectsPage() {
     Promise.allSettled([
       api.getMilestonesByProject(auth.token, selectedProjectId),
       api.getProjectInsights(auth.token, selectedProjectId),
-      access.canManageProjects
+      canManageProjects
         ? api.getProjectHealth(auth.token, selectedProjectId)
         : Promise.resolve(null),
     ]).then(([milestoneResult, insightResult, healthResult]) => {
@@ -256,8 +258,8 @@ export function ProjectsPage() {
               insights={insights}
               canUpdateProject={() => { }}
               onStatusChange={handleStatusChange}
-              onEdit={access.canManageProjects ? openEditModal : undefined}
-              onDelete={access.canManageProjects ? () => setShowDeleteConfirm(true) : undefined}
+              onEdit={canManageProjects ? openEditModal : undefined}
+              onDelete={canManageProjects ? () => setShowDeleteConfirm(true) : undefined}
               formatMoney={formatMoney}
               authToken={auth?.token}
               users={users}
@@ -295,9 +297,9 @@ export function ProjectsPage() {
         onSubmit={handleCreateProject}
         form={form}
         setForm={setForm}
-        departments={access.isAdmin ? departments : filteredDepartments}
+        departments={isSuperAdmin ? departments : filteredDepartments}
         organizations={organizations}
-        showOrganizationFilter={access.isAdmin}
+        showOrganizationFilter={isSuperAdmin}
         users={users}
       />
 
@@ -308,9 +310,9 @@ export function ProjectsPage() {
         onSubmit={handleEditProject}
         form={form}
         setForm={setForm}
-        departments={access.isAdmin ? departments : filteredDepartments}
+        departments={isSuperAdmin ? departments : filteredDepartments}
         organizations={organizations}
-        showOrganizationFilter={access.isAdmin}
+        showOrganizationFilter={isSuperAdmin}
         users={users}
       />
 

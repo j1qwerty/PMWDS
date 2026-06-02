@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { useRoleAccess } from "./RoleGate";
+import { usePermission } from "./RoleGate";
 import { useUserOrganization } from "./useUserOrganization";
 
 type OrganizationDepartmentFilterProps = {
@@ -28,7 +28,7 @@ export function OrganizationDepartmentFilter({
   allDepartmentsLabel = "All Departments",
   className = "",
 }: OrganizationDepartmentFilterProps) {
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
   const [search, setSearch] = useState("");
 
@@ -55,7 +55,7 @@ export function OrganizationDepartmentFilter({
       : scoped;
   }, [departments, effectiveOrganizationId, search, shouldFilterByOrg, userOrganizationId]);
 
-  const showOrganizationFilter = access.isAdmin;
+  const showOrganizationFilter = perm.isSuperAdmin;
 
   return (
     <div className={` ${className}`}>

@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAppData } from "../../appData";
 import type { Project } from "../../types";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { PERMISSION_GROUPS, useRoleAccess } from "../shared/RoleGate";
+import { PERMISSION_GROUPS, usePermission } from "../shared/RoleGate";
 import { getStatusColor } from "../shared/colors";
 import { projectBelongsToAnyDepartment } from "../shared/projectDepartments";
 import {
@@ -76,7 +76,7 @@ export function ProjectsGroup({
 }: ProjectsGroupProps) {
   const location = useLocation();
   const { data } = useAppData();
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(
     data.users,
     data.departments,
@@ -89,7 +89,7 @@ export function ProjectsGroup({
   }, [expandedIds]);
 
   const visibleProjects = useMemo<Project[]>(() => {
-    if (!access.has(PERMISSION_GROUPS.project.view)) return [];
+    if (!perm.has(PERMISSION_GROUPS.project.view)) return [];
     let filtered = data.projects;
     if (shouldFilterByOrg && userOrganizationId) {
       const orgDeptIds = data.departments
@@ -98,7 +98,7 @@ export function ProjectsGroup({
       filtered = filtered.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
     }
     return filtered;
-  }, [data.projects, data.departments, shouldFilterByOrg, userOrganizationId, access]);
+  }, [data.projects, data.departments, shouldFilterByOrg, userOrganizationId, perm]);
 
   const activeProjectId = useMemo(() => {
     const match = location.pathname.match(/^\/projects\/([^/]+)/);

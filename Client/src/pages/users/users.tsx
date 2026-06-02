@@ -7,8 +7,8 @@ import {
   DeleteConfirmationModal,
   useNavHeader,
   PageSkeleton,
+  PERMISSION_GROUPS,
   usePermission,
-  useRoleAccess,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
 import { WorkloadView } from "./WorkloadView";
@@ -18,10 +18,9 @@ import { UserEditModal } from "./UserEditModal";
 
 export function UsersPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
   const perm = usePermission();
   const isAdmin = perm.isAdmin;
-  const canManageUsers = access.canManageUsers;
+  const canManageUsers = perm.has(PERMISSION_GROUPS.user.manage);
 
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);

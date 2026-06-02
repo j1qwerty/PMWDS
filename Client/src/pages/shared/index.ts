@@ -11,7 +11,7 @@ export { OrgFormModal } from "./OrgFormModal";
 export { DeptFormModal } from "./DeptFormModal";
 export { NavHeaderProvider, useNavHeader } from "./NavHeaderContext";
 export { NavHeader, NavActionButton } from "./nav-header";
-export { RoleGate, Permission, PERMISSION_GROUPS, canUseRole, useRoleAccess, usePermission } from "./RoleGate";
+export { RoleGate, Permission, PERMISSION_GROUPS, usePermission } from "./RoleGate";
 export { getProjectDepartmentIds, projectBelongsToDepartment, projectBelongsToAnyDepartment, getProjectDepartments } from "./projectDepartments";
 export { LoadingPage, PageSkeleton, Skeleton } from "./Skeleton";
 export { NotificationList } from "./NotificationList";

@@ -14,7 +14,6 @@ import {
     DeptFormModal,
     PERMISSION_GROUPS,
     usePermission,
-    useRoleAccess,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
@@ -24,11 +23,15 @@ import { DepartmentList } from "./DepartmentList";
 export function DepartmentsPage() {
     const { auth } = useAuth();
     const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
-    const access = useRoleAccess();
     const perm = usePermission();
-    const canCreateDepartments = access.canCreateDepartments;
-    const canDeleteDepartments = access.canDeleteDepartments;
+    const canCreateDepartments = perm.has(PERMISSION_GROUPS.department.create);
+    const canDeleteDepartments = perm.has(PERMISSION_GROUPS.department.delete);
     const canEditDepartments = perm.has(PERMISSION_GROUPS.department.edit);
+    const canViewManagementData = perm.hasAny(
+        PERMISSION_GROUPS.project.view,
+        PERMISSION_GROUPS.department.view,
+        PERMISSION_GROUPS.user.view,
+    );
 
     const [departments, setDepartments] = useState<Department[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -68,7 +71,7 @@ export function DepartmentsPage() {
         setLoading(true);
         setDepartments(data.departments);
         setOrganizations(data.organizations);
-        setUsers(access.canViewManagementData ? data.users : []);
+        setUsers(canViewManagementData ? data.users : []);
 
         if (!selectedDeptId && data.departments.length) {
             setSelectedDeptId(data.departments[0].id);
@@ -76,7 +79,7 @@ export function DepartmentsPage() {
         setLoading(false);
     };
 
-    useEffect(() => { loadData(); }, [auth, data, access.canViewManagementData]);
+    useEffect(() => { loadData(); }, [auth, data, canViewManagementData]);
 
     useEffect(() => {
         if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -86,9 +89,9 @@ export function DepartmentsPage() {
 
     // Load dashboard for selected department
     useEffect(() => {
-        if (!auth || !selectedDeptId || !access.canViewManagementData) return;
+        if (!auth || !selectedDeptId || !canViewManagementData) return;
         api.getDepartmentDashboard(auth.token, selectedDeptId).then(setDashboard).catch(() => setDashboard(null));
-    }, [auth, selectedDeptId, access.canViewManagementData]);
+    }, [auth, selectedDeptId, canViewManagementData]);
 
     const filteredDepartments = useMemo(() => {
         let filtered = departments;
@@ -108,10 +111,7 @@ export function DepartmentsPage() {
             user.departmentId === selectedDepartment.id ||
             user.departments?.some((department) => department.departmentId === selectedDepartment.id))
         : [];
-    const canEditSelectedDepartment = Boolean(
-        selectedDepartment &&
-        (canEditDepartments || selectedDepartment.departmentHeadUserId === auth?.userId)
-    );
+    const canEditSelectedDepartment = Boolean(selectedDepartment && canEditDepartments);
 
     const departmentHead = selectedDepartment?.departmentHeadUserId
         ? users.find((u) => u.id === selectedDepartment.departmentHeadUserId)

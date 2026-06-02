@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { useRoleAccess, useToast } from "../../pages/shared";
+import { PERMISSION_GROUPS, usePermission, useToast } from "../../pages/shared";
 import type { Task, TaskDependency } from "../../types";
 import { GlassCard, GradientButton } from "../../pages/shared";
 
@@ -36,14 +36,14 @@ function getDependencyTypeDescription(type: string): string {
 
 export function DependencyManagement({ task, allTasks, onRefresh, onMessage }: DependencyManagementProps) {
   const { auth } = useAuth();
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { addToast } = useToast();
   const [dependencies, setDependencies] = useState<TaskDependency[]>(task.dependencies || []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingDep, setEditingDep] = useState<TaskDependency | null>(null);
   const [form, setForm] = useState({ predecessorTaskId: "", successorTaskId: "", type: "FinishToStart", lagDays: 0 });
 
-  const isAdmin = access.canManageTasks;
+  const isAdmin = perm.has(PERMISSION_GROUPS.task.manage);
 
   useEffect(() => {
     setDependencies(task.dependencies || []);

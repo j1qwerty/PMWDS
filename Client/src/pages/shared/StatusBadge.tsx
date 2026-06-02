@@ -1,12 +1,10 @@
 import { classNames } from "../../ui";
 import { projectStatuses, taskStatuses } from "../constants";
-import type { Role } from "../../types";
 import { getStatusColor } from "./colors";
-import { Permission, useRoleAccess } from "./RoleGate";
+import { PERMISSION_GROUPS, usePermission } from "./RoleGate";
 
 interface StatusButtonsProps {
   currentStatus: string;
-  hasRole?: (...roles: Role[]) => boolean;
   onStatusChange: (status: string) => void;
   variant?: "project" | "task";
 }
@@ -16,11 +14,11 @@ export function StatusButtons({
   onStatusChange,
   variant = "project",
 }: StatusButtonsProps) {
-  const access = useRoleAccess();
+  const perm = usePermission();
   const statuses = variant === "task" ? taskStatuses : projectStatuses;
   const canUpdate = variant === "task"
-    ? access.can(Permission.TaskEdit)
-    : access.can(Permission.ProjectEdit);
+    ? perm.has(PERMISSION_GROUPS.task.edit)
+    : perm.has(PERMISSION_GROUPS.project.edit);
 
   return (
     <div className="flex flex-wrap gap-2">

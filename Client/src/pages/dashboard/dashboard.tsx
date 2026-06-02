@@ -12,7 +12,7 @@ import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { formatMoney, formatPercent } from "../../ui";
 import { ModalOverlay, PageSkeleton, priorityColorPalette, statusColorPalette, useNavHeader, useToast } from "../shared";
-import { PERMISSION_GROUPS, usePermission, useRoleAccess } from "../shared";
+import { PERMISSION_GROUPS, usePermission } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { KpiCard } from "./kpiCard";
 import TaskStats from "../shared/dash/TaskStats";
@@ -49,12 +49,13 @@ const emptyProjectForm = (): ProjectFormState => ({
 
 export function DashboardPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
   const navigate = useNavigate();
   const { refresh: refreshAppData } = useAppData();
   const { addToast } = useToast();
+  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+  const canViewTasks = perm.has(PERMISSION_GROUPS.task.view);
   const [dashboard, setDashboard] = useState<any>(null);
   const [myTasks, setMyTasks] = useState<Task[]>([]);
   const [overdue, setOverdue] = useState<Task[]>([]);
@@ -80,7 +81,7 @@ export function DashboardPage() {
     setNavHeader({
       title: "Dashboard",
       description: "Overview of projects, tasks, and key metrics",
-     action: access.canManageProjects ? {
+     action: canManageProjects ? {
         label: "New Project",
         onClick: () => {
           setProjectForm({
@@ -92,7 +93,7 @@ export function DashboardPage() {
         icon: "add_circle",
       } : undefined,
     });
-  }, [setNavHeader, navigate, access.canManageProjects, shouldFilterByOrg, userOrganizationId]);
+  }, [setNavHeader, navigate, canManageProjects, shouldFilterByOrg, userOrganizationId]);
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();
@@ -119,8 +120,8 @@ export function DashboardPage() {
       api.getOrganizations(auth.token),
       api.getUsers(auth.token),
       api.getProjects(auth.token),
-      access.can(PERMISSION_GROUPS.task.view) ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
-      access.can(PERMISSION_GROUPS.task.view) ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+      canViewTasks ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
+      canViewTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
       .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
@@ -137,7 +138,7 @@ export function DashboardPage() {
         }
       })
       .finally(() => setLoading(false));
-  }, [auth, access]);
+  }, [auth, canViewTasks]);
 
   const canEditTasks = perm.hasAny(
     PERMISSION_GROUPS.task.edit,
@@ -410,9 +411,9 @@ export function DashboardPage() {
         submitLabel="Create"
         form={projectForm}
         setForm={setProjectForm}
-        departments={access.isAdmin ? departments : departments.filter((d) => !shouldFilterByOrg || d.organizationId === userOrganizationId)}
+        departments={perm.isSuperAdmin ? departments : departments.filter((d) => !shouldFilterByOrg || d.organizationId === userOrganizationId)}
         organizations={organizations}
-        showOrganizationFilter={access.isAdmin}
+        showOrganizationFilter={perm.isSuperAdmin}
         users={users}
         onSubmit={handleCreateProject}
         onClose={() => {

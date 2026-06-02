@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { User, UserProfileRecord } from "../../types";
-import { 
-  AnimatedBackground, 
-  GlassCard, 
+import {
+  AnimatedBackground,
+  GlassCard,
   LoadingPage,
   useNavHeader,
   ModalOverlay,
   useToast,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
 } from "../shared";
 import { ProfileList } from "./ProfileList";
 import { ProfileDetail } from "./ProfileDetail";
@@ -17,10 +18,10 @@ import { ProfileFormModal } from "./ProfileFormModal";
 
 export function ProfilesPage() {
   const { auth, updateCurrentUser } = useAuth();
-  const access = useRoleAccess();
+  const perm = usePermission();
   const { addToast } = useToast();
-  const canViewProfileList = access.can("USER_VIEW");
-  const canManageProfiles = access.can("USER_EDIT");
+  const canViewProfileList = perm.has(PERMISSION_GROUPS.user.view);
+  const canManageProfiles = perm.has(PERMISSION_GROUPS.user.edit);
   const isOwnProfile = !canViewProfileList;
 
   const [users, setUsers] = useState<User[]>([]);

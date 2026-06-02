@@ -2,27 +2,27 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { SkillRecord } from "../../types";
-import { 
-  AnimatedBackground, 
-  GlassCard, 
+import {
+  AnimatedBackground,
+  GlassCard,
   LoadingPage,
   useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
-  Permission,
-  useRoleAccess,
+  PERMISSION_GROUPS,
+  usePermission,
 } from "../shared";
 import { SkillFormModal } from "./SkillFormModal";
 
 export function SkillsPage() {
   const { auth } = useAuth();
-  const access = useRoleAccess();
-  const canManage = access.can(Permission.SystemAdmin, Permission.UserEdit);
+  const perm = usePermission();
+  const canManage = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.user.edit);
   const canWrite = canManage;
 
   const canDeleteSkill = (skill: SkillRecord) =>
-    access.can(Permission.SystemAdmin) ||
-    (access.can(Permission.UserEdit) && (skill.createdBy === auth?.userId || Boolean(skill.organizationId)));
+    perm.isSuperAdmin ||
+    (perm.has(PERMISSION_GROUPS.user.edit) && (skill.createdBy === auth?.userId || Boolean(skill.organizationId)));
 
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [message, setMessage] = useState("");

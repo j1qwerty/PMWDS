@@ -14,7 +14,8 @@ import {
     DeleteConfirmationModal,
     getDepartmentColor,
     getStatusColor,
-    useRoleAccess,
+    PERMISSION_GROUPS,
+    usePermission,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { MilestoneDetail } from "./MilestoneDetail";
@@ -23,8 +24,8 @@ import { MilestoneFormModal } from "./MilestoneFormModal";
 
 export function MilestonesPage() {
     const { auth } = useAuth();
-    const access = useRoleAccess();
-    const canManageMilestones = access.canManageMilestones;
+    const perm = usePermission();
+    const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);

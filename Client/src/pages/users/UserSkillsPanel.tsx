@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { SkillRecord, User } from "../../types";
-import { Avatar, GlassCard, GradientButton, useRoleAccess } from "../shared";
+import { Avatar, GlassCard, GradientButton, PERMISSION_GROUPS, usePermission } from "../shared";
 
 interface UserSkillsPanelProps {
   users: User[];
@@ -19,8 +19,8 @@ interface SelectedSkill {
 
 export function UserSkillsPanel({ users, skills, onMessage, onUpdate }: UserSkillsPanelProps) {
   const { auth } = useAuth();
-  const access = useRoleAccess();
-  const canToggleActivation = access.canManageUsers;
+  const perm = usePermission();
+  const canToggleActivation = perm.has(PERMISSION_GROUPS.user.manage);
   const [selectedUser, setSelectedUser] = useState(users[0]?.id || "");
   const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([]);
   const [availabilityStatus, setAvailabilityStatus] = useState("");
