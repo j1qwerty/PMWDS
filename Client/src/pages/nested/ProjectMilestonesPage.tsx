@@ -21,6 +21,7 @@ import {
 } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
+import { ProjectInfoCard } from "./ProjectInfoCard";
 
 export function ProjectMilestonesPage() {
   const ws = useProjectWorkspace();
@@ -29,6 +30,7 @@ export function ProjectMilestonesPage() {
   const perm = usePermission();
   const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
+  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
   const [pickedMilestoneId, setPickedMilestoneId] = useState("");
 
@@ -200,17 +202,11 @@ export function ProjectMilestonesPage() {
       <AnimatedBackground />
 
       <div className="relative z-10 mb-5">
-        <GlassCard className="p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-2xl">folder_open</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Project
-            </p>
-            <h2 className="text-lg font-bold text-slate-800 truncate">{ws.project.name}</h2>
-          </div>
-        </GlassCard>
+        <ProjectInfoCard
+          project={ws.project}
+          milestonesCount={ws.milestones.length}
+          canManageProjects={canManageProjects}
+        />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_1fr] gap-6">

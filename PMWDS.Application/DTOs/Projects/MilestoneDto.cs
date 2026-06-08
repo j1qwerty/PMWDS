@@ -10,11 +10,15 @@ public record MilestoneDto(
  DateTime? CompletedDate,
  string Status,
  bool IsCritical,
- double ProgressPercentage)
+ double ProgressPercentage,
+ bool HasTasks)
 {
  public static MilestoneDto FromEntity(Milestone m)
  {
-     var progress = m.CalculateProgressFromTasks();
+     var tasks = m.Tasks ?? new List<ProjectTask>();
+     var hasTasks = tasks.Count > 0;
+     var progress = m.RecalculateProgressFromTasks();
+     m.RecalculateStatusFromTasks();
      return new(
      m.Id,
      m.ProjectId,
@@ -25,6 +29,7 @@ public record MilestoneDto(
      m.CompletedDate,
      m.Status.ToString(),
      m.IsCritical,
-     progress);
+     progress,
+     hasTasks);
  }
 }

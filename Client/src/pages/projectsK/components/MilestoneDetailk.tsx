@@ -29,6 +29,7 @@ export function MilestoneDetailk({
 }: MilestoneDetailProps) {
   const statusColors = getStatusColor(milestone.status);
   const progress = milestone.progressPercentage || 0;
+  const hasTasks = milestone.hasTasks ?? tasks.length > 0;
   const completedTasks = tasks.filter(t => t.status === "Completed").length;
   const isCompleted = milestone.status === "Completed";
 
@@ -115,7 +116,10 @@ export function MilestoneDetailk({
           {/* Progress Bar */}
           <div className="mb-3">
             <div className="flex justify-between text-[10px] mb-1">
-              <span className="text-slate-400 font-medium">Progress</span>
+              <span className="text-slate-400 font-medium">
+                Progress
+                {hasTasks && <span className="ml-1 text-indigo-500 font-normal">(avg of tasks)</span>}
+              </span>
               <span className="font-semibold text-slate-700">{Math.round(progress)}%</span>
             </div>
             <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -137,6 +141,13 @@ export function MilestoneDetailk({
           {/* Status Change & Complete Actions */}
           {isAdmin && (
             <div className="flex flex-wrap items-center gap-2 mt-4">
+              {hasTasks && (
+                <div className="w-full mb-1 p-2 rounded-lg bg-indigo-50 border border-indigo-100">
+                  <p className="text-[10px] text-indigo-600 leading-relaxed">
+                    Status is auto-calculated from associated tasks. Update individual task statuses to reflect milestone progress.
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-1">
                 {["Pending", "InProgress", "Completed", "Delayed"].map((status) => {
                   const st = getStatusColor(status);

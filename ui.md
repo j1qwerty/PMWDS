@@ -74,8 +74,8 @@
 1. **API Integrations**
    - Single-page API integrations for all GET methods (only those called on page load)
    - UI renders each component based on permissions from API (instead of hardcoded roles and permissions on each page and each component)
-    - pages api proper response for all required data
-    - pages partial api for partial requested data only and update that component only (firstly org specific only)
+   - pages api proper response for all required data
+   - pages partial api for partial requested data only and update that component only (firstly org specific only)
 
 2. **Roles & Permissions**
    - Role scope check for each controller method (permissions in groups, e.g., users.manage includes all user-related permissions)
@@ -108,6 +108,9 @@
    - Combined milestone and task page
    - Combined organization and departments page
    - Kanban board for tasks and milestones
+   - archive completed projects options to make ui clean and a section for archived projects (in none of the page the data from archived projects i shown)
+   - director manage permissios for users for their respective organization
+   - assign users only shows users of that organisation department wise for the assigned depart to that project , never show superadmin in the users list
 
 ---
 

@@ -141,6 +141,11 @@ public class TasksController : BaseApiController
         }
 
         var result = await Mediator.Send(new CreateTaskCommand(dto), ct);
+        if (dto.MilestoneId.HasValue)
+        {
+            var createdTask = await _uow.Tasks.GetByIdAsync(result.Id, ct);
+            if (createdTask != null) await RecalculateTaskMilestoneAsync(createdTask, ct);
+        }
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -157,6 +162,7 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        var oldMilestoneId = task.MilestoneId;
         task.UpdateDetails(
             dto.Title,
             dto.Description ?? string.Empty,
@@ -167,6 +173,21 @@ public class TasksController : BaseApiController
             dto.MilestoneId);
         task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
+        if (dto.MilestoneId.HasValue) await RecalculateTaskMilestoneAsync(task, ct);
+        if (oldMilestoneId.HasValue && oldMilestoneId != dto.MilestoneId)
+        {
+            var oldMilestone = await _db.Milestones
+                .Include(m => m.Tasks)
+                .FirstOrDefaultAsync(m => m.Id == oldMilestoneId.Value, ct);
+            if (oldMilestone != null)
+            {
+                oldMilestone.RecalculateProgressFromTasks();
+                oldMilestone.RecalculateStatusFromTasks();
+                oldMilestone.SetModified(_currentUser.UserId ?? "system");
+                await _uow.Milestones.UpdateAsync(oldMilestone, ct);
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
         return Ok(TaskDto.FromEntity(task));
     }
 
@@ -179,7 +200,10 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        return Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+        var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+        return Ok(result);
     }
 
     [HttpPatch("{id:guid}/status")]
@@ -196,6 +220,7 @@ public class TasksController : BaseApiController
         }
 
         await ApplyStatusChangeAsync(task, req, ct);
+        await RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
@@ -549,7 +574,10 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        return Ok(await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct));
+        var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+        return Ok(result);
     }
 
     [HttpPatch("subtasks/{id:guid}/status")]
@@ -566,6 +594,7 @@ public class TasksController : BaseApiController
         }
 
         await ApplyStatusChangeAsync(task, req, ct);
+        await RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
@@ -606,8 +635,23 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        var milestoneId = task.MilestoneId;
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        if (milestoneId.HasValue)
+        {
+            var milestone = await _db.Milestones
+                .Include(m => m.Tasks)
+                .FirstOrDefaultAsync(m => m.Id == milestoneId.Value, ct);
+            if (milestone != null)
+            {
+                milestone.RecalculateProgressFromTasks();
+                milestone.RecalculateStatusFromTasks();
+                milestone.SetModified(_currentUser.UserId ?? "system");
+                await _uow.Milestones.UpdateAsync(milestone, ct);
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
         return NoContent();
     }
 
@@ -617,9 +661,24 @@ public class TasksController : BaseApiController
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null) return NotFound();
+        var milestoneId = task.MilestoneId;
         if (!await _scope.CanManageProjectAsync(task.ProjectId, ct)) return Forbid();
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        if (milestoneId.HasValue)
+        {
+            var milestone = await _db.Milestones
+                .Include(m => m.Tasks)
+                .FirstOrDefaultAsync(m => m.Id == milestoneId.Value, ct);
+            if (milestone != null)
+            {
+                milestone.RecalculateProgressFromTasks();
+                milestone.RecalculateStatusFromTasks();
+                milestone.SetModified(_currentUser.UserId ?? "system");
+                await _uow.Milestones.UpdateAsync(milestone, ct);
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
         return NoContent();
     }
 
@@ -713,6 +772,20 @@ public class TasksController : BaseApiController
         await _uow.TaskDependencies.DeleteAsync(depId, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private async Task RecalculateTaskMilestoneAsync(ProjectTask task, CancellationToken ct)
+    {
+        if (!task.MilestoneId.HasValue) return;
+        var milestone = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
+        if (milestone == null) return;
+        milestone.RecalculateProgressFromTasks();
+        milestone.RecalculateStatusFromTasks();
+        milestone.SetModified(_currentUser.UserId ?? "system");
+        await _uow.Milestones.UpdateAsync(milestone, ct);
+        await _uow.SaveChangesAsync(ct);
     }
 
     private async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)

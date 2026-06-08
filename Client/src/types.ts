@@ -122,6 +122,7 @@ export interface Milestone {
   status: string;
   isCritical: boolean;
   progressPercentage: number;
+  hasTasks?: boolean;
 }
 
 export interface Project {
@@ -832,6 +833,7 @@ export interface MilestoneDto {
   status: string;
   isCritical: boolean;
   progressPercentage: number;
+  hasTasks?: boolean;
 }
 
 export interface TaskDto {

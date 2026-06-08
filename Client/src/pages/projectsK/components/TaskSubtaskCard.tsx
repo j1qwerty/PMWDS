@@ -222,7 +222,7 @@ export function TaskSubtaskCard({
                       style={{ width: `${sub.progressPercentage || 0}%` }}
                     />
                   </div>
-                  {mayEdit ? (
+                  {/* {mayEdit ? (
                     <select
                       value={sub.status}
                       onClick={(e) => e.stopPropagation()}
@@ -241,7 +241,7 @@ export function TaskSubtaskCard({
                     <span className={`text-[10px] font-medium ${statusColors.text}`}>
                       {sub.status}
                     </span>
-                  )}
+                  )} */}
                   {mayEdit && (
                     <button
                       type="button"

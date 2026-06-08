@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Projects;
+using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
@@ -79,7 +80,9 @@ public class MilestonesController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMilestoneDto dto, CancellationToken ct)
     {
-        var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
+        var milestone = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
             return NotFound();
@@ -91,19 +94,33 @@ public class MilestonesController : BaseApiController
         }
 
         milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical);
-        milestone.UpdateProgress(dto.ProgressPercentage);
-        milestone.SetModified("system");
 
+        if (milestone.Tasks.Count > 0)
+        {
+            milestone.RecalculateProgressFromTasks();
+            milestone.RecalculateStatusFromTasks();
+        }
+        else
+        {
+            milestone.UpdateProgress(dto.ProgressPercentage);
+        }
+
+        milestone.SetModified("system");
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(MilestoneDto.FromEntity(milestone));
+        var refreshed = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
+        return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpPatch("{id:guid}/complete")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
     {
-        var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
+        var milestone = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
             return NotFound();
@@ -114,17 +131,28 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
+        if (milestone.Tasks.Count > 0)
+        {
+            milestone.RecalculateProgressFromTasks();
+            milestone.RecalculateStatusFromTasks();
+        }
+
         milestone.MarkComplete();
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(MilestoneDto.FromEntity(milestone));
+        var refreshed = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
+        return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpPatch("{id:guid}/status")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetMilestoneStatusDto dto, CancellationToken ct)
     {
-        var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
+        var milestone = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
             return NotFound();
@@ -140,11 +168,20 @@ public class MilestonesController : BaseApiController
             return BadRequest(new { error = $"Invalid status: {dto.Status}. Valid values: Pending, InProgress, Completed, Delayed" });
         }
 
+        if (milestone.Tasks.Count > 0)
+        {
+            milestone.RecalculateProgressFromTasks();
+            milestone.RecalculateStatusFromTasks();
+        }
+
         milestone.SetStatus(status);
         milestone.SetModified("system");
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
-        return Ok(MilestoneDto.FromEntity(milestone));
+        var refreshed = await _db.Milestones
+            .Include(m => m.Tasks)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
+        return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpDelete("{id:guid}")]

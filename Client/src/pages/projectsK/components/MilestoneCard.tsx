@@ -29,9 +29,9 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
           handleSelect();
         }
       }}
-      className={`text-left p-3 rounded-xl shadow-sm border cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+      className={`text-left p-3 rounded-xl shadow-sm border cursor-pointer transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-400 ${
         isSelected
-          ? "bg-indigo-50 border-blue-500 border-b-2 hover:bg-blue-100"
+          ? "bg-indigo-50 border-blue-500 border-b hover:bg-blue-100"
           : "bg-white border-slate-100 hover:shadow-md  hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200"
       }`}
       style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}

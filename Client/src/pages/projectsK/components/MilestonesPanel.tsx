@@ -52,7 +52,7 @@ export function MilestonesPanel({
           )}
         </div>
 
-        <div className="flex flex-col gap-2 max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex flex-col p-2 gap-2 max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {milestones.map((milestone, index) => (
             <MilestoneCard
               key={milestone.id}

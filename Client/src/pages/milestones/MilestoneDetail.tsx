@@ -30,6 +30,7 @@ export function MilestoneDetail({
 }: MilestoneDetailProps) {
   const statusColors = getStatusColor(milestone.status);
   const progress = milestone.progressPercentage || 0;
+  const hasTasks = milestone.hasTasks ?? tasks.length > 0;
   const completedTasks = tasks.filter(t => t.status === "Completed").length;
   const isCompleted = milestone.status === "Completed";
 
@@ -223,6 +224,13 @@ export function MilestoneDetail({
     {isAdmin && (
       <div className="mb-4">
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Change Status</p>
+        {hasTasks && (
+          <div className="mb-2 p-2 rounded-lg bg-indigo-50 border border-indigo-100">
+            <p className="text-[10px] text-indigo-600 leading-relaxed">
+              Status is auto-calculated from associated tasks. Update individual task statuses to reflect milestone progress.
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap gap-1">
           {["Pending", "InProgress", "Completed", "Delayed"].map((status) => {
             const st = getStatusColor(status);
@@ -262,7 +270,10 @@ export function MilestoneDetail({
     {/* Progress */}
     <div className="mb-4">
       <div className="flex justify-between text-[10px] mb-1.5">
-        <span className="text-slate-400 font-medium">Progress</span>
+        <span className="text-slate-400 font-medium">
+          Progress
+          {hasTasks && <span className="ml-1 text-indigo-500 font-normal">(avg of tasks)</span>}
+        </span>
         <span className="font-semibold text-slate-700">{Math.round(progress)}%</span>
       </div>
       <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">

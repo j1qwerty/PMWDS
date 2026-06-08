@@ -69,14 +69,32 @@ public class Milestone : AuditableEntity
         ProgressPercentage = Math.Clamp(percentage, 0, 100);
         if (percentage >= 100) MarkComplete();
     }
-    public double CalculateProgressFromTasks()
+    public double RecalculateProgressFromTasks()
     {
         if (_tasks.Count == 0) return ProgressPercentage;
-        var completed = _tasks.Count(t => t.Status == TaskStatus.Completed);
-        var calculated = (completed / (double)_tasks.Count) * 100;
-        ProgressPercentage = Math.Round(calculated, 1);
-        if (completed == _tasks.Count && _tasks.Count > 0) MarkComplete();
+        var sum = _tasks.Sum(t => Math.Clamp(t.ProgressPercentage, 0, 100));
+        ProgressPercentage = Math.Round(sum / _tasks.Count, 1);
         return ProgressPercentage;
+    }
+
+    public void RecalculateStatusFromTasks()
+    {
+        if (_tasks.Count == 0) return;
+        if (_tasks.All(t => t.Status == TaskStatus.Completed))
+        {
+            Status = MilestoneStatus.Completed;
+            CompletedDate ??= DateTime.UtcNow;
+            ProgressPercentage = 100;
+        }
+        else if (_tasks.Any(t => t.Status == TaskStatus.Delayed))
+        {
+            Status = MilestoneStatus.Delayed;
+        }
+        else if (_tasks.Any(t => t.ProgressPercentage > 0 || t.Status == TaskStatus.InProgress))
+        {
+            if (Status == MilestoneStatus.Pending)
+                Status = MilestoneStatus.InProgress;
+        }
     }
     public bool IsOverdue() => Status != MilestoneStatus.Completed
     && DateTime.UtcNow > DueDate;
