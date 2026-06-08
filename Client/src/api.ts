@@ -222,11 +222,12 @@ export const api = {
   updateMilestone(token: string, id: string, payload: Record<string, unknown>) {
     return request<Milestone>(`milestones/${id}`, { token, method: "PUT", body: payload });
   },
-  completeMilestone(token: string, id: string) {
-    return request<Milestone>(`milestones/${id}/complete`, { token, method: "PATCH" });
+  completeMilestone(token: string, id: string, forceComplete?: boolean) {
+    const query = forceComplete ? { forceComplete: "true" } : undefined;
+    return request<Milestone>(`milestones/${id}/complete`, { token, method: "PATCH", query });
   },
-  setMilestoneStatus(token: string, id: string, status: string) {
-    return request<Milestone>(`milestones/${id}/status`, { token, method: "PATCH", body: { status } });
+  setMilestoneStatus(token: string, id: string, status: string, forceComplete?: boolean) {
+    return request<Milestone>(`milestones/${id}/status`, { token, method: "PATCH", body: { status, forceComplete } });
   },
   deleteMilestone(token: string, id: string) {
     return request<void>(`milestones/${id}`, { token, method: "DELETE" });

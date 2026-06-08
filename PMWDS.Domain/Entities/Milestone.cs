@@ -96,6 +96,21 @@ public class Milestone : AuditableEntity
                 Status = MilestoneStatus.InProgress;
         }
     }
+    public void CompleteAllTasks()
+    {
+        foreach (var task in _tasks)
+        {
+            task.CompleteWithSubtasks();
+        }
+        MarkComplete();
+    }
+    public int GetIncompleteTaskCount()
+    {
+        return _tasks.Count(t => t.Status != TaskStatus.Completed);
+    }
+    public bool AllTasksCompleted => _tasks.Count > 0
+        && _tasks.All(t => t.Status == TaskStatus.Completed);
+    public bool HasTasks => _tasks.Count > 0;
     public bool IsOverdue() => Status != MilestoneStatus.Completed
     && DateTime.UtcNow > DueDate;
     public int GetDaysRemaining()

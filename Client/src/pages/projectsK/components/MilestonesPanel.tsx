@@ -17,6 +17,8 @@ interface MilestonesPanelProps {
   onComplete: (milestoneId: string) => void;
   onStatusChange: (milestoneId: string, status: string) => void;
   onAddTask: (milestoneId: string) => void;
+  hideDetailPanel?: boolean;
+  onViewDetail?: (milestone: Milestone) => void;
 }
 
 export function MilestonesPanel({
@@ -33,14 +35,14 @@ export function MilestonesPanel({
   onComplete,
   onStatusChange,
   onAddTask,
+  hideDetailPanel = false,
+  onViewDetail,
 }: MilestonesPanelProps) {
   const selected = milestones.find((m) => m.id === selectedMilestoneId) ?? null;
   const milestoneTasks = selected ? tasks.filter((t) => t.milestoneId === selected.id) : [];
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_1fr] gap-6">
-      {/* Milestones List */}
-      <GlassCard className="p-4">
+  const listPanel = (
+    <GlassCard className="p-4">
         <div className="flex items-center justify-between mb-3 px-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             Milestones
@@ -60,7 +62,7 @@ export function MilestonesPanel({
               isSelected={milestone.id === selectedMilestoneId}
               index={index}
               onSelectMilestone={onSelectMilestone}
-              onViewMilestone={(milestone) => onSelectMilestone(milestone.id)}
+              onViewMilestone={onViewDetail ?? ((milestone) => onSelectMilestone(milestone.id))}
               onEditMilestone={onEdit}
               canManage={canManage}
             />
@@ -75,7 +77,14 @@ export function MilestonesPanel({
           )}
         </div>
       </GlassCard>
+    
+  );
 
+  if (hideDetailPanel) return listPanel;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_1fr] gap-6">
+      {listPanel}
       {/* Milestone Detail */}
       <div className="max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {selected ? (

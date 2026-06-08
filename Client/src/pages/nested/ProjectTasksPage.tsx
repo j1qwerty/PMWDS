@@ -82,6 +82,7 @@ export function ProjectTasksPage() {
   const groupedTasks = useMemo(() => {
     const map = new Map<string, Task[]>();
     ws.tasks.forEach((t) => {
+      if (t.parentTaskId) return;
       const key = t.milestoneId ?? "__unassigned__";
       const list = map.get(key) ?? [];
       list.push(t);

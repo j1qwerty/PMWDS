@@ -227,7 +227,7 @@ export function MilestoneDetail({
         {hasTasks && (
           <div className="mb-2 p-2 rounded-lg bg-indigo-50 border border-indigo-100">
             <p className="text-[10px] text-indigo-600 leading-relaxed">
-              Status is auto-calculated from associated tasks. Update individual task statuses to reflect milestone progress.
+              Progress is auto-calculated from associated tasks. 
             </p>
           </div>
         )}

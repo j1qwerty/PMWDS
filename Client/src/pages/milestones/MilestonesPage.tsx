@@ -47,6 +47,12 @@ export function MilestonesPage() {
     const [loading, setLoading] = useState(true);
     const [milestoneModal, setMilestoneModal] = useState<{ open: boolean; editMilestone?: Milestone }>({ open: false });
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; milestone: Milestone | null }>({ open: false, milestone: null });
+    const [pendingForceComplete, setPendingForceComplete] = useState<{
+        milestoneId: string;
+        status?: string;
+        incompleteCount: number;
+        totalCount: number;
+    } | null>(null);
 
     const { setNavHeader } = useNavHeader();
 
@@ -214,8 +220,37 @@ export function MilestonesPage() {
         }
     };
 
+    const getIncompleteTaskCount = (milestoneId: string) => {
+        const milestoneTasks = tasks.filter(t => t.milestoneId === milestoneId);
+        const incomplete = milestoneTasks.filter(t => t.status !== "Completed").length;
+        return { incomplete, total: milestoneTasks.length };
+    };
+
+    const handleForceCompleteConfirm = async () => {
+        if (!auth || !pendingForceComplete) return;
+        const { milestoneId, status } = pendingForceComplete;
+        setPendingForceComplete(null);
+        try {
+            if (status && status !== "Completed") {
+                await api.setMilestoneStatus(auth.token, milestoneId, status, true);
+            } else {
+                await api.completeMilestone(auth.token, milestoneId, true);
+            }
+            setMessage("All tasks completed and milestone updated.");
+            const milestoneData = await api.getMilestonesByProject(auth.token, selectedProjectId);
+            setMilestones(milestoneData);
+        } catch (e) {
+            setMessage(`Error: ${e instanceof Error ? e.message : "Action failed"}`);
+        }
+    };
+
     const handleCompleteMilestone = async (milestoneId: string) => {
         if (!auth) return;
+        const { incomplete, total } = getIncompleteTaskCount(milestoneId);
+        if (incomplete > 0) {
+            setPendingForceComplete({ milestoneId, incompleteCount: incomplete, totalCount: total });
+            return;
+        }
         try {
             await api.completeMilestone(auth.token, milestoneId);
             setMessage("Milestone completed.");
@@ -228,6 +263,13 @@ export function MilestonesPage() {
 
     const handleMilestoneStatus = async (milestoneId: string, status: string) => {
         if (!auth) return;
+        if (status === "Completed") {
+            const { incomplete, total } = getIncompleteTaskCount(milestoneId);
+            if (incomplete > 0) {
+                setPendingForceComplete({ milestoneId, status, incompleteCount: incomplete, totalCount: total });
+                return;
+            }
+        }
         try {
             await api.setMilestoneStatus(auth.token, milestoneId, status);
             setMessage("Milestone status updated.");
@@ -264,7 +306,34 @@ export function MilestonesPage() {
         <div>
             <AnimatedBackground />
 
-
+            {pendingForceComplete && (
+                <div className="relative z-10 mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm">
+                    <div className="flex items-start gap-2.5">
+                        <span className="material-symbols-outlined text-amber-600 mt-0.5 shrink-0">warning</span>
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold text-amber-800">Incomplete tasks detected</p>
+                            <p className="text-xs text-amber-700 mt-1">
+                                <strong>{pendingForceComplete.incompleteCount}</strong> of <strong>{pendingForceComplete.totalCount}</strong> task(s) in this milestone are not completed.
+                                Continuing will mark all tasks and subtasks as completed at 100% progress.
+                            </p>
+                            <div className="flex gap-2 mt-3">
+                                <button
+                                    onClick={handleForceCompleteConfirm}
+                                    className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
+                                >
+                                    Yes, complete all
+                                </button>
+                                <button
+                                    onClick={() => setPendingForceComplete(null)}
+                                    className="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Message */}
             {message && (

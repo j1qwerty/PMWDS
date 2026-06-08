@@ -23,6 +23,19 @@ export interface StatusColorEntry {
   shadowHoverColor: string;
 }
 export const statusColorPalette: Record<string, StatusColorEntry> = {
+  Pending: {
+    bg: "bg-slate-100",
+    border: "border-slate-200",
+    text: "text-slate-500",
+    dot: "bg-slate-400",
+    headerBg: "bg-slate-100",
+    headerText: "text-slate-400",
+    badgeBg: "bg-slate-50",
+    badgeText: "text-slate-500",
+    shadow: "shadow-sm hover:shadow-md ",
+    shadowHoverColor: "hover:shadow-slate-500  ",
+
+  },
   NotStarted: {
     bg: "bg-slate-100",
     border: "border-slate-200",

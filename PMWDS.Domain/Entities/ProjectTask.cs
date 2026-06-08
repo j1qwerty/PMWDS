@@ -203,6 +203,14 @@ public class ProjectTask : AuditableEntity
         new TaskCompletedEvent(Id, ProjectId,
         CompletedDate.Value));
     }
+    public void CompleteWithSubtasks()
+    {
+        Complete();
+        foreach (var sub in _subTasks)
+        {
+            sub.CompleteWithSubtasks();
+        }
+    }
     public void PutOnHold(string reason)
     {
         Status = TaskStatus.OnHold;

@@ -116,10 +116,11 @@ public class MilestonesController : BaseApiController
 
     [HttpPatch("{id:guid}/complete")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Complete(Guid id, CancellationToken ct, [FromQuery] bool forceComplete = false)
     {
         var milestone = await _db.Milestones
             .Include(m => m.Tasks)
+                .ThenInclude(t => t.SubTasks)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
@@ -131,13 +132,27 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (milestone.Tasks.Count > 0)
+        if (milestone.HasTasks && !milestone.AllTasksCompleted)
         {
-            milestone.RecalculateProgressFromTasks();
-            milestone.RecalculateStatusFromTasks();
+            if (forceComplete)
+            {
+                milestone.CompleteAllTasks();
+            }
+            else
+            {
+                return Conflict(new
+                {
+                    error = $"{milestone.GetIncompleteTaskCount()} task(s) are still not completed. Use forceComplete=true to complete all tasks and subtasks.",
+                    incompleteTaskCount = milestone.GetIncompleteTaskCount(),
+                    totalTaskCount = milestone.Tasks.Count
+                });
+            }
+        }
+        else
+        {
+            milestone.MarkComplete();
         }
 
-        milestone.MarkComplete();
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
         var refreshed = await _db.Milestones
@@ -152,6 +167,7 @@ public class MilestonesController : BaseApiController
     {
         var milestone = await _db.Milestones
             .Include(m => m.Tasks)
+                .ThenInclude(t => t.SubTasks)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
@@ -168,13 +184,32 @@ public class MilestonesController : BaseApiController
             return BadRequest(new { error = $"Invalid status: {dto.Status}. Valid values: Pending, InProgress, Completed, Delayed" });
         }
 
-        if (milestone.Tasks.Count > 0)
+        if (status == MilestoneStatus.Completed && milestone.HasTasks && !milestone.AllTasksCompleted)
         {
-            milestone.RecalculateProgressFromTasks();
-            milestone.RecalculateStatusFromTasks();
+            if (dto.ForceComplete)
+            {
+                milestone.CompleteAllTasks();
+            }
+            else
+            {
+                return Conflict(new
+                {
+                    error = $"{milestone.GetIncompleteTaskCount()} task(s) are still not completed. Use forceComplete=true to complete all tasks and subtasks.",
+                    incompleteTaskCount = milestone.GetIncompleteTaskCount(),
+                    totalTaskCount = milestone.Tasks.Count
+                });
+            }
+        }
+        else
+        {
+            if (milestone.Tasks.Count > 0)
+            {
+                milestone.RecalculateProgressFromTasks();
+                milestone.RecalculateStatusFromTasks();
+            }
+            milestone.SetStatus(status);
         }
 
-        milestone.SetStatus(status);
         milestone.SetModified("system");
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
@@ -206,7 +241,7 @@ public class MilestonesController : BaseApiController
     }
 }
 
-public record SetMilestoneStatusDto(string Status);
+public record SetMilestoneStatusDto(string Status, bool ForceComplete = false);
 
 public record CreateMilestoneDto(
     Guid ProjectId,

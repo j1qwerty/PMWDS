@@ -1,189 +1,345 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { FiAlertTriangle } from "react-icons/fi";
+import type { Milestone, Project, Task, User } from "../../../types";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
-import type { Milestone, Project, Task, User } from "../../../types";
-import { usePermission, useToast } from "../../shared";
-import { ModalOverlay } from "../../shared/ModalOverlay";
-import { TaskSubtaskDetails } from "../../tasks/TaskSubtaskDetails";
+import { usePermission, useToast, ModalOverlay } from "../../shared";
+import { TaskHeaderCard } from "../../nested/components/TaskHeaderCard";
+import { ProgressCommentForm } from "../../nested/components/ProgressCommentForm";
+import { SubtasksSection } from "../../nested/components/SubtasksSection";
+import { TimerSection } from "../../nested/components/TimerSection";
+import { AiInsightsSection } from "../../nested/components/AiInsightsSection";
 
-interface TaskSubtaskDetailsModalProps {
-  task: Task | null;
+interface TaskSubtaskDetailsProps {
+  task: Task;
+  users: User[];
   project?: Project | null;
   milestone?: Milestone | null;
-  users: User[];
+  recommendation?: any;
+  delay?: any;
   isAdmin?: boolean;
   permissionEdit?: string;
-  onClose: () => void;
-  onEdit?: (task: Task) => void;
-  onEscalate?: (task: Task) => void;
-  onDelete?: (task: Task) => void;
+  onStatusChange: (status: string, options?: { confirmReset?: boolean }) => void;
+  onEdit: () => void;
+  onUpdateProgress: (progress: number, notes: string) => void;
+  onAddComment: (comment: string) => void;
+  onStartTimer: (description: string) => void;
+  onRefresh: () => void;
+  onEscalate: () => void;
   onMessage?: (message: string) => void;
+  onClose?: () => void;
+  hideCloseButton?: boolean;
 }
 
-export function TaskSubtaskDetailsModal({
+// ─── Main Component ─────────────────────────────────
+
+export function TaskSubtaskDetailsModal(props: TaskSubtaskDetailsProps) {
+  if (!props.task) return null;
+  return <TaskSubtaskDetailsModalInner {...props} />;
+}
+
+function TaskSubtaskDetailsModalInner({
   task,
+  users,
   project,
   milestone,
-  users,
+  recommendation,
+  delay,
   isAdmin,
   permissionEdit,
-  onClose,
+  onStatusChange,
   onEdit,
+  onUpdateProgress,
+  onStartTimer,
+  onRefresh,
   onEscalate,
-  onDelete,
   onMessage,
-}: TaskSubtaskDetailsModalProps) {
-  const { auth } = useAuth();
+  onClose,
+  hideCloseButton = false,
+}: TaskSubtaskDetailsProps) {
   const perm = usePermission();
   const mayEdit = isAdmin ?? (permissionEdit ? perm.has(permissionEdit) : false);
+  const { auth } = useAuth();
   const { addToast } = useToast();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [recommendation, setRecommendation] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [delay, setDelay] = useState<any>(null);
-  const [resolvedTask, setResolvedTask] = useState<Task | null>(task);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setResolvedTask(task);
-  }, [task]);
+  const [progress, setProgress] = useState(Math.round(task.progressPercentage || 0));
+  const [progressComment, setProgressComment] = useState("");
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
+  const [timerDescription, setTimerDescription] = useState("Focused execution block");
+
+  const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks || []);
+  const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<Set<string>>(new Set());
+  const [showSubtaskForm, setShowSubtaskForm] = useState(false);
+  const [subtaskForm, setSubtaskForm] = useState({
+    title: "",
+    priority: "Medium",
+    dueDate: "",
+    assignedToUserId: "",
+  });
+
+  const [pendingNotStarted, setPendingNotStarted] = useState<string | null>(null);
+
+  const hasSubTasks = task.hasSubTasks ?? (task.subTasks && task.subTasks.length > 0) ? true : false;
+
+  // Sync state when task updates
   useEffect(() => {
-    if (!auth || !task || !mayEdit) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRecommendation(null);
-      setDelay(null);
+    setSubtasks(task.subTasks || []);
+    setProgress(Math.round(task.progressPercentage || 0));
+  }, [task.id, task.subTasks, task.progressPercentage]);
+
+  // Progress bar interactivity
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!mayEdit || hasSubTasks || !progressBarRef.current) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = Math.round((x / rect.width) * 100);
+    setProgress(Math.max(0, Math.min(100, pct)));
+  };
+
+  const handleProgressDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!mayEdit || hasSubTasks) return;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const x = moveEvent.clientX - rect.left;
+      const pct = Math.round((x / rect.width) * 100);
+      setProgress(Math.max(0, Math.min(100, pct)));
+    };
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  // Main progress update
+  const handleProgressUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (hasSubTasks) return;
+    onUpdateProgress(progress, progressComment.trim());
+    setProgressComment("");
+  };
+
+  // Main status change (accepts string directly)
+  const handleMainStatusChange = (nextStatus: string) => {
+    if (
+      nextStatus === "NotStarted" &&
+      task.progressPercentage > 0 &&
+      task.status !== "NotStarted"
+    ) {
+      setPendingNotStarted(nextStatus);
       return;
     }
-    let cancelled = false;
-    Promise.all([
-      api.getTaskRecommendation(auth.token, task.id).catch(() => null),
-      api.getTaskDelayPrediction(auth.token, task.id).catch(() => null),
-    ]).then(([rec, del]) => {
-      if (cancelled) return;
-      setRecommendation(rec);
-      setDelay(del);
+    onStatusChange(nextStatus);
+  };
+
+  // Timer
+  const handleStartTimer = () => {
+    onStartTimer(timerDescription);
+    setTimerDescription("Focused execution block");
+  };
+
+  // Subtask handlers
+  const handleCreateSubtask = async () => {
+    if (!auth || !subtaskForm.title) return;
+    const newSubtask = await api.createSubtask(auth.token, task.id, {
+      ...subtaskForm,
+      description: "",
+      projectId: task.projectId,
+      milestoneId: task.milestoneId,
+      startDate: new Date().toISOString(),
+      estimatedHours: 0,
     });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, task?.id, mayEdit]);
+    setSubtasks(prev => [...prev, { ...newSubtask, hasSubTasks: false }]);
+    setSubtaskForm({ title: "", priority: "Medium", dueDate: "", assignedToUserId: "" });
+    setShowSubtaskForm(false);
+    addToast("Subtask created.");
+    onMessage?.("Subtask created.");
+    onRefresh();
+  };
 
-  if (!task) return null;
-
-  const handleStatusChange = async (status: string, options?: { confirmReset?: boolean }) => {
+  const handleSubtaskStatusChange = async (subtaskId: string, status: string) => {
     if (!auth) return;
-    try {
-      const updated = await api.updateTaskStatus(auth.token, task.id, status, { confirmReset: options?.confirmReset });
-      if (options?.confirmReset) {
-        addToast("Status updated and progress reset.");
-        onMessage?.("Status updated and progress reset.");
-      } else {
-        addToast("Status updated.");
-        onMessage?.("Status updated.");
-      }
-      setResolvedTask(updated);
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Update failed";
-      addToast(errorMsg, "error");
-      onMessage?.(`Error: ${errorMsg}`);
-    }
+    const updated = await api.updateSubtaskStatus(auth.token, subtaskId, status);
+    setSubtasks(prev =>
+      prev.map(s =>
+        s.id === subtaskId
+          ? { ...s, status: updated.status, progressPercentage: updated.progressPercentage, hasSubTasks: updated.hasSubTasks }
+          : s
+      )
+    );
+    addToast("Subtask status updated.");
+    onMessage?.("Subtask status updated.");
+    onRefresh();
   };
 
-  const handleUpdateProgress = async (progress: number, notes: string) => {
-    void notes;
+  const handleSubtaskToggleCompleted = async (subtaskId: string, currentlyCompleted: boolean) => {
+    const nextStatus = currentlyCompleted ? "InProgress" : "Completed";
+    await handleSubtaskStatusChange(subtaskId, nextStatus);
+  };
+
+  const handleSubtaskProgressUpdate = async (subtaskId: string, value: number) => {
     if (!auth) return;
-    try {
-      const updated = await api.updateTaskProgress(auth.token, task.id, progress);
-      addToast("Progress updated.");
-      onMessage?.("Progress updated.");
-      setResolvedTask(updated);
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Update failed";
-      addToast(errorMsg, "error");
-      onMessage?.(`Error: ${errorMsg}`);
-    }
+    const updated = await api.updateSubtaskProgress(auth.token, subtaskId, value);
+    setSubtasks(prev =>
+      prev.map(s =>
+        s.id === subtaskId
+          ? { ...s, progressPercentage: updated.progressPercentage, status: updated.status, hasSubTasks: updated.hasSubTasks }
+          : s
+      )
+    );
+    onRefresh();
   };
 
-  const handleAddComment = async (comment: string) => {
+  const handleSubtaskAddComment = async (subtaskId: string, text: string) => {
+    if (!auth || !text.trim()) return;
+    await api.addTaskComment(auth.token, subtaskId, text);
+    addToast("Comment added to subtask.");
+    onMessage?.("Comment added to subtask.");
+    onRefresh();
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
     if (!auth) return;
-    try {
-      await api.addTaskComment(auth.token, task.id, comment);
-      addToast("Comment added.");
-      onMessage?.("Comment added.");
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Comment failed";
-      addToast(errorMsg, "error");
-      onMessage?.(`Error: ${errorMsg}`);
-    }
+    if (!confirm("Delete this subtask?")) return;
+    await api.deleteSubtask(auth.token, subtaskId);
+    setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
+    setExpandedSubtaskIds(prev => {
+      const next = new Set(prev);
+      next.delete(subtaskId);
+      return next;
+    });
+    addToast("Subtask deleted.");
+    onMessage?.("Subtask deleted.");
+    onRefresh();
   };
 
-  const handleStartTimer = async (description: string) => {
-    if (!auth) return;
-    try {
-      await api.startTaskTimer(auth.token, task.id, description);
-      addToast("Timer started.");
-      onMessage?.("Timer started.");
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Timer failed";
-      addToast(errorMsg, "error");
-      onMessage?.(`Error: ${errorMsg}`);
-    }
+  const toggleSubtaskExpand = (id: string) => {
+    setExpandedSubtaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
-  const handleEscalate = async () => {
-    if (!auth) return;
-    try {
-      const updated = await api.escalateTask(auth.token, task.id);
-      addToast("Task escalated.");
-      onMessage?.("Task escalated.");
-      setResolvedTask(updated);
-      onEscalate?.(task);
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Escalation failed";
-      addToast(errorMsg, "error");
-      onMessage?.(`Error: ${errorMsg}`);
-    }
-  };
-
-  const handleDelete = () => {
-    if (onDelete) onDelete(task);
-  };
+  // Progress bar colors
+  const progressColor = progress >= 80
+    ? "from-emerald-400 to-emerald-500"
+    : progress >= 50
+    ? "from-cyan-400 to-cyan-500"
+    : progress >= 25
+    ? "from-amber-400 to-amber-500"
+    : "from-rose-400 to-rose-500";
 
   return (
-    <ModalOverlay onClose={onClose} widthClassName="max-w-3xl">
-      <div className="bg-white rounded-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200 p-5">
-        <TaskSubtaskDetails
-          task={resolvedTask ?? task}
-          users={users}
-          project={project}
-          milestone={milestone}
-          recommendation={recommendation}
-          delay={delay}
-          isAdmin={mayEdit}
-          onStatusChange={handleStatusChange}
-          onEdit={() => onEdit?.(task)}
-          onUpdateProgress={handleUpdateProgress}
-          onAddComment={handleAddComment}
-          onStartTimer={handleStartTimer}
-          onRefresh={() => setResolvedTask((prev) => (prev ? { ...prev } : prev))}
-          onEscalate={handleEscalate}
-          onMessage={onMessage}
-          onClose={onClose}
-          hideCloseButton
-        />
-        {mayEdit && onDelete && (
-          <div className="border-t border-slate-100 pt-3 mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              Delete task
-            </button>
-          </div>
-        )}
+    <ModalOverlay onClose={onClose ?? (() => {})} widthClassName="max-w-3xl">
+      <div className="bg-white rounded-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200 p-4">
+        <div className="flex flex-col gap-3">
+          <TaskHeaderCard
+            task={task}
+            users={users}
+            project={project}
+            milestone={milestone}
+            mayEdit={mayEdit}
+            hasSubTasks={hasSubTasks}
+            subtaskCount={subtasks.length}
+            progress={progress}
+            progressColor={progressColor}
+            progressBarRef={progressBarRef}
+            onProgressBarClick={handleProgressBarClick}
+            onProgressBarDrag={handleProgressDrag}
+            onStatusChange={handleMainStatusChange}
+            onEdit={onEdit}
+            onEscalate={onEscalate}
+            onDelete={() => { if (confirm("Delete task?")) onRefresh(); }}
+            onClose={onClose}
+            hideCloseButton={true}
+          />
+
+          {/* "Not Started" reset warning */}
+          <AnimatePresence>
+            {pendingNotStarted && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-sm"
+              >
+                <div className="flex gap-2 items-start">
+                  <FiAlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-amber-800">Reset progress warning</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      This will reset progress to 0% for this task{hasSubTasks ? " and all subtasks" : ""}. Continue?
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          onStatusChange(pendingNotStarted, { confirmReset: true });
+                          setPendingNotStarted(null);
+                        }}
+                        className="px-3 py-1 text-xs font-semibold bg-amber-600 text-white rounded-lg hover:bg-amber-700 cursor-pointer"
+                      >
+                        Yes, reset
+                      </button>
+                      <button
+                        onClick={() => setPendingNotStarted(null)}
+                        className="px-3 py-1 text-xs font-semibold bg-white border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-100 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!hasSubTasks && mayEdit && (
+            <ProgressCommentForm
+              progress={progress}
+              progressComment={progressComment}
+              onCommentChange={setProgressComment}
+              onSubmit={handleProgressUpdate}
+            />
+          )}
+
+          <SubtasksSection
+            subtasks={subtasks}
+            mayEdit={mayEdit}
+            expandedSubtaskIds={expandedSubtaskIds}
+            onToggleExpand={toggleSubtaskExpand}
+            onToggleCompleted={handleSubtaskToggleCompleted}
+            onDelete={handleDeleteSubtask}
+            onProgressUpdate={handleSubtaskProgressUpdate}
+            onAddComment={handleSubtaskAddComment}
+            onStatusChange={handleSubtaskStatusChange}
+            onCreateSubtask={handleCreateSubtask}
+            showSubtaskForm={showSubtaskForm}
+            subtaskForm={subtaskForm}
+            onSubtaskFormChange={setSubtaskForm}
+            onCancelSubtaskForm={() => {
+              setShowSubtaskForm(false);
+              setSubtaskForm({ title: "", priority: "Medium", dueDate: "", assignedToUserId: "" });
+            }}
+            onToggleShowForm={() => setShowSubtaskForm(true)}
+          />
+
+          <TimerSection
+            description={timerDescription}
+            onDescriptionChange={setTimerDescription}
+            onStart={handleStartTimer}
+          />
+
+          <AiInsightsSection
+            recommendation={recommendation}
+            delay={delay}
+            isEscalated={task.isEscalated ?? false}
+          />
+        </div>
       </div>
     </ModalOverlay>
   );

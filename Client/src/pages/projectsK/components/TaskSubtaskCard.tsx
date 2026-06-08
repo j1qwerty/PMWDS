@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
-import type { Task } from "../../../types";
+import type { Task, User } from "../../../types";
 import { getPriorityColor, getStatusColor, usePermission, useToast } from "../../shared";
+import { SubtaskFormModal } from "./SubtaskFormModal";
+import { SubtaskEditModal } from "./SubtaskEditModal";
 
 interface TaskSubtaskCardProps {
   task: Task;
@@ -12,6 +14,7 @@ interface TaskSubtaskCardProps {
   onEditTask?: (task: Task) => void;
   getProgressColor: (progress: number) => string;
   onAddSubtask?: (parentTaskId: string) => void;
+  users?: User[];
 }
 
 export function TaskSubtaskCard({
@@ -22,6 +25,7 @@ export function TaskSubtaskCard({
   onEditTask,
   getProgressColor,
   onAddSubtask,
+  users = [],
 }: TaskSubtaskCardProps) {
   const perm = usePermission();
   const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
@@ -34,8 +38,8 @@ export function TaskSubtaskCard({
   const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks ?? []);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showInlineForm, setShowInlineForm] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
+  const [showSubtaskModal, setShowSubtaskModal] = useState(false);
+  const [editSubtask, setEditSubtask] = useState<Task | null>(null);
 
   const hasSubtasks = (task.subTasks?.length ?? 0) > 0 || subtasks.length > 0;
 
@@ -66,18 +70,11 @@ export function TaskSubtaskCard({
     }
   };
 
-  const handleCreateSubtask = async () => {
-    if (!auth || !newTitle.trim()) return;
+  const handleCreateSubtask = async (form: Record<string, unknown>) => {
+    if (!auth) return;
     try {
-      await api.createSubtask(auth.token, task.id, {
-        title: newTitle.trim(),
-        projectId: task.projectId,
-        milestoneId: task.milestoneId,
-        priority: "Medium",
-        startDate: new Date().toISOString(),
-      });
-      setNewTitle("");
-      setShowInlineForm(false);
+      await api.createSubtask(auth.token, task.id, form);
+      setShowSubtaskModal(false);
       addToast("Subtask created");
       await refreshSubtasks();
     } catch (e) {
@@ -104,6 +101,33 @@ export function TaskSubtaskCard({
       addToast("Subtask deleted");
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to delete subtask", "error");
+    }
+  };
+
+  const handleSubtaskProgressUpdate = async (subtaskId: string, value: number) => {
+    if (!auth) return;
+    try {
+      const updated = await api.updateSubtaskProgress(auth.token, subtaskId, value);
+      setSubtasks((prev) =>
+        prev.map((s) =>
+          s.id === subtaskId
+            ? { ...s, progressPercentage: updated.progressPercentage, status: updated.status }
+            : s
+        )
+      );
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to update progress", "error");
+    }
+  };
+
+  const handleSubtaskAddComment = async (subtaskId: string, text: string) => {
+    if (!auth || !text.trim()) return;
+    try {
+      await api.addTaskComment(auth.token, subtaskId, text);
+      addToast("Comment added.");
+      await refreshSubtasks();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to add comment", "error");
     }
   };
 
@@ -154,17 +178,17 @@ export function TaskSubtaskCard({
       {hasSubtasks && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`mb-3 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${
+          className={`mb-3 flex items-center justify-between gap-2 rounded-lg px-2  py-1.5 ${
             expanded ? "bg-indigo-50/60" : "bg-slate-50"
           }`}
         >
           <button
             type="button"
             onClick={() => setExpanded((p) => !p)}
-            className="flex items-center gap-2 min-w-0 flex-1 text-left"
+            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
             aria-expanded={expanded}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider cursor-pointer  text-slate-500">
               Subtasks
             </span>
             <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
@@ -197,7 +221,7 @@ export function TaskSubtaskCard({
         </div>
       )}
 
-      {((expanded && hasSubtasks) || showInlineForm) && (
+      {expanded && hasSubtasks && (
         <div className="mb-3 space-y-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
           {loading && (
             <div className="text-[10px] text-slate-400 px-1">Loading subtasks…</div>
@@ -206,7 +230,16 @@ export function TaskSubtaskCard({
             subtasks.map((sub) => (
               <div
                 key={sub.id}
-                className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+                className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                onClick={() => setEditSubtask(sub)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setEditSubtask(sub);
+                  }
+                }}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span
@@ -215,33 +248,13 @@ export function TaskSubtaskCard({
                   />
                   <span className="text-xs text-slate-700 truncate">{sub.title}</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden">
                     <div
                       className={`${getProgressColor(sub.progressPercentage || 0)} h-1 rounded-full`}
                       style={{ width: `${sub.progressPercentage || 0}%` }}
                     />
                   </div>
-                  {/* {mayEdit ? (
-                    <select
-                      value={sub.status}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => handleSubtaskStatus(sub.id, e.target.value)}
-                      className="text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white"
-                    >
-                      {["NotStarted", "InProgress", "Completed", "Delayed", "OnHold", "Cancelled"].map(
-                        (s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  ) : (
-                    <span className={`text-[10px] font-medium ${statusColors.text}`}>
-                      {sub.status}
-                    </span>
-                  )} */}
                   {mayEdit && (
                     <button
                       type="button"
@@ -262,41 +275,6 @@ export function TaskSubtaskCard({
                 </div>
               </div>
             ))}
-
-          {mayEdit && !onAddSubtask && showInlineForm && (
-            <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-              <input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void handleCreateSubtask();
-                  }
-                }}
-                placeholder="New subtask title"
-                className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-400"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleCreateSubtask}
-                className="px-3 py-1.5 bg-indigo-600 text-white text-[11px] rounded-lg font-medium hover:bg-indigo-700"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowInlineForm(false);
-                  setNewTitle("");
-                }}
-                className="px-2 py-1.5 text-slate-500 text-[11px] rounded-lg hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </div>
       )}
 
@@ -333,10 +311,7 @@ export function TaskSubtaskCard({
               <button
                 type="button"
                 title="Add subtask"
-                onClick={() => {
-                  setShowInlineForm(true);
-                  setExpanded(true);
-                }}
+                onClick={() => setShowSubtaskModal(true)}
                 className="p-1 text-slate-400 hover:text-indigo-500 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,6 +348,26 @@ export function TaskSubtaskCard({
           )}
         </div>
       </div>
+
+      {editSubtask && (
+        <SubtaskEditModal
+          subtask={editSubtask}
+          mayEdit={mayEdit}
+          onClose={() => setEditSubtask(null)}
+          onStatusChange={handleSubtaskStatus}
+          onProgressUpdate={handleSubtaskProgressUpdate}
+          onAddComment={handleSubtaskAddComment}
+          onDelete={handleDeleteSubtask}
+        />
+      )}
+
+      <SubtaskFormModal
+        open={showSubtaskModal}
+        parentTask={task}
+        users={users}
+        onSubmit={handleCreateSubtask}
+        onClose={() => setShowSubtaskModal(false)}
+      />
     </div>
   );
 }
