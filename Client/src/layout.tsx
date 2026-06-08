@@ -418,7 +418,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             const theme = sectionThemes[group.title] || sectionThemes.Overview;
             const visibleItems = group.items.filter(
               (item) =>
-                item.permissions.length === 0 || perm.has(...item.permissions)
+                item.permissions.length === 0 || perm.hasAny(...item.permissions)
             );
             if (visibleItems.length === 0) return null;
 

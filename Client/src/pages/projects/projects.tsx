@@ -9,6 +9,7 @@ import { GlassCard, LoadingPage, useNavHeader, OrganizationDepartmentFilter, PER
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
   ProjectsBoard,
+  ProjectsBoardK,
   ProjectDetailPane,
   CreateProjectModal,
   EditProjectModal,
@@ -31,6 +32,7 @@ export function ProjectsPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
   const [_milestones, setMilestones] = useState<Milestone[]>([]);
+  const [milestonesCountByProject, setMilestonesCountByProject] = useState<Record<string, number>>({});
   const [insights, setInsights] = useState<string[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [_message, setMessage] = useState("");
@@ -142,6 +144,27 @@ export function ProjectsPage() {
 
     return filtered;
   }, [projects, selectedOrgId, selectedDepartmentId, departments, shouldFilterByOrg, userOrganizationId]);
+
+  useEffect(() => {
+    if (!auth || filteredProjects.length === 0) {
+      setMilestonesCountByProject({});
+      return;
+    }
+    const controller = new AbortController();
+    (async () => {
+      const counts: Record<string, number> = {};
+      const results = await Promise.allSettled(
+        filteredProjects.map(p =>
+          api.getMilestonesByProject(auth.token, p.id).then(ms => ({ id: p.id, count: ms.length }))
+        )
+      );
+      for (const r of results) {
+        if (r.status === "fulfilled") counts[r.value.id] = r.value.count;
+      }
+      if (!controller.signal.aborted) setMilestonesCountByProject(counts);
+    })();
+    return () => controller.abort();
+  }, [auth, filteredProjects]);
 
   // Filtered departments based on organization selection
   const filteredDepartments = useMemo(() => {
@@ -289,6 +312,15 @@ export function ProjectsPage() {
         </GlassCard>
       </div>
 
+
+      {/* Compact Project Cards Panel */}
+      <ProjectsBoardK
+        projects={filteredProjects}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={setSelectedProjectId}
+        onViewProject={(project) => setSelectedProjectId(project.id)}
+        milestonesCountByProject={milestonesCountByProject}
+      />
 
       {/* Modals */}
       <CreateProjectModal

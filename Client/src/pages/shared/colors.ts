@@ -19,6 +19,8 @@ export interface StatusColorEntry {
   headerText: string;
   badgeBg: string;
   badgeText: string;
+  shadow: string;
+  shadowHoverColor: string;
 }
 export const statusColorPalette: Record<string, StatusColorEntry> = {
   NotStarted: {
@@ -30,6 +32,9 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     headerText: "text-slate-400",
     badgeBg: "bg-slate-50",
     badgeText: "text-slate-500",
+    shadow: "shadow-sm hover:shadow-md ",
+    shadowHoverColor: "hover:shadow-slate-500  ",
+
   },
   InProgress: {
     bg: "bg-blue-100",
@@ -40,6 +45,9 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     headerText: "text-blue-500",
     badgeBg: "bg-blue-50",
     badgeText: "text-blue-600",
+    shadow: "shadow-sm hover:shadow-md ",
+        shadowHoverColor: "hover:shadow-blue-500  ",
+
   },
   Completed: {
     bg: "bg-emerald-100",
@@ -50,6 +58,10 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     headerText: "text-emerald-500",
     badgeBg: "bg-emerald-50",
     badgeText: "text-emerald-600",
+    shadow: "shadow-sm hover:shadow-md ",
+    shadowHoverColor: "hover:shadow-emerald-500  ",
+
+
   },
   Delayed: {
     bg: "bg-amber-100",
@@ -60,6 +72,9 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     headerText: "text-amber-600",
     badgeBg: "bg-amber-50",
     badgeText: "text-amber-700",
+    shadow: "shadow-sm hover:shadow-md ",
+    shadowHoverColor: "hover:shadow-slate-500  ",
+
   },
   OnHold: {
     bg: "bg-purple-100",
@@ -70,6 +85,8 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     headerText: "text-purple-500",
     badgeBg: "bg-purple-50",
     badgeText: "text-purple-600",
+    shadow: "shadow-sm hover:shadow-md ",
+    shadowHoverColor: "hover:shadow-purple-500  ",
   },
   Cancelled: {
     bg: "bg-red-100",
@@ -80,33 +97,35 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     headerText: "text-red-600",
     badgeBg: "bg-red-50",
     badgeText: "text-red-700",
+    shadow: "shadow-sm hover:shadow-md ",
+    shadowHoverColor: "hover:shadow-red-500  ",
   },
 };
 
 export const priorityColorPalette = {
-  Low: { 
-    bg: "bg-gray-50", 
-    border: "border-gray-200", 
-    text: "text-gray-500", 
-    dot: "bg-gray-500" 
+  Low: {
+    bg: "bg-gray-50",
+    border: "border-gray-200",
+    text: "text-gray-500",
+    dot: "bg-gray-500"
   },
-  Medium: { 
-    bg: "bg-blue-50", 
-    border: "border-blue-200", 
-    text: "text-blue-600", 
-    dot: "bg-blue-500" 
+  Medium: {
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+    text: "text-blue-600",
+    dot: "bg-blue-500"
   },
-  High: { 
-    bg: "bg-yellow-50", 
-    border: "border-yellow-200", 
-    text: "text-red-600", 
-    dot: "bg-red-500" 
+  High: {
+    bg: "bg-yellow-50",
+    border: "border-yellow-200",
+    text: "text-red-600",
+    dot: "bg-red-500"
   },
-  Critical: { 
-    bg: "bg-red-50", 
-    border: "border-red-200", 
-    text: "text-red-800", 
-    dot: "bg-red-500" 
+  Critical: {
+    bg: "bg-red-50",
+    border: "border-red-200",
+    text: "text-red-800",
+    dot: "bg-red-500"
   },
 };
 

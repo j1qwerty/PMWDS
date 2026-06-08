@@ -98,6 +98,8 @@
    - All status warning states and error states
    - Status updates with critical indicators and reasons in milestones and tasks pages
    - Status stats for tasks and milestones in department cards
+   - tasks status update follows similar logic as the tasks and subtasks section ( for tasks progress calculated based on subtasks) similary now calculate the status based on tasks and subtaks states and progress, and similar warning system (if has subtasks and any subtask in progress then task inProgress, any subtask delayed then task delayed, but any subtask cancelled doesnt mean task cancelled, any subtask on hold does not mean task on hold (all subtasks on hold means task on hold) all subtasks comleted task completed) and if we manually try to change status - give warning
+   - do the same for milestone progress and status (backned changes needed, reference task and subtasks for this  )
 
 ---
 

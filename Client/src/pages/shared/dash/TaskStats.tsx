@@ -8,15 +8,15 @@ interface StatCardProps {
   bgColor: string;
   iconBg: string;
   iconColor: string;
-  shadowColor:string;
+  shadowHoverColor:string;
 }
 
 type TaskStatsProps = {
   tasks?: Task[];
 };
 
-const StatCard: React.FC<StatCardProps> = ({ icon, value, label, bgColor, iconBg, iconColor,shadowColor }) => (
-  <div className={`shadow-sm group relative  overflow-hidden ${shadowColor} rounded-2xl from-surface-container-lowest to-surface-container-low p-4 hover:shadow-sm transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
+const StatCard: React.FC<StatCardProps> = ({ icon, value, label, bgColor, iconBg, iconColor, shadowHoverColor }) => (
+  <div className={`shadow-sm group relative  overflow-hidden ${shadowHoverColor} rounded-2xl from-surface-container-lowest to-surface-container-low p-4 hover:shadow-sm transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
     {/* Animated blur background */}
     <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${bgColor} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
     
@@ -52,7 +52,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       bgColor: 'bg-cyan-100',
       iconBg: 'bg-cyan-100',
       iconColor: 'text-cyan-600',
-      shadowColor: 'hover:shadow-cyan-500'
+      shadowHoverColor: 'hover:shadow-cyan-500'
     },
     {
       icon: (
@@ -65,7 +65,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       bgColor: 'bg-yellow-100',
       iconBg: 'bg-yellow-100',
       iconColor: 'text-yellow-500',
-      shadowColor: 'hover:shadow-yellow-500'
+      shadowHoverColor: 'hover:shadow-yellow-500'
     },
     {
       icon: (
@@ -78,7 +78,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       bgColor: 'bg-gray-200',
       iconBg: 'bg-gray-100',
       iconColor: 'text-gray-500',
-      shadowColor: 'hover:shadow-gray-500'
+      shadowHoverColor: 'hover:shadow-gray-500'
     },
     {
       icon: (
@@ -91,7 +91,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       bgColor: 'bg-emerald-100',
       iconBg: 'bg-emerald-100',
       iconColor: 'text-emerald-600',
-      shadowColor: 'hover:shadow-emerald-500'
+      shadowHoverColor: 'hover:shadow-emerald-500'
     },
     {
       icon: (
@@ -104,7 +104,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       bgColor: 'bg-red-100',
       iconBg: 'bg-red-200',
       iconColor: 'text-red-800',
-      shadowColor: 'hover:shadow-red-500'
+      shadowHoverColor: 'hover:shadow-red-500'
     }
   ];
 

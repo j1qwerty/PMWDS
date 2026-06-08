@@ -44,7 +44,7 @@ export function ProjectCard({ project, departments, organizations, users, select
       },
       InProgress: {
         label: "On Track", dot: "bg-primary", border: "border-outline-variant/30",
-        borderSelected: "border-primary",
+        borderSelected: "border-primary", 
         progressColor: "stroke-primary", bgHover: "hover:bg-primary/5",
         bgSelected: "", textColor: "text-primary",
         shadow: "shadow-sm hover:shadow-md",

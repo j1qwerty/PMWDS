@@ -4,3 +4,4 @@ export { ProjectDetailPane } from "./ProjectDetailPane";
 export { CreateProjectModal } from "./CreateProjectModal";
 export { EditProjectModal } from "./EditProjectModal";
 export { DeleteProjectModal } from "./DeleteProjectModal";
+export { ProjectsBoardK } from "./ProjectsBoardK";

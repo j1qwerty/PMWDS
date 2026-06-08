@@ -84,9 +84,29 @@ export function ProjectsGroup({
 
   const [expandedIds, setExpandedIds] = useState<string[]>(() => loadExpanded());
 
+  const [sectionCollapsed, setSectionCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem("pmwds.sidebar.collapsedSection") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const [showAllProjects, setShowAllProjects] = useState(false);
+
   useEffect(() => {
     saveExpanded(expandedIds);
   }, [expandedIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem("pmwds.sidebar.collapsedSection", String(sectionCollapsed));
+    } catch {
+      /* ignore */
+    }
+  }, [sectionCollapsed]);
 
   const visibleProjects = useMemo<Project[]>(() => {
     if (!perm.has(PERMISSION_GROUPS.project.view)) return [];
@@ -99,6 +119,13 @@ export function ProjectsGroup({
     }
     return filtered;
   }, [data.projects, data.departments, shouldFilterByOrg, userOrganizationId, perm]);
+
+  const DISPLAY_LIMIT = 10;
+  const displayedProjects = useMemo(() => {
+    if (showAllProjects) return visibleProjects;
+    return visibleProjects.slice(0, DISPLAY_LIMIT);
+  }, [visibleProjects, showAllProjects]);
+  const hasMore = visibleProjects.length > DISPLAY_LIMIT;
 
   const activeProjectId = useMemo(() => {
     const match = location.pathname.match(/^\/projects\/([^/]+)/);
@@ -158,7 +185,7 @@ export function ProjectsGroup({
           );
         })}
       </div>
-    );
+    ); 
   }
 
   return (
@@ -166,14 +193,20 @@ export function ProjectsGroup({
       className="border-t border-surface-variant/60"
       style={{ paddingTop: "clamp(4px, 0.6vw, 6px)" }}
     >
-      <div
-        className={`px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-cyan-600 text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}
+      <button
+        type="button"
+        onClick={() => setSectionCollapsed((p) => !p)}
+        className={`w-full flex items-center justify-between px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-cyan-600 text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}
       >
-        Projects  
-      </div>
+        <span>Projects</span>
+        <HiOutlineChevronRight
+          className={`w-3 h-3 shrink-0 transition-transform duration-200 ${sectionCollapsed ? "" : "rotate-90"}`}
+        />
+      </button>
 
-      <div className="space-y-[clamp(1px,0.3vw,2px)]">
-        {visibleProjects.map((project) => {
+      {!sectionCollapsed && (
+        <div className="space-y-[clamp(1px,0.3vw,2px)]">
+        {displayedProjects.map((project) => {
           const expanded = expandedIds.includes(project.id);
           const parentActive = isChildActive(project.id);
           const childTasksActive = isChildExactActive(project.id, "/tasks");
@@ -246,7 +279,27 @@ export function ProjectsGroup({
             </div>
           );
         })}
+
+        {hasMore && !showAllProjects && (
+          <button
+            type="button"
+            onClick={() => setShowAllProjects(true)}
+            className="w-full flex items-center justify-center gap-1 text-[clamp(10px,1.3vw,11px)] text-cyan-500 hover:text-cyan-400 font-medium py-[clamp(4px,0.5vw,6px)] transition-colors rounded-md hover:bg-white/5"
+          >
+            <span>+ Show more ({visibleProjects.length - DISPLAY_LIMIT} more)</span>
+          </button>
+        )}
+        {showAllProjects && hasMore && (
+          <button
+            type="button"
+            onClick={() => setShowAllProjects(false)}
+            className="w-full flex items-center justify-center gap-1 text-[clamp(10px,1.3vw,11px)] text-cyan-500 hover:text-cyan-400 font-medium py-[clamp(4px,0.5vw,6px)] transition-colors rounded-md hover:bg-white/5"
+          >
+            <span>- Show less</span>
+          </button>
+        )}
       </div>
+      )}
     </div>
   );
 }
