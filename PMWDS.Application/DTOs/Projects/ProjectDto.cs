@@ -32,6 +32,8 @@ public record ProjectDto(
  int TotalTasks,
  int CompletedTasks,
  int OverdueTasks,
+ int TotalMilestones,
+ int CompletedMilestones,
  DateTime CreatedDate)
 {
     public static ProjectDto FromEntity(Project p, string? projectManagerName = null)
@@ -50,7 +52,7 @@ public record ProjectDto(
     PlannedBudget: p.PlannedBudget,
     ActualCost: p.ActualCost,
     BudgetVariance: p.PlannedBudget - p.ActualCost,
-    ProgressPercentage: p.ProgressPercentage,
+    ProgressPercentage: RecalculateAndReturnProgress(p),
     AIHealthScore: (double)p.AIHealthScore,
     AIDelayRiskScore: (double)p.AIDelayRiskScore,
     AIBudgetRiskScore: (double)p.AIBudgetRiskScore,
@@ -78,8 +80,20 @@ public record ProjectDto(
     .Completed) ?? 0,
     OverdueTasks: p.Tasks?.Count(t =>
     t.IsOverdue()) ?? 0,
+    TotalMilestones: p.Milestones?.Count ?? 0,
+    CompletedMilestones: p.Milestones?.Count(m =>
+    m.Status ==
+   Domain.Enums.MilestoneStatus
+    .Completed) ?? 0,
     CreatedDate: p.CreatedDate
     );
+
+    private static double RecalculateAndReturnProgress(Project p)
+    {
+        p.RecalculateProgressFromMilestones();
+        p.RecalculateStatusFromMilestones();
+        return p.ProgressPercentage;
+    }
 }
 public record ProjectDepartmentDto(
  Guid DepartmentId,
@@ -120,6 +134,8 @@ string? DepartmentName,
  int CompletedTasks,
  int OverdueTasks,
  int EscalatedTasks,
+ int TotalMilestones,
+ int CompletedMilestones,
  DateTime CreatedDate,
  string CreatedBy);
 public record ProjectSummaryDto(

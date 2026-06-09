@@ -786,6 +786,21 @@ public class TasksController : BaseApiController
         milestone.SetModified(_currentUser.UserId ?? "system");
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
+
+        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
+    }
+
+    private async Task RecalculateProjectFromMilestonesAsync(Guid projectId, CancellationToken ct)
+    {
+        var project = await _db.Projects
+            .Include(p => p.Milestones)
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project == null) return;
+        project.RecalculateProgressFromMilestones();
+        project.RecalculateStatusFromMilestones();
+        project.SetModified(_currentUser.UserId ?? "system");
+        await _uow.Projects.UpdateAsync(project, ct);
+        await _uow.SaveChangesAsync(ct);
     }
 
     private async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)

@@ -201,10 +201,35 @@ public class Project : AuditableEntity
       _domainEvents.Add(new ProjectDelayedEvent(
       Id, BaselineEndDate, newEndDate, justification));
    }
-   public void UpdateProgress(double percentage)
-   {
-      ProgressPercentage = Math.Clamp(percentage, 0, 100);
-   }
+    public void UpdateProgress(double percentage)
+    {
+       ProgressPercentage = Math.Clamp(percentage, 0, 100);
+    }
+    public double RecalculateProgressFromMilestones()
+    {
+       if (_milestones.Count == 0) return ProgressPercentage;
+       var sum = _milestones.Sum(m => Math.Clamp(m.ProgressPercentage, 0, 100));
+       ProgressPercentage = Math.Round(sum / _milestones.Count, 1);
+       return ProgressPercentage;
+    }
+    public void RecalculateStatusFromMilestones()
+    {
+       if (_milestones.Count == 0) return;
+       if (_milestones.All(m => m.Status == MilestoneStatus.Completed))
+       {
+          Status = ProjectStatus.Completed;
+          ProgressPercentage = 100;
+       }
+       else if (_milestones.Any(m => m.Status == MilestoneStatus.Delayed))
+       {
+          Status = ProjectStatus.Delayed;
+       }
+       else if (_milestones.Any(m => m.ProgressPercentage > 0 || m.Status == MilestoneStatus.InProgress))
+       {
+          if (Status == ProjectStatus.NotStarted)
+             Status = ProjectStatus.InProgress;
+       }
+    }
    public void AddActualCost(decimal cost)
    {
       ActualCost += cost;

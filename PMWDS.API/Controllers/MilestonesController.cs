@@ -73,6 +73,7 @@ public class MilestonesController : BaseApiController
         milestone.SetCreatedBy("system");
         await _uow.Milestones.AddAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
+        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         return CreatedAtAction(nameof(GetById), new { id = milestone.Id }, MilestoneDto.FromEntity(milestone));
     }
 
@@ -108,6 +109,7 @@ public class MilestonesController : BaseApiController
         milestone.SetModified("system");
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
+        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         var refreshed = await _db.Milestones
             .Include(m => m.Tasks)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
@@ -155,6 +157,7 @@ public class MilestonesController : BaseApiController
 
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
+        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         var refreshed = await _db.Milestones
             .Include(m => m.Tasks)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
@@ -213,6 +216,7 @@ public class MilestonesController : BaseApiController
         milestone.SetModified("system");
         await _uow.Milestones.UpdateAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
+        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         var refreshed = await _db.Milestones
             .Include(m => m.Tasks)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
@@ -229,7 +233,9 @@ public class MilestonesController : BaseApiController
             return NotFound();
         }
 
-        if (!await _scope.CanManageProjectAsync(milestone.ProjectId, ct))
+        var projectId = milestone.ProjectId;
+
+        if (!await _scope.CanManageProjectAsync(projectId, ct))
         {
             return Forbid();
         }
@@ -237,7 +243,21 @@ public class MilestonesController : BaseApiController
         await _uow.Tasks.DeleteTasksByMilestoneAsync(id, ct);
         await _uow.Milestones.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await RecalculateProjectFromMilestonesAsync(projectId, ct);
         return NoContent();
+    }
+
+    private async Task RecalculateProjectFromMilestonesAsync(Guid projectId, CancellationToken ct)
+    {
+        var project = await _db.Projects
+            .Include(p => p.Milestones)
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        if (project == null) return;
+        project.RecalculateProgressFromMilestones();
+        project.RecalculateStatusFromMilestones();
+        project.SetModified("system");
+        await _uow.Projects.UpdateAsync(project, ct);
+        await _uow.SaveChangesAsync(ct);
     }
 }
 

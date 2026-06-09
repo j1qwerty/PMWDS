@@ -25,7 +25,7 @@ const statusLabel: Record<string, string> = {
 export function ProjectCardK({
   project,
   isSelected,
-  milestonesCount = 0,
+  milestonesCount,
   onSelectProject,
   onViewProject,
   onEditProject,
@@ -34,6 +34,7 @@ export function ProjectCardK({
   const progress = Math.min(Math.round(project.progressPercentage || 0), 100);
   const sc = getStatusColor(project.status);
   const label = statusLabel[project.status] || "Not Started";
+  const displayMilestones = milestonesCount ?? project.totalMilestones ?? 0;
 
   const progressStroke: Record<string, string> = {
     NotStarted: "stroke-slate-400",
@@ -83,7 +84,7 @@ export function ProjectCardK({
       <div className="flex items-center justify-center gap-4 mb-3">
         <div className="flex items-center gap-1 text-[11px] text-slate-500">
           <HiOutlineFlag className="size-3.5" />
-          <span>{milestonesCount}</span>
+          <span>{displayMilestones}</span>
         </div>
         <div className="flex items-center gap-1 text-[11px] text-slate-500">
           <HiOutlineClipboardList className="size-3.5" />

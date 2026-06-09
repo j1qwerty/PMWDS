@@ -154,6 +154,8 @@ export interface Project {
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
+  totalMilestones?: number;
+  completedMilestones?: number;
   createdDate: string;
 }
 
@@ -819,6 +821,8 @@ export interface ProjectDto {
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
+  totalMilestones?: number;
+  completedMilestones?: number;
   plannedStartDate: string;
   plannedEndDate: string;
 }
