@@ -854,6 +854,14 @@ export interface TaskDto {
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   isEscalated: boolean;
+  parentTaskId?: string | null;
+  createdDate: string;
+  escalationLevel?: number;
+  aiDelayProbability?: number;
+  aiRiskFactors?: string | null;
+  isOverdue?: boolean;
+  hasSubTasks?: boolean;
+  assignedToDepartmentId?: string | null;
 }
 
 export interface PageUserDto {

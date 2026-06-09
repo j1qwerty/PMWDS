@@ -119,6 +119,7 @@ const TaskProgressBoards: React.FC<TaskProgressBoardsProps> = ({
     const filteredTasks = useMemo(() => {
         const query = searchTerm.toLowerCase();
         return tasks.filter(task => {
+            if (task.parentTaskId) return false;
             const projectName = task.projectName ?? '';
             const matchesProject = selectedProject === 'All Projects' || projectName === selectedProject;
             const matchesSearch = !query ||

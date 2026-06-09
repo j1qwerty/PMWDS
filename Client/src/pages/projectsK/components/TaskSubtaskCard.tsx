@@ -4,7 +4,7 @@ import { useAuth } from "../../../auth";
 import type { Task, User } from "../../../types";
 import { getPriorityColor, getStatusColor, usePermission, useToast } from "../../shared";
 import { SubtaskFormModal } from "./SubtaskFormModal";
-import { SubtaskEditModal } from "./SubtaskEditModal";
+import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
 
 interface TaskSubtaskCardProps {
   task: Task;
@@ -82,14 +82,38 @@ export function TaskSubtaskCard({
     }
   };
 
-  const handleSubtaskStatus = async (subtaskId: string, status: string) => {
+  const handleSubtaskUpdate = async (subtaskId: string, data: { progress: number; status: string; priority: string }) => {
     if (!auth) return;
+    const original = subtasks.find((s) => s.id === subtaskId);
+    if (!original) return;
     try {
-      await api.updateSubtaskStatus(auth.token, subtaskId, status);
-      setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? { ...s, status } : s)));
-      addToast("Subtask status updated");
+      if (data.progress !== (original.progressPercentage || 0)) {
+        await api.updateSubtaskProgress(auth.token, subtaskId, data.progress);
+      }
+      if (data.status !== original.status) {
+        await api.updateSubtaskStatus(auth.token, subtaskId, data.status);
+      }
+      if (data.priority !== (original.priority || "Medium")) {
+        await api.updateSubtask(auth.token, subtaskId, {
+          title: original.title,
+          description: original.description ?? "",
+          priority: data.priority,
+          startDate: original.startDate,
+          dueDate: original.dueDate,
+          estimatedHours: original.estimatedHours ?? 0,
+          milestoneId: original.milestoneId,
+        });
+      }
+      setSubtasks((prev) =>
+        prev.map((s) =>
+          s.id === subtaskId
+            ? { ...s, progressPercentage: data.progress, status: data.status, priority: data.priority }
+            : s
+        )
+      );
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to update subtask", "error");
+      throw e;
     }
   };
 
@@ -101,22 +125,6 @@ export function TaskSubtaskCard({
       addToast("Subtask deleted");
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to delete subtask", "error");
-    }
-  };
-
-  const handleSubtaskProgressUpdate = async (subtaskId: string, value: number) => {
-    if (!auth) return;
-    try {
-      const updated = await api.updateSubtaskProgress(auth.token, subtaskId, value);
-      setSubtasks((prev) =>
-        prev.map((s) =>
-          s.id === subtaskId
-            ? { ...s, progressPercentage: updated.progressPercentage, status: updated.status }
-            : s
-        )
-      );
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to update progress", "error");
     }
   };
 
@@ -354,8 +362,7 @@ export function TaskSubtaskCard({
           subtask={editSubtask}
           mayEdit={mayEdit}
           onClose={() => setEditSubtask(null)}
-          onStatusChange={handleSubtaskStatus}
-          onProgressUpdate={handleSubtaskProgressUpdate}
+          onUpdate={handleSubtaskUpdate}
           onAddComment={handleSubtaskAddComment}
           onDelete={handleDeleteSubtask}
         />

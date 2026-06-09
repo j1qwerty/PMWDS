@@ -37,11 +37,12 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
 
   const filteredTasks = useMemo(() => {
     const query = searchTerm.toLowerCase();
-    return tasks.filter(task =>
-      task.title.toLowerCase().includes(query) ||
-      (task.projectName ?? "").toLowerCase().includes(query) ||
-      (task.assignedToUserName ?? "").toLowerCase().includes(query)
-    );
+    return tasks.filter(task => {
+      if (task.parentTaskId) return false;
+      return task.title.toLowerCase().includes(query) ||
+        (task.projectName ?? "").toLowerCase().includes(query) ||
+        (task.assignedToUserName ?? "").toLowerCase().includes(query);
+    });
   }, [tasks, searchTerm]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / itemsPerPage));
