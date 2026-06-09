@@ -22,31 +22,39 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
   const [selectedStatus, setSelectedStatus] = useState(status);
   const [isDragging, setIsDragging] = useState(false);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressInputRef = useRef(progressInput);
+  const selectedStatusRef = useRef(selectedStatus);
+
+  progressInputRef.current = progressInput;
+  selectedStatusRef.current = selectedStatus;
 
   const currentProgress = Math.min(100, Math.max(0, Number(progressInput) || 0));
   const progressGradient = getProgressGradient(currentProgress);
 
-  const emitChange = (p: number, s: string) => {
+  const emit = (p: number, s: string) => {
     onChange({ progress: p, status: s });
   };
 
-  const confirmProgressBelow100 = (newValue: number): boolean => {
-    if (selectedStatus === "Completed" && newValue < 100) {
-      if (confirm("This subtask is completed. Reducing progress will change status to InProgress. Continue?")) {
-        setSelectedStatus("InProgress");
-        emitChange(newValue, "InProgress");
-        return true;
-      }
-      return false;
-    }
-    return true;
+  const setProgress = (val: string) => {
+    setProgressInput(val);
+    const num = Math.min(100, Math.max(0, Number(val) || 0));
+    emit(num, selectedStatus);
+  };
+
+  const setStatus = (s: string) => {
+    setSelectedStatus(s);
+    emit(currentProgress, s);
+  };
+
+  const confirmBelow100 = (): boolean => {
+    return confirm("This subtask is completed. Reducing progress will change status to InProgress. Continue?");
   };
 
   const handleStatusChange = (newStatus: string) => {
     if (newStatus === "Completed") {
       setProgressInput("100");
       setSelectedStatus("Completed");
-      emitChange(100, "Completed");
+      emit(100, "Completed");
     } else if (selectedStatus === "Completed" && currentProgress === 100) {
       if (confirm("This subtask is completed. Changing status will reset progress. Continue?")) {
         const input = prompt("Enter new progress percentage (0-99):", "0");
@@ -54,12 +62,11 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
           const val = Math.min(99, Math.max(0, Number(input) || 0));
           setProgressInput(String(val));
           setSelectedStatus(newStatus);
-          emitChange(val, newStatus);
+          emit(val, newStatus);
         }
       }
     } else {
-      setSelectedStatus(newStatus);
-      emitChange(currentProgress, newStatus);
+      setStatus(newStatus);
     }
   };
 
@@ -73,17 +80,29 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!mayEdit) return;
     const newProgress = calculateProgressFromEvent(e.clientX);
-    if (!confirmProgressBelow100(newProgress)) return;
+    if (selectedStatus === "Completed" && newProgress < 100) {
+      if (!confirmBelow100()) return;
+      setProgressInput(String(newProgress));
+      setSelectedStatus("InProgress");
+      emit(newProgress, "InProgress");
+    } else {
+      setProgress(String(newProgress));
+    }
     setIsDragging(true);
-    setProgressInput(String(newProgress));
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!mayEdit) return;
     const newProgress = calculateProgressFromEvent(e.touches[0].clientX);
-    if (!confirmProgressBelow100(newProgress)) return;
+    if (selectedStatus === "Completed" && newProgress < 100) {
+      if (!confirmBelow100()) return;
+      setProgressInput(String(newProgress));
+      setSelectedStatus("InProgress");
+      emit(newProgress, "InProgress");
+    } else {
+      setProgress(String(newProgress));
+    }
     setIsDragging(true);
-    setProgressInput(String(newProgress));
   };
 
   useEffect(() => {
@@ -101,6 +120,8 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
 
     const handleDragEnd = () => {
       setIsDragging(false);
+      const finalProgress = Math.min(100, Math.max(0, Number(progressInputRef.current) || 0));
+      emit(finalProgress, selectedStatusRef.current);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -122,13 +143,18 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
 
     if (e.key === "ArrowRight" || e.key === "ArrowUp") {
       e.preventDefault();
-      const newVal = Math.min(100, currentProgress + step);
-      setProgressInput(String(newVal));
+      setProgress(String(Math.min(100, currentProgress + step)));
     } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
       e.preventDefault();
       const newVal = Math.max(0, currentProgress - step);
-      if (!confirmProgressBelow100(newVal)) return;
-      setProgressInput(String(newVal));
+      if (selectedStatus === "Completed" && newVal < 100) {
+        if (!confirmBelow100()) return;
+        setProgressInput(String(newVal));
+        setSelectedStatus("InProgress");
+        emit(newVal, "InProgress");
+      } else {
+        setProgress(String(newVal));
+      }
     }
   };
 
@@ -141,17 +167,25 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
 
   const handleProgressInputBlur = () => {
     const val = Math.min(100, Math.max(0, Number(progressInput) || 0));
-    if (!confirmProgressBelow100(val)) {
-      setProgressInput("100");
+    if (selectedStatus === "Completed" && val < 100) {
+      if (!confirmBelow100()) {
+        setProgressInput("100");
+        emit(100, "Completed");
+        return;
+      }
+      setProgressInput(String(val));
+      setSelectedStatus("InProgress");
+      emit(val, "InProgress");
       return;
     }
     setProgressInput(String(val));
+    emit(val, selectedStatus);
   };
 
   useEffect(() => {
     if (currentProgress === 100 && selectedStatus !== "Completed") {
       setSelectedStatus("Completed");
-      onChange({ progress: 100, status: "Completed" });
+      emit(100, "Completed");
     }
   }, [currentProgress]);
 
