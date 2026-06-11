@@ -142,12 +142,4 @@
 
 ---
 
-### Priority 6 — Cleanup & Maintenance
-
-13. **Seeder Cleanup**
-    - Standalone tasks cleanup from seeder
-    - Refactor seeder to make it modular
-
-14. **Dark Mode** — later
-
 

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import type { Task, User } from "../../../types";
 import { getPriorityColor, getStatusColor, usePermission, useToast } from "../../shared";
 import { SubtaskFormModal } from "./SubtaskFormModal";
+import { AvatarStackk } from "../../shared/Avatark";
 import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
 import { TaskEditModal } from "../../shared/modals/TaskEditModal";
 
@@ -45,6 +46,26 @@ export function TaskSubtaskCard({
   const [cardProgress, setCardProgress] = useState(task.progressPercentage);
 
   const hasSubtasks = (task.subTasks?.length ?? 0) > 0 || subtasks.length > 0;
+
+  const userMap = useMemo(() => {
+    const map = new Map<string, User>();
+    for (const u of users) map.set(u.id, u);
+    return map;
+  }, [users]);
+
+  const assigneeUsers = useMemo(
+    () =>
+      (task.assignees ?? []).map((a) => {
+        const user = userMap.get(a.userId);
+        return {
+          userId: a.userId,
+          id: a.userId,
+          fullName: user?.fullName ?? a.fullName ?? null,
+          profilePictureUrl: user?.profilePictureUrl ?? null,
+        };
+      }),
+    [task.assignees, userMap],
+  );
 
   const recalcProgress = (list: Task[]) => {
     if (list.length === 0) {
@@ -253,46 +274,7 @@ export function TaskSubtaskCard({
 
       {/* Subtask strip + expanded list */}
 <div className="flex items-center ">
-  {mayEdit &&
-    (onAddSubtask ? (
-      <button
-        type="button"
-        title="Add subtask"
-        onClick={(e) => {
-          e.stopPropagation();
-          onAddSubtask(task.id);
-        }}
-        className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </button>
-    ) : (
-      <button
-        type="button"
-        title="Add subtask"
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowSubtaskModal(true);
-        }}
-        className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </button>
-    ))}
+ 
 
   {hasSubtasks && (
     <div
@@ -397,19 +379,67 @@ export function TaskSubtaskCard({
         </div>
       )}
 
-      {/* Bottom action row: priority, edit, add subtask, assignee */}
+      {/* Bottom action row: priority, assignee avatars, edit, add subtask */}
       <div
         className="flex items-center justify-between border-t border-slate-100 pt-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <span
-          className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border}`}
-        >
-          {task.priority}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border}`}
+          >
+            {task.priority}
+          </span>
+
+          {assigneeUsers.length > 0 && (
+            <div className="flex items-center gap-0.5">
+              <AvatarStackk users={assigneeUsers} limit={2} size="xs" />
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-1.5">
 
+ {mayEdit &&
+    (onAddSubtask ? (
+      <button
+        type="button"
+        title="Add subtask"
+        onClick={(e) => {
+          e.stopPropagation();
+          onAddSubtask(task.id);
+        }}
+        className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </button>
+    ) : (
+      <button
+        type="button"
+        title="Add subtask"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowSubtaskModal(true);
+        }}
+        className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </button>
+    ))}
 
           {mayEdit && onEditTask && (
             <button
@@ -424,14 +454,7 @@ export function TaskSubtaskCard({
             </button>
           )}
 
-          {task.assignees?.[0] && (
-            <div
-              className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-700 text-[9px] font-semibold flex items-center justify-center ml-1"
-              title={task.assignees[0].fullName ?? "Assignee"}
-            >
-              {(task.assignees[0].fullName ?? "?").charAt(0).toUpperCase()}
-            </div>
-          )}
+         
         </div>
       </div>
 
