@@ -11,6 +11,7 @@ interface TaskFormModalProps {
   departments?: Department[];
   milestones: Milestone[];
   users: User[];
+  organizationId?: string | null;
   onSubmit: (data: Record<string, unknown>) => void;
   onClose: () => void;
 }
@@ -24,6 +25,7 @@ export function TaskFormModal({
   departments = [], 
   milestones, 
   users, 
+  organizationId, 
   onSubmit, 
   onClose 
 }: TaskFormModalProps) {
@@ -158,7 +160,7 @@ export function TaskFormModal({
           <ScopedUserSelect
             users={users}
             values={form.assignedToUserIds}
-            organizationId={selectedDepartment?.organizationId}
+            organizationId={organizationId ?? selectedDepartment?.organizationId}
             label="Assignees"
             multiple
             onChange={(userId) => setForm({ ...form, assignedToUserId: userId, assignedToUserIds: [userId] })}

@@ -109,7 +109,7 @@ export function MilestoneDetailModal({
           <div className="flex flex-wrap gap-3">
             <Chip icon="calendar_today" label="Due" value={milestone.dueDate ? formatDate(milestone.dueDate) : "Not set"} />
             <Chip icon="task_alt" label="Tasks" value={`${completedTasks}/${milestoneTasks.length} completed`} />
-            {milestone.order ? <Chip icon="format_list_numbered" label="Order" value={`#${milestone.order}`} /> : null}
+            {/* {milestone.order ? <Chip icon="format_list_numbered" label="Order" value={`#${milestone.order}`} /> : null} */}
           </div>
 
           {/* Progress Bar */}

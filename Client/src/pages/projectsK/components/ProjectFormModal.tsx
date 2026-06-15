@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
 import { ModalOverlay, ScopedUserSelect } from "../../shared";
@@ -59,9 +59,21 @@ export function ProjectFormModal({
     setForm({
       ...form,
       departmentIds: nextDepartmentIds,
-      departmentId: nextDepartmentIds.includes(form.departmentId) ? form.departmentId : nextDepartmentIds[0] || "",
+      departmentId: nextDepartmentIds[0] || "",
     });
   };
+
+  useEffect(() => {
+    if (!form.projectCode && form.name) {
+      const sanitized = form.name.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase().slice(0, 20);
+      const now = new Date();
+      const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+      const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+      setForm((prev) => ({ ...prev, projectCode: `${sanitized}-${ts}-${rand}` }));
+    }
+  }, [form.name]);
+
+  const [showProjectManager, setShowProjectManager] = useState(false);
 
   return (
     <ModalOverlay onClose={onClose}>
@@ -72,30 +84,29 @@ export function ProjectFormModal({
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-            <p className="text-sm text-slate-500">Project workspace details</p>
           </div>
         </div>
         <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Code" required>
-            <input value={form.projectCode} onChange={(e) => setForm({ ...form, projectCode: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" required />
-          </Field>
-          <Field label="Name" required>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" required />
-          </Field>
+          <div className="md:col-span-2">
+            <Field label="Name" required>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" required />
+            </Field>
+          </div>
           <div className="md:col-span-2">
             <Field label="Description">
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" rows={3} />
             </Field>
           </div>
-          <Field label="Category">
-            <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
-          </Field>
           <Field label="Priority">
             <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm">
               {priorities.map((p) => (
                 <option key={p}>{p}</option>
               ))}
             </select>
+            
+          </Field>
+            <Field label="Budget">
+            <input type="number" value={form.plannedBudget} onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
           </Field>
           <Field label="Start">
             <input type="date" value={form.plannedStartDate} onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
@@ -103,9 +114,7 @@ export function ProjectFormModal({
           <Field label="End">
             <input type="date" value={form.plannedEndDate} onChange={(e) => setForm({ ...form, plannedEndDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
           </Field>
-          <Field label="Budget">
-            <input type="number" value={form.plannedBudget} onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
-          </Field>
+        
           {showOrganizationFilter && (
             <Field label="Organization">
               <select
@@ -122,27 +131,6 @@ export function ProjectFormModal({
               </select>
             </Field>
           )}
-          <Field label="Department">
-            <select
-              value={form.departmentId}
-              onChange={(e) => {
-                const departmentId = e.target.value;
-                setForm({
-                  ...form,
-                  departmentId,
-                  departmentIds: departmentId ? Array.from(new Set([...(form.departmentIds ?? []), departmentId])) : form.departmentIds ?? [],
-                });
-              }}
-              className="w-full border border-slate-200 rounded-lg p-2 text-sm"
-            >
-              <option value="">Choose</option>
-              {filteredDepartments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </Field>
           <div className="md:col-span-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Departments</span>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3">
@@ -162,13 +150,27 @@ export function ProjectFormModal({
             </div>
           </div>
           <div className="md:col-span-2">
-            <ScopedUserSelect
-              users={users}
-              value={form.projectManagerId}
-              organizationId={selectedDepartment?.organizationId}
-              label="Project Manager"
-              onChange={(projectManagerId) => setForm({ ...form, projectManagerId })}
-            />
+            <button
+              type="button"
+              onClick={() => setShowProjectManager(!showProjectManager)}
+              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+            >
+              <span className="material-symbols-outlined text-lg">
+                {showProjectManager ? "expand_less" : "expand_more"}
+              </span>
+              Project Manager {!showProjectManager && form.projectManagerId && "(assigned)"}
+            </button>
+            {showProjectManager && (
+              <div className="mt-2">
+                <ScopedUserSelect
+                  users={users}
+                  value={form.projectManagerId}
+                  organizationId={form.organizationId || selectedDepartment?.organizationId}
+                  label=""
+                  onChange={(projectManagerId) => setForm({ ...form, projectManagerId })}
+                />
+              </div>
+            )}
           </div>
           <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600">

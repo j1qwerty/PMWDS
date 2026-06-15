@@ -9,7 +9,6 @@ export const departmentColorPalette = [
   { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", dot: "bg-rose-500", ring: "ring-rose-200", hover: "hover:bg-rose-100" },
 ];
 
-
 export interface StatusColorEntry {
   bg: string;
   border: string;
@@ -22,7 +21,20 @@ export interface StatusColorEntry {
   shadow: string;
   shadowHoverColor: string;
 }
+
 export const statusColorPalette: Record<string, StatusColorEntry> = {
+  Total: {
+    bg: "bg-sky-100",
+    border: "border-sky-200",
+    text: "text-sky-700",
+    dot: "bg-sky-500",
+    headerBg: "bg-sky-100",
+    headerText: "text-sky-600",
+    badgeBg: "bg-sky-50",
+    badgeText: "text-sky-700",
+    shadow: "shadow-sm hover:shadow-md",
+    shadowHoverColor: "hover:shadow-sky-500",
+  },
   Pending: {
     bg: "bg-slate-100",
     border: "border-slate-200",
@@ -34,7 +46,6 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     badgeText: "text-slate-500",
     shadow: "shadow-sm hover:shadow-md ",
     shadowHoverColor: "hover:shadow-slate-500  ",
-
   },
   NotStarted: {
     bg: "bg-slate-100",
@@ -47,7 +58,6 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     badgeText: "text-slate-500",
     shadow: "shadow-sm hover:shadow-md ",
     shadowHoverColor: "hover:shadow-slate-500  ",
-
   },
   InProgress: {
     bg: "bg-blue-100",
@@ -59,8 +69,7 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     badgeBg: "bg-blue-50",
     badgeText: "text-blue-600",
     shadow: "shadow-sm hover:shadow-md ",
-        shadowHoverColor: "hover:shadow-blue-500  ",
-
+    shadowHoverColor: "hover:shadow-blue-500  ",
   },
   Completed: {
     bg: "bg-emerald-100",
@@ -73,8 +82,6 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     badgeText: "text-emerald-600",
     shadow: "shadow-sm hover:shadow-md ",
     shadowHoverColor: "hover:shadow-emerald-500  ",
-
-
   },
   Delayed: {
     bg: "bg-amber-100",
@@ -86,8 +93,7 @@ export const statusColorPalette: Record<string, StatusColorEntry> = {
     badgeBg: "bg-amber-50",
     badgeText: "text-amber-700",
     shadow: "shadow-sm hover:shadow-md ",
-    shadowHoverColor: "hover:shadow-slate-500  ",
-
+    shadowHoverColor: "hover:shadow-amber-500  ",
   },
   OnHold: {
     bg: "bg-purple-100",

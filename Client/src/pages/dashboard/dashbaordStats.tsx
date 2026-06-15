@@ -1,86 +1,104 @@
-import { KpiCard } from "./kpiCard";
+import React from 'react';
+import type { Project } from "../../types";
+import { getStatusColor } from "../shared/colors";
 
-interface DashboardStatsProps {
-  dashboard?: {
-    totalProjects?: number;
-    activeProjects?: number;
-    totalTasks?: number;
-    overallHealthScore?: number;
-    budgetVariance?: number;
-  };
+interface StatCardProps {
+  icon: React.ReactNode;
+  value: number;
+  label: string;
+  statusKey: string;
 }
 
-function formatPercent(value: number): string {
-  return `${Math.round(value)}%`;
-}
+const StatCard: React.FC<StatCardProps> = ({ icon, value, label, statusKey }) => {
+  const colors = getStatusColor(statusKey);
 
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-export function DashboardStats({ dashboard }: DashboardStatsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 py-2 rounded-xl">
-      {/* Total Projects */}
-      <KpiCard
-        title="Total projects"
-        value={dashboard?.totalProjects ?? 0}
-        icon="folder_open"
-        iconBgColor="bg-primary/10"
-        iconColor="text-primary"
-      />
+    <div className={`shadow-sm group relative overflow-hidden ${colors.shadowHoverColor} rounded-2xl p-4 hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
+      <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${colors.bg} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
 
-      {/* Active Projects */}
-      <KpiCard
-        title="Active"
-        value={dashboard?.activeProjects ?? 0}
-        icon="play_circle"
-        iconBgColor="bg-emerald-500/10"
-        iconColor="text-emerald-600"
-        trend={{
-          value: "12%",
-          positive: true,
-          bgColor: "bg-emerald-500/10",
-          textColor: "text-emerald-600",
-        }}
-      />
+      <div className="relative flex items-center gap-3 mb-2">
+        <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
+          {icon}
+        </div>
+        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+          {label}
+        </span>
+      </div>
 
-      {/* Pending Tasks */}
-      <KpiCard
-        title="Pending tasks"
-        value={dashboard?.totalTasks ?? 0}
-        icon="task"
-        iconBgColor="bg-amber-500/10"
-        iconColor="text-amber-600"
-      />
-
-      {/* AI Health */}
-      <KpiCard
-        title="AI health"
-        value={formatPercent(dashboard?.overallHealthScore ?? 0)}
-        icon="bolt"
-        iconBgColor="bg-purple-500/10"
-        iconColor="text-purple-600"
-      />
-
-      {/* Budget Variance */}
-      <KpiCard
-        title="Budget variance"
-        value={(() => {
-          const raw = formatMoney(Math.abs(dashboard?.budgetVariance ?? 0));
-          return raw.replace('$', '₹');
-        })()}
-        icon="account_balance_wallet"
-        iconBgColor="bg-teal-500/10"
-        iconColor="text-teal-600"
-        valueClassName={(dashboard?.budgetVariance ?? 0) <= 0 ? "text-emerald-600" : "text-rose-500"}
-        subtext={(dashboard?.budgetVariance ?? 0) <= 0 ? "On track" : "Over budget"}
-      />
+      <div className="relative mt-2">
+        <span className={`text-2xl font-bold text-center tracking-wider ${colors.text}`}>
+          {value.toLocaleString()}
+        </span>
+      </div>
     </div>
   );
+};
+
+interface DashboardStatsProps {
+  projects?: Project[];
 }
+
+const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
+  const stats = [
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      ),
+      value: projects.length,
+      label: 'Total Projects',
+      statusKey: 'Total',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      ),
+      value: projects.filter(p => p.status === "InProgress").length,
+      label: 'In Progress',
+      statusKey: 'InProgress',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      ),
+      value: projects.filter(p => p.status === "OnHold").length,
+      label: 'On Hold',
+      statusKey: 'OnHold',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+        </svg>
+      ),
+      value: projects.filter(p => p.status === "Completed" || p.progressPercentage === 100).length,
+      label: 'Completed',
+      statusKey: 'Completed',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      ),
+      value: projects.filter(p => p.status === "Delayed").length,
+      label: 'Delayed',
+      statusKey: 'Delayed',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-5 gap-4">
+      {stats.map((stat, index) => (
+        <StatCard key={index} {...stat} />
+      ))}
+    </div>
+  );
+};
+
+export default DashboardStats;

@@ -39,7 +39,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   name: "",
   description: "",
   category: "Monitoring",
-  plannedStartDate: "",
+  plannedStartDate: new Date().toISOString().split("T")[0],
   plannedEndDate: "",
   plannedBudget: 25000,
   organizationId: "",

@@ -14,6 +14,7 @@ type ScopedUserSelectProps = {
   placeholder?: string;
   multiple?: boolean;
   disabled?: boolean;
+  hideSuperAdmins?: boolean;
 };
 
 export function ScopedUserSelect({
@@ -28,13 +29,15 @@ export function ScopedUserSelect({
   placeholder = "Search users...",
   multiple = false,
   disabled = false,
+  hideSuperAdmins = true,
 }: ScopedUserSelectProps) {
   const [search, setSearch] = useState("");
 
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return users.filter((user) => {
-      const inOrganization = !organizationId || user.departments?.some((assignment) => assignment.organizationId === organizationId);
+      if (hideSuperAdmins && user.roles.includes("SuperAdmin")) return false;
+      const inOrganization = !organizationId || user.organizationId === organizationId || user.departments?.some((assignment) => assignment.organizationId === organizationId);
       const inDepartment = !departmentId || user.departments?.some((assignment) => assignment.departmentId === departmentId) || user.departmentId === departmentId;
       const matchesSearch = !term ||
         user.fullName.toLowerCase().includes(term) ||
@@ -42,7 +45,7 @@ export function ScopedUserSelect({
         (user.jobTitle ?? "").toLowerCase().includes(term);
       return inOrganization && inDepartment && matchesSearch;
     });
-  }, [departmentId, organizationId, search, users]);
+  }, [departmentId, hideSuperAdmins, organizationId, search, users]);
 
   const selectedValues = multiple ? values : value ? [value] : [];
 

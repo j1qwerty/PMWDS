@@ -160,15 +160,15 @@ public record ProjectSummaryDto(
     p.PlannedEndDate);
 }
 public record CreateProjectDto(
- string ProjectCode,
- string Name,
- string? Description,
- string Category,
- DateTime PlannedStartDate,
- DateTime PlannedEndDate,
- decimal PlannedBudget,
- Guid DepartmentId,
- string ProjectManagerId,
+ string? ProjectCode = null,
+ string Name = "",
+ string? Description = null,
+ string Category = "",
+ DateTime PlannedStartDate = default,
+ DateTime PlannedEndDate = default,
+ decimal PlannedBudget = 0,
+ Guid DepartmentId = default,
+ string ProjectManagerId = "",
  IReadOnlyCollection<Guid>? DepartmentIds = null,
  Domain.Enums.ProjectPriority Priority =
  Domain.Enums.ProjectPriority.Medium);

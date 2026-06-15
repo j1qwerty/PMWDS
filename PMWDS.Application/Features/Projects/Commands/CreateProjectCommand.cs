@@ -35,13 +35,18 @@ public class CreateProjectCommandHandler
         .GetByIdAsync(dto.DepartmentId, ct)
         ?? throw new NotFoundException(
         "Department", dto.DepartmentId);
-        // Validate project manager exists
-        var manager = await _uow.Users
-        .GetByIdAsync(
-        Guid.Parse(dto.ProjectManagerId), ct)
-        ?? throw new NotFoundException(
-        "User", dto.ProjectManagerId);
-        // Check for duplicate project code
+        // Validate project manager exists (optional)
+        string? managerName = null;
+        if (!string.IsNullOrEmpty(dto.ProjectManagerId))
+        {
+           var manager = await _uow.Users
+           .GetByIdAsync(
+           Guid.Parse(dto.ProjectManagerId), ct)
+           ?? throw new NotFoundException(
+           "User", dto.ProjectManagerId);
+           managerName = manager.FullName;
+        }
+
         var project = Project.Create(
         dto.Name,
         dto.Description ?? string.Empty,
@@ -52,7 +57,8 @@ public class CreateProjectCommandHandler
         dto.PlannedStartDate,
         dto.PlannedEndDate,
         dto.PlannedBudget,
-        null);
+        null,
+        dto.ProjectCode);
         project.AssignDepartments(dto.DepartmentIds ?? new[] { dto.DepartmentId });
         project.SetCreatedBy(_currentUser.UserId ?? "system");
 
@@ -67,6 +73,6 @@ public class CreateProjectCommandHandler
         null, new { project.Id, project.Name },
         ct: ct);
         // Notify project manager
-        return ProjectDto.FromEntity(project, manager.FullName);
+        return ProjectDto.FromEntity(project, managerName ?? "N/A");
     }
 }

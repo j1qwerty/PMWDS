@@ -17,6 +17,7 @@ interface TaskSubtaskCardProps {
   getProgressColor: (progress: number) => string;
   onAddSubtask?: (parentTaskId: string) => void;
   users?: User[];
+  organizationId?: string | null;
 }
 
 export function TaskSubtaskCard({
@@ -28,6 +29,7 @@ export function TaskSubtaskCard({
   getProgressColor,
   onAddSubtask,
   users = [],
+  organizationId,
 }: TaskSubtaskCardProps) {
   const perm = usePermission();
   const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
@@ -487,6 +489,7 @@ export function TaskSubtaskCard({
         open={showSubtaskModal}
         parentTask={task}
         users={users}
+        organizationId={organizationId}
         onSubmit={handleCreateSubtask}
         onClose={() => setShowSubtaskModal(false)}
       />

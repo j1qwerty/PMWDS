@@ -185,8 +185,6 @@ export function TaskEditModal({
 
         <div className="p-5 space-y-4 border-b border-slate-100 ">
 
-        
-
           {assignedUsersResolved.length > 0 && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
               <AvatarStack people={assignedUsersResolved} size="xs" />

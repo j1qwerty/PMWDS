@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../../types";
 import { priorities } from "../../constants";
-import { ModalOverlay, InputF, SelectF, ScopedUserSelect, getProjectDepartmentIds } from "../../shared";
+import { ModalOverlay, InputF, SelectF, AvatarStack, ScopedUserSelect, getProjectDepartmentIds } from "../../shared";
 
 interface TaskFormModalProps {
   open: boolean;
@@ -12,6 +12,7 @@ interface TaskFormModalProps {
   departments?: Department[];
   milestones: Milestone[];
   users: User[];
+  organizationId?: string | null;
   onSubmit: (data: Record<string, unknown>) => void;
   onClose: () => void;
 }
@@ -25,6 +26,7 @@ export function TaskFormModal({
   departments = [],
   milestones,
   users,
+  organizationId,
   onSubmit,
   onClose,
 }: TaskFormModalProps) {
@@ -58,12 +60,22 @@ export function TaskFormModal({
     }
   }, [open, initialData, defaultProjectId, defaultMilestoneId]);
 
+  const assignedUsers = useMemo(() => {
+    return form.assignedToUserIds.map((id) => {
+      const user = users.find((u) => u.id === id);
+      return { id, fullName: user?.fullName ?? "Unknown", profilePictureUrl: user?.profilePictureUrl ?? null };
+    });
+  }, [form.assignedToUserIds, users]);
+
   if (!open) return null;
 
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const selectedDepartment = selectedProject
     ? departments.find((d) => d.id === getProjectDepartmentIds(selectedProject)[0])
+    : undefined;
+  const projectDepartmentId = selectedProject
+    ? getProjectDepartmentIds(selectedProject)[0]
     : undefined;
 
   const handleSubmit = (e: FormEvent) => {
@@ -93,7 +105,7 @@ export function TaskFormModal({
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">{initialData ? "Edit Task" : "New Task"}</h2>
-            <p className="text-sm text-slate-500">Assign work to your team</p>
+           
           </div>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -126,12 +138,23 @@ export function TaskFormModal({
             onChange={(v) => setForm({ ...form, milestoneId: v })}
             options={[{ value: "", label: "None" }, ...projectMilestones.map((m) => ({ value: m.id, label: m.name }))]}
           />
+          {assignedUsers.length > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
+              <AvatarStack people={assignedUsers} size="xs" />
+              <span className="text-slate-600 font-medium truncate max-w-50">
+                {assignedUsers.map(u => u.fullName).join(", ")}
+              </span>
+            </div>
+          )}
           <ScopedUserSelect
             users={users}
-            value={form.assignedToUserIds[0] || ""}
-            organizationId={selectedDepartment?.organizationId}
-            label="Assignee"
+            values={form.assignedToUserIds}
+            organizationId={organizationId ?? selectedDepartment?.organizationId}
+            departmentId={projectDepartmentId}
+            label="Assignees"
+            multiple
             onChange={(userId) => setForm({ ...form, assignedToUserIds: userId ? [userId] : [] })}
+            onMultiChange={(assignedToUserIds) => setForm({ ...form, assignedToUserIds })}
           />
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm">

@@ -156,7 +156,7 @@ export function CreateProjectModal({
             <ScopedUserSelect
               users={users}
               value={form.projectManagerId}
-              organizationId={selectedDepartment?.organizationId}
+              organizationId={form.organizationId || selectedDepartment?.organizationId}
               label="Project Manager"
               onChange={(projectManagerId) => setForm({ ...form, projectManagerId })}
             />

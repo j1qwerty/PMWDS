@@ -7,6 +7,7 @@ interface SubtaskFormModalProps {
   open: boolean;
   parentTask: Task;
   users: User[];
+  organizationId?: string | null;
   onSubmit: (data: Record<string, unknown>) => void;
   onClose: () => void;
 }
@@ -15,6 +16,7 @@ export function SubtaskFormModal({
   open,
   parentTask,
   users,
+  organizationId,
   onSubmit,
   onClose,
 }: SubtaskFormModalProps) {
@@ -86,6 +88,7 @@ export function SubtaskFormModal({
           <ScopedUserSelect
             users={users}
             value={form.assignedToUserId || ""}
+            organizationId={organizationId}
             label="Assignee"
             onChange={(userId) => setForm({ ...form, assignedToUserId: userId })}
           />

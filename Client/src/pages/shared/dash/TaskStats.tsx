@@ -1,43 +1,45 @@
 import React from 'react';
 import type { Task } from "../../../types";
+import { getStatusColor } from "../../shared/colors"; // Adjust import path as needed
 
 interface StatCardProps {
   icon: React.ReactNode;
   value: number;
   label: string;
-  bgColor: string;
-  iconBg: string;
-  iconColor: string;
-  shadowHoverColor:string;
+  statusKey: string;
 }
 
 type TaskStatsProps = {
   tasks?: Task[];
 };
 
-const StatCard: React.FC<StatCardProps> = ({ icon, value, label, bgColor, iconBg, iconColor, shadowHoverColor }) => (
-  <div className={`shadow-sm group relative  overflow-hidden ${shadowHoverColor} rounded-2xl from-surface-container-lowest to-surface-container-low p-4 hover:shadow-sm transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
-    {/* Animated blur background */}
-    <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${bgColor} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
-    
-    {/* Top row - Icon and Label */}
-    <div className="relative flex items-center gap-3 mb-2">
-      <div className={`w-8 h-8 ${iconBg} rounded-lg flex items-center justify-center ${iconColor} shrink-0`}>
-        {icon}
+const StatCard: React.FC<StatCardProps> = ({ icon, value, label, statusKey }) => {
+  const colors = getStatusColor(statusKey);
+  
+  return (
+    <div className={`shadow-sm group relative overflow-hidden ${colors.shadowHoverColor} rounded-2xl p-4 hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
+      {/* Animated blur background */}
+      <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${colors.bg} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
+      
+      {/* Top row - Icon and Label */}
+      <div className="relative flex items-center gap-3 mb-2">
+        <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
+          {icon}
+        </div>
+        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+          {label}
+        </span>
       </div>
-      <span className="text-xs font-medium  text-slate-500 uppercase tracking-wider">
-        {label}
-      </span>
+      
+      {/* Value */}
+      <div className="relative mt-2">
+        <span className={`text-2xl font-bold text-center tracking-wider ${colors.text}`}>
+          {value.toLocaleString()}
+        </span>
+      </div>
     </div>
-    
-    {/* Value */}
-    <div className="relative mt-2">
-      <span className="text-2xl font-bold text-center tracking-wider text-slate-800">
-        {value.toLocaleString()}
-      </span>
-    </div>
-  </div>
-);
+  );
+};
 
 const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
   const stats = [
@@ -49,10 +51,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       ),
       value: tasks.length,
       label: 'Total Tasks',
-      bgColor: 'bg-cyan-100',
-      iconBg: 'bg-cyan-100',
-      iconColor: 'text-cyan-600',
-      shadowHoverColor: 'hover:shadow-cyan-500'
+      statusKey: 'Total',
     },
     {
       icon: (
@@ -62,10 +61,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       ),
       value: tasks.filter(task => task.status === "InProgress").length,
       label: 'In Progress',
-      bgColor: 'bg-yellow-100',
-      iconBg: 'bg-yellow-100',
-      iconColor: 'text-yellow-500',
-      shadowHoverColor: 'hover:shadow-yellow-500'
+      statusKey: 'InProgress',
     },
     {
       icon: (
@@ -75,10 +71,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       ),
       value: tasks.filter(task => task.status === "OnHold").length,
       label: 'On Hold',
-      bgColor: 'bg-gray-200',
-      iconBg: 'bg-gray-100',
-      iconColor: 'text-gray-500',
-      shadowHoverColor: 'hover:shadow-gray-500'
+      statusKey: 'OnHold',
     },
     {
       icon: (
@@ -88,10 +81,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       ),
       value: tasks.filter(task => task.status === "Completed" || task.progressPercentage === 100).length,
       label: 'Completed',
-      bgColor: 'bg-emerald-100',
-      iconBg: 'bg-emerald-100',
-      iconColor: 'text-emerald-600',
-      shadowHoverColor: 'hover:shadow-emerald-500'
+      statusKey: 'Completed',
     },
     {
       icon: (
@@ -101,10 +91,7 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks = [] }) => {
       ),
       value: tasks.filter(task => task.isOverdue || task.status === "Delayed").length,
       label: 'Delayed',
-      bgColor: 'bg-red-100',
-      iconBg: 'bg-red-200',
-      iconColor: 'text-red-800',
-      shadowHoverColor: 'hover:shadow-red-500'
+      statusKey: 'Delayed',
     }
   ];
 

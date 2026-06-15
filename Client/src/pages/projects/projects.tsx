@@ -7,6 +7,7 @@ import { classNames, formatMoney } from "../../ui";
 import { MilestonesTab } from "../shared/MilestonesTab";
 import { GlassCard, LoadingPage, useNavHeader, OrganizationDepartmentFilter, PERMISSION_GROUPS, usePermission, getProjectDepartmentIds, projectBelongsToAnyDepartment, projectBelongsToDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
+import TaskStats from "../shared/dash/TaskStats";
 import {
   ProjectsBoard,
   ProjectsBoardK,
@@ -235,6 +236,7 @@ export function ProjectsPage() {
   return (
     <div className="flex flex-col gap-5">
 
+      <TaskStats tasks={data.tasks} />
 
       <OrganizationDepartmentFilter
         organizations={organizations}

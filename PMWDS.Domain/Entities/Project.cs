@@ -51,21 +51,22 @@ public class Project : AuditableEntity
    public IReadOnlyList<IDomainEvent> DomainEvents =>
    _domainEvents.AsReadOnly();
    protected Project() { }
-   public static Project Create(
-   string name,
-   string description,
-   string category,
-   ProjectPriority priority,
-   Guid departmentId,
-   string projectManagerId,
-   DateTime plannedStartDate,
-   DateTime plannedEndDate,
-   decimal plannedBudget,
-   string? clientName = null)
-   {
-      var project = new Project
-      {
-         ProjectCode = GenerateCode(category),
+    public static Project Create(
+    string name,
+    string description,
+    string category,
+    ProjectPriority priority,
+    Guid departmentId,
+    string projectManagerId,
+    DateTime plannedStartDate,
+    DateTime plannedEndDate,
+    decimal plannedBudget,
+    string? clientName = null,
+    string? projectCode = null)
+    {
+       var project = new Project
+       {
+          ProjectCode = projectCode ?? GenerateCode(category),
          Name = name,
          Description = description,
          Category = category,

@@ -1,35 +1,24 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
-import { SimpleProjectList } from "../shared/SimpleProjectList";
-import { TaskList } from "../shared/TaskList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
-import { formatMoney, formatPercent } from "../../ui";
-import { ModalOverlay, PageSkeleton, priorityColorPalette, statusColorPalette, useNavHeader, useToast } from "../shared";
+import { ModalOverlay, PageSkeleton, useNavHeader, useToast } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { KpiCard } from "./kpiCard";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
-import TaskProgressBoards2 from "../shared/dash/TaskProgressBoards2";
 import { TaskDetail } from "../tasks/TaskDetail";
 import { TaskFormModal } from "../tasks/TaskFormModal";
-import TaskProgressBoards from "../shared/dash/TaskProgressBoard";
-import TaskPerformance from "../shared/dash/TaskPerformance";
-import { HighRiskInterventionsCompact } from "../shared/dash/HighRiskInterventionsCompact";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
-import { DashboardStats } from "./dashbaordStats";
+import DashboardStats from "./dashbaordStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
-import { ActivityCompact } from "../shared/dash/ActivityCompact";
 import Timer from "../shared/dash/Timer";
-import { TimelinePredictions } from "../ai/TimelinePredictions";
 import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
 
 const emptyProjectForm = (): ProjectFormState => ({
@@ -37,7 +26,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   name: "",
   description: "",
   category: "Monitoring",
-  plannedStartDate: "",
+  plannedStartDate: new Date().toISOString().split("T")[0],
   plannedEndDate: "",
   plannedBudget: 25000,
   organizationId: "",
@@ -51,7 +40,6 @@ export function DashboardPage() {
   const { auth } = useAuth();
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
-  const navigate = useNavigate();
   const { refresh: refreshAppData } = useAppData();
   const { addToast } = useToast();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
@@ -74,15 +62,15 @@ export function DashboardPage() {
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("All Tasks");
 
 
-   const [showCreateModal, setShowCreateModal] = useState(false);
-   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
-   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   useEffect(() => {
     setNavHeader({
       title: "Dashboard",
       description: "Overview of projects, tasks, and key metrics",
-     action: canManageProjects ? {
+      action: canManageProjects ? {
         label: "New Project",
         onClick: () => {
           setProjectForm({
@@ -94,7 +82,7 @@ export function DashboardPage() {
         icon: "add_circle",
       } : undefined,
     });
-  }, [setNavHeader, navigate, canManageProjects, shouldFilterByOrg, userOrganizationId]);
+  }, [setNavHeader, canManageProjects, shouldFilterByOrg, userOrganizationId]);
 
   const handleCreateProject = async (e: FormEvent) => {
     e.preventDefault();
@@ -251,16 +239,14 @@ export function DashboardPage() {
   return (
     <div>
 
+      <DashboardStats projects={projects} />
       <section>
-        <TaskStats tasks={myTasks} />
+
         {/* Dashboard Overview Section */}
         <section className="my-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* High Risk Interventions  */}
             <HighRiskInterventions tasks={escalatedTasks} />
-
-            {/* Version 2 - Department-based colors (Alternative design) */}
-            {/* <HighRiskInterventionsCompact tasks={escalatedTasks} /> */}
 
             {/* Project Overview*/}
             <ProjectOverview
@@ -322,26 +308,11 @@ export function DashboardPage() {
           <div className="flex-1 py-4">
             <NotificationList items={unread.slice(0, 6)} title="Notifications" />
           </div>
-          {/* <TimelinePredictions/> */}
         </section>
 
-
-
-
-
-
-        {/* <TaskProgressBoards /> */}
-
-        <DashboardStats dashboard={dashboard} />
-
-        <TaskProgressBoards2
-          tasks={allTasks}
-          onViewTask={openTaskDetails}
-          onEditTask={openTaskEditor}
-          canEdit={canEditTasks}
-        />
-
-        {/* <TaskPerformance/> */}
+        <div className="py-4">
+          <TaskStats tasks={myTasks} />
+        </div>
 
         <TaskPerformanceTable
           tasks={allTasks}

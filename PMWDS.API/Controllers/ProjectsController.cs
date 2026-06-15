@@ -143,7 +143,8 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        if (!await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
+        if (!string.IsNullOrEmpty(dto.ProjectManagerId) &&
+            !await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
         {
             return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
@@ -167,7 +168,8 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        if (!await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
+        if (!string.IsNullOrEmpty(dto.ProjectManagerId) &&
+            !await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
         {
             return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
