@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Milestone, Task } from "../../types";
-import { formatDate } from "../../ui";
+import { classNames, formatDate } from "../../ui";
 import {
   AnimatedBackground,
   GlassCard,
@@ -17,6 +19,9 @@ import {
 import {
   MilestonesPanel,
   MilestoneDetailModal,
+  ProjectDetailModal,
+  ProjectFormModal,
+  type ProjectFormState,
   TaskSubtaskCard,
   TaskSubtaskDetailsModal,
   TaskFormModal,
@@ -27,8 +32,25 @@ import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
 
+const emptyProjectForm = (): ProjectFormState => ({
+  projectCode: "",
+  name: "",
+  description: "",
+  category: "Monitoring",
+  plannedStartDate: new Date().toISOString().split("T")[0],
+  plannedEndDate: "",
+  plannedBudget: 25000,
+  organizationId: "",
+  departmentId: "",
+  departmentIds: [],
+  projectManagerId: "",
+  priority: "Medium",
+});
+
 export function ProjectMilestonesPage() {
   const ws = useProjectWorkspace();
+  const { data: appData } = useAppData();
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const { addToast } = useToast();
   const perm = usePermission();
@@ -51,6 +73,9 @@ export function ProjectMilestonesPage() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [viewTask, setViewTask] = useState<Task | null>(null);
   const [viewMilestone, setViewMilestone] = useState<Milestone | null>(null);
+  const [viewProject, setViewProject] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+  const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
   const [pendingForceComplete, setPendingForceComplete] = useState<{
     milestoneId: string;
     status?: string;
@@ -227,6 +252,41 @@ export function ProjectMilestonesPage() {
     }
   };
 
+  const useContainerWidth = () => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [isNarrow, setIsNarrow] = useState(false);
+
+    useEffect(() => {
+      const container = ref.current;
+      if (!container) return;
+
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const containerWidth = entry.contentRect.width;
+          const viewportWidth = window.innerWidth;
+          const widthPercentage = (containerWidth / viewportWidth) * 100;
+          setIsNarrow(widthPercentage < 40);
+        }
+      });
+
+      observer.observe(container);
+      return () => observer.disconnect();
+    }, []);
+
+    return { ref, isNarrow };
+  };
+
+  const { ref: tasksContainerRef, isNarrow: isTasksNarrow } = useContainerWidth();
+
+  const handleEditProject = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!auth || !ws.project) return;
+    await api.updateProject(auth.token, ws.project.id, projectForm);
+    setEditProjectOpen(false);
+    addToast("Project updated");
+    await ws.refresh();
+  };
+
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -287,6 +347,25 @@ export function ProjectMilestonesPage() {
           project={ws.project}
           milestonesCount={ws.milestones.length}
           canManageProjects={canManageProjects}
+          onViewProject={() => setViewProject(true)}
+          onEditProject={() => {
+            if (!ws.project) return;
+            setProjectForm({
+              projectCode: ws.project.projectCode ?? "",
+              name: ws.project.name,
+              description: ws.project.description ?? "",
+              category: ws.project.category ?? "Monitoring",
+              plannedStartDate: ws.project.plannedStartDate?.split("T")[0] ?? "",
+              plannedEndDate: ws.project.plannedEndDate?.split("T")[0] ?? "",
+              plannedBudget: ws.project.plannedBudget ?? 0,
+              organizationId: "",
+              departmentId: ws.project.departmentId ?? "",
+              departmentIds: ws.project.departmentIds ?? [],
+              projectManagerId: ws.project.projectManagerId ?? "",
+              priority: ws.project.priority ?? "Medium",
+            });
+            setEditProjectOpen(true);
+          }}
         />
       </div>
 
@@ -312,8 +391,9 @@ export function ProjectMilestonesPage() {
           onViewDetail={setViewMilestone}
         />
 
+
         {/* Center: Tasks */}
-        <div className="space-y-3 min-w-0">
+        <div ref={tasksContainerRef} className="space-y-3 min-w-0">
           {selectedMilestone && canManageTasks && milestoneTasks.length > 0 && (
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -352,7 +432,10 @@ export function ProjectMilestonesPage() {
               </div>
             </GlassCard>
           ) : selectedMilestone ? (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            <div className={classNames(
+              "grid gap-3",
+              isTasksNarrow ? "grid-cols-1" : "grid-cols-2"
+            )}>
               {milestoneTasks.map((task) => (
                 <TaskSubtaskCard
                   key={task.id}
@@ -361,6 +444,7 @@ export function ProjectMilestonesPage() {
                   onViewTask={(t) => setViewTask(t)}
                   onEditTask={(t) => setTaskModal({ open: true, edit: t })}
                   getProgressColor={getProgressColor}
+                  onRefresh={() => ws.refresh()}
                   users={ws.users}
                 />
               ))}
@@ -494,7 +578,31 @@ export function ProjectMilestonesPage() {
         onEscalate={() => {
           void ws.refresh();
         }}
-        onMessage={() => {}}
+        onMessage={() => { }}
+      />
+
+      <ProjectDetailModal
+        project={viewProject ? ws.project : null}
+        canManage={canManageProjects}
+        authToken={auth?.token}
+        users={ws.users}
+        milestones={ws.milestones}
+        onClose={() => setViewProject(false)}
+        onEdit={() => navigate("/projectsK")}
+        onStatusChange={() => { ws.refresh(); }}
+      />
+
+      <ProjectFormModal
+        open={editProjectOpen}
+        title="Edit Project"
+        submitLabel="Save"
+        form={projectForm}
+        setForm={setProjectForm}
+        departments={appData.departments}
+        organizations={appData.organizations}
+        users={appData.users}
+        onSubmit={handleEditProject}
+        onClose={() => setEditProjectOpen(false)}
       />
     </div>
   );
@@ -530,9 +638,8 @@ function MilestoneHeader({
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0 ${
-              milestone.isCritical ? "bg-red-500 shadow-red-500/25" : "bg-indigo-600 shadow-indigo-500/25"
-            }`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0 ${milestone.isCritical ? "bg-red-500 shadow-red-500/25" : "bg-indigo-600 shadow-indigo-500/25"
+              }`}
           >
             <span className="material-symbols-outlined text-xl text-white">
               {milestone.status === "Completed" ? "check_circle" : "flag"}
@@ -602,13 +709,12 @@ function MilestoneHeader({
         </div>
         <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              isCompleted
+            className={`h-full rounded-full transition-all duration-500 ${isCompleted
                 ? "bg-gradient-to-r from-emerald-400 to-emerald-500"
                 : milestone.isCritical
-                ? "bg-gradient-to-r from-red-400 to-red-500"
-                : "bg-gradient-to-r from-indigo-400 to-indigo-500"
-            }`}
+                  ? "bg-gradient-to-r from-red-400 to-red-500"
+                  : "bg-gradient-to-r from-indigo-400 to-indigo-500"
+              }`}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -632,18 +738,17 @@ function MilestoneHeader({
                   type="button"
                   disabled={milestone.status === status}
                   onClick={() => (status === "Completed" ? onComplete() : onStatusChange(status))}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors ${
-                    milestone.status === status
+                  className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors ${milestone.status === status
                       ? `${st.bg} ${st.text} cursor-default`
                       : "border-slate-200 text-slate-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
-                  }`}
+                    }`}
                 >
                   {status}
                 </button>
               );
             })}
           </div>
-          
+
         </div>
       )}
     </GlassCard>

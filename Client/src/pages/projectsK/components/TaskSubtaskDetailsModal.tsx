@@ -12,7 +12,7 @@ import { TimerSection } from "../../nested/components/TimerSection";
 import { AiInsightsSection } from "../../nested/components/AiInsightsSection";
 
 interface TaskSubtaskDetailsProps {
-  task: Task;
+  task: Task | null;
   users: User[];
   project?: Project | null;
   milestone?: Milestone | null;
@@ -20,23 +20,30 @@ interface TaskSubtaskDetailsProps {
   delay?: any;
   isAdmin?: boolean;
   permissionEdit?: string;
-  onStatusChange: (status: string, options?: { confirmReset?: boolean }) => void;
-  onEdit: () => void;
-  onUpdateProgress: (progress: number, notes: string) => void;
-  onAddComment: (comment: string) => void;
-  onStartTimer: (description: string) => void;
-  onRefresh: () => void;
+  onStatusChange?: (status: string, options?: { confirmReset?: boolean }) => void;
+  onEdit: (task: Task) => void;
+  onUpdateProgress?: (progress: number, notes: string) => void;
+  onAddComment?: (comment: string) => void;
+  onStartTimer?: (description: string) => void;
+  onRefresh?: () => void;
   onEscalate: () => void;
   onMessage?: (message: string) => void;
   onClose?: () => void;
   hideCloseButton?: boolean;
+  onDelete: (task: Task) => void;
 }
+
+type InnerTaskSubtaskDetailsProps = Omit<TaskSubtaskDetailsProps, "task"> & { task: Task };
 
 // ─── Main Component ─────────────────────────────────
 
 export function TaskSubtaskDetailsModal(props: TaskSubtaskDetailsProps) {
   if (!props.task) return null;
-  return <TaskSubtaskDetailsModalInner {...props} />;
+  const innerProps: InnerTaskSubtaskDetailsProps = {
+    ...props,
+    task: props.task,
+  };
+  return <TaskSubtaskDetailsModalInner {...innerProps} />;
 }
 
 function TaskSubtaskDetailsModalInner({
@@ -48,16 +55,18 @@ function TaskSubtaskDetailsModalInner({
   delay,
   isAdmin,
   permissionEdit,
-  onStatusChange,
+  onStatusChange = () => {},
   onEdit,
-  onUpdateProgress,
-  onStartTimer,
-  onRefresh,
+  onUpdateProgress = () => {},
+  onAddComment = () => {},
+  onStartTimer = () => {},
+  onRefresh = () => {},
   onEscalate,
   onMessage,
   onClose,
+  onDelete,
   hideCloseButton = false,
-}: TaskSubtaskDetailsProps) {
+}: InnerTaskSubtaskDetailsProps) {
   const perm = usePermission();
   const mayEdit = isAdmin ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { auth } = useAuth();
@@ -252,9 +261,9 @@ function TaskSubtaskDetailsModalInner({
             onProgressBarClick={handleProgressBarClick}
             onProgressBarDrag={handleProgressDrag}
             onStatusChange={handleMainStatusChange}
-            onEdit={onEdit}
+            onEdit={() => onEdit(task)}
             onEscalate={onEscalate}
-            onDelete={() => { if (confirm("Delete task?")) onRefresh(); }}
+            onDelete={() => { onDelete(task); }}
             onClose={onClose}
             hideCloseButton={true}
           />

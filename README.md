@@ -1,6 +1,6 @@
 # PMWDS
 
-PMWDS is a project management and workflow decision support system. It combines portfolio planning, organization and department management, task and milestone execution, notification workflows, reporting, integrations, knowledge management, and AI-assisted delivery signals such as task allocation, delay prediction, burnout risk, and project health.
+PMWDS is a project management and workflow decision support system. It combines portfolio planning, organization and department management, task and milestone execution, notification workflows, reporting and AI-assisted delivery signals such as task allocation, delay prediction, burnout risk, and project health.
 
 The API entry point is `PMWDS.API`. The frontend lives in `Client`.
 
@@ -9,7 +9,9 @@ The API entry point is `PMWDS.API`. The frontend lives in `Client`.
 | File | Purpose |
 |------|---------|
 | [CONFIG.md](CONFIG.md) | Full setup, configuration, build, deployment, and operations guide |
-| [sqlite.md](sqlite.md) | SQLite fallback notes, reason, flow, and troubleshooting |
+| [config-sqlite.md](config-sqlite.md) | Combined SQLite config guide with verified implementation and remediation |
+| [responsive.md](responsive.md) | Responsive design properties by category — layout, breakpoints, and clamp values |
+
 
 ## Tech Stack
 
@@ -110,7 +112,7 @@ On first run, the API seeds representative data across the full product surface:
 - SQLite is a development fallback and is bootstrapped with `EnsureCreated` style schema creation because older SQL Server migrations are not fully portable to SQLite.
 - Hangfire is disabled when SQLite is active.
 - The API startup path creates or rebuilds the SQLite development database if the expected schema is missing or stale.
-- Direct `dotnet ef database update` against the existing SQLite file is not the recommended flow for this repo. See [sqlite.md](sqlite.md) and [docs/issue-sqlite.md](docs/issue-sqlite.md).
+- Direct `dotnet ef database update` against the existing SQLite file is not the recommended flow for this repo. See [sqlite.md](sqlite.md), [issue-sqlite.md](issue-sqlite.md), and [config-sqlite.md](config-sqlite.md).
 
 ## Build Checks
 

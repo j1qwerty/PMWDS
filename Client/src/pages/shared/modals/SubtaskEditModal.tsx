@@ -150,6 +150,7 @@ export function SubtaskEditModal({
               status={editStatus}
               mayEdit={mayEdit}
               onChange={handleProgressStatusChange}
+              entityType="subtask"
             />
           )}
 

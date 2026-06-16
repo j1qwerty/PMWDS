@@ -5,6 +5,7 @@ export { GradientButton } from "./GradientButton";
 export { InfoTile } from "./InfoTile";
 export { ModalOverlay } from "./ModalOverlay";
 export { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+export { BgControls, BgRenderer, type BgConfig, type BgPreset, DEFAULT_CONFIG } from "./bg/index";
 export { InputF } from "./InputF";
 export { SelectF } from "./SelectF";
 export { OrgFormModal } from "./OrgFormModal";

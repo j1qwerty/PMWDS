@@ -3,7 +3,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Department, OrganizationRecord, Project, ProjectHealth } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
-import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter, PERMISSION_GROUPS, getProjectDepartmentIds, projectBelongsToDepartment, usePermission } from "../shared";
+import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter, PERMISSION_GROUPS, getProjectDepartmentIds, projectBelongsToDepartment, usePermission, BgRenderer } from "../shared";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -125,7 +125,17 @@ export function AIPage() {
 
   return (
     <div>
-      <AnimatedBackground />
+      {/* <AnimatedBackground /> */}
+    <BgRenderer
+  config={{
+    pattern: "hexagons",
+    gradient: { type: "radial", color1: "#4F46E5", color2: "#27cbec", color3: "#A855F7", angle: 0, opacity: 0.15 },
+    overlay: { color: "#4F46E5", opacity: 0.21, size: 120, strokeWidth: 0.3, angle: 45 },
+    waves: { color: "#4F46E5", opacity: 0.2, amplitude: 15, frequency: 2, speed: 1, count: 3 },
+    blobs: { color1: "#4F46E5", color2: "#7C3AED", opacity: 0.12, count: 3, animation: "float", speed: 1, size: 1 },
+  }}
+/>
+
 
 
 

@@ -23,6 +23,30 @@ export interface StatusColorEntry {
 }
 
 export const statusColorPalette: Record<string, StatusColorEntry> = {
+  Planning: {
+    bg: "bg-cyan-100",
+    border: "border-cyan-200",
+    text: "text-cyan-700",
+    dot: "bg-cyan-500",
+    headerBg: "bg-cyan-100",
+    headerText: "text-cyan-600",
+    badgeBg: "bg-cyan-50",
+    badgeText: "text-cyan-700",
+    shadow: "shadow-sm hover:shadow-md",
+    shadowHoverColor: "hover:shadow-cyan-500",
+  },
+  Active: {
+    bg: "bg-blue-100",
+    border: "border-blue-200",
+    text: "text-blue-600",
+    dot: "bg-blue-500",
+    headerBg: "bg-blue-100",
+    headerText: "text-blue-500",
+    badgeBg: "bg-blue-50",
+    badgeText: "text-blue-600",
+    shadow: "shadow-sm hover:shadow-md",
+    shadowHoverColor: "hover:shadow-blue-500",
+  },
   Total: {
     bg: "bg-sky-100",
     border: "border-sky-200",

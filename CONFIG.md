@@ -8,7 +8,8 @@ This guide describes the configuration required to build, run, and deploy PMWDS.
 |------|---------|
 | [README.md](README.md) | Project overview, local setup, credentials, and operational notes |
 | [sqlite.md](sqlite.md) | SQLite fallback behavior and development database notes |
-| [docs/issue-sqlite.md](docs/issue-sqlite.md) | Detailed SQLite migration issue and production-ready remediation options |
+| [issue-sqlite.md](issue-sqlite.md) | Detailed SQLite migration issue and production-ready remediation options |
+| [config-sqlite.md](config-sqlite.md) | Combined SQLite config guide with verified implementation and remediation paths |
 
 ## Configuration File Order
 
@@ -109,7 +110,7 @@ Behavior:
 - The API startup path creates the directory, validates the expected SQLite schema, rebuilds stale development schema when needed, and runs seed data.
 - Hangfire is disabled while SQLite is active.
 
-See [sqlite.md](sqlite.md) and [docs/issue-sqlite.md](docs/issue-sqlite.md) before changing this flow.
+See [sqlite.md](sqlite.md), [issue-sqlite.md](issue-sqlite.md), and [config-sqlite.md](config-sqlite.md) before changing this flow.
 
 ### Database Settings Class
 

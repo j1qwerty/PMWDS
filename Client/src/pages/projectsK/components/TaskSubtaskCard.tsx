@@ -16,6 +16,7 @@ interface TaskSubtaskCardProps {
   onEditTask?: (task: Task) => void;
   getProgressColor: (progress: number) => string;
   onAddSubtask?: (parentTaskId: string) => void;
+  onRefresh?: () => void;
   users?: User[];
   organizationId?: string | null;
 }
@@ -28,6 +29,7 @@ export function TaskSubtaskCard({
   onEditTask,
   getProgressColor,
   onAddSubtask,
+  onRefresh: onParentRefresh,
   users = [],
   organizationId,
 }: TaskSubtaskCardProps) {
@@ -113,6 +115,7 @@ export function TaskSubtaskCard({
       setShowSubtaskModal(false);
       addToast("Subtask created");
       await refreshSubtasks();
+      onParentRefresh?.();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to create subtask", "error");
     }
@@ -151,6 +154,7 @@ export function TaskSubtaskCard({
       };
       setSubtasks(updated);
       await refreshSubtasks();
+      onParentRefresh?.();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to update subtask", "error");
       throw e;
@@ -167,6 +171,7 @@ export function TaskSubtaskCard({
         return next;
       });
       addToast("Subtask deleted");
+      onParentRefresh?.();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to delete subtask", "error");
     }
@@ -203,6 +208,7 @@ export function TaskSubtaskCard({
           milestoneId: task.milestoneId,
         });
       }
+      setCardProgress(data.progress);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to update task", "error");
       throw e;
@@ -481,7 +487,10 @@ export function TaskSubtaskCard({
           onAddComment={handleTaskAddComment}
           onDelete={async (taskId) => { handleDeleteSubtask(taskId); }}
           onStartTimer={handleTaskStartTimer}
-          onRefresh={async () => { await refreshSubtasks(); }}
+          onRefresh={async () => {
+            await refreshSubtasks();
+            onParentRefresh?.();
+          }}
         />
       )}
 

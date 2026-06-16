@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Milestone, Task } from "../../types";
 import { formatDate } from "../../ui";
@@ -14,13 +16,30 @@ import {
   getStatusColor,
 } from "../shared";
 import TaskBoard, { allBoards } from "../shared/dash/TaskBoard";
-import { TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
+import { ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
 
+const emptyProjectForm = (): ProjectFormState => ({
+  projectCode: "",
+  name: "",
+  description: "",
+  category: "Monitoring",
+  plannedStartDate: new Date().toISOString().split("T")[0],
+  plannedEndDate: "",
+  plannedBudget: 25000,
+  organizationId: "",
+  departmentId: "",
+  departmentIds: [],
+  projectManagerId: "",
+  priority: "Medium",
+});
+
 export function ProjectTasksPage() {
   const ws = useProjectWorkspace();
+  const { data: appData } = useAppData();
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const { addToast } = useToast();
   const perm = usePermission();
@@ -33,6 +52,9 @@ export function ProjectTasksPage() {
   });
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [viewTask, setViewTask] = useState<Task | null>(null);
+  const [viewProject, setViewProject] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+  const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
 
   const [showBoardSettings, setShowBoardSettings] = useState(false);
   const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>({
@@ -124,6 +146,15 @@ export function ProjectTasksPage() {
     }
   };
 
+  const handleEditProject = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!auth || !ws.project) return;
+    await api.updateProject(auth.token, ws.project.id, projectForm);
+    setEditProjectOpen(false);
+    addToast("Project updated");
+    await ws.refresh();
+  };
+
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -173,6 +204,25 @@ export function ProjectTasksPage() {
           project={ws.project}
           milestonesCount={ws.milestones.length}
           canManageProjects={canManageProjects}
+          onViewProject={() => setViewProject(true)}
+          onEditProject={() => {
+            if (!ws.project) return;
+            setProjectForm({
+              projectCode: ws.project.projectCode ?? "",
+              name: ws.project.name,
+              description: ws.project.description ?? "",
+              category: ws.project.category ?? "Monitoring",
+              plannedStartDate: ws.project.plannedStartDate?.split("T")[0] ?? "",
+              plannedEndDate: ws.project.plannedEndDate?.split("T")[0] ?? "",
+              plannedBudget: ws.project.plannedBudget ?? 0,
+              organizationId: "",
+              departmentId: ws.project.departmentId ?? "",
+              departmentIds: ws.project.departmentIds ?? [],
+              projectManagerId: ws.project.projectManagerId ?? "",
+              priority: ws.project.priority ?? "Medium",
+            });
+            setEditProjectOpen(true);
+          }}
         />
       </div>
 
@@ -368,6 +418,30 @@ export function ProjectTasksPage() {
         name={deleteTask?.title ?? ""}
         onConfirm={handleDeleteTask}
         onClose={() => setDeleteTask(null)}
+      />
+
+      <ProjectDetailModal
+        project={viewProject ? ws.project : null}
+        canManage={canManageProjects}
+        authToken={auth?.token}
+        users={ws.users}
+        milestones={ws.milestones}
+        onClose={() => setViewProject(false)}
+        onEdit={() => navigate("/projectsK")}
+        onStatusChange={() => { ws.refresh(); }}
+      />
+
+      <ProjectFormModal
+        open={editProjectOpen}
+        title="Edit Project"
+        submitLabel="Save"
+        form={projectForm}
+        setForm={setProjectForm}
+        departments={appData.departments}
+        organizations={appData.organizations}
+        users={appData.users}
+        onSubmit={handleEditProject}
+        onClose={() => setEditProjectOpen(false)}
       />
     </div>
   );

@@ -150,14 +150,55 @@ export function ProjectsKPage() {
       setTasks([]);
       return;
     }
-    const [milestoneData, taskData] = await Promise.all([
-      api.getMilestonesByProject(auth.token, projectId),
-      api.getTasksByProject(auth.token, projectId),
-    ]);
-    setMilestones(milestoneData);
-    setTasks(taskData);
-    if (resetMilestoneOnTabSwitch) {
-      setSelectedMilestoneId(activeView === "milestones" ? (milestoneData[0]?.id ?? "") : "");
+    try {
+      const [milestoneData, taskData] = await Promise.all([
+        api.getMilestonesByProject(auth.token, projectId),
+        api.getTasksByProject(auth.token, projectId),
+      ]);
+
+      // Recalculate milestone statuses based on current task statuses
+      const updates: { id: string; status: string }[] = [];
+      const updatedMilestones = milestoneData.map((ms) => {
+        const msTasks = taskData.filter((t) => t.milestoneId === ms.id);
+        if (msTasks.length === 0) return ms;
+
+        const hasDelayed = msTasks.some((t) => t.status === "Delayed");
+        const allCompleted = msTasks.every((t) => t.status === "Completed");
+        const anyNonCompleted = msTasks.some((t) => t.status !== "Completed");
+
+        let newStatus: string | null = null;
+
+        if (hasDelayed && ms.status !== "Delayed") {
+          newStatus = "Delayed";
+        } else if (allCompleted && ms.status !== "Completed") {
+          newStatus = "Completed";
+        } else if (anyNonCompleted && ms.status === "Completed") {
+          newStatus = "InProgress";
+        }
+
+        if (newStatus) {
+          updates.push({ id: ms.id, status: newStatus });
+          return { ...ms, status: newStatus };
+        }
+        return ms;
+      });
+
+      setMilestones(updatedMilestones);
+      setTasks(taskData);
+
+      // Sync recalculated statuses to backend asynchronously
+      if (updates.length > 0 && auth) {
+        const token = auth.token;
+        Promise.allSettled(
+          updates.map((u) => api.setMilestoneStatus(token, u.id, u.status))
+        ).catch(() => {});
+      }
+
+      if (resetMilestoneOnTabSwitch) {
+        setSelectedMilestoneId(activeView === "milestones" ? (milestoneData[0]?.id ?? "") : "");
+      }
+    } catch {
+      // refresh silently — API errors shouldn't block the UI
     }
   };
 
@@ -578,6 +619,8 @@ export function ProjectsKPage() {
         project={viewProject}
         canManage={canManageProjects}
         onClose={() => setViewProject(null)}
+        authToken={auth?.token}
+        milestones={milestones}
         onEdit={
           canManageProjects && viewProject
             ? () => {
@@ -659,7 +702,10 @@ export function ProjectsKPage() {
         onDelete={() => selectedTask && setDeleteTask(selectedTask)}
         onStatusChange={(status) => selectedTask && handleTaskStatus(selectedTask.id, status)}
         onRefresh={() => loadProjectWorkspace(selectedProjectId)}
-        onClose={() => setSelectedTaskId("")}
+        onClose={() => {
+          setSelectedTaskId("");
+          loadProjectWorkspace(selectedProjectId);
+        }}
       />
 
       <TaskSubtaskDetailsModal
@@ -672,7 +718,11 @@ export function ProjectsKPage() {
         }
         users={users}
         isAdmin={canManageTasks}
-        onClose={() => setViewTask(null)}
+        onRefresh={() => { void loadProjectWorkspace(selectedProjectId); }}
+        onClose={() => {
+          setViewTask(null);
+          void loadProjectWorkspace(selectedProjectId);
+        }}
         onEdit={(task) => {
           setTaskModal({ open: true, edit: task });
           setViewTask(null);

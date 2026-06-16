@@ -181,7 +181,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  
+
   // Track screen size for responsive behavior
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -197,7 +197,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       const width = window.innerWidth;
       setIsMobile(width < 768);
       setIsTablet(width >= 768 && width < 1024);
-      
+
       // Auto-collapse sidebar on tablet
       if (width >= 768 && width < 1024) {
         setSidebarCompact(true);
@@ -271,335 +271,353 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <NavHeaderProvider>
-    <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
-      {/* Mobile overlay backdrop */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <nav
-        className={classNames(
-          "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300",
-          "bg-surface-container-lowest/95 backdrop-blur-3xl shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
-          // Mobile: overlay with smooth slide
-          "max-md:z-[100]",
-          mobileSidebarOpen 
-            ? "max-md:translate-x-0 max-md:w-[clamp(240px,70vw,280px)]" 
-            : "max-md:-translate-x-full",
-          // Tablet & Desktop: responsive width
-          sidebarCompact 
-            ? "md:w-[clamp(56px,8vw,64px)]" 
-            : "md:w-[clamp(200px,25vw,240px)]"
-        )}
-      >
-        {/* Logo + Toggle */}
-        <div className="flex items-center justify-between px-[clamp(12px,2vw,16px)] pt-[clamp(16px,2.5vw,20px)] pb-[clamp(8px,1.5vw,12px)]">
-          {!sidebarCompact && (
-            <div className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap">
-              PMWDS
-            </div>
-          )}
-          
-          {/* Hide toggle on mobile (sidebar closes via overlay click) */}
-          <button
-            onClick={() => setSidebarCompact(!sidebarCompact)}
-            className="hidden md:flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
-            style={{ 
-              height: 'clamp(28px,4vw,32px)', 
-              width: 'clamp(28px,4vw,32px)' 
-            }}
-          >
-            {sidebarCompact ? 
-              <HiOutlineChevronDoubleRight className="h-[clamp(14px,2vw,18px)] w-[clamp(14px,2vw,18px)]" /> : 
-              <HiOutlineChevronDoubleLeft className="h-[clamp(14px,2vw,18px)] w-[clamp(14px,2vw,18px)]" />
-            }
-          </button>
-          
-          {/* Mobile close button */}
-          <button
+      <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
+        {/* Mobile overlay backdrop */}
+        {mobileSidebarOpen && (
+          <div
+            className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
             onClick={() => setMobileSidebarOpen(false)}
-            className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary"
-            style={{ 
-              height: 'clamp(28px,4vw,32px)', 
-              width: 'clamp(28px,4vw,32px)' 
-            }}
-          >
-            <HiOutlineX className="h-[clamp(16px,2.5vw,20px)] w-[clamp(16px,2.5vw,20px)]" />
-          </button>
-        </div>
+          />
+        )}
 
-        {/* User Profile */}
-        <div className={classNames(
-          "mx-[clamp(8px,2vw,12px)] mb-[clamp(12px,2vw,16px)] rounded-2xl bg-surface-container-low",
-          sidebarCompact ? "p-[clamp(6px,1vw,8px)] flex justify-center" : "px-[clamp(8px,2vw,12px)] py-[clamp(8px,1.5vw,12px)]"
-        )}>
-          <div className={`flex items-center ${sidebarCompact ? "" : "gap-[clamp(8px,1.5vw,12px)]"}`}>
-            <Avatar
-              person={{
-                id: auth?.userId,
-                fullName: auth?.fullName || "User",
-                profilePictureUrl: auth?.profilePictureUrl,
-              }}
-              size={sidebarCompact ? "xs" : "sm"}
-              className="ring-2 ring-primary/20 shrink-0"
-            />
-
-            {!sidebarCompact && (
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate text-[clamp(11px,1.5vw,13px)] font-medium text-on-surface">
-                  {auth?.fullName || "Alex Rivera"}
-                </span>
-                <span className="truncate text-[clamp(8px,1vw,9px)] uppercase tracking-[0.18em] text-outline">
-                  {auth?.roles?.join(", ") || "SuperAdmin"}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div
+        {/* Sidebar */}
+        <nav
           className={classNames(
-            "sidebar-scrollbar flex-1 overflow-y-auto transition-all duration-300",
-            "space-y-[clamp(16px,2.5vw,20px)]",
-            sidebarCompact ? "px-[clamp(2px,0.5vw,4px)]" : "px-[clamp(8px,1.5vw,12px)] pr-[clamp(8px,2vw,16px)]"
+            "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300",
+            "bg-surface-container-lowest/95 backdrop-blur-3xl shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
+            // Mobile: overlay with smooth slide
+            "max-md:z-[100]",
+            mobileSidebarOpen
+              ? "max-md:translate-x-0 max-md:w-[clamp(240px,70vw,280px)]"
+              : "max-md:-translate-x-full",
+            // Tablet & Desktop: responsive width
+            sidebarCompact
+              ? "md:w-[clamp(56px,8vw,64px)]"
+              : "md:w-[clamp(200px,25vw,240px)]"
           )}
         >
-         {/* Dashboard — standalone, no group wrapper */}
-{(() => {
-  const theme = sectionThemes.Overview;
-  const active = isActive("/");
-  return (
-    <Link
-      to="/"
-      onClick={() => setMobileSidebarOpen(false)}
-      className={classNames(
-        "relative flex items-center rounded-md transition-all duration-200 group",
-        sidebarCompact
-          ? "justify-center px-0 ]"
-          : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(4px,0.8vw,7px)]",
-        active
-          ? `${theme.active} ${theme.borderActive}`
-          : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-      )}
-      title={sidebarCompact ? "Dashboard" : undefined}
-    >
-      <span
-        className={classNames(
-          "transition-all duration-300 shrink-0",
-          active
-            ? `${theme.iconActive} scale-110`
-            : `${theme.iconDefault} group-hover:scale-110`
-        )}
-      >
-        {iconMap.home}
-      </span>
-      {!sidebarCompact && (
-        <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
-          Dashboard
-        </span>
-      )}
-    </Link>
-  );
-})()}
+          {/* Logo + Toggle */}
+          <div className="flex items-center justify-between px-[clamp(12px,2vw,16px)] pt-[clamp(16px,2.5vw,20px)] pb-[clamp(8px,1.5vw,12px)]">
+            {!sidebarCompact && (
+              <div className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap">
+                PMWDS
+              </div>
+            )}
 
-          <ProjectsGroup
-            theme={sectionThemes.Projects}
-            iconClass={iconClass}
-            compact={sidebarCompact}
-            onRequestExpand={() => setSidebarCompact(false)}
-          />
+            {/* Hide toggle on mobile (sidebar closes via overlay click) */}
+            <button
+              onClick={() => setSidebarCompact(!sidebarCompact)}
+              className="hidden md:flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
+              style={{
+                height: 'clamp(28px,4vw,32px)',
+                width: 'clamp(28px,4vw,32px)'
+              }}
+            >
+              {sidebarCompact ?
+                <HiOutlineChevronDoubleRight className="h-[clamp(14px,2vw,18px)] w-[clamp(14px,2vw,18px)]" /> :
+                <HiOutlineChevronDoubleLeft className="h-[clamp(14px,2vw,18px)] w-[clamp(14px,2vw,18px)]" />
+              }
+            </button>
 
-          {newUiNavGroups.map((group) => {
-            const theme = sectionThemes[group.title] || sectionThemes.Overview;
-            const visibleItems = group.items.filter(
-              (item) =>
-                item.permissions.length === 0 || perm.hasAny(...item.permissions)
-            );
-            if (visibleItems.length === 0) return null;
+            {/* Mobile close button */}
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary"
+              style={{
+                height: 'clamp(28px,4vw,32px)',
+                width: 'clamp(28px,4vw,32px)'
+              }}
+            >
+              <HiOutlineX className="h-[clamp(16px,2.5vw,20px)] w-[clamp(16px,2.5vw,20px)]" />
+            </button>
+          </div>
 
-            return (
-              <div key={group.title} className="space-y-[clamp(4px,0.8vw,6px)]">
+
+          {/* Navigation */}
+          <div
+            className={classNames(
+              "sidebar-scrollbar flex-1 overflow-y-auto transition-all duration-300",
+              "space-y-[clamp(16px,2.5vw,20px)]",
+              sidebarCompact ? "px-[clamp(2px,0.5vw,4px)]" : "px-[clamp(8px,1.5vw,12px)] pr-[clamp(8px,2vw,16px)]"
+            )}
+          >
+            {/* Dashboard — standalone, no group wrapper */}
+            {(() => {
+              const theme = sectionThemes.Overview;
+              const active = isActive("/");
+              return (
+                <Link
+                  to="/"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className={classNames(
+                    "relative flex items-center rounded-md transition-all duration-200 group",
+                    sidebarCompact
+                      ? "justify-center px-0 ]"
+                      : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(4px,0.8vw,7px)]",
+                    active
+                      ? `${theme.active} ${theme.borderActive}`
+                      : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                  )}
+                  title={sidebarCompact ? "Dashboard" : undefined}
+                >
+                  <span
+                    className={classNames(
+                      "transition-all duration-300 shrink-0",
+                      active
+                        ? `${theme.iconActive} scale-110`
+                        : `${theme.iconDefault} group-hover:scale-110`
+                    )}
+                  >
+                    {iconMap.home}
+                  </span>
+                  {!sidebarCompact && (
+                    <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                      Dashboard
+                    </span>
+                  )}
+                </Link>
+              );
+            })()}
+
+            <ProjectsGroup
+              theme={sectionThemes.Projects}
+              iconClass={iconClass}
+              compact={sidebarCompact}
+              onRequestExpand={() => setSidebarCompact(false)}
+            />
+
+            {newUiNavGroups.map((group) => {
+              const theme = sectionThemes[group.title] || sectionThemes.Overview;
+              const visibleItems = group.items.filter(
+                (item) =>
+                  item.permissions.length === 0 || perm.hasAny(...item.permissions)
+              );
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <div key={group.title} className="space-y-[clamp(4px,0.8vw,6px)]">
+                  {!sidebarCompact && (
+                    <div className={classNames(
+                      "px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold",
+                      theme.textDefault
+                    )}>
+                      {group.title}
+                    </div>
+                  )}
+
+                  <div className="space-y-[clamp(1px,0.3vw,2px)]">
+                    {visibleItems.map((item) => {
+                      const active = isActive(item.path);
+
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMobileSidebarOpen(false)}
+                          className={classNames(
+                            "relative flex items-center rounded-md transition-all duration-200 group",
+                            sidebarCompact
+                              ? "justify-center px-0 py-[clamp(7px,1vw,9px)]"
+                              : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(7px,1vw,9px)]",
+                            active
+                              ? `${theme.active} ${theme.borderActive}`
+                              : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                          )}
+                          title={sidebarCompact ? item.label : undefined}
+                        >
+                          <span
+                            className={classNames(
+                              "transition-all duration-300 shrink-0",
+                              active
+                                ? `${theme.iconActive} scale-110`
+                                : `${theme.iconDefault} group-hover:scale-110`
+                            )}
+                          >
+                            {iconMap[item.icon]}
+                          </span>
+
+                          {!sidebarCompact && (
+                            <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                              {item.label}
+                            </span>
+                          )}
+
+                          {/* Notification dot for expanded sidebar */}
+                          {!sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
+                            unreadCount > 0 && (
+                              <span className="ml-auto h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                            )}
+
+                          {/* Notification dot for compact sidebar */}
+                          {sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
+                            unreadCount > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                            )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+
+
+          {/* Profile & Logout */}
+          <div className={classNames(
+            "pb-[clamp(4px,1.5vw,6px)] pt-[clamp(4px,1vw,8px)] pr-4",
+            sidebarCompact ? "px-[clamp(4px,1vw,8px)]" : "px-[clamp(8px,1.5vw,12px)]"
+          )}>
+            <button
+              onClick={logout}
+              className={classNames(
+                "w-full rounded-2xl bg-surface-container-low transition-all duration-300 hover:bg-error-container group",
+                sidebarCompact
+                  ? "mx-[clamp(8px,2vw,12px)] p-[clamp(6px,1vw,8px)] flex justify-center"
+                  : "mx-[clamp(8px,2vw,12px)] px-[clamp(8px,2vw,12px)] py-[clamp(8px,1.5vw,12px)]"
+              )}
+              title={sidebarCompact ? "Log Out" : undefined}
+            >
+              <div className={`flex items-center ${sidebarCompact ? "" : "gap-[clamp(8px,1.5vw,12px)]"}`}>
+                <div className="relative">
+                  <Avatar
+                    person={{
+                      id: auth?.userId,
+                      fullName: auth?.fullName || "User",
+                      profilePictureUrl: auth?.profilePictureUrl,
+                    }}
+                    size={sidebarCompact ? "xs" : "sm"}
+                    className="ring-2 ring-primary/20 shrink-0"
+                  />
+                  {/* Logout icon overlay on hover */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-error/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <svg
+                      className="h-[clamp(10px,1.5vw,14px)] w-[clamp(10px,1.5vw,14px)] text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
                 {!sidebarCompact && (
-                  <div className={classNames(
-                    "px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold",
-                    theme.textDefault
-                  )}>
-                    {group.title}
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-[clamp(11px,1.5vw,13px)] font-medium text-on-surface group-hover:text-error transition-colors">
+                      {auth?.fullName || "Alex Rivera"}
+                    </span>
+                    <span className="truncate text-[clamp(8px,1vw,9px)] uppercase tracking-[0.18em] text-outline group-hover:text-error/70 transition-colors">
+                      {auth?.roles?.join(", ") || "SuperAdmin"}
+                    </span>
                   </div>
                 )}
 
-                <div className="space-y-[clamp(1px,0.3vw,2px)]">
-                  {visibleItems.map((item) => {
-                    const active = isActive(item.path);
-
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileSidebarOpen(false)}
-                        className={classNames(
-                          "relative flex items-center rounded-md transition-all duration-200 group",
-                          sidebarCompact 
-                            ? "justify-center px-0 py-[clamp(7px,1vw,9px)]" 
-                            : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(7px,1vw,9px)]",
-                          active
-                            ? `${theme.active} ${theme.borderActive}`
-                            : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-                        )}
-                        title={sidebarCompact ? item.label : undefined}
-                      >
-                        <span
-                          className={classNames(
-                            "transition-all duration-300 shrink-0",
-                            active
-                              ? `${theme.iconActive} scale-110`
-                              : `${theme.iconDefault} group-hover:scale-110`
-                          )}
-                        >
-                          {iconMap[item.icon]}
-                        </span>
-
-                        {!sidebarCompact && (
-                          <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
-                            {item.label}
-                          </span>
-                        )}
-
-                        {/* Notification dot for expanded sidebar */}
-                        {!sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
-                          unreadCount > 0 && (
-                            <span className="ml-auto h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
-                          )}
-                        
-                        {/* Notification dot for compact sidebar */}
-                        {sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
-                          unreadCount > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
-                          )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Logout */}
-        <div className={classNames(
-          "pb-[clamp(8px,1.5vw,12px)] pt-[clamp(4px,1vw,8px)]",
-          sidebarCompact ? "px-[clamp(4px,1vw,8px)]" : "px-[clamp(8px,1.5vw,12px)]"
-        )}>
-          <button
-            onClick={logout}
-            className={classNames(
-              "flex items-center w-full rounded-xl transition-all duration-300 hover:bg-error-container hover:text-error text-on-surface-variant",
-              sidebarCompact ? "justify-center p-[clamp(8px,1.5vw,10px)]" : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(8px,1.5vw,10px)]"
-            )}
-            title={sidebarCompact ? "Log Out" : undefined}
-          >
-            <svg
-              className="h-[clamp(16px,2vw,18px)] w-[clamp(16px,2vw,18px)] shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-
-            {!sidebarCompact && <span className="text-[clamp(11px,1.5vw,13px)]">Log Out</span>}
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <div className={classNames(
-        "flex min-h-screen flex-1 flex-col transition-all duration-300",
-        // Mobile: no margin (sidebar is overlay)
-        "ml-0",
-        // Tablet & Desktop: responsive margin
-        sidebarCompact 
-          ? "md:ml-[clamp(56px,8vw,64px)]" 
-          : "md:ml-[clamp(200px,25vw,240px)]"
-      )}
-        style={{ maxWidth: 'min(100%, 1800px)', marginRight: 'auto' }}
-      >
-        {/* Topbar */}
-        <header
-          className="sticky top-0 z-40 bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
-          style={{ height: 'clamp(48px,6vw,56px)' }}
-        >
-          <div className="flex h-full items-center justify-between" style={{ padding: '0 clamp(8px,3vw,24px)' }}>
-            <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,12px)' }}>
-              {/* Mobile hamburger */}
-              <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
-                style={{ height: 'clamp(28px,4vw,32px)', width: 'clamp(28px,4vw,32px)' }}
-              >
-                <HiOutlineMenu style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
-              </button>
-              <NavHeader />
-            </div>
-
-            {/* Right actions */}
-            <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
-              <NavActionButton />
-              
-              {/* Chat button */}
-              <Link
-                to="/chat"
-                className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
-                style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
-              >
-                <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
-              </Link>
-
-              {/* Notifications button */}
-              <Link
-                to="/notificationsPage"
-                className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
-                style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
-              >
-                <HiOutlineBell style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
-
-                {unreadCount > 0 && (
-                  <span className="absolute rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" 
-                    style={{ 
-                      height: 'clamp(6px,1vw,8px)', 
-                      width: 'clamp(6px,1vw,8px)', 
-                      top: 'clamp(4px,0.8vw,8px)', 
-                      right: 'clamp(4px,0.8vw,8px)' 
-                    }} 
-                  />
+                {!sidebarCompact && (
+                  <svg
+                    className="h-[clamp(14px,2vw,16px)] w-[clamp(14px,2vw,16px)] shrink-0 text-outline group-hover:text-error ml-auto transition-colors"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
                 )}
-              </Link>
-            </div>
+              </div>
+            </button>
           </div>
-        </header>
 
-        {/* Content */}
-        <main
-          className="flex flex-1 flex-col relative font-sans w-full mx-auto"
-          style={{
-            padding: 'clamp(12px,2vw,40px)',
-            gap: 'clamp(16px,2.5vw,48px)',
-          }}
+        </nav>
+
+        {/* Main Content */}
+        <div className={classNames(
+          "flex min-h-screen flex-1 flex-col transition-all duration-300",
+          // Mobile: no margin (sidebar is overlay)
+          "ml-0",
+          // Tablet & Desktop: responsive margin
+          sidebarCompact
+            ? "md:ml-[clamp(56px,8vw,64px)]"
+            : "md:ml-[clamp(200px,25vw,240px)]"
+        )}
+          style={{ maxWidth: 'min(100%, 1800px)', marginRight: 'auto' }}
         >
-          {children}
-        </main>
+          {/* Topbar */}
+          <header
+            className="sticky top-0 z-40 bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
+            style={{ height: 'clamp(48px,6vw,56px)' }}
+          >
+            <div className="flex h-full items-center justify-between" style={{ padding: '0 clamp(8px,3vw,24px)' }}>
+              <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,12px)' }}>
+                {/* Mobile hamburger */}
+                <button
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                  style={{ height: 'clamp(28px,4vw,32px)', width: 'clamp(28px,4vw,32px)' }}
+                >
+                  <HiOutlineMenu style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
+                </button>
+                <NavHeader />
+              </div>
+
+              {/* Right actions */}
+              <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
+                <NavActionButton />
+
+                {/* Chat button */}
+                <Link
+                  to="/chat"
+                  className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                  style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
+                >
+                  <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
+                </Link>
+
+                {/* Notifications button */}
+                <Link
+                  to="/notificationsPage"
+                  className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                  style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
+                >
+                  <HiOutlineBell style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
+
+                  {unreadCount > 0 && (
+                    <span className="absolute rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse"
+                      style={{
+                        height: 'clamp(6px,1vw,8px)',
+                        width: 'clamp(6px,1vw,8px)',
+                        top: 'clamp(4px,0.8vw,8px)',
+                        right: 'clamp(4px,0.8vw,8px)'
+                      }}
+                    />
+                  )}
+                </Link>
+              </div>
+            </div>
+          </header>
+
+          {/* Content */}
+          <main
+            className="flex flex-1 flex-col relative font-sans w-full mx-auto"
+            style={{
+              padding: 'clamp(12px,2vw,40px)',
+              gap: 'clamp(16px,2.5vw,48px)',
+            }}
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
     </NavHeaderProvider>
   );
 }

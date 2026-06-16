@@ -16,6 +16,21 @@ interface MilestoneDetailProps {
   isAdmin: boolean;
 }
 
+const progressStrokeConfig: Record<string, string> = {
+  Completed: "stroke-emerald-500",
+  InProgress: "stroke-blue-500",
+  Delayed: "stroke-amber-500",
+  OnHold: "stroke-purple-500",
+  Cancelled: "stroke-slate-400",
+  Pending: "stroke-slate-400",
+  NotStarted: "stroke-slate-400",
+};
+
+function getProgressStroke(status: string, isCritical: boolean): string {
+  if (isCritical && status !== "Completed") return "stroke-red-500";
+  return progressStrokeConfig[status] || "stroke-indigo-500";
+}
+
 export function MilestoneDetailk({ 
   milestone, 
   tasks, 
@@ -31,7 +46,6 @@ export function MilestoneDetailk({
   const progress = milestone.progressPercentage || 0;
   const hasTasks = milestone.hasTasks ?? tasks.length > 0;
   const completedTasks = tasks.filter(t => t.status === "Completed").length;
-  const isCompleted = milestone.status === "Completed";
 
   return (
     <div className="space-y-4">
@@ -52,7 +66,6 @@ export function MilestoneDetailk({
                 <h3 className="text-base font-bold text-slate-900 truncate">{milestone.name}</h3>
                 {project && (
                   <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                    {/* <span className="material-symbols-outlined text-xs">rocket_launch</span> */}
                     <span className="truncate">{project.name}</span>
                   </span>
                 )}
@@ -95,52 +108,44 @@ export function MilestoneDetailk({
             <p className="text-xs text-slate-600 mb-3 line-clamp-2">{milestone.description}</p>
           )}
 
-               {/* Info Row */}
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <span className="material-symbols-outlined text-sm text-slate-400">calendar_today</span>
-              <span>{milestone.dueDate ? formatDate(milestone.dueDate) : "No due date"}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <span className="material-symbols-outlined text-sm text-slate-400">task_alt</span>
-              <span>{completedTasks}/{tasks.length} completed</span>
-            </div>
-            {milestone.order && (
-              <div className="flex items-center gap-1.5 text-slate-500">
-                <span className="material-symbols-outlined text-sm text-slate-400">format_list_numbered</span>
-                <span>Order: {milestone.order}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Progress Bar */}
-          <div className="mb-3">
-            <div className="flex justify-between text-[10px] mb-1">
-              <span className="text-slate-400 font-medium">
-                Progress
-                {hasTasks && <span className="ml-1 text-indigo-500 font-normal">(avg of tasks)</span>}
+          {/* Circular Progress + Info Row */}
+          <div className="flex items-center gap-6 mb-4">
+            <div className="relative size-24 flex items-center justify-center flex-shrink-0">
+              <svg className="size-full -rotate-90" viewBox="0 0 36 36">
+                <circle className="stroke-slate-100" cx="18" cy="18" fill="none" r="16" strokeWidth="3" />
+                <circle
+                  className={`transition-all duration-700 ${getProgressStroke(milestone.status, milestone.isCritical ?? false)}`}
+                  cx="18" cy="18" fill="none" r="16"
+                  strokeDasharray="100"
+                  strokeDashoffset={100 - Math.min(progress, 100)}
+                  strokeLinecap="round"
+                  strokeWidth="3"
+                />
+              </svg>
+              <span className="absolute text-lg font-bold text-slate-800">
+                {Math.round(progress)}%
               </span>
-              <span className="font-semibold text-slate-700">{Math.round(progress)}%</span>
             </div>
-            <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  isCompleted 
-                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                    : milestone.isCritical
-                    ? 'bg-gradient-to-r from-red-400 to-red-500'
-                    : 'bg-gradient-to-r from-indigo-400 to-indigo-500'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="material-symbols-outlined text-sm text-slate-400">calendar_today</span>
+                <span>{milestone.dueDate ? formatDate(milestone.dueDate) : "No due date"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="material-symbols-outlined text-sm text-slate-400">task_alt</span>
+                <span>{completedTasks}/{tasks.length} completed</span>
+              </div>
+              {hasTasks && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-indigo-500 font-normal">Auto-calculated from tasks</span>
+                </div>
+              )}
             </div>
           </div>
-
-     
 
           {/* Status Change & Complete Actions */}
           {isAdmin && (
-            <div className="flex flex-wrap items-center gap-2 mt-4">
+            <div className="flex flex-wrap items-center gap-2">
               {hasTasks && (
                 <div className="w-full mb-1 p-2 rounded-lg bg-indigo-50 border border-indigo-100">
                   <p className="text-[10px] text-indigo-600 leading-relaxed">
@@ -151,16 +156,23 @@ export function MilestoneDetailk({
               <div className="flex flex-wrap gap-1">
                 {["Pending", "InProgress", "Completed", "Delayed"].map((status) => {
                   const st = getStatusColor(status);
+                  const isActive = milestone.status === status;
+                  const hoverMap: Record<string, string> = {
+                    Pending: "hover:bg-slate-50 hover:border-slate-300 hover:text-slate-600",
+                    InProgress: "hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600",
+                    Completed: "hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600",
+                    Delayed: "hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700",
+                  };
                   return (
                     <button
                       key={status}
                       type="button"
-                      disabled={milestone.status === status}
+                      disabled={isActive}
                       onClick={() => status === "Completed" ? onComplete() : onStatusChange(status)}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors ${
-                        milestone.status === status
-                          ? `${st.bg} ${st.text} cursor-default`
-                          : "border-slate-200 text-slate-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+                      className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-all ${
+                        isActive
+                          ? `${st.bg} ${st.border} ${st.text} cursor-default shadow-sm`
+                          : `border-slate-200 text-slate-500 ${hoverMap[status] ?? "hover:bg-slate-50 hover:border-slate-300 hover:text-slate-600"}`
                       }`}
                     >
                       {status}

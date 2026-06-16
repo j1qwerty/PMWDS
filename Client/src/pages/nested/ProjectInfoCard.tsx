@@ -6,8 +6,8 @@ interface ProjectInfoCardProps {
   project: Project;
   milestonesCount: number;
   canManageProjects?: boolean;
-  onViewProject?: () => void;
-  onEditProject?: () => void;
+  onViewProject?: (project: Project) => void;
+  onEditProject?: (project: Project) => void;
 }
 
 export function ProjectInfoCard({
@@ -57,7 +57,7 @@ export function ProjectInfoCard({
         <div className="flex items-center gap-1">
           <button
             title="View project"
-            onClick={onViewProject}
+            onClick={(e) => { e.stopPropagation(); onViewProject?.(project); }}
             className="p-1.5 text-slate-400 hover:text-cyan-500 transition-colors rounded-lg hover:bg-slate-100"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,7 +69,7 @@ export function ProjectInfoCard({
           {canManageProjects && (
             <button
               title="Edit project"
-              onClick={onEditProject}
+              onClick={(e) => { e.stopPropagation(); onEditProject?.(project); }}
               className="p-1.5 text-slate-400 hover:text-amber-500 transition-colors rounded-lg hover:bg-slate-100"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

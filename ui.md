@@ -129,7 +129,7 @@
    - Hover and shadow effects matching color for all components
    - All components with max height and "view more" options
    - Animate bars and graphs (like AI page)
-   - Task performance table UI update — hover, view/edit modals, sort filters, cursor-pointer
+   - [x] Task performance table UI update — hover, view/edit modals, sort filters, cursor-pointer
    - Space utilization and header updates
 
 ---
@@ -143,3 +143,46 @@
 ---
 
 
+# TODO 
+## top priority
+- refactor modals and overlays for consistency 
+- redesign modals
+- delete buttons for projects , milestones and tasks proper place defined and modal
+- projectmilestone page - show details on side only on big screens, or only show on view icon click
+- tasksubtask card in all places / taskcards at some - decide
+- escalate task button and mentions
+- user assignement in departments page
+- organisation page only for superadmin, director only deparment page
+- pojects page add more buttons on top nav
+- consistent toasts and stat cards design
+- add project detailed cleaned ui to workspace page in new tab, and proper tab management and ui
+
+
+### roles - settings page
+- roles for director also but proper ui, hide superadmin mention for director
+- settings page for both ( also create organisations for superadmin button)
+
+## priority 2
+- layout.tsx refactor and more features and organise strtucte ( home, project, departments at top)
+- reorganise and refactor nav and sidebar 
+- users page - users table add workload inside table (implemented but there are inconsitencies)
+- merge users and profiles page
+- merge skills new users and departments page ( new tabular page )
+- hide manual status changes for milestone and projects
+- organisation related info hidden for director and other users ( only superadmin can see it in all the elements)
+
+## last 
+### UI Styling
+   - Responsive design for all elements
+   - Hover and shadow effects matching color for all components
+   - All components with max height and "view more" options
+   - Animate bars and graphs (like AI page)
+   - Space utilization and header updates
+   - [x] Task performance table UI update — hover, view/edit modals, sort filters, cursor-pointer
+
+### other 
+- activity logs more refined and user friendly to read along with metadata
+- hide manual activiy creation director 
+- test page and pages api only for superadmin and if not needed clean it
+- rearrange locations and rename components logically
+- remove old components and pages which are not neeeded

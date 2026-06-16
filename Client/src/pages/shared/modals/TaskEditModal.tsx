@@ -45,6 +45,7 @@ export function TaskEditModal({
   const [timerDescription, setTimerDescription] = useState("Focused execution block");
 
   const subtaskCount = task.subTasks?.length ?? 0;
+  const entityType = task.parentTaskId ? "subtask" : "task";
 
   const assignedUsers = (task.assignees && task.assignees.length > 0)
     ? task.assignees.map(a => ({ id: a.userId, fullName: a.fullName ?? undefined }))
@@ -197,13 +198,21 @@ export function TaskEditModal({
         </div>
         <div className="p-5 space-y-4">
 
-          {mayEdit && (
+          {mayEdit && subtaskCount === 0 && (
             <ProgressStatusEditor
               progress={editProgress}
               status={editStatus}
               mayEdit={mayEdit}
               onChange={handleProgressStatusChange}
+              entityType={entityType}
             />
+          )}
+          {mayEdit && subtaskCount > 0 && (
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-xs text-slate-500">
+                Progress is auto-calculated from subtasks and cannot be edited directly.
+              </p>
+            </div>
           )}
 
           {mayEdit && (

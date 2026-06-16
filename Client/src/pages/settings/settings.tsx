@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "../../types";
 import {
   AnimatedBackground,
+  BgControls,
   LoadingPage,
   PERMISSION_GROUPS,
   usePermission,
@@ -20,7 +21,7 @@ export function SettingsPage() {
   const canManageSystem = perm.has(PERMISSION_GROUPS.system.manage);
 
   const [saved, setSaved] = useState("");
-  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database" | "background">("profile");
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
   const [databaseLoading, setDatabaseLoading] = useState(false);
   const [databaseError, setDatabaseError] = useState("");
@@ -262,6 +263,12 @@ export function SettingsPage() {
                 icon="database"
                 label="Database"
               />
+              <TabButton
+                active={activeTab === "background"}
+                onClick={() => setActiveTab("background")}
+                icon="wallpaper"
+                label="Background"
+              />
             </>
           )}
         </div>
@@ -322,6 +329,10 @@ export function SettingsPage() {
             error={databaseError}
             onRetry={fetchDatabaseStatus}
           />
+        )}
+
+        {activeTab === "background" && (
+          <BgControls />
         )}
       </div>
     </div>

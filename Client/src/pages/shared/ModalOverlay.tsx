@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { FiX } from "react-icons/fi";
 
 interface ModalOverlayProps {
   children: ReactNode;
@@ -34,7 +33,7 @@ export function ModalOverlay({
             aria-label="Close modal"
             className="absolute -top-2 -right-2 z-10 w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
           >
-            <FiX className="w-4 h-4" />
+            <span className="material-symbols-outlined text-lg">close</span>
           </button>
         )}
         <div className={`w-full ${contentClassName}`}>{children}</div>

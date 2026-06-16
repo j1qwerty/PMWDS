@@ -8,6 +8,7 @@ interface ProgressStatusEditorProps {
   status: string;
   mayEdit: boolean;
   onChange: (data: { progress: number; status: string }) => void;
+  entityType?: "task" | "subtask";
 }
 
 function getProgressGradient(value: number): string {
@@ -17,10 +18,11 @@ function getProgressGradient(value: number): string {
   return "from-rose-400 to-rose-500";
 }
 
-export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: ProgressStatusEditorProps) {
+export function ProgressStatusEditor({ progress, status, mayEdit, onChange, entityType = "task" }: ProgressStatusEditorProps) {
   const [progressInput, setProgressInput] = useState(String(progress));
   const [selectedStatus, setSelectedStatus] = useState(status);
   const [isDragging, setIsDragging] = useState(false);
+  const [warning, setWarning] = useState<{ pendingProgress: number } | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const progressInputRef = useRef(progressInput);
   const selectedStatusRef = useRef(selectedStatus);
@@ -46,8 +48,17 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
     emit(currentProgress, s);
   };
 
-  const confirmBelow100 = (): boolean => {
-    return confirm("This subtask is completed. Reducing progress will change status to InProgress. Continue?");
+  const applyProgressReduction = (newProgress: number) => {
+    setWarning(null);
+    setProgressInput(String(newProgress));
+    setSelectedStatus("InProgress");
+    emit(newProgress, "InProgress");
+  };
+
+  const cancelProgressReduction = () => {
+    setWarning(null);
+    setProgressInput("100");
+    emit(100, "Completed");
   };
 
   const handleStatusChange = (newStatus: string) => {
@@ -56,7 +67,7 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
       setSelectedStatus("Completed");
       emit(100, "Completed");
     } else if (selectedStatus === "Completed" && currentProgress === 100) {
-      if (confirm("This subtask is completed. Changing status will reset progress. Continue?")) {
+      if (confirm(`This ${entityType} is completed. Changing status will reset progress. Continue?`)) {
         const input = prompt("Enter new progress percentage (0-99):", "0");
         if (input !== null) {
           const val = Math.min(99, Math.max(0, Number(input) || 0));
@@ -81,13 +92,10 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
     if (!mayEdit) return;
     const newProgress = calculateProgressFromEvent(e.clientX);
     if (selectedStatus === "Completed" && newProgress < 100) {
-      if (!confirmBelow100()) return;
-      setProgressInput(String(newProgress));
-      setSelectedStatus("InProgress");
-      emit(newProgress, "InProgress");
-    } else {
-      setProgress(String(newProgress));
+      setWarning({ pendingProgress: newProgress });
+      return;
     }
+    setProgress(String(newProgress));
     setIsDragging(true);
   };
 
@@ -95,13 +103,10 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
     if (!mayEdit) return;
     const newProgress = calculateProgressFromEvent(e.touches[0].clientX);
     if (selectedStatus === "Completed" && newProgress < 100) {
-      if (!confirmBelow100()) return;
-      setProgressInput(String(newProgress));
-      setSelectedStatus("InProgress");
-      emit(newProgress, "InProgress");
-    } else {
-      setProgress(String(newProgress));
+      setWarning({ pendingProgress: newProgress });
+      return;
     }
+    setProgress(String(newProgress));
     setIsDragging(true);
   };
 
@@ -148,13 +153,10 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
       e.preventDefault();
       const newVal = Math.max(0, currentProgress - step);
       if (selectedStatus === "Completed" && newVal < 100) {
-        if (!confirmBelow100()) return;
-        setProgressInput(String(newVal));
-        setSelectedStatus("InProgress");
-        emit(newVal, "InProgress");
-      } else {
-        setProgress(String(newVal));
+        setWarning({ pendingProgress: newVal });
+        return;
       }
+      setProgress(String(newVal));
     }
   };
 
@@ -168,14 +170,7 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
   const handleProgressInputBlur = () => {
     const val = Math.min(100, Math.max(0, Number(progressInput) || 0));
     if (selectedStatus === "Completed" && val < 100) {
-      if (!confirmBelow100()) {
-        setProgressInput("100");
-        emit(100, "Completed");
-        return;
-      }
-      setProgressInput(String(val));
-      setSelectedStatus("InProgress");
-      emit(val, "InProgress");
+      setWarning({ pendingProgress: val });
       return;
     }
     setProgressInput(String(val));
@@ -281,6 +276,33 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange }: Pr
           Click and drag the bar or use arrow keys to adjust
         </p>
       </div>
+
+      {warning && (
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-amber-600 text-sm mt-0.5 shrink-0">warning</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-800">
+                This {entityType} is completed. Reducing progress will change status to InProgress.
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => applyProgressReduction(warning.pendingProgress)}
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
+                >
+                  Continue
+                </button>
+                <button
+                  onClick={cancelProgressReduction}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

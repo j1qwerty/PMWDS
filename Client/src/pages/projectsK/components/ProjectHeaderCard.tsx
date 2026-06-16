@@ -5,6 +5,7 @@ import { GlassCard, getStatusColor } from "../../shared";
 interface ProjectHeaderCardProps {
   project: Project;
   canManage: boolean;
+  onViewProject?: (project: Project) => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onStatusChange?: (status: string) => void;
@@ -12,9 +13,9 @@ interface ProjectHeaderCardProps {
   bare?: boolean;
 }
 
-const statusOptions = ["Planning", "Active", "OnHold", "Completed", "Cancelled"];
+const statusOptions = ["NotStarted", "InProgress", "OnHold", "Completed", "Cancelled", "Delayed"];
 
-export function ProjectHeaderCard({ project, canManage, onEdit, onDelete, onStatusChange, bare }: ProjectHeaderCardProps) {
+export function ProjectHeaderCard({ project, canManage, onViewProject, onEdit, onDelete, onStatusChange, bare }: ProjectHeaderCardProps) {
   const statusColors = getStatusColor(project.status);
 
   const content = (
@@ -30,20 +31,38 @@ export function ProjectHeaderCard({ project, canManage, onEdit, onDelete, onStat
             <span className="text-xs text-slate-500">{project.priority} priority</span>
           </div>
         </div>
-        {canManage && (
-          <div className="flex gap-2">
-            {onEdit && (
-              <button type="button" onClick={onEdit} className="px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 hover:bg-slate-50">
-                Edit
-              </button>
-            )}
-            {onDelete && (
-              <button type="button" onClick={onDelete} className="px-3 py-2 rounded-xl text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50">
-                Delete
-              </button>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {onViewProject && (
+            <button
+              title="View project"
+              className="p-1.5 text-slate-400 hover:text-cyan-500 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onViewProject(project); }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          )}
+          {canManage && onEdit && (
+            <button
+              title="Edit project"
+              className="p-1.5 text-slate-400 hover:text-amber-500 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
+          {canManage && onDelete && (
+            <button type="button" onClick={onDelete} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors" title="Delete project">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {project.description && (
@@ -72,21 +91,33 @@ export function ProjectHeaderCard({ project, canManage, onEdit, onDelete, onStat
 
       {canManage && onStatusChange && (
         <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
-          {statusOptions.map((status) => (
-            <button
-              key={status}
-              type="button"
-              onClick={() => onStatusChange(status)}
-              disabled={project.status === status}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                project.status === status
-                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                  : "border-slate-200 text-slate-600 hover:border-indigo-200"
-              }`}
-            >
-              {status}
-            </button>
-          ))}
+          {statusOptions.map((status) => {
+            const st = getStatusColor(status);
+            const isActive = project.status === status;
+            const hoverMap: Record<string, string> = {
+              NotStarted: "hover:bg-slate-50 hover:border-slate-300 hover:text-slate-600",
+              InProgress: "hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600",
+              OnHold: "hover:bg-purple-50 hover:border-purple-200 hover:text-purple-600",
+              Completed: "hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600",
+              Cancelled: "hover:bg-red-50 hover:border-red-200 hover:text-red-700",
+              Delayed: "hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700",
+            };
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => onStatusChange(status)}
+                disabled={isActive}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                  isActive
+                    ? `${st.bg} ${st.border} ${st.text} cursor-default shadow-sm`
+                    : `border-slate-200 text-slate-500 ${hoverMap[status] ?? "hover:bg-slate-50 hover:border-slate-300 hover:text-slate-600"}`
+                }`}
+              >
+                {status}
+              </button>
+            );
+          })}
         </div>
       )}
     </>
