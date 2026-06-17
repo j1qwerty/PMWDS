@@ -32,6 +32,7 @@ import {
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
+import { TaskSubCard } from "../projectsK/components/Tasksubcard";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -439,7 +440,7 @@ export function ProjectMilestonesPage() {
               isTasksNarrow ? "grid-cols-1" : "grid-cols-2"
             )}>
               {milestoneTasks.map((task) => (
-                <TaskSubtaskCard
+                <TaskSubCard
                   key={task.id}
                   task={task}
                   canEdit={canManageTasks}

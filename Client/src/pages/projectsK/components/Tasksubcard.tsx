@@ -8,7 +8,7 @@ import { AvatarStackk } from "../../shared/Avatark";
 import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
 import { TaskEditModal } from "../../shared/modals/TaskEditModal";
 
-interface TaskSubtaskCardProps {
+interface TaskSubCardProps {
   task: Task;
   canEdit?: boolean;
   permissionEdit?: string;
@@ -21,7 +21,7 @@ interface TaskSubtaskCardProps {
   organizationId?: string | null;
 }
 
-export function TaskSubtaskCard({
+export function TaskSubCard({
   task,
   canEdit,
   permissionEdit,
@@ -32,7 +32,7 @@ export function TaskSubtaskCard({
   onRefresh: onParentRefresh,
   users = [],
   organizationId,
-}: TaskSubtaskCardProps) {
+}: TaskSubCardProps) {
   const perm = usePermission();
   const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { auth } = useAuth();
@@ -48,14 +48,6 @@ export function TaskSubtaskCard({
   const [editSubtask, setEditSubtask] = useState<Task | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [cardProgress, setCardProgress] = useState(task.progressPercentage);
-
-  const getStrokeColor = (progress: number): string => {
-    if (progress === 100) return '#10b981';
-    if (progress >= 75) return '#fbbf24';
-    if (progress >= 50) return '#22d3ee';
-    if (progress >= 25) return '#fb7185';
-    return '#cbd5e1';
-  };
 
   const hasSubtasks = (task.subTasks?.length ?? 0) > 0 || subtasks.length > 0;
 
@@ -368,22 +360,11 @@ export function TaskSubtaskCard({
                   <span className="text-xs text-slate-700 truncate" title={sub.title}>{sub.title}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <div className="relative shrink-0 group" title={`${sub.progressPercentage || 0}%`}>
-                    <svg className="w-4 h-4 -rotate-90" viewBox="0 0 20 20">
-                      <circle cx="10" cy="10" r="8" fill="none" className="stroke-slate-200" strokeWidth="2" />
-                      <circle
-                        cx="10" cy="10" r="8"
-                        fill="none"
-                        className="transition-all duration-300"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeDasharray="50.27"
-                        style={{
-                          stroke: getStrokeColor(sub.progressPercentage || 0),
-                          strokeDashoffset: 50.27 * (1 - (sub.progressPercentage || 0) / 100),
-                        }}
-                      />
-                    </svg>
+                  <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden">
+                    <div
+                      className={`${getProgressColor(sub.progressPercentage || 0)} h-1 rounded-full`}
+                      style={{ width: `${sub.progressPercentage || 0}%` }}
+                    />
                   </div>
                   {mayEdit && (
                     <button
@@ -514,7 +495,6 @@ export function TaskSubtaskCard({
           }}
         />
       )}
-
       <SubtaskFormModal
         open={showSubtaskModal}
         parentTask={task}

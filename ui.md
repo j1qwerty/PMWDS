@@ -184,6 +184,7 @@
    - Animate bars and graphs (like AI page)
    - Space utilization and header updates
    - [x] Task performance table UI update — hover, view/edit modals, sort filters, cursor-pointer
+   - all types of settings and settings api
 
 ### other 
 - activity logs more refined and user friendly to read along with metadata
