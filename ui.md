@@ -65,15 +65,15 @@
 
 ## Plan
 - New pages for all features
-- API integrations
-- Update roles and permissions controller for UI-independent role and permission management
+- [x] API integrations
+- [x] Update roles and permissions controller for UI-independent role and permission management
 
 ## Implementation Plan
 
 ### Priority 1 — Foundation & Core Functionality
-1. **API Integrations**
-   - Single-page API integrations for all GET methods (only those called on page load)
-   - UI renders each component based on permissions from API (instead of hardcoded roles and permissions on each page and each component)
+1. **API Integrations** - skip 
+   - [.] Single-page API integrations for all GET methods (only those called on page load)
+   - [x] UI renders each component based on permissions from API (instead of hardcoded roles and permissions on each page and each component)
    - pages api proper response for all required data
    - pages partial api for partial requested data only and update that component only (firstly org specific only)
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { useAppData } from "./appData";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 
 import {
@@ -608,12 +608,14 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Content */}
           <main
-            className="flex flex-1 flex-col relative font-sans w-full mx-auto"
+            className="flex flex-1 flex-col relative font-sans w-full "
             style={{
-              padding: 'clamp(12px,2vw,40px)',
-              gap: 'clamp(16px,2.5vw,48px)',
+              padding: 'clamp(4px,2vw,16px)',
+              gap: 'clamp(4px,2.5vw,16px)',
             }}
           >
+       
+         
             {children}
           </main>
         </div>

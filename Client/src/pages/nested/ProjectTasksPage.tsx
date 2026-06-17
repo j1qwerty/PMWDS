@@ -14,6 +14,7 @@ import {
   usePermission,
   useToast,
   getStatusColor,
+  BgRenderer,
 } from "../shared";
 import TaskBoard, { allBoards } from "../shared/dash/TaskBoard";
 import { ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
@@ -197,7 +198,8 @@ export function ProjectTasksPage() {
 
   return (
     <div>
-      <AnimatedBackground />
+      {/* <AnimatedBackground /> */}
+       
 
       <div className="relative z-10 mb-5">
         <ProjectInfoCard
@@ -290,12 +292,12 @@ export function ProjectTasksPage() {
       </div>
 
       <div className="relative z-10 space-y-6">
-        {orderedMilestones.map((milestone) => {
+        {orderedMilestones.map((milestone, idx) => {
           const tasks = groupedTasks.get(milestone.id) ?? [];
           if (tasks.length === 0) return null;
           const colors = getStatusColor(milestone.status);
           return (
-            <section key={milestone.id}>
+            <section key={milestone.id} className={`rounded-xl p-4 ${idx % 2 === 0 ? "bg-blue-300" : "bg-green-300"}`}>
               <div className="flex items-center gap-3 mb-3 ">
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center ${

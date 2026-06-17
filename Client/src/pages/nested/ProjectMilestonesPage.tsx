@@ -15,6 +15,7 @@ import {
   useToast,
   getStatusColor,
   GradientButton,
+  BgRenderer,
 } from "../shared";
 import {
   MilestonesPanel,
@@ -311,7 +312,8 @@ export function ProjectMilestonesPage() {
 
   return (
     <div>
-      <AnimatedBackground />
+      {/* <AnimatedBackground /> */}
+     
 
       {pendingForceComplete && (
         <div className="relative z-10 mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm">
