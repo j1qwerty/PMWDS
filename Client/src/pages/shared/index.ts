@@ -29,6 +29,7 @@ export { ScopedUserSelect } from "./ScopedUserSelect";
 export { Can, CanAny, CanAll, RoutePermissionGuard } from "./PermissionControls";
 export { NoAccessPage } from "./NoAccessPage";
 export { resolveFlag, useResolvedFlag } from "./permissionProps";
+export { OverallProgressRing } from "./OverallProgressRing";
 export {
   departmentColorPalette,
   statusColorPalette,

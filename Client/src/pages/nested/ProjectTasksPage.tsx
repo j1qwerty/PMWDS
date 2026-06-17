@@ -245,6 +245,7 @@ export function ProjectTasksPage() {
           project={ws.project}
           milestonesCount={ws.milestones.length}
           canManageProjects={canManageProjects}
+          users={ws.users}
           onViewProject={() => setViewProject(true)}
           onEditProject={() => {
             if (!ws.project) return;

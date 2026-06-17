@@ -45,6 +45,18 @@ export function ProjectFormModal({
   onSubmit,
   onClose,
 }: ProjectFormModalProps) {
+  useEffect(() => {
+    if (!form.projectCode && form.name) {
+      const sanitized = form.name.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase().slice(0, 20);
+      const now = new Date();
+      const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+      const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+      setForm((prev) => ({ ...prev, projectCode: `${sanitized}-${ts}-${rand}` }));
+    }
+  }, [form.name]);
+
+  const [showProjectManager, setShowProjectManager] = useState(false);
+
   if (!open) return null;
 
   const filteredDepartments = form.organizationId
@@ -62,18 +74,6 @@ export function ProjectFormModal({
       departmentId: nextDepartmentIds[0] || "",
     });
   };
-
-  useEffect(() => {
-    if (!form.projectCode && form.name) {
-      const sanitized = form.name.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase().slice(0, 20);
-      const now = new Date();
-      const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
-      const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-      setForm((prev) => ({ ...prev, projectCode: `${sanitized}-${ts}-${rand}` }));
-    }
-  }, [form.name]);
-
-  const [showProjectManager, setShowProjectManager] = useState(false);
 
   return (
     <ModalOverlay onClose={onClose}>

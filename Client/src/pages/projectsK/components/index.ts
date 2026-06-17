@@ -16,3 +16,6 @@ export { MilestoneFormModal } from "./MilestoneFormModal";
 export { TaskFormModal } from "./TaskFormModal";
 export { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 export { ProjectCardK } from "./ProjectCardK";
+export { AIInsightsSection } from "./AIInsightsSection";
+export { DocumentsSection } from "./DocumentsSection";
+export { ProjectBasicDetails } from "./ProjectBasicDetails";
