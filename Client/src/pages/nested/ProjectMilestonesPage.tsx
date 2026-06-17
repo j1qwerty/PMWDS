@@ -476,6 +476,7 @@ export function ProjectMilestonesPage() {
                 onEdit={() => setMilestoneModal({ open: true, edit: selectedMilestone })}
                 onDelete={() => setDeleteMilestone(selectedMilestone)}
                 onAddTask={() => setTaskModal({ open: true, milestoneId: selectedMilestone.id })}
+                onViewMilestone={setViewMilestone}
               />
             </div>
           ) : (
@@ -620,6 +621,7 @@ function MilestoneHeader({
   onEdit,
   onDelete,
   onAddTask,
+  onViewMilestone,
 }: {
   milestone: Milestone;
   tasks: Task[];
@@ -629,12 +631,21 @@ function MilestoneHeader({
   onEdit: () => void;
   onDelete: () => void;
   onAddTask: () => void;
+  onViewMilestone?: (milestone: Milestone) => void;
 }) {
   const statusColors = getStatusColor(milestone.status);
   const progress = milestone.progressPercentage || 0;
   const hasTasks = milestone.hasTasks ?? tasks.length > 0;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
   const isCompleted = milestone.status === "Completed";
+
+  const getProgressColor = (p: number): string => {
+    if (p === 100) return "bg-emerald-500";
+    if (p >= 75) return "bg-amber-400";
+    if (p >= 50) return "bg-cyan-400";
+    if (p >= 25) return "bg-rose-400";
+    return "bg-slate-300";
+  };
 
   return (
     <GlassCard className="p-6">
@@ -656,24 +667,31 @@ function MilestoneHeader({
           </div>
         </div>
 
-        {isAdmin && (
-          <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
+          {onViewMilestone && (
+            <button
+              title="View milestone"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 transition-colors"
+              onClick={() => onViewMilestone?.(milestone)}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          )}
+          {isAdmin && (
             <button
               onClick={onEdit}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
               title="Edit milestone"
             >
-              <span className="material-symbols-outlined text-base">edit</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
             </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-              title="Delete milestone"
-            >
-              <span className="material-symbols-outlined text-base">delete</span>
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -694,12 +712,6 @@ function MilestoneHeader({
           <span className="material-symbols-outlined text-sm text-slate-400">task_alt</span>
           <span>{completedTasks}/{tasks.length} completed</span>
         </div>
-        {/* {milestone.order && (
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <span className="material-symbols-outlined text-sm text-slate-400">format_list_numbered</span>
-            <span>Order: {milestone.order}</span>
-          </div>
-        )} */}
       </div>
 
       <div className="mb-3">
@@ -712,12 +724,7 @@ function MilestoneHeader({
         </div>
         <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${isCompleted
-                ? "bg-gradient-to-r from-emerald-400 to-emerald-500"
-                : milestone.isCritical
-                  ? "bg-gradient-to-r from-red-400 to-red-500"
-                  : "bg-gradient-to-r from-indigo-400 to-indigo-500"
-              }`}
+            className={`h-full rounded-full transition-all duration-500 ${getProgressColor(progress)}`}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -725,13 +732,6 @@ function MilestoneHeader({
 
       {isAdmin && (
         <div className="flex flex-wrap items-center gap-2 mt-4">
-          {/* {hasTasks && (
-            <div className="w-full mb-1 p-2 rounded-lg bg-indigo-50 border border-indigo-100">
-              <p className="text-[10px] text-indigo-600 leading-relaxed">
-                Progress is auto-calculated from associated tasks.
-              </p>
-            </div>
-          )} */}
           <div className="flex flex-wrap gap-1">
             {["Pending", "InProgress", "Completed", "Delayed"].map((status) => {
               const st = getStatusColor(status);
@@ -751,7 +751,6 @@ function MilestoneHeader({
               );
             })}
           </div>
-
         </div>
       )}
     </GlassCard>

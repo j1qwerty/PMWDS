@@ -17,7 +17,7 @@ import {
   BgRenderer,
 } from "../shared";
 import TaskSubtaskBoard, { allBoards } from "../shared/dash/TaskSubtaskBoard";
-import { ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
+import { MilestoneDetailModal, MilestoneFormModal, ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
@@ -44,6 +44,7 @@ export function ProjectTasksPage() {
   const { auth } = useAuth();
   const { addToast } = useToast();
   const perm = usePermission();
+  const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -53,6 +54,10 @@ export function ProjectTasksPage() {
   });
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [viewTask, setViewTask] = useState<Task | null>(null);
+  const [viewMilestone, setViewMilestone] = useState<Milestone | null>(null);
+  const [milestoneModal, setMilestoneModal] = useState<{ open: boolean; edit?: Milestone }>({
+    open: false,
+  });
   const [viewProject, setViewProject] = useState(false);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
@@ -76,6 +81,13 @@ export function ProjectTasksPage() {
       return;
     }
     const actions = [];
+    if (canManageMilestones) {
+      actions.push({
+        label: "New milestone",
+        onClick: () => setMilestoneModal({ open: true }),
+        icon: "flag",
+      });
+    }
     if (canManageTasks) {
       actions.push({
         label: "New task",
@@ -156,6 +168,31 @@ export function ProjectTasksPage() {
     await ws.refresh();
   };
 
+  const getProgressColor = (progress: number): string => {
+    if (progress === 100) return "bg-emerald-500";
+    if (progress >= 75) return "bg-amber-400";
+    if (progress >= 50) return "bg-cyan-400";
+    if (progress >= 25) return "bg-rose-400";
+    return "bg-slate-300";
+  };
+
+  const handleMilestoneSubmit = async (form: Record<string, unknown>) => {
+    if (!auth || !ws.project) return;
+    try {
+      if (milestoneModal.edit) {
+        await api.updateMilestone(auth.token, milestoneModal.edit.id, form);
+        addToast("Milestone updated");
+      } else {
+        await api.createMilestone(auth.token, form);
+        addToast("Milestone created");
+      }
+      setMilestoneModal({ open: false });
+      await ws.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to save milestone", "error");
+    }
+  };
+
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -199,9 +236,9 @@ export function ProjectTasksPage() {
   };
 
   return (
-    <div>
+    <div className="mb-8">
       {/* <AnimatedBackground /> */}
-       
+
 
       <div className="relative z-10 mb-5">
         <ProjectInfoCard
@@ -235,11 +272,10 @@ export function ProjectTasksPage() {
         <div className="relative" ref={boardSettingsRef}>
           <button
             onClick={() => setShowBoardSettings(!showBoardSettings)}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              showBoardSettings
-                ? "bg-cyan-50 text-cyan-600"
-                : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-            }`}
+            className={`p-2 rounded-xl transition-all duration-200 ${showBoardSettings
+              ? "bg-cyan-50 text-cyan-600"
+              : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              }`}
             title="Board Settings"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,31 +294,27 @@ export function ProjectTasksPage() {
                   <button
                     key={board.title}
                     onClick={() => toggleBoard(board.title)}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-all duration-200 ${
-                      visibleBoards[board.title]
-                        ? "bg-slate-50 hover:bg-slate-100"
-                        : "opacity-50 hover:opacity-75 hover:bg-slate-50"
-                    }`}
+                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-all duration-200 ${visibleBoards[board.title]
+                      ? "bg-slate-50 hover:bg-slate-100"
+                      : "opacity-50 hover:opacity-75 hover:bg-slate-50"
+                      }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className={board.headerText}>{board.icon}</span>
                       <span
-                        className={`text-xs font-medium ${
-                          visibleBoards[board.title] ? "text-slate-700" : "text-slate-400"
-                        }`}
+                        className={`text-xs font-medium ${visibleBoards[board.title] ? "text-slate-700" : "text-slate-400"
+                          }`}
                       >
                         {board.title}
                       </span>
                     </div>
                     <div
-                      className={`w-8 h-4 rounded-full transition-colors duration-200 ${
-                        visibleBoards[board.title] ? "bg-cyan-500" : "bg-slate-200"
-                      }`}
+                      className={`w-8 h-4 rounded-full transition-colors duration-200 ${visibleBoards[board.title] ? "bg-cyan-500" : "bg-slate-200"
+                        }`}
                     >
                       <div
-                        className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform duration-200 mt-0.5 ${
-                          visibleBoards[board.title] ? "translate-x-4" : "translate-x-0.5"
-                        }`}
+                        className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform duration-200 mt-0.5 ${visibleBoards[board.title] ? "translate-x-4" : "translate-x-0.5"
+                          }`}
                       />
                     </div>
                   </button>
@@ -299,43 +331,123 @@ export function ProjectTasksPage() {
           if (tasks.length === 0) return null;
           const colors = getStatusColor(milestone.status);
           return (
-            <section key={milestone.id} className={`rounded-xl p-4 ${idx % 2 === 0 ? "bg-blue-300" : "bg-green-300"}`}>
-              <div className="flex items-center gap-3 mb-3 ">
+            <section
+              key={milestone.id}
+              // className={`rounded-xl p-4  transition-shadow duration-200 hover:shadow-md ${idx % 2 === 0 ? "bg-blue-200" : "bg-slate-200"  }`}
+              className={`rounded-xl p-4  transition-shadow duration-200 hover:shadow-md ${colors.bg}`}
+              // className={`rounded-xl p-4 shadow-lg transition-shadow duration-200  `}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                {/* Main Icon  */}
                 <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                    milestone.isCritical ? "bg-red-100" : "bg-indigo-100"
-                  }`}
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${milestone.isCritical ? "bg-red-100" : "bg-indigo-100"
+                    }`}
                 >
                   <span
-                    className={`material-symbols-outlined text-lg ${
-                      milestone.isCritical ? "text-red-500" : "text-indigo-600"
-                    }`}
+                    className={`material-symbols-outlined text-lg ${milestone.isCritical ? "text-red-500" : "text-indigo-600"
+                      }`}
                   >
                     {milestone.status === "Completed" ? "check_circle" : "flag"}
                   </span>
                 </div>
+
+                {/* Title and Meta */}
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-bold text-slate-800 truncate">
-                    {milestone.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                    <span className={`px-1.5 py-0.5 rounded font-semibold ${colors.bg} ${colors.text}`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    
+                    <h3 className="text-sm font-bold text-slate-800 truncate">
+                      {milestone.name}
+                    </h3>
+                     {/* Status */}
+                    <span className={`px-1.5 py-0.5 text-[10px] rounded-xl font-semibold ${colors.bg} ${colors.text}`}>
                       {milestone.status}
                     </span>
-                    {milestone.dueDate && <span>Due {formatDate(milestone.dueDate)}</span>}
-                    <span>· {tasks.length} tasks</span>
+                    {/* {milestone.isCritical && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500 text-white shadow-sm">
+                        <span className="material-symbols-outlined text-[10px]">priority_high</span>
+                       
+                      </span>
+                    )} */}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-700 flex-wrap">
+                   
+
+                    {milestone.dueDate && (
+                      <span className="flex items-center gap-0.5">
+                        <span className="material-symbols-outlined ">calendar_today</span>
+                        Due {formatDate(milestone.dueDate)}
+                      </span>
+                    )}
+
+                    <span className="flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[10px]">task_alt</span>
+                      {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+                    </span>
+
+                    
                   </div>
                 </div>
+
+                {/* Progress Bar  */}
                 <div className="w-24 shrink-0">
+                  <p className="text-[10px] text-right text-slate-700 mt-0.5">
+                    {Math.round(milestone.progressPercentage || 0)}%
+                  </p>
                   <div className="w-full bg-slate-200 rounded-full h-1.5">
                     <div
                       className={`${colors.dot} h-1.5 rounded-full transition-all duration-500`}
                       style={{ width: `${milestone.progressPercentage || 0}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-right text-slate-400 mt-0.5">
-                    {Math.round(milestone.progressPercentage || 0)}%
-                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Add Task Button */}
+                    {canManageTasks && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTaskModal({ open: true, milestoneId: milestone.id });
+                        }}
+                        className="inline-flex items-center gap-1 cursor-pointer rounded-full text-[10px] font-medium
+                     text-indigo-700 bg-indigo-100 hover:bg-indigo-200 
+                     border border-indigo-200
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+                     transition-all duration-200"
+                        title="Add task to this milestone"
+                        aria-label="Add task to this milestone"
+                      >
+                        <span className="material-symbols-outlined text-sm" aria-hidden="true">add</span>
+
+                      </button>
+                    )}
+
+
+                  {/* View Button  */}
+                  <button
+                    title="View milestone"
+                    className="p-1.5 rounded-lg text-slate-400 bg-blue-50 cursor-pointer hover:text-cyan-500 hover:bg-cyan-50 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setViewMilestone(milestone); }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+
+                  {canManageTasks && (
+                    // Edit Button 
+                    <button
+                      title="Edit milestone"
+                      className="p-1.5 rounded-lg text-slate-400 bg-amber-50 cursor-pointer hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setMilestoneModal({ open: true, edit: milestone }); }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
               {renderMilestoneBoard(milestone)}
@@ -401,7 +513,7 @@ export function ProjectTasksPage() {
         onEscalate={() => {
           void ws.refresh();
         }}
-        onMessage={() => {}}
+        onMessage={() => { }}
       />
 
       <TaskFormModal
@@ -422,6 +534,37 @@ export function ProjectTasksPage() {
         name={deleteTask?.title ?? ""}
         onConfirm={handleDeleteTask}
         onClose={() => setDeleteTask(null)}
+      />
+
+      <MilestoneDetailModal
+        open={!!viewMilestone}
+        milestone={viewMilestone}
+        tasks={ws.tasks}
+        project={ws.project}
+        users={ws.users}
+        isAdmin={canManageTasks}
+        onClose={() => setViewMilestone(null)}
+        onComplete={() => {
+          if (viewMilestone) api.completeMilestone(auth!.token, viewMilestone.id).then(() => ws.refresh());
+          setViewMilestone(null);
+        }}
+        onStatusChange={(status) => {
+          if (viewMilestone) api.setMilestoneStatus(auth!.token, viewMilestone.id, status).then(() => ws.refresh());
+          setViewMilestone(null);
+        }}
+        onEdit={() => {
+          if (viewMilestone) setMilestoneModal({ open: true, edit: viewMilestone });
+          setViewMilestone(null);
+        }}
+        onDelete={() => { }}
+      />
+
+      <MilestoneFormModal
+        open={milestoneModal.open}
+        projectId={ws.project.id}
+        initialData={milestoneModal.edit}
+        onSubmit={handleMilestoneSubmit}
+        onClose={() => setMilestoneModal({ open: false })}
       />
 
       <ProjectDetailModal

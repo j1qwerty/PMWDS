@@ -20,8 +20,21 @@ export function ProjectInfoCard({
   return (
     <GlassCard className="p-4">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-xl">folder_open</span>
+       <div className="size-11 relative flex items-center justify-center flex-shrink-0">
+          <svg className="size-full -rotate-90" viewBox="0 0 36 36">
+            <circle className="stroke-slate-200" cx="18" cy="18" fill="none" r="16" strokeWidth="3" />
+            <circle
+              className="stroke-indigo-500 transition-all duration-700"
+              cx="18" cy="18" fill="none" r="16"
+              strokeDasharray="100"
+              strokeDashoffset={100 - Math.min(Math.round(project.progressPercentage || 0), 100)}
+              strokeLinecap="round"
+              strokeWidth="3"
+            />
+          </svg>
+          <span className="absolute text-[9px] font-bold text-slate-600">
+            {Math.min(Math.round(project.progressPercentage || 0), 100)}%
+          </span>
         </div>
 
         <div className="min-w-0 flex-1">
@@ -41,18 +54,19 @@ export function ProjectInfoCard({
         </div>
 
         <div className="flex items-center gap-1.5 text-slate-500">
-          <HiOutlineClipboardList className="size-4" />
+           <div className="flex items-center gap-1.5 text-slate-500">
+          <HiOutlineFlag className="size-4" title="Milestone" />
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-700 leading-none">{milestonesCount}</span>
+          </div>
+        </div>
+          <HiOutlineClipboardList className="size-4" title="Tasks" />
           <div className="flex flex-col">
             <span className="text-xs font-bold text-slate-700 leading-none">{project.totalTasks}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-slate-500">
-          <HiOutlineFlag className="size-4" />
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-slate-700 leading-none">{milestonesCount}</span>
-          </div>
-        </div>
+       
 
         <div className="flex items-center gap-1">
           <button
@@ -79,22 +93,7 @@ export function ProjectInfoCard({
           )}
         </div>
 
-        <div className="size-11 relative flex items-center justify-center flex-shrink-0">
-          <svg className="size-full -rotate-90" viewBox="0 0 36 36">
-            <circle className="stroke-slate-200" cx="18" cy="18" fill="none" r="16" strokeWidth="3" />
-            <circle
-              className="stroke-indigo-500 transition-all duration-700"
-              cx="18" cy="18" fill="none" r="16"
-              strokeDasharray="100"
-              strokeDashoffset={100 - Math.min(Math.round(project.progressPercentage || 0), 100)}
-              strokeLinecap="round"
-              strokeWidth="3"
-            />
-          </svg>
-          <span className="absolute text-[9px] font-bold text-slate-600">
-            {Math.min(Math.round(project.progressPercentage || 0), 100)}%
-          </span>
-        </div>
+        
       </div>
     </GlassCard>
   );
