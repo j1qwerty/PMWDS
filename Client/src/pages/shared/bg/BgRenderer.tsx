@@ -1,39 +1,34 @@
 import React from 'react';
-import type { BgConfig, BgPattern } from './types';
-import { buildGradientStyle, buildPatternStyle, buildWavesSvg, getAnimStyle, ANIM_KEYFRAMES } from './utils';
+import type { BgConfig } from './types';
+import { buildGradientStyle, buildPatternStyles, buildWavesSvg, getAnimStyle, ANIM_KEYFRAMES } from './utils';
 
 interface BgRendererProps {
   config: BgConfig;
   absolute?: boolean;
 }
 
-const PATTERN_TYPES: BgPattern[] = ['grid', 'dots', 'diagonal', 'crosshatch', 'hexagons', 'rings', 'diamonds'];
-
 export function BgRenderer({ config, absolute }: BgRendererProps) {
   const pos = absolute ? 'absolute' : 'fixed';
-  const { pattern, gradient, overlay, waves, blobs } = config;
+  const { gradient, waves, blobs } = config;
 
-  const showGradient = pattern !== 'none';
-  const showPattern = PATTERN_TYPES.includes(pattern);
-  const showWaves = pattern === 'waves';
-
-  const gradientStyle = showGradient ? buildGradientStyle(gradient) : {};
-  const patternStyle = showPattern ? buildPatternStyle(config) : {};
+  const gradientStyle = gradient.enabled ? buildGradientStyle(gradient) : null;
+  const patternStyles = buildPatternStyles(config);
 
   return (
     <>
-      {showGradient && (
+      {gradientStyle && (
         <div className={`${pos} inset-0 pointer-events-none z-0`} style={gradientStyle} />
       )}
 
-      {showPattern && (
+      {patternStyles.map((ps, idx) => (
         <div
+          key={idx}
           className={`${pos} inset-0 pointer-events-none z-0`}
-          style={{ backgroundImage: patternStyle.backgroundImage, backgroundRepeat: 'repeat' }}
+          style={{ backgroundImage: ps.backgroundImage, backgroundRepeat: 'repeat' }}
         />
-      )}
+      ))}
 
-      {showWaves && (
+      {waves.enabled && (
         <div className={`${pos} inset-0 pointer-events-none z-0 overflow-hidden`} style={{ opacity: waves.opacity }}>
           <div
             className="absolute"
@@ -50,7 +45,7 @@ export function BgRenderer({ config, absolute }: BgRendererProps) {
         </div>
       )}
 
-      {blobs.opacity > 0 &&
+      {blobs.enabled && blobs.opacity > 0 &&
         Array.from({ length: blobs.count }, (_, i) => {
           const positions = [
             { top: '10%', right: '5%' },

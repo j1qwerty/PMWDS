@@ -248,7 +248,7 @@ export function TaskSubtaskCard({
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200">
+    <div className="bg-white rounded-xl py-4 px-2 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200">
       {/* Title + progress — clickable to open the task details modal */}
       <div
         className={mayEdit ? "cursor-pointer" : ""}
@@ -262,6 +262,9 @@ export function TaskSubtaskCard({
           }
         }}
       >
+        <div className="px-2">
+
+        
         <h4 className="text-sm font-medium text-slate-700 mb-3 leading-snug">{task.title}</h4>
 
         <div className="mb-3">
@@ -278,57 +281,56 @@ export function TaskSubtaskCard({
             />
           </div>
         </div>
+        </div>
       </div>
 
       {/* Subtask strip + expanded list */}
-<div className="flex items-center ">
- 
+      <div className="flex items-center ">
 
-  {hasSubtasks && (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 flex-1 min-w-0 ${
-        expanded ? "bg-indigo-50/60" : "bg-slate-50"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() => setExpanded((p) => !p)}
-        className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
-        aria-expanded={expanded}
-      >
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 shrink-0">
-          Subtasks
-        </span>
-        <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded shrink-0">
-          {subtasks.length}
-        </span>
-        {!expanded && subtasks.length > 0 && (
-          <span className="text-[10px] text-slate-500 truncate min-w-0">
-            {subtasks.map((s) => s.title).join(", ")}
-          </span>
+
+        {hasSubtasks && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`flex items-center justify-between gap-2 rounded-lg pl-2  py-1.5 flex-1 min-w-0 ${expanded ? "bg-slate-100" : "bg-purple-50 hover:bg-purple-100"
+              }`}
+          >
+            <button
+              type="button"
+              onClick={() => setExpanded((p) => !p)}
+              className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
+              aria-expanded={expanded}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 shrink-0">
+                Subtasks
+              </span>
+              <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded shrink-0">
+                {subtasks.length}
+              </span>
+              {!expanded && subtasks.length > 0 && (
+                <span className="text-[10px] text-slate-500 truncate min-w-0">
+                  {subtasks.map((s) => s.title).join(", ")}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpanded((p) => !p)}
+              className="shrink-0 pr-2"
+              aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
+            >
+              <svg
+                className={`w-4 h-4 transition-transform duration-200 text-slate-500 ${expanded ? "rotate-90 text-indigo-600" : ""
+                  }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         )}
-      </button>
-      <button
-        type="button"
-        onClick={() => setExpanded((p) => !p)}
-        className="shrink-0"
-        aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
-      >
-        <svg
-          className={`w-4 h-4 transition-transform duration-200 text-slate-500 ${
-            expanded ? "rotate-90 text-indigo-600" : ""
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </div>
-  )}
-</div>
+      </div>
 
       {expanded && hasSubtasks && (
         <div className="mb-3 space-y-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
@@ -355,7 +357,7 @@ export function TaskSubtaskCard({
                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColors.dot}`}
                     title={sub.status}
                   />
-                  <span className="text-xs text-slate-700 truncate">{sub.title}</span>
+                  <span className="text-xs text-slate-700 truncate" title={sub.title}>{sub.title}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <div className="w-16 bg-slate-200 rounded-full h-1 overflow-hidden">
@@ -408,46 +410,46 @@ export function TaskSubtaskCard({
 
         <div className="flex items-center gap-1.5">
 
- {mayEdit &&
-    (onAddSubtask ? (
-      <button
-        type="button"
-        title="Add subtask"
-        onClick={(e) => {
-          e.stopPropagation();
-          onAddSubtask(task.id);
-        }}
-        className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </button>
-    ) : (
-      <button
-        type="button"
-        title="Add subtask"
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowSubtaskModal(true);
-        }}
-        className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </button>
-    ))}
+          {mayEdit &&
+            (onAddSubtask ? (
+              <button
+                type="button"
+                title="Add subtask"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddSubtask(task.id);
+                }}
+                className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="button"
+                title="Add subtask"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSubtaskModal(true);
+                }}
+                className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </button>
+            ))}
 
           {mayEdit && onEditTask && (
             <button
@@ -462,7 +464,7 @@ export function TaskSubtaskCard({
             </button>
           )}
 
-         
+
         </div>
       </div>
 

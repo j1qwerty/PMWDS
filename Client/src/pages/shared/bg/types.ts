@@ -1,22 +1,24 @@
-export type BgPattern =
-  | 'none'
-  | 'gradient'
-  | 'grid'
-  | 'dots'
-  | 'waves'
-  | 'diagonal'
-  | 'crosshatch'
-  | 'hexagons'
-  | 'rings'
-  | 'diamonds';
-
 export type BgAnimation = 'none' | 'float' | 'pulse' | 'rotate' | 'drift' | 'breathe';
 
 export type BgGradientType = 'radial' | 'linear' | 'conic';
 
+export type BgPatternType = 'grid' | 'dots' | 'diagonal' | 'crosshatch' | 'hexagons' | 'rings' | 'diamonds';
+
+export interface BgPatternConfig {
+  enabled: boolean;
+  color: string;
+  opacity: number;
+  size: number;
+  strokeWidth: number;
+}
+
+export interface BgDiagonalPatternConfig extends BgPatternConfig {
+  angle: number;
+}
+
 export interface BgConfig {
-  pattern: BgPattern;
   gradient: {
+    enabled: boolean;
     type: BgGradientType;
     color1: string;
     color2: string;
@@ -24,14 +26,17 @@ export interface BgConfig {
     angle: number;
     opacity: number;
   };
-  overlay: {
-    color: string;
-    opacity: number;
-    size: number;
-    strokeWidth: number;
-    angle: number;
+  patterns: {
+    grid: BgPatternConfig;
+    dots: BgPatternConfig;
+    diagonal: BgDiagonalPatternConfig;
+    crosshatch: BgDiagonalPatternConfig;
+    hexagons: BgPatternConfig;
+    rings: BgPatternConfig;
+    diamonds: BgPatternConfig;
   };
   waves: {
+    enabled: boolean;
     color: string;
     opacity: number;
     amplitude: number;
@@ -40,6 +45,7 @@ export interface BgConfig {
     count: number;
   };
   blobs: {
+    enabled: boolean;
     color1: string;
     color2: string;
     opacity: number;

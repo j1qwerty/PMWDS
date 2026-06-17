@@ -144,6 +144,11 @@
 
 
 # TODO 
+## fixes
+- 
+- 
+
+
 ## top priority
 - refactor modals and overlays for consistency 
 - redesign modals

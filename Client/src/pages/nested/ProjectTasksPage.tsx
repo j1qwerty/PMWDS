@@ -16,7 +16,7 @@ import {
   getStatusColor,
   BgRenderer,
 } from "../shared";
-import TaskBoard, { allBoards } from "../shared/dash/TaskBoard";
+import TaskSubtaskBoard, { allBoards } from "../shared/dash/TaskSubtaskBoard";
 import { ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
@@ -185,13 +185,15 @@ export function ProjectTasksPage() {
     const milestoneId = milestone?.id ?? "__unassigned__";
     const tasks = groupedTasks.get(milestoneId) ?? [];
     return (
-      <TaskBoard
+      <TaskSubtaskBoard
         key={milestoneId}
         tasks={tasks}
         canEdit={canManageTasks}
         onViewTask={(t) => setViewTask(t)}
         onEditTask={(t) => setTaskModal({ open: true, edit: t })}
         visibleBoards={visibleBoards}
+        users={ws.users}
+        onRefresh={() => ws.refresh()}
       />
     );
   };

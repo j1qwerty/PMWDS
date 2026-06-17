@@ -128,11 +128,18 @@ export function AIPage() {
       {/* <AnimatedBackground /> */}
     <BgRenderer
   config={{
-    pattern: "hexagons",
-    gradient: { type: "radial", color1: "#4F46E5", color2: "#27cbec", color3: "#A855F7", angle: 0, opacity: 0.15 },
-    overlay: { color: "#4F46E5", opacity: 0.21, size: 120, strokeWidth: 0.3, angle: 45 },
-    waves: { color: "#4F46E5", opacity: 0.2, amplitude: 15, frequency: 2, speed: 1, count: 3 },
-    blobs: { color1: "#4F46E5", color2: "#7C3AED", opacity: 0.12, count: 3, animation: "float", speed: 1, size: 1 },
+    gradient: { enabled: true, type: "radial", color1: "#4F46E5", color2: "#27cbec", color3: "#A855F7", angle: 0, opacity: 0.15 },
+    patterns: {
+      hexagons: { enabled: true, color: "#4F46E5", opacity: 0.21, size: 120, strokeWidth: 0.3 },
+      grid: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+      dots: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+      diagonal: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5, angle: 45 },
+      crosshatch: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5, angle: 45 },
+      rings: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+      diamonds: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+    },
+    waves: { enabled: false, color: "#4F46E5", opacity: 0.2, amplitude: 15, frequency: 2, speed: 1, count: 3 },
+    blobs: { enabled: true, color1: "#4F46E5", color2: "#7C3AED", opacity: 0.12, count: 3, animation: "float", speed: 1, size: 1 },
   }}
 />
 

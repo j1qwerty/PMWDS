@@ -1,21 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { BgConfig, BgPreset } from './types';
+import type { BgConfig, BgPreset, BgPatternType } from './types';
 import { BgRenderer } from './BgRenderer';
 import { DEFAULT_CONFIG, BUILTIN_PRESETS, loadSavedPresets, saveCustomPreset, deleteCustomPreset } from './presets';
-import { hexToRgba } from './utils';
-
-const PATTERN_OPTIONS: { value: BgConfig['pattern']; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'gradient', label: 'Gradient' },
-  { value: 'grid', label: 'Grid' },
-  { value: 'dots', label: 'Dots' },
-  { value: 'waves', label: 'Waves' },
-  { value: 'diagonal', label: 'Diagonal' },
-  { value: 'crosshatch', label: 'Crosshatch' },
-  { value: 'hexagons', label: 'Hexagons' },
-  { value: 'rings', label: 'Rings' },
-  { value: 'diamonds', label: 'Diamonds' },
-];
 
 const ANIM_OPTIONS: { value: string; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -32,14 +18,31 @@ const GRADIENT_TYPES: { value: string; label: string }[] = [
   { value: 'conic', label: 'Conic' },
 ];
 
+const PATTERN_LIST: { key: BgPatternType; label: string }[] = [
+  { key: 'grid', label: 'Grid' },
+  { key: 'dots', label: 'Dots' },
+  { key: 'diagonal', label: 'Diagonal' },
+  { key: 'crosshatch', label: 'Crosshatch' },
+  { key: 'hexagons', label: 'Hexagons' },
+  { key: 'rings', label: 'Rings' },
+  { key: 'diamonds', label: 'Diamonds' },
+];
+
 function CodeString({ config }: { config: BgConfig }) {
   const lines: string[] = [`<BgRenderer`];
   lines.push(`  config={{`);
-  lines.push(`    pattern: "${config.pattern}",`);
-  lines.push(`    gradient: { type: "${config.gradient.type}", color1: "${config.gradient.color1}", color2: "${config.gradient.color2}", color3: "${config.gradient.color3}", angle: ${config.gradient.angle}, opacity: ${config.gradient.opacity} },`);
-  lines.push(`    overlay: { color: "${config.overlay.color}", opacity: ${config.overlay.opacity}, size: ${config.overlay.size}, strokeWidth: ${config.overlay.strokeWidth}, angle: ${config.overlay.angle} },`);
-  lines.push(`    waves: { color: "${config.waves.color}", opacity: ${config.waves.opacity}, amplitude: ${config.waves.amplitude}, frequency: ${config.waves.frequency}, speed: ${config.waves.speed}, count: ${config.waves.count} },`);
-  lines.push(`    blobs: { color1: "${config.blobs.color1}", color2: "${config.blobs.color2}", opacity: ${config.blobs.opacity}, count: ${config.blobs.count}, animation: "${config.blobs.animation}", speed: ${config.blobs.speed}, size: ${config.blobs.size} },`);
+  lines.push(`    gradient: { enabled: ${config.gradient.enabled}, type: "${config.gradient.type}", color1: "${config.gradient.color1}", color2: "${config.gradient.color2}", color3: "${config.gradient.color3}", angle: ${config.gradient.angle}, opacity: ${config.gradient.opacity} },`);
+  const activePatterns = PATTERN_LIST.filter(({ key }) => config.patterns[key].enabled);
+  if (activePatterns.length > 0) {
+    lines.push(`    patterns: {`);
+    for (const { key } of activePatterns) {
+      const p = config.patterns[key];
+      lines.push(`      ${key}: { enabled: true, color: "${p.color}", opacity: ${p.opacity}, size: ${p.size}, strokeWidth: ${p.strokeWidth}${'angle' in p ? `, angle: ${(p as any).angle}` : ''} },`);
+    }
+    lines.push(`    },`);
+  }
+  lines.push(`    waves: { enabled: ${config.waves.enabled}, color: "${config.waves.color}", opacity: ${config.waves.opacity}, amplitude: ${config.waves.amplitude}, frequency: ${config.waves.frequency}, speed: ${config.waves.speed}, count: ${config.waves.count} },`);
+  lines.push(`    blobs: { enabled: ${config.blobs.enabled}, color1: "${config.blobs.color1}", color2: "${config.blobs.color2}", opacity: ${config.blobs.opacity}, count: ${config.blobs.count}, animation: "${config.blobs.animation}", speed: ${config.blobs.speed}, size: ${config.blobs.size} },`);
   lines.push(`  }}`);
   lines.push(`/>`);
   return <>{lines.join('\n')}</>;
@@ -77,6 +80,23 @@ function SelectInput({ label, value, options, onChange }: { label: string; value
   );
 }
 
+function Toggle({ label, enabled, onChange }: { label: string; enabled: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-sm cursor-pointer py-1">
+      <span className="font-medium">{label}</span>
+      <button
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+        onClick={() => onChange(!enabled)}
+      >
+        <span
+          className="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform"
+          style={{ transform: `translateX(${enabled ? 18 : 2}px)` }}
+        />
+      </button>
+    </label>
+  );
+}
+
 export function BgControls() {
   const [config, setConfig] = useState<BgConfig>(DEFAULT_CONFIG);
   const [savedPresets, setSavedPresets] = useState<BgPreset[]>([]);
@@ -88,7 +108,7 @@ export function BgControls() {
 
   const update = <K extends keyof BgConfig>(key: K, value: BgConfig[K]) => setConfig((prev) => ({ ...prev, [key]: value }));
   const updateGradient = <K extends keyof BgConfig['gradient']>(key: K, value: BgConfig['gradient'][K]) => setConfig((prev) => ({ ...prev, gradient: { ...prev.gradient, [key]: value } }));
-  const updateOverlay = <K extends keyof BgConfig['overlay']>(key: K, value: BgConfig['overlay'][K]) => setConfig((prev) => ({ ...prev, overlay: { ...prev.overlay, [key]: value } }));
+  const updatePattern = (name: BgPatternType, patch: Partial<BgConfig['patterns'][BgPatternType]>) => setConfig((prev) => ({ ...prev, patterns: { ...prev.patterns, [name]: { ...prev.patterns[name], ...patch } } }));
   const updateWaves = <K extends keyof BgConfig['waves']>(key: K, value: BgConfig['waves'][K]) => setConfig((prev) => ({ ...prev, waves: { ...prev.waves, [key]: value } }));
   const updateBlobs = <K extends keyof BgConfig['blobs']>(key: K, value: BgConfig['blobs'][K]) => setConfig((prev) => ({ ...prev, blobs: { ...prev.blobs, [key]: value } }));
 
@@ -107,10 +127,7 @@ export function BgControls() {
     setSavedPresets(loadSavedPresets());
   };
 
-  const v = config.pattern;
-  const showGradient = v !== 'none';
-  const showOverlay = v !== 'none' && v !== 'gradient' && v !== 'waves';
-  const showWaves = v === 'waves';
+  const anyPatternEnabled = PATTERN_LIST.some(({ key }) => config.patterns[key].enabled);
 
   return (
     <div className="flex h-dvh bg-white text-gray-800 font-sans">
@@ -118,13 +135,26 @@ export function BgControls() {
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
           <h2 className="text-lg font-semibold">Background Studio</h2>
 
-          <div>
-            <SelectInput label="Pattern" value={config.pattern} options={PATTERN_OPTIONS} onChange={(v) => update('pattern', v as BgConfig['pattern'])} />
+          {/* ── Layer Toggles ── */}
+          <div className="space-y-1 border-b border-gray-200 pb-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Layers</h3>
+            <Toggle label="Gradient" enabled={config.gradient.enabled} onChange={(v) => updateGradient('enabled', v)} />
+            <Toggle label="Waves" enabled={config.waves.enabled} onChange={(v) => updateWaves('enabled', v)} />
+            <Toggle label="Blobs" enabled={config.blobs.enabled} onChange={(v) => updateBlobs('enabled', v)} />
           </div>
 
-          {showGradient && (
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Gradient</h3>
+          {/* ── Pattern Toggles ── */}
+          <div className="space-y-1 border-b border-gray-200 pb-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Pattern Overlays</h3>
+            {PATTERN_LIST.map(({ key, label }) => (
+              <Toggle key={key} label={label} enabled={config.patterns[key].enabled} onChange={(v) => updatePattern(key, { enabled: v } as any)} />
+            ))}
+          </div>
+
+          {/* ── Gradient ── */}
+          {config.gradient.enabled && (
+            <div className="space-y-3 border-b border-gray-200 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Gradient Settings</h3>
               <SelectInput label="Type" value={config.gradient.type} options={GRADIENT_TYPES} onChange={(v) => updateGradient('type', v as any)} />
               <ColorInput label="Color 1" value={config.gradient.color1} onChange={(v) => updateGradient('color1', v)} />
               <ColorInput label="Color 2" value={config.gradient.color2} onChange={(v) => updateGradient('color2', v)} />
@@ -134,22 +164,33 @@ export function BgControls() {
             </div>
           )}
 
-          {showOverlay && (
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Pattern</h3>
-              <ColorInput label="Color" value={config.overlay.color} onChange={(v) => updateOverlay('color', v)} />
-              <RangeInput label="Opacity" value={config.overlay.opacity} min={0} max={1} step={0.01} onChange={(v) => updateOverlay('opacity', v)} />
-              <RangeInput label="Size" value={config.overlay.size} min={8} max={120} step={1} onChange={(v) => updateOverlay('size', v)} unit="px" />
-              <RangeInput label="Stroke" value={config.overlay.strokeWidth} min={0.1} max={3} step={0.1} onChange={(v) => updateOverlay('strokeWidth', v)} unit="px" />
-              {(v === 'diagonal' || v === 'crosshatch') && (
-                <RangeInput label="Angle" value={config.overlay.angle} min={0} max={360} step={1} onChange={(v) => updateOverlay('angle', v)} unit="deg" />
-              )}
+          {/* ── Pattern Settings ── */}
+          {anyPatternEnabled && (
+            <div className="space-y-3 border-b border-gray-200 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Pattern Settings</h3>
+              {PATTERN_LIST.map(({ key, label }) => {
+                const p = config.patterns[key];
+                if (!p.enabled) return null;
+                return (
+                  <div key={key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-white">
+                    <h4 className="text-sm font-semibold">{label}</h4>
+                    <ColorInput label="Color" value={p.color} onChange={(v) => updatePattern(key, { color: v } as any)} />
+                    <RangeInput label="Opacity" value={p.opacity} min={0} max={1} step={0.01} onChange={(v) => updatePattern(key, { opacity: v } as any)} unit="" />
+                    <RangeInput label="Size" value={p.size} min={8} max={120} step={1} onChange={(v) => updatePattern(key, { size: v } as any)} unit="px" />
+                    <RangeInput label="Stroke" value={p.strokeWidth} min={0.1} max={3} step={0.1} onChange={(v) => updatePattern(key, { strokeWidth: v } as any)} unit="px" />
+                    {'angle' in p && (
+                      <RangeInput label="Angle" value={(p as any).angle} min={0} max={360} step={1} onChange={(v) => updatePattern(key, { angle: v } as any)} unit="deg" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {showWaves && (
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Waves</h3>
+          {/* ── Waves ── */}
+          {config.waves.enabled && (
+            <div className="space-y-3 border-b border-gray-200 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Waves Settings</h3>
               <ColorInput label="Color" value={config.waves.color} onChange={(v) => updateWaves('color', v)} />
               <RangeInput label="Opacity" value={config.waves.opacity} min={0} max={1} step={0.01} onChange={(v) => updateWaves('opacity', v)} />
               <RangeInput label="Amplitude" value={config.waves.amplitude} min={5} max={50} step={1} onChange={(v) => updateWaves('amplitude', v)} unit="px" />
@@ -159,9 +200,10 @@ export function BgControls() {
             </div>
           )}
 
-          {v !== 'none' && (
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Blobs</h3>
+          {/* ── Blobs ── */}
+          {config.blobs.enabled && (
+            <div className="space-y-3 border-b border-gray-200 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Blobs Settings</h3>
               <ColorInput label="Color 1" value={config.blobs.color1} onChange={(v) => updateBlobs('color1', v)} />
               <ColorInput label="Color 2" value={config.blobs.color2} onChange={(v) => updateBlobs('color2', v)} />
               <RangeInput label="Opacity" value={config.blobs.opacity} min={0} max={0.5} step={0.01} onChange={(v) => updateBlobs('opacity', v)} />

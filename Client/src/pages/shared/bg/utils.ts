@@ -132,17 +132,27 @@ export function buildGradientStyle(cfg: BgConfig['gradient']): React.CSSProperti
   };
 }
 
-export function buildPatternStyle(cfg: BgConfig): React.CSSProperties {
-  const { pattern, overlay } = cfg;
-  const { color, opacity, size, strokeWidth, angle } = overlay;
-  if (pattern === 'grid') return { backgroundImage: buildGridPattern(color, size, strokeWidth, opacity), backgroundRepeat: 'repeat' };
-  if (pattern === 'dots') return { backgroundImage: buildDotsPattern(color, size, strokeWidth * 3, opacity), backgroundRepeat: 'repeat' };
-  if (pattern === 'diagonal') return { backgroundImage: buildDiagonalPattern(color, size, strokeWidth, opacity, angle), backgroundRepeat: 'repeat' };
-  if (pattern === 'crosshatch') return { backgroundImage: buildCrosshatchPattern(color, size, strokeWidth, opacity, angle), backgroundRepeat: 'repeat' };
-  if (pattern === 'hexagons') return { backgroundImage: buildHexPattern(color, size, strokeWidth, opacity), backgroundRepeat: 'repeat' };
-  if (pattern === 'rings') return { backgroundImage: buildRingsPattern(color, size, strokeWidth, opacity, size / 3), backgroundRepeat: 'repeat' };
-  if (pattern === 'diamonds') return { backgroundImage: buildDiamondsPattern(color, size, strokeWidth, opacity), backgroundRepeat: 'repeat' };
-  return {};
+export function buildPatternStyles(cfg: BgConfig): React.CSSProperties[] {
+  const { patterns } = cfg;
+  const result: React.CSSProperties[] = [];
+  const p = patterns;
+
+  if (p.grid.enabled)
+    result.push({ backgroundImage: buildGridPattern(p.grid.color, p.grid.size, p.grid.strokeWidth, p.grid.opacity), backgroundRepeat: 'repeat' });
+  if (p.dots.enabled)
+    result.push({ backgroundImage: buildDotsPattern(p.dots.color, p.dots.size, p.dots.strokeWidth * 3, p.dots.opacity), backgroundRepeat: 'repeat' });
+  if (p.diagonal.enabled)
+    result.push({ backgroundImage: buildDiagonalPattern(p.diagonal.color, p.diagonal.size, p.diagonal.strokeWidth, p.diagonal.opacity, p.diagonal.angle), backgroundRepeat: 'repeat' });
+  if (p.crosshatch.enabled)
+    result.push({ backgroundImage: buildCrosshatchPattern(p.crosshatch.color, p.crosshatch.size, p.crosshatch.strokeWidth, p.crosshatch.opacity, p.crosshatch.angle), backgroundRepeat: 'repeat' });
+  if (p.hexagons.enabled)
+    result.push({ backgroundImage: buildHexPattern(p.hexagons.color, p.hexagons.size, p.hexagons.strokeWidth, p.hexagons.opacity), backgroundRepeat: 'repeat' });
+  if (p.rings.enabled)
+    result.push({ backgroundImage: buildRingsPattern(p.rings.color, p.rings.size, p.rings.strokeWidth, p.rings.opacity, p.rings.size / 3), backgroundRepeat: 'repeat' });
+  if (p.diamonds.enabled)
+    result.push({ backgroundImage: buildDiamondsPattern(p.diamonds.color, p.diamonds.size, p.diamonds.strokeWidth, p.diamonds.opacity), backgroundRepeat: 'repeat' });
+
+  return result;
 }
 
 const ANIM_KEYFRAMES = `
