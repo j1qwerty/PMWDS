@@ -15,11 +15,8 @@ export function OverallProgressRing({ progress, project, delayRisk, healthScore 
   const [animatedHealth, setAnimatedHealth] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimatedProgress(progress);
-      setAnimatedHealth(healthScore ?? 0);
-    }, 300);
-    return () => clearTimeout(timer);
+    setAnimatedProgress(progress);
+    setAnimatedHealth(healthScore ?? 0);
   }, [progress, healthScore]);
 
   const offset = circumference - (Math.min(animatedProgress, 100) / 100) * circumference;

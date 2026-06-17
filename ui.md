@@ -161,6 +161,7 @@
 - pojects page add more buttons on top nav
 - consistent toasts and stat cards design
 - add project detailed cleaned ui to workspace page in new tab, and proper tab management and ui
+- paginated results for documents and other sections, find all those sections make a list
 
 
 ### roles - settings page

@@ -1,6 +1,5 @@
 import { OverallProgressRing } from "../../shared";
 import type { Project, User } from "../../../types";
-import { formatMoney } from "../../../ui";
 import { useEffect, useState } from "react";
 
 interface AIInsightsSectionProps {
@@ -51,14 +50,10 @@ function AIInsightBadges() {
     { label: "On Pace", icon: "auto_awesome", color: "amber" },
   ];
 
-  const [visibleBadges, setVisibleBadges] = useState<number[]>([]);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    badges.forEach((_, idx) => {
-      setTimeout(() => {
-        setVisibleBadges(prev => [...prev, idx]);
-      }, idx * 150);
-    });
+    setShow(true);
   }, []);
 
   const colorMap: Record<string, string> = {
@@ -75,10 +70,9 @@ function AIInsightBadges() {
           className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 
             ${colorMap[badge.color]}
             transition-all duration-500 ease-out
-            ${visibleBadges.includes(idx) 
-              ? 'opacity-100 translate-y-0 scale-100' 
-              : 'opacity-0 translate-y-2 scale-95'
-            }`}
+            ${show ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'}
+          `}
+          style={{ transitionDelay: `${idx * 150}ms` }}
         >
           <span className="material-symbols-outlined text-[18px] animate-pulse">{badge.icon}</span>
           <span className="text-xs font-bold tracking-wide uppercase">
@@ -100,37 +94,24 @@ function KeyMetrics({
   delayRisk: number | null;
   healthScore: number | null;
 }) {
-  const [animatedValues, setAnimatedValues] = useState({
-    budgetUsage: 0,
-    delayRisk: 0,
-    healthScore: 0,
-  });
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimatedValues({
-        budgetUsage: project.plannedBudget 
-          ? Math.round((project.actualCost / project.plannedBudget) * 100) 
-          : 0,
-        delayRisk: delayRisk || 0,
-        healthScore: healthScore || 0,
-      });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [project.actualCost, project.plannedBudget, delayRisk, healthScore]);
+  const budgetUsage = project.plannedBudget 
+    ? Math.round((project.actualCost / project.plannedBudget) * 100) 
+    : 0;
+  const delayRiskValue = delayRisk || 0;
+  const healthScoreValue = healthScore || 0;
 
   const metrics = [
     {
       label: "Budget Usage",
-      value: animatedValues.budgetUsage,
+      value: budgetUsage,
       suffix: "%",
-      color: animatedValues.budgetUsage > 80 ? "text-amber-600" : "text-emerald-600",
+      color: budgetUsage > 80 ? "text-amber-600" : "text-emerald-600",
       bg: "bg-emerald-50 border-emerald-100",
       icon: "account_balance",
     },
     {
       label: "Delay Risk",
-      value: animatedValues.delayRisk,
+      value: delayRiskValue,
       suffix: "%",
       color: (delayRisk && delayRisk > 50) ? "text-orange-600" : "text-emerald-600",
       bg: "bg-orange-50 border-orange-100",
@@ -138,7 +119,7 @@ function KeyMetrics({
     },
     {
       label: "Health Score",
-      value: animatedValues.healthScore,
+      value: healthScoreValue,
       suffix: "%",
       color: "text-indigo-600",
       bg: "bg-indigo-50 border-indigo-100",
@@ -208,11 +189,10 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
   };
 
   const metrics = calculateDummyHealth();
-  const [animated, setAnimated] = useState(false);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setAnimated(true), 500);
-    return () => clearTimeout(timer);
+    setShow(true);
   }, []);
 
   const getHealthColor = (value: number) => {
@@ -236,7 +216,7 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
             <div
               key={item.label}
               className={`p-4 bg-white rounded-xl border border-slate-100 transition-all duration-500 hover:shadow-lg ${healthColor.glow}
-                ${animated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+                ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
               `}
               style={{ transitionDelay: `${idx * 100}ms` }}
             >
@@ -250,7 +230,7 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
               
               <div className="flex items-end justify-between mb-2">
                 <span className="text-2xl font-bold text-slate-800 transition-all duration-1000">
-                  {animated ? Math.round(item.value * 100) : 0}%
+                  {show ? Math.round(item.value * 100) : 0}%
                 </span>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${healthColor.bg} ${healthColor.text}`}>
                   {healthColor.label}
@@ -260,7 +240,7 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-1000 ease-out ${healthColor.bg}`}
-                  style={{ width: animated ? `${item.value * 100}%` : '0%' }}
+                  style={{ width: show ? `${item.value * 100}%` : '0%' }}
                 />
               </div>
             </div>
