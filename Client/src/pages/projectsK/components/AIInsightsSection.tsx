@@ -1,6 +1,5 @@
 import { OverallProgressRing } from "../../shared";
 import type { Project, User } from "../../../types";
-import { useEffect, useState } from "react";
 
 interface AIInsightsSectionProps {
   project: Project;
@@ -37,6 +36,7 @@ export function AIInsightsSection({
         {/* <KeyMetrics project={project} delayRisk={delayRisk} healthScore={healthScore} /> */}
 
       {/* Health Matrix */}
+      <AIInsightBadges />
         
       <ProjectHealthMatrix project={project} />
     </div>
@@ -50,12 +50,6 @@ function AIInsightBadges() {
     { label: "On Pace", icon: "auto_awesome", color: "amber" },
   ];
 
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    setShow(true);
-  }, []);
-
   const colorMap: Record<string, string> = {
     indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
     emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -67,14 +61,9 @@ function AIInsightBadges() {
       {badges.map((badge, idx) => (
         <div
           key={idx}
-          className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 
-            ${colorMap[badge.color]}
-            transition-all duration-500 ease-out
-            ${show ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'}
-          `}
-          style={{ transitionDelay: `${idx * 150}ms` }}
+          className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 ${colorMap[badge.color]}`}
         >
-          <span className="material-symbols-outlined text-[18px] animate-pulse">{badge.icon}</span>
+          <span className="material-symbols-outlined text-[18px]">{badge.icon}</span>
           <span className="text-xs font-bold tracking-wide uppercase">
             <span className="text-[10px] font-normal text-slate-500 mr-1">AI Insight:</span>
             {badge.label}
@@ -132,21 +121,21 @@ function KeyMetrics({
       {metrics.map((metric, idx) => (
         <div
           key={idx}
-          className={`p-3 rounded-xl border ${metric.bg} transition-all duration-500 hover:shadow-sm`}
+          className={`p-3 rounded-xl border ${metric.bg}`}
         >
           <div className="flex items-center gap-1.5 mb-1.5">
             <span className="material-symbols-outlined text-[16px] text-slate-500">{metric.icon}</span>
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{metric.label}</span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className={`text-xl font-bold ${metric.color} transition-all duration-1000`}>
+            <span className={`text-xl font-bold ${metric.color}`}>
               {metric.value}
             </span>
             <span className="text-xs text-slate-400">{metric.suffix}</span>
           </div>
           <div className="w-full h-1 bg-slate-200/50 rounded-full mt-2 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-1000 ease-out ${metric.color.replace('text', 'bg')}`}
+              className={`h-full rounded-full ${metric.color.replace('text', 'bg')}`}
               style={{ width: `${Math.min(metric.value, 100)}%` }}
             />
           </div>
@@ -189,11 +178,6 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
   };
 
   const metrics = calculateDummyHealth();
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    setShow(true);
-  }, []);
 
   const getHealthColor = (value: number) => {
     if (value >= 0.8) return { dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-500", label: "Good", glow: "shadow-emerald-200" };
@@ -215,22 +199,19 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
           return (
             <div
               key={item.label}
-              className={`p-4 bg-white rounded-xl border border-slate-100 transition-all duration-500 hover:shadow-lg ${healthColor.glow}
-                ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-              `}
-              style={{ transitionDelay: `${idx * 100}ms` }}
+              className="p-4 bg-white rounded-xl border border-slate-100"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] text-slate-400">{item.icon}</span>
                   <span className="text-xs font-medium text-slate-600">{item.label}</span>
                 </div>
-                <div className={`size-2 rounded-full ${healthColor.dot} animate-pulse`} />
+                <div className={`size-2 rounded-full ${healthColor.dot}`} />
               </div>
               
               <div className="flex items-end justify-between mb-2">
-                <span className="text-2xl font-bold text-slate-800 transition-all duration-1000">
-                  {show ? Math.round(item.value * 100) : 0}%
+                <span className="text-2xl font-bold text-slate-800">
+                  {Math.round(item.value * 100)}%
                 </span>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${healthColor.bg} ${healthColor.text}`}>
                   {healthColor.label}
@@ -239,8 +220,8 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
               
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${healthColor.bg}`}
-                  style={{ width: show ? `${item.value * 100}%` : '0%' }}
+                  className={`h-full rounded-full ${healthColor.bg}`}
+                  style={{ width: `${item.value * 100}%` }}
                 />
               </div>
             </div>
@@ -250,7 +231,7 @@ function ProjectHealthMatrix({ project }: { project: Project }) {
 
       {/* AI Disclaimer */}
 
-<AIInsightBadges />
+
 
       <div className="flex items-start gap-2 px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
         <span className="material-symbols-outlined text-amber-600 text-[20px] mt-0.5">auto_awesome</span>

@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import type { Milestone, Project, User } from "../../../types";
 import { api } from "../../../api";
 import { ModalOverlay } from "../../shared";
-import { ProjectHeaderCard } from "./ProjectHeaderCard";
 import { formatMoney } from "../../../ui";
 import { AIInsightsSection } from "./AIInsightsSection";
 import { DocumentsSection } from "./DocumentsSection";
@@ -35,7 +34,7 @@ export function ProjectDetailModal({
     incompleteCount: number;
     totalCount: number;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<"ai" | "documents">("ai");
+  const [activeTab, setActiveTab] = useState<"ai" | "documents">("documents");
 
   const handleStatusChange = useCallback((status: string) => {
     if (status === "Completed" && milestones.length > 0) {
@@ -71,17 +70,10 @@ export function ProjectDetailModal({
   return (
     <ModalOverlay onClose={onClose} widthClassName="max-w-4xl">
       <div className="bg-white rounded-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200">
-        <ProjectBasicDetails
-          onClose={onClose}
-          pendingWarning={pendingWarning}
-          setPendingWarning={setPendingWarning}
-          handleForceComplete={handleForceComplete}
-        />
-
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          {/* Project Header Card */}
-          <ProjectHeaderCard
+          {/* Project Basic Details */}
+          <ProjectBasicDetails
             project={project}
             canManage={canManage}
             onEdit={onEdit}
@@ -90,6 +82,9 @@ export function ProjectDetailModal({
             users={users}
             milestonesCount={milestones.length}
             bare
+            pendingWarning={pendingWarning}
+            setPendingWarning={setPendingWarning}
+            handleForceComplete={handleForceComplete}
           />
 
           {/* Tabs */}

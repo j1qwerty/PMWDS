@@ -316,13 +316,13 @@ export function ProjectsPage() {
 
 
       {/* Compact Project Cards Panel */}
-      <ProjectsBoardK
+      {/* <ProjectsBoardK
         projects={filteredProjects}
         selectedProjectId={selectedProjectId}
         onSelectProject={setSelectedProjectId}
         onViewProject={(project) => setSelectedProjectId(project.id)}
         milestonesCountByProject={milestonesCountByProject}
-      />
+      /> */}
 
       {/* Modals */}
       <CreateProjectModal

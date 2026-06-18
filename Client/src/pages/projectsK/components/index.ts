@@ -1,7 +1,7 @@
 export { ProjectSidebar } from "./ProjectSidebar";
 export { WorkspaceStats } from "./WorkspaceStats";
 export { ViewTabs, type WorkspaceView } from "./ViewTabs";
-export { ProjectHeaderCard } from "./ProjectHeaderCard";
+export { ProjectBasicDetails } from "./ProjectBasicDetails";
 export { ProjectDetailModal } from "./ProjectDetailModal";
 export { MilestonesPanel } from "./MilestonesPanel";
 export { MilestoneDetailModal } from "./MilestoneDetailModal";
@@ -18,4 +18,4 @@ export { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 export { ProjectCardK } from "./ProjectCardK";
 export { AIInsightsSection } from "./AIInsightsSection";
 export { DocumentsSection } from "./DocumentsSection";
-export { ProjectBasicDetails } from "./ProjectBasicDetails";
+export { ProjectDetailk } from "./ProjectDetailk";

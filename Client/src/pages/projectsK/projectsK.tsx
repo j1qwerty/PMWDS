@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Department, Milestone, OrganizationRecord, Project, Task, User } from "../../types";
+import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, Task, User } from "../../types";
 import {
   AnimatedBackground,
   LoadingPage,
@@ -15,6 +15,8 @@ import {
   projectBelongsToDepartment,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
+import { formatMoney } from "../../ui";
+import TaskStats from "../shared/dash/TaskStats";
 import {
   ConfirmDeleteModal,
   MilestoneFormModal,
@@ -22,6 +24,7 @@ import {
   ProjectFormModal,
   type ProjectFormState,
   ProjectDetailModal,
+  ProjectDetailk,
   ProjectSidebar,
   TaskDetailModal,
   TaskFormModal,
@@ -29,7 +32,7 @@ import {
   TasksKanbanBoard,
   ViewTabs,
   type WorkspaceView,
-  WorkspaceStats,
+   
 } from "./components";
 import { KanbanFilters } from "./components/KanbanFilters";
 import { allBoards } from "./components/TasksKanbanBoard";
@@ -71,7 +74,9 @@ export function ProjectsKPage() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
-  const [activeView, setActiveView] = useState<WorkspaceView>("tasks");
+  const [activeView, setActiveView] = useState<WorkspaceView>("details");
+  const [health, setHealth] = useState<ProjectHealth | null>(null);
+  const [insights, setInsights] = useState<string[]>([]);
   const [viewProject, setViewProject] = useState<Project | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>(
@@ -185,6 +190,15 @@ export function ProjectsKPage() {
 
       setMilestones(updatedMilestones);
       setTasks(taskData);
+
+      // Fetch health and insights independently (non-critical)
+      Promise.allSettled([
+        api.getProjectInsights(auth.token, projectId),
+        api.getProjectHealth(auth.token, projectId),
+      ]).then(([insightResult, healthResult]) => {
+        if (insightResult.status === "fulfilled") setInsights(insightResult.value);
+        if (healthResult.status === "fulfilled") setHealth(healthResult.value as ProjectHealth | null);
+      });
 
       // Sync recalculated statuses to backend asynchronously
       if (updates.length > 0 && auth) {
@@ -471,13 +485,8 @@ export function ProjectsKPage() {
         </div>
       )}
 
-      <div className="relative z-10 mb-5">
-        <WorkspaceStats
-          project={selectedProject}
-          projects={filteredProjects}
-          milestones={milestones}
-          tasks={tasks}
-        />
+      <div className="mb-5">
+        <TaskStats tasks={tasks} />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-2">
@@ -532,6 +541,21 @@ export function ProjectsKPage() {
 
           {selectedProject ? (
             <>
+              {activeView === "details" && (
+                <ProjectDetailk
+                  project={selectedProject}
+                  health={health}
+                  insights={insights}
+                  canManageProjects={canManageProjects}
+                  onStatusChange={handleProjectStatus}
+                  onEdit={canManageProjects ? openEditProject : undefined}
+                  onDelete={canManageProjects ? () => setDeleteProjectOpen(true) : undefined}
+                  formatMoney={formatMoney}
+                  authToken={auth?.token}
+                  users={users}
+                />
+              )}
+
               {activeView === "milestones" && (
                 <MilestonesPanel
                   milestones={milestones}

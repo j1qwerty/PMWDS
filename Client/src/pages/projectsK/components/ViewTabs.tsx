@@ -1,6 +1,6 @@
-import { HiOutlineFlag, HiOutlineClipboardList } from "react-icons/hi";
+import { HiOutlineFlag, HiOutlineClipboardList, HiOutlineInformationCircle } from "react-icons/hi";
 
-export type WorkspaceView = "milestones" | "tasks";
+export type WorkspaceView = "milestones" | "tasks" | "details";
 
 interface ViewTabsProps {
   active: WorkspaceView;
@@ -10,6 +10,7 @@ interface ViewTabsProps {
 const iconClass = "h-[clamp(16px,2vw,18px)] w-[clamp(16px,2vw,18px)] shrink-0";
 
 const tabs: { id: WorkspaceView; label: string; icon: React.ReactNode }[] = [
+  { id: "details", label: "Details", icon: <HiOutlineInformationCircle className={iconClass} /> },
   { id: "milestones", label: "Milestones", icon: <HiOutlineFlag className={iconClass} /> },
   { id: "tasks", label: "Tasks", icon: <HiOutlineClipboardList className={iconClass} /> },
 ];

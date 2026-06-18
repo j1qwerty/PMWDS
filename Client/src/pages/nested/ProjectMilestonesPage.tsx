@@ -465,7 +465,7 @@ export function ProjectMilestonesPage() {
         </div>
 
         {/* Right: Milestone details */}
-        <div className="min-w-0">
+        {/* <div className="min-w-0">
           {selectedMilestone ? (
             <div className="sticky top-4">
               <MilestoneHeader
@@ -491,7 +491,7 @@ export function ProjectMilestonesPage() {
               </p>
             </GlassCard>
           )}
-        </div>
+        </div> */}
       </div>
 
       <MilestoneFormModal

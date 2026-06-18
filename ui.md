@@ -150,6 +150,7 @@
 
 
 ## top priority
+
 - refactor modals and overlays for consistency 
 - redesign modals
 - delete buttons for projects , milestones and tasks proper place defined and modal
@@ -162,6 +163,14 @@
 - consistent toasts and stat cards design
 - add project detailed cleaned ui to workspace page in new tab, and proper tab management and ui
 - paginated results for documents and other sections, find all those sections make a list
+- dashboard taskperformanceTable - opens older task modals
+
+### new project creation flow
+- new project modal with steps for project creation
+1. project details
+2. departments select or create new department
+3. milestones and tasks boxes like project details pane
+4. task and subtasks 
 
 
 ### roles - settings page
@@ -184,7 +193,7 @@
    - All components with max height and "view more" options
    - Animate bars and graphs (like AI page)
    - Space utilization and header updates
-   - [x] Task performance table UI update — hover, view/edit modals, sort filters, cursor-pointer
+   + [x] Task performance table UI update — hover, view/edit modals, sort filters, cursor-pointer
    - all types of settings and settings api
 
 ### other 
