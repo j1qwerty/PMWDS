@@ -1,5 +1,6 @@
-import type { Project, ProjectHealth, User } from "../../../types";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { api } from "../../../api";
+import type { Milestone, Project, ProjectHealth, User } from "../../../types";
 import { ProjectBasicDetails } from "./ProjectBasicDetails";
 import { AIInsightsSection } from "./AIInsightsSection";
 import { MilestonesTab } from "../../shared/MilestonesTab";
@@ -16,6 +17,7 @@ interface ProjectDetailkProps {
   formatMoney: (amount: number) => string;
   authToken?: string | null;
   users?: User[];
+  milestones?: Milestone[];
 }
 
 function normalizePercent(value?: number | null) {
@@ -25,7 +27,6 @@ function normalizePercent(value?: number | null) {
 
 export function ProjectDetailk({
   project,
-  health,
   canManageProjects,
   onStatusChange,
   onEdit,
@@ -33,7 +34,13 @@ export function ProjectDetailk({
   formatMoney,
   authToken,
   users = [],
+  milestones = [],
 }: ProjectDetailkProps) {
+  const [pendingWarning, setPendingWarning] = useState<{
+    incompleteCount: number;
+    totalCount: number;
+  } | null>(null);
+
   const healthScore = normalizePercent(project?.aiHealthScore);
   const delayRisk = normalizePercent(project?.aiDelayRiskScore);
   const progress = project?.progressPercentage || 0;
@@ -41,6 +48,30 @@ export function ProjectDetailk({
     () => users.find((user) => user.id === project?.projectManagerId),
     [users, project?.projectManagerId]
   );
+
+  const handleStatusChange = useCallback((status: string) => {
+    if (status === "Completed" && milestones.length > 0) {
+      const incomplete = milestones.filter((m) => m.status !== "Completed");
+      if (incomplete.length > 0) {
+        setPendingWarning({
+          incompleteCount: incomplete.length,
+          totalCount: milestones.length,
+        });
+        return;
+      }
+    }
+    onStatusChange(status);
+  }, [milestones, onStatusChange]);
+
+  const handleForceComplete = useCallback(async () => {
+    if (!authToken || !pendingWarning || !onStatusChange) return;
+    setPendingWarning(null);
+    const incomplete = milestones.filter((m) => m.status !== "Completed");
+    await Promise.allSettled(
+      incomplete.map((m) => api.completeMilestone(authToken, m.id, true))
+    );
+    onStatusChange("Completed");
+  }, [authToken, milestones, onStatusChange, pendingWarning]);
 
   if (!project) {
     return (
@@ -53,16 +84,28 @@ export function ProjectDetailk({
 
   return (
     <div className="flex flex-col gap-5">
+      
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
       <ProjectBasicDetails
         project={project}
         canManage={canManageProjects}
         onEdit={onEdit}
         onDelete={onDelete}
-        onStatusChange={onStatusChange}
+        onStatusChange={handleStatusChange}
         users={users}
+        milestonesCount={milestones.length}
+        pendingWarning={pendingWarning}
+        setPendingWarning={setPendingWarning}
+        handleForceComplete={handleForceComplete}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+       <DocumentsSection
+        projectId={project.id}
+        authToken={authToken}
+      />
+
         <MilestonesTab
           key={project.id}
           projectId={project.id}
@@ -77,6 +120,8 @@ export function ProjectDetailk({
           formatMoney={formatMoney}
         />
       </div>
+
+     
     </div>
   );
 }

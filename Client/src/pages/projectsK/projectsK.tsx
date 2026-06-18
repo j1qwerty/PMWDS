@@ -191,6 +191,15 @@ export function ProjectsKPage() {
       setMilestones(updatedMilestones);
       setTasks(taskData);
 
+      // Fetch fresh project data for accurate progressPercentage from backend
+      api.getProject(auth.token, projectId).then((fresh) => {
+        if (fresh) {
+          setProjects((prev) =>
+            prev.map((p) => (p.id === projectId ? fresh : p))
+          );
+        }
+      }).catch(() => {});
+
       // Fetch health and insights independently (non-critical)
       Promise.allSettled([
         api.getProjectInsights(auth.token, projectId),
@@ -489,8 +498,8 @@ export function ProjectsKPage() {
         <TaskStats tasks={tasks} />
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-2">
-        <div className="flex flex-col gap-5">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-2 min-h-[calc(100vh-12rem)]">
+        <div className="flex flex-col gap-5 h-full">
           <ProjectSidebar
             projects={filteredProjects}
             selectedProjectId={selectedProjectId}
@@ -553,6 +562,7 @@ export function ProjectsKPage() {
                   formatMoney={formatMoney}
                   authToken={auth?.token}
                   users={users}
+                  milestones={milestones}
                 />
               )}
 

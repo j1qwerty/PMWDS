@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import type { Project } from "../../../types";
 import { GlassCard } from "../../shared";
 import { ProjectCard } from "./ProjectCard";
@@ -21,9 +22,19 @@ export function ProjectSidebar({
   canEdit = false,
   onAdd,
 }: ProjectSidebarProps) {
+  const [search, setSearch] = useState("");
+
+  const filteredProjects = useMemo(
+    () =>
+      projects.filter((p) =>
+        p.name.toLowerCase().includes(search.toLowerCase())
+      ),
+    [projects, search]
+  );
+
   return (
-    <GlassCard className="p-4">
-      <div className="flex items-center justify-between mb-3 px-1">
+    <GlassCard className="p-4 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-3 px-1 shrink-0">
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
           Projects
         </span>
@@ -33,8 +44,20 @@ export function ProjectSidebar({
           </button>
         )}
       </div>
-      <div className="flex flex-col gap-3 max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {projects.map((project) => (
+
+      <div className="relative mb-3 px-1 shrink-0">
+        <span className="material-symbols-outlined absolute left-3 top-1.5 text-slate-400 text-[16px]">search</span>
+        <input
+          className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow outline-none shadow-sm"
+          placeholder="Filter projects..."
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-3 flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {filteredProjects.map((project) => (
           <ProjectCard
             key={project.id}
             project={project}
@@ -46,8 +69,7 @@ export function ProjectSidebar({
           />
         ))}
 
-        {/* Empty State */}
-        {projects.length === 0 && (
+        {filteredProjects.length === 0 && (
           <div className="text-center py-8">
             <div className="text-slate-400 mb-2">
               <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
