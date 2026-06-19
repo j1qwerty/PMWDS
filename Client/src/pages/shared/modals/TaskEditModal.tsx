@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiClock, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } from "react-icons/fi";
+import { FiAlertTriangle, FiClock, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
 import { ModalOverlay, useToast, AvatarStack, PriorityBadge } from "..";
 import { StatusBadgeMinimal } from "../../shared/StatusBadgeMininmal";
@@ -18,6 +18,7 @@ interface TaskEditModalProps {
   onUpdate: (taskId: string, data: { progress: number; status: string; priority: string }) => Promise<void>;
   onAddComment: (taskId: string, text: string) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
+  onEscalate?: () => void;
   onStartTimer: (taskId: string, description: string) => Promise<void>;
   onRefresh: () => void;
 }
@@ -32,6 +33,7 @@ export function TaskEditModal({
   onUpdate,
   onAddComment,
   onDelete,
+  onEscalate,
   onStartTimer,
   onRefresh,
 }: TaskEditModalProps) {
@@ -173,14 +175,29 @@ export function TaskEditModal({
             </div>
           </div>
           {mayEdit && (
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 shrink-0 ml-2"
-              title="Delete task"
-            >
-              <FiTrash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1 shrink-0 ml-2">
+              {onEscalate && (
+                <button
+                  onClick={onEscalate}
+                  className={`p-2 rounded-lg transition-colors ${
+                    task.isEscalated
+                      ? 'bg-amber-50 text-amber-600'
+                      : 'text-slate-400 hover:bg-amber-50 hover:text-amber-600'
+                  }`}
+                  title="Escalate task"
+                >
+                  <FiAlertTriangle className="w-4 h-4 pointer-events-none" />
+                </button>
+              )}
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                title="Delete task"
+              >
+                <FiTrash2 className="w-4 h-4 pointer-events-none" />
+              </button>
+            </div>
           )}
         </div>
 

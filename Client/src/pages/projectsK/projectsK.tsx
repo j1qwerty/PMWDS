@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Department, Milestone, OrganizationRecord, Project, ProjectHealth, Task, User } from "../../types";
+import type { Department, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import {
   AnimatedBackground,
   LoadingPage,
@@ -20,23 +20,13 @@ import { formatMoney } from "../../ui";
 import DashboardStats from "../dashboard/dashbaordStats";
 import {
   ConfirmDeleteModal,
-  MilestoneFormModal,
-  MilestonesPanel,
   ProjectFormModal,
   type ProjectFormState,
   ProjectDetailModal,
   ProjectDetailk,
   ProjectSidebar,
-  TaskDetailModal,
-  TaskFormModal,
-  TaskSubtaskDetailsModal,
-  TasksKanbanBoard,
-  ViewTabs,
-  type WorkspaceView,
-   
 } from "./components";
-import { KanbanFilters } from "./components/KanbanFilters";
-import { allBoards } from "./components/TasksKanbanBoard";
+import { CustomDropdown } from "../shared/customDropdown";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -59,8 +49,6 @@ export function ProjectsKPage() {
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
-  const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
-  const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const isSuperAdmin = perm.isSuperAdmin;
   const { addToast } = useToast();
 
@@ -68,24 +56,13 @@ export function ProjectsKPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
 
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState("");
-  const [selectedTaskId, setSelectedTaskId] = useState("");
-  const [activeView, setActiveView] = useState<WorkspaceView>("details");
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [insights, setInsights] = useState<string[]>([]);
   const [viewProject, setViewProject] = useState<Project | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>(
-    Object.fromEntries(allBoards.map((b) => [b.title, true]))
-  );
-  const [showFilters, setShowFilters] = useState(true);
-  const [resetMilestoneOnTabSwitch, setResetMilestoneOnTabSwitch] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
@@ -95,19 +72,6 @@ export function ProjectsKPage() {
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
 
-  const [milestoneModal, setMilestoneModal] = useState<{ open: boolean; edit?: Milestone }>({ open: false });
-  const [deleteMilestone, setDeleteMilestone] = useState<Milestone | null>(null);
-  const [pendingForceComplete, setPendingForceComplete] = useState<{
-    milestoneId: string;
-    status?: string;
-    incompleteCount: number;
-    totalCount: number;
-  } | null>(null);
-
-  const [taskModal, setTaskModal] = useState<{ open: boolean; edit?: Task; milestoneId?: string }>({ open: false });
-  const [deleteTask, setDeleteTask] = useState<Task | null>(null);
-  const [viewTask, setViewTask] = useState<Task | null>(null);
-
   const { setNavHeader } = useNavHeader();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
@@ -116,18 +80,12 @@ export function ProjectsKPage() {
     if (canManageProjects) {
       actions.push({ label: "New Project", onClick: () => navigate("/new-project"), icon: "add_circle" });
     }
-    if (selectedProjectId && canManageMilestones) {
-      actions.push({ label: "New milestone", onClick: () => setMilestoneModal({ open: true }), icon: "add_circle" });
-    }
-    if (selectedProjectId && canManageTasks) {
-      actions.push({ label: "New task", onClick: () => setTaskModal({ open: true, milestoneId: selectedMilestoneId }), icon: "add_circle" });
-    }
     setNavHeader({
       title: "Project Workspace",
       description: "Manage projects, milestones, and tasks in one place",
       actions,
     });
-  }, [setNavHeader, canManageProjects, canManageMilestones, canManageTasks, selectedProjectId, selectedMilestoneId]);
+  }, [setNavHeader, canManageProjects]);
 
   const loadProjects = async () => {
     if (!auth) return;
@@ -151,81 +109,23 @@ export function ProjectsKPage() {
     }
   };
 
-  const loadProjectWorkspace = async (projectId: string) => {
-    if (!auth || !projectId) {
-      setMilestones([]);
-      setTasks([]);
-      return;
-    }
+  const refreshProjectDetails = useCallback(async (projectId: string) => {
+    if (!auth || !projectId) return;
     try {
-      const [milestoneData, taskData] = await Promise.all([
-        api.getMilestonesByProject(auth.token, projectId),
-        api.getTasksByProject(auth.token, projectId),
-      ]);
-
-      // Recalculate milestone statuses based on current task statuses
-      const updates: { id: string; status: string }[] = [];
-      const updatedMilestones = milestoneData.map((ms) => {
-        const msTasks = taskData.filter((t) => t.milestoneId === ms.id);
-        if (msTasks.length === 0) return ms;
-
-        const hasDelayed = msTasks.some((t) => t.status === "Delayed");
-        const allCompleted = msTasks.every((t) => t.status === "Completed");
-        const anyNonCompleted = msTasks.some((t) => t.status !== "Completed");
-
-        let newStatus: string | null = null;
-
-        if (hasDelayed && ms.status !== "Delayed") {
-          newStatus = "Delayed";
-        } else if (allCompleted && ms.status !== "Completed") {
-          newStatus = "Completed";
-        } else if (anyNonCompleted && ms.status === "Completed") {
-          newStatus = "InProgress";
-        }
-
-        if (newStatus) {
-          updates.push({ id: ms.id, status: newStatus });
-          return { ...ms, status: newStatus };
-        }
-        return ms;
-      });
-
-      setMilestones(updatedMilestones);
-      setTasks(taskData);
-
-      // Fetch fresh project data for accurate progressPercentage from backend
-      api.getProject(auth.token, projectId).then((fresh) => {
-        if (fresh) {
-          setProjects((prev) =>
-            prev.map((p) => (p.id === projectId ? fresh : p))
-          );
-        }
-      }).catch(() => {});
-
-      // Fetch health and insights independently (non-critical)
-      Promise.allSettled([
+      const [insightResult, healthResult] = await Promise.allSettled([
         api.getProjectInsights(auth.token, projectId),
         api.getProjectHealth(auth.token, projectId),
-      ]).then(([insightResult, healthResult]) => {
-        if (insightResult.status === "fulfilled") setInsights(insightResult.value);
-        if (healthResult.status === "fulfilled") setHealth(healthResult.value as ProjectHealth | null);
-      });
-
-      // Sync recalculated statuses to backend asynchronously
-      if (updates.length > 0 && auth) {
-        const token = auth.token;
-        Promise.allSettled(
-          updates.map((u) => api.setMilestoneStatus(token, u.id, u.status))
-        ).catch(() => {});
-      }
-
-      if (resetMilestoneOnTabSwitch) {
-        setSelectedMilestoneId(activeView === "milestones" ? (milestoneData[0]?.id ?? "") : "");
+      ]);
+      if (insightResult.status === "fulfilled") setInsights(insightResult.value);
+      if (healthResult.status === "fulfilled") setHealth(healthResult.value as ProjectHealth | null);
+      const fresh = await api.getProject(auth.token, projectId);
+      if (fresh) {
+        setProjects((prev) => prev.map((p) => (p.id === projectId ? fresh : p)));
       }
     } catch {
-      // refresh silently — API errors shouldn't block the UI
+      // silent
     }
-  };
+  }, [auth]);
 
   useEffect(() => {
     void loadProjects();
@@ -238,8 +138,9 @@ export function ProjectsKPage() {
   }, [shouldFilterByOrg, userOrganizationId]);
 
   useEffect(() => {
-    void loadProjectWorkspace(selectedProjectId);
-    setSelectedTaskId("");
+    if (selectedProjectId) {
+      void refreshProjectDetails(selectedProjectId);
+    }
   }, [auth, selectedProjectId]);
 
   const filteredProjects = useMemo(() => {
@@ -276,8 +177,6 @@ export function ProjectsKPage() {
   }, [filteredProjects, selectedProjectId]);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
-  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
-  const selectedMilestone = milestones.find((m) => m.id === selectedMilestoneId) ?? null;
 
   const openEditProject = (project?: Project) => {
     const target = project ?? selectedProject;
@@ -318,7 +217,7 @@ export function ProjectsKPage() {
     setViewProject(null);
     addToast("Project updated");
     await refreshAppData();
-    await loadProjectWorkspace(targetId);
+    await refreshProjectDetails(targetId);
   };
 
   const handleDeleteProject = async () => {
@@ -348,153 +247,46 @@ export function ProjectsKPage() {
     }
   }, [projects]);
 
-  const handleMilestoneSubmit = async (form: Record<string, unknown>) => {
-    if (!auth || !selectedProjectId) return;
-    if (milestoneModal.edit) {
-      await api.updateMilestone(auth.token, milestoneModal.edit.id, form);
-      addToast("Milestone updated");
-    } else {
-      await api.createMilestone(auth.token, form);
-      addToast("Milestone created");
+  const visibleOrganizations = useMemo(() => {
+    if (shouldFilterByOrg && userOrganizationId) {
+      return organizations.filter((org) => org.id === userOrganizationId);
     }
-    setMilestoneModal({ open: false });
-    await loadProjectWorkspace(selectedProjectId);
-  };
+    return organizations;
+  }, [organizations, shouldFilterByOrg, userOrganizationId]);
 
-  const getIncompleteTaskCount = (milestoneId: string) => {
-    const milestoneTasks = tasks.filter(t => t.milestoneId === milestoneId);
-    const incomplete = milestoneTasks.filter(t => t.status !== "Completed").length;
-    return { incomplete, total: milestoneTasks.length };
-  };
+  const orgOptions = useMemo(
+    () => [
+      { value: "", label: "All Organizations" },
+      ...visibleOrganizations.map((o) => ({ value: o.id, label: o.name })),
+    ],
+    [visibleOrganizations]
+  );
 
-  const handleForceCompleteConfirm = async () => {
-    if (!auth || !pendingForceComplete) return;
-    const { milestoneId, status } = pendingForceComplete;
-    setPendingForceComplete(null);
-    try {
-      if (status && status !== "Completed") {
-        await api.setMilestoneStatus(auth.token, milestoneId, status, true);
-      } else {
-        await api.completeMilestone(auth.token, milestoneId, true);
-      }
-      addToast("All tasks completed and milestone updated");
-      await loadProjectWorkspace(selectedProjectId);
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to complete milestone", "error");
-    }
-  };
+  const effectiveOrgId = useMemo(() => {
+    if (shouldFilterByOrg && userOrganizationId) return userOrganizationId;
+    return selectedOrgId;
+  }, [shouldFilterByOrg, userOrganizationId, selectedOrgId]);
 
-  const handleCompleteMilestone = async (milestoneId: string) => {
-    if (!auth) return;
-    const { incomplete, total } = getIncompleteTaskCount(milestoneId);
-    if (incomplete > 0) {
-      setPendingForceComplete({ milestoneId, incompleteCount: incomplete, totalCount: total });
-      return;
-    }
-    await api.completeMilestone(auth.token, milestoneId);
-    addToast("Milestone completed");
-    await loadProjectWorkspace(selectedProjectId);
-  };
+  const visibleDepartments = useMemo(() => {
+    return departments.filter((dept) => {
+      if (effectiveOrgId) return dept.organizationId === effectiveOrgId;
+      return true;
+    });
+  }, [departments, effectiveOrgId]);
 
-  const handleMilestoneStatus = async (milestoneId: string, status: string) => {
-    if (!auth) return;
-    if (status === "Completed") {
-      const { incomplete, total } = getIncompleteTaskCount(milestoneId);
-      if (incomplete > 0) {
-        setPendingForceComplete({ milestoneId, status, incompleteCount: incomplete, totalCount: total });
-        return;
-      }
-    }
-    await api.setMilestoneStatus(auth.token, milestoneId, status);
-    addToast(`Milestone status updated to ${status}`);
-    await loadProjectWorkspace(selectedProjectId);
-  };
-
-  const handleDeleteMilestone = async () => {
-    if (!auth || !deleteMilestone) return;
-    await api.deleteMilestone(auth.token, deleteMilestone.id);
-    setDeleteMilestone(null);
-    if (selectedMilestoneId === deleteMilestone.id) setSelectedMilestoneId("");
-    addToast("Milestone deleted");
-    await loadProjectWorkspace(selectedProjectId);
-  };
-
-  const handleTaskSubmit = async (form: Record<string, unknown>) => {
-    if (!auth || !selectedProjectId) return;
-    const taskData = { ...form, projectId: selectedProjectId };
-    if (taskModal.edit) {
-      await api.updateTask(auth.token, taskModal.edit.id, taskData);
-      const assigneeIds = Array.isArray(form.assignedToUserIds)
-        ? (form.assignedToUserIds as string[]).filter(Boolean)
-        : [];
-      if (assigneeIds.length) await api.assignTaskMembers(auth.token, taskModal.edit.id, assigneeIds);
-      addToast("Task updated");
-    } else {
-      await api.createTask(auth.token, taskData);
-      addToast("Task created");
-    }
-    setTaskModal({ open: false });
-    await loadProjectWorkspace(selectedProjectId);
-  };
-
-  const handleTaskStatus = async (taskId: string, status: string, options?: { confirmReset?: boolean }) => {
-    if (!auth) return;
-    await api.updateTaskStatus(auth.token, taskId, status, { confirmReset: options?.confirmReset });
-    addToast("Task status updated");
-    await loadProjectWorkspace(selectedProjectId);
-    if (selectedTaskId === taskId) {
-      const updated = await api.getTask(auth.token, taskId);
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
-    }
-    if (viewTask?.id === taskId) {
-      const updated = await api.getTask(auth.token, taskId);
-      setViewTask(updated);
-    }
-  };
-
-  const handleDeleteTask = async () => {
-    if (!auth || !deleteTask) return;
-    await api.deleteTask(auth.token, deleteTask.id);
-    setDeleteTask(null);
-    if (selectedTaskId === deleteTask.id) setSelectedTaskId("");
-    addToast("Task deleted");
-    await loadProjectWorkspace(selectedProjectId);
-  };
+  const deptOptions = useMemo(
+    () => [
+      { value: "", label: "All Departments" },
+      ...visibleDepartments.map((d) => ({ value: d.id, label: d.name })),
+    ],
+    [visibleDepartments]
+  );
 
   if (loading || appDataLoading) return <LoadingPage label="Loading workspace..." />;
 
   return (
     <div>
       <AnimatedBackground />
-
-      {pendingForceComplete && (
-        <div className="relative z-10 mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm">
-          <div className="flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-amber-600 mt-0.5 shrink-0">warning</span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-800">Incomplete tasks detected</p>
-              <p className="text-xs text-amber-700 mt-1">
-                <strong>{pendingForceComplete.incompleteCount}</strong> of <strong>{pendingForceComplete.totalCount}</strong> task(s) in this milestone are not completed.
-                Continuing will mark all tasks and subtasks as completed at 100% progress.
-              </p>
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleForceCompleteConfirm}
-                  className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
-                >
-                  Yes, complete all
-                </button>
-                <button
-                  onClick={() => setPendingForceComplete(null)}
-                  className="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mb-5">
         <DashboardStats projects={projects} />
@@ -513,115 +305,69 @@ export function ProjectsKPage() {
           />
         </div>
 
-        <div className="flex flex-col min-w-0 ">
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-2">
-            <ViewTabs active={activeView} onChange={setActiveView} />
-            <KanbanFilters
-              organizations={organizations}
-              departments={departments}
-              users={users}
-              selectedOrganizationId={selectedOrgId}
-              selectedDepartmentId={selectedDeptId}
-              onOrganizationChange={(orgId) => {
-                setSelectedOrgId(orgId);
-                setSelectedDeptId("");
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2 flex-wrap pb-4">
+            {isSuperAdmin && (
+              <CustomDropdown
+                value={selectedOrgId}
+                onChange={(val) => {
+                  setSelectedOrgId(val);
+                  setSelectedDeptId("");
+                  setSelectedProjectId("");
+                }}
+                options={orgOptions}
+                placeholder="All Organizations"
+              />
+            )}
+            <CustomDropdown
+              value={selectedDeptId}
+              onChange={(val) => {
+                setSelectedDeptId(val);
                 setSelectedProjectId("");
               }}
-              onDepartmentChange={(deptId) => {
-                setSelectedDeptId(deptId);
-                setSelectedProjectId("");
-              }}
-              milestones={milestones}
-              selectedMilestoneId={selectedMilestoneId}
-              onMilestoneFilterChange={setSelectedMilestoneId}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              allBoards={allBoards}
-              visibleBoards={visibleBoards}
-              onToggleBoard={(title) =>
-                setVisibleBoards((prev) => ({ ...prev, [title]: !prev[title] }))
-              }
-              autoHideSet={new Set()}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters((p) => !p)}
-              resetMilestoneOnTabSwitch={resetMilestoneOnTabSwitch}
-              onResetMilestoneToggle={() => setResetMilestoneOnTabSwitch((p) => !p)}
+              options={deptOptions}
+              placeholder="All Departments"
             />
+            {selectedProject && canManageProjects && (
+              <button
+                onClick={() => {
+                  setDeleteProjectTarget(selectedProject);
+                  setDeleteProjectOpen(true);
+                }}
+                className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200"
+                title="Delete project"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {selectedProject ? (
-            <>
-              {activeView === "details" && (
-                <ProjectDetailk
-                  project={selectedProject}
-                  health={health}
-                  insights={insights}
-                  canManageProjects={canManageProjects}
-                  onStatusChange={handleProjectStatus}
-                  onEdit={canManageProjects ? openEditProject : undefined}
-                  onDelete={canManageProjects ? () => setDeleteProjectOpen(true) : undefined}
-                  formatMoney={formatMoney}
-                  authToken={auth?.token}
-                  users={users}
-                  milestones={milestones}
-                />
-              )}
-
-              {activeView === "milestones" && (
-                <MilestonesPanel
-                  milestones={milestones}
-                  tasks={tasks}
-                  users={users}
-                  project={selectedProject}
-                  selectedMilestoneId={selectedMilestoneId}
-                  onSelectMilestone={setSelectedMilestoneId}
-                  canManage={canManageMilestones}
-                  onAdd={() => setMilestoneModal({ open: true })}
-                  onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
-                  onDelete={setDeleteMilestone}
-                  onComplete={handleCompleteMilestone}
-                  onStatusChange={handleMilestoneStatus}
-                  onAddTask={(milestoneId) => {
-                    setTaskModal({ open: true, milestoneId });
-                    setActiveView("tasks");
-                  }}
-                />
-              )}
-
-              {activeView === "tasks" && (
-                <TasksKanbanBoard
-                  tasks={tasks}
-                  milestones={milestones}
-                  selectedMilestoneId={selectedMilestoneId}
-                  canEdit={canManageTasks}
-                  onViewTask={(task) => setViewTask(task)}
-                  onEditTask={(task) => setTaskModal({ open: true, edit: task })}
-                  onStatusChange={handleTaskStatus}
-                  searchTerm={searchTerm}
-                  visibleBoards={visibleBoards}
-                  onToggleBoard={(title) =>
-                    setVisibleBoards((prev) => ({ ...prev, [title]: !prev[title] }))
-                  }
-                />
-              )}
-            </>
-
-
+            <ProjectDetailk
+              project={selectedProject}
+              health={health}
+              insights={insights}
+              canManageProjects={canManageProjects}
+              onStatusChange={handleProjectStatus}
+              onEdit={canManageProjects ? openEditProject : undefined}
+              onDelete={canManageProjects ? () => {
+                setDeleteProjectTarget(selectedProject);
+                setDeleteProjectOpen(true);
+              } : undefined}
+              formatMoney={formatMoney}
+              authToken={auth?.token}
+              users={users}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center py-24 text-slate-400 rounded-2xl border border-dashed border-slate-200 bg-white/50">
               <span className="material-symbols-outlined text-5xl mb-3">folder_open</span>
               <p className="text-sm font-medium">Select or create a project</p>
             </div>
           )}
-
-
         </div>
-
-
-
       </div>
-
 
       <ProjectFormModal
         open={createProjectOpen}
@@ -656,7 +402,6 @@ export function ProjectsKPage() {
         canManage={canManageProjects}
         onClose={() => setViewProject(null)}
         authToken={auth?.token}
-        milestones={milestones}
         onEdit={
           canManageProjects && viewProject
             ? () => {
@@ -685,92 +430,6 @@ export function ProjectsKPage() {
           setDeleteProjectOpen(false);
           setDeleteProjectTarget(null);
         }}
-      />
-
-      <MilestoneFormModal
-        open={milestoneModal.open}
-        projectId={selectedProjectId}
-        initialData={milestoneModal.edit}
-        onSubmit={handleMilestoneSubmit}
-        onClose={() => setMilestoneModal({ open: false })}
-      />
-
-      <ConfirmDeleteModal
-        open={!!deleteMilestone}
-        name={deleteMilestone?.name ?? ""}
-        warning={
-          deleteMilestone
-            ? tasks.filter((t) => t.milestoneId === deleteMilestone.id).length > 0
-              ? "This milestone has linked tasks."
-              : undefined
-            : undefined
-        }
-        onConfirm={handleDeleteMilestone}
-        onClose={() => setDeleteMilestone(null)}
-      />
-
-      <TaskFormModal
-        open={taskModal.open}
-        initialData={taskModal.edit}
-        defaultProjectId={selectedProjectId}
-        defaultMilestoneId={taskModal.milestoneId ?? selectedMilestoneId}
-        projects={filteredProjects}
-        departments={departments}
-        milestones={milestones}
-        users={users}
-        onSubmit={handleTaskSubmit}
-        onClose={() => setTaskModal({ open: false })}
-      />
-
-      <ConfirmDeleteModal
-        open={!!deleteTask}
-        name={deleteTask?.title ?? ""}
-        onConfirm={handleDeleteTask}
-        onClose={() => setDeleteTask(null)}
-      />
-
-      <TaskDetailModal
-        task={selectedTask}
-        milestone={selectedMilestone}
-        users={users}
-        canManage={canManageTasks}
-        onEdit={() => selectedTask && setTaskModal({ open: true, edit: selectedTask })}
-        onDelete={() => selectedTask && setDeleteTask(selectedTask)}
-        onStatusChange={(status) => selectedTask && handleTaskStatus(selectedTask.id, status)}
-        onRefresh={() => loadProjectWorkspace(selectedProjectId)}
-        onClose={() => {
-          setSelectedTaskId("");
-          loadProjectWorkspace(selectedProjectId);
-        }}
-      />
-
-      <TaskSubtaskDetailsModal
-        task={viewTask}
-        project={selectedProject}
-        milestone={
-          viewTask
-            ? milestones.find((m) => m.id === viewTask.milestoneId) ?? selectedMilestone
-            : null
-        }
-        users={users}
-        isAdmin={canManageTasks}
-        onRefresh={() => { void loadProjectWorkspace(selectedProjectId); }}
-        onClose={() => {
-          setViewTask(null);
-          void loadProjectWorkspace(selectedProjectId);
-        }}
-        onEdit={(task) => {
-          setTaskModal({ open: true, edit: task });
-          setViewTask(null);
-        }}
-        onDelete={(task) => {
-          setDeleteTask(task);
-          setViewTask(null);
-        }}
-        onEscalate={() => {
-          void loadProjectWorkspace(selectedProjectId);
-        }}
-        onMessage={() => {}}
       />
     </div>
   );

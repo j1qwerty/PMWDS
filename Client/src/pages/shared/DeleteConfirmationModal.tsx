@@ -7,7 +7,7 @@ interface DeleteConfirmationModalProps {
 
 export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel }: DeleteConfirmationModalProps) {
   return (
-    <div className="bg-white rounded-2xl p-8 max-w-[440px] w-[90%] shadow-xl border border-slate-200">
+    <div className="bg-white rounded-2xl p-8  w-full shadow-xl border border-slate-200">
       <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-5">
         <span className="material-symbols-outlined text-red-500 text-[28px]">warning</span>
       </div>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, Task } from "../../types";
+import type { Milestone, Project, Task } from "../../types";
 import { classNames, formatDate } from "../../ui";
 import {
   AnimatedBackground,
@@ -84,6 +84,9 @@ export function ProjectMilestonesPage() {
     incompleteCount: number;
     totalCount: number;
   } | null>(null);
+
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
 
   const { setNavHeader } = useNavHeader();
 
@@ -289,6 +292,16 @@ export function ProjectMilestonesPage() {
     await ws.refresh();
   };
 
+  const handleDeleteProject = async () => {
+    const target = deleteProjectTarget ?? ws.project;
+    if (!auth || !target) return;
+    await api.deleteProject(auth.token, target.id);
+    setDeleteProjectOpen(false);
+    setDeleteProjectTarget(null);
+    addToast("Project deleted");
+    navigate("/projectsK");
+  };
+
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -370,10 +383,14 @@ export function ProjectMilestonesPage() {
             });
             setEditProjectOpen(true);
           }}
+          onDeleteProject={(project) => {
+            setDeleteProjectTarget(project);
+            setDeleteProjectOpen(true);
+          }}
         />
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[320px_1fr_340px] gap-6">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         {/* Left: Milestone list */}
         <MilestonesPanel
           milestones={ws.milestones}
@@ -608,6 +625,17 @@ export function ProjectMilestonesPage() {
         users={appData.users}
         onSubmit={handleEditProject}
         onClose={() => setEditProjectOpen(false)}
+      />
+
+      <ConfirmDeleteModal
+        open={deleteProjectOpen}
+        name={deleteProjectTarget?.name ?? ws.project?.name ?? "this project"}
+        warning="All milestones and tasks under this project may be affected."
+        onConfirm={handleDeleteProject}
+        onClose={() => {
+          setDeleteProjectOpen(false);
+          setDeleteProjectTarget(null);
+        }}
       />
     </div>
   );

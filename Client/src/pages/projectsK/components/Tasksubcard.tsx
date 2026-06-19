@@ -6,6 +6,7 @@ import { getPriorityColor, getStatusColor, usePermission, useToast } from "../..
 import { SubtaskFormModal } from "./SubtaskFormModal";
 import { AvatarStackk } from "../../shared/Avatark";
 import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
+import { FiAlertTriangle } from "react-icons/fi";
 import { TaskEditModal } from "../../shared/modals/TaskEditModal";
 
 interface TaskSubCardProps {
@@ -235,6 +236,17 @@ export function TaskSubCard({
     }
   };
 
+  const handleTaskEscalate = async () => {
+    if (!auth) return;
+    try {
+      await api.escalateTask(auth.token, task.id);
+      addToast("Task escalated.");
+      onParentRefresh?.();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to escalate task", "error");
+    }
+  };
+
   const handleCardOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (mayEdit) {
@@ -265,7 +277,22 @@ export function TaskSubCard({
         <div className="px-2">
 
         
-        <h4 className="text-sm font-medium text-slate-700 mb-3 leading-snug">{task.title}</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-medium text-slate-700 leading-snug min-w-0">{task.title}</h4>
+          {mayEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleTaskEscalate(); }}
+              className={`p-2 rounded-lg cursor-pointer transition-colors shrink-0 ml-2 ${
+                task.isEscalated
+                  ? 'bg-amber-50 text-amber-600'
+                  : 'text-slate-400 hover:bg-amber-50 hover:text-amber-600'
+              }`}
+              title="Escalate task"
+            >
+              <FiAlertTriangle className="w-4 h-4 pointer-events-none" />
+            </button>
+          )}
+        </div>
 
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1.5">
@@ -488,6 +515,7 @@ export function TaskSubCard({
           onUpdate={handleTaskUpdate}
           onAddComment={handleTaskAddComment}
           onDelete={async (taskId) => { handleDeleteSubtask(taskId); }}
+          onEscalate={handleTaskEscalate}
           onStartTimer={handleTaskStartTimer}
           onRefresh={async () => {
             await refreshSubtasks();

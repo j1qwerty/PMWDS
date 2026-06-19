@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, Task } from "../../types";
+import type { Milestone, Project, Task } from "../../types";
 import { formatDate } from "../../ui";
 import {
   AnimatedBackground,
@@ -61,6 +61,9 @@ export function ProjectTasksPage() {
   const [viewProject, setViewProject] = useState(false);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
+
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
 
   const [showBoardSettings, setShowBoardSettings] = useState(false);
   const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>({
@@ -168,6 +171,16 @@ export function ProjectTasksPage() {
     await ws.refresh();
   };
 
+  const handleDeleteProject = async () => {
+    const target = deleteProjectTarget ?? ws.project;
+    if (!auth || !target) return;
+    await api.deleteProject(auth.token, target.id);
+    setDeleteProjectOpen(false);
+    setDeleteProjectTarget(null);
+    addToast("Project deleted");
+    navigate("/projectsK");
+  };
+
   const getProgressColor = (progress: number): string => {
     if (progress === 100) return "bg-emerald-500";
     if (progress >= 75) return "bg-amber-400";
@@ -264,6 +277,10 @@ export function ProjectTasksPage() {
               priority: ws.project.priority ?? "Medium",
             });
             setEditProjectOpen(true);
+          }}
+          onDeleteProject={(project) => {
+            setDeleteProjectTarget(project);
+            setDeleteProjectOpen(true);
           }}
         />
       </div>
@@ -590,6 +607,17 @@ export function ProjectTasksPage() {
         users={appData.users}
         onSubmit={handleEditProject}
         onClose={() => setEditProjectOpen(false)}
+      />
+
+      <ConfirmDeleteModal
+        open={deleteProjectOpen}
+        name={deleteProjectTarget?.name ?? ws.project?.name ?? "this project"}
+        warning="All milestones and tasks under this project may be affected."
+        onConfirm={handleDeleteProject}
+        onClose={() => {
+          setDeleteProjectOpen(false);
+          setDeleteProjectTarget(null);
+        }}
       />
     </div>
   );
