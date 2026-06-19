@@ -16,6 +16,8 @@ import {
     getStatusColor,
     PERMISSION_GROUPS,
     usePermission,
+    StatCard,
+    MessageBanner,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { MilestoneDetail } from "./MilestoneDetail";
@@ -335,18 +337,8 @@ export function MilestonesPage() {
                 </div>
             )}
 
-            {/* Message */}
             {message && (
-                <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-                    <span className="material-symbols-outlined">check_circle</span>
-                    {message}
-                    <button
-                        className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-                        onClick={() => setMessage("")}
-                    >
-                        <span className="material-symbols-outlined">close</span>
-                    </button>
-                </div>
+                <MessageBanner message={message} onDismiss={() => setMessage("")} />
             )}
 
             {/* Filters Section */}
@@ -687,20 +679,4 @@ export function MilestonesPage() {
     );
 }
 
-// Helper Component
-function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
-    const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-        indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
-        emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
-        rose: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100" },
-        amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
-    };
-    const colors = colorMap[color] || colorMap.indigo;
 
-    return (
-        <div className={`rounded-xl border p-4 text-center ${colors.border} ${colors.bg}`}>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
-        </div>
-    );
-}

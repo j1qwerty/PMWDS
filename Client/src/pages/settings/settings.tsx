@@ -9,6 +9,8 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useNavHeader,
+  TabButton,
+  MessageBanner,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
 import { AIConfiguration } from "./AIConfiguration";
@@ -220,18 +222,8 @@ export function SettingsPage() {
 
 
 
-      {/* Message */}
       {saved && (
-        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined">check_circle</span>
-          {saved}
-          <button
-            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-            onClick={() => setSaved("")}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
+        <MessageBanner message={saved} onDismiss={() => setSaved("")} />
       )}
 
       {/* Tab Navigation */}
@@ -339,25 +331,4 @@ export function SettingsPage() {
   );
 }
 
-function TabButton({ active, onClick, icon, label }: {
-  active: boolean;
-  onClick: () => void;
-  icon: string;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 flex items-center gap-2
-        ${active
-          ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-[1px]"
-          : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-        }
-      `}
-    >
-      <span className="material-symbols-outlined text-lg">{icon}</span>
-      {label}
-    </button>
-  );
-}
+

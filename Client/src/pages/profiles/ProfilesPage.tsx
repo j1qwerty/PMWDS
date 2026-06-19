@@ -15,6 +15,7 @@ import {
 import { ProfileList } from "./ProfileList";
 import { ProfileDetail } from "./ProfileDetail";
 import { ProfileFormModal } from "./ProfileFormModal";
+import { MessageBanner } from "../shared/MessageBanner";
 
 export function ProfilesPage() {
   const { auth, updateCurrentUser } = useAuth();
@@ -127,18 +128,8 @@ export function ProfilesPage() {
 
 
 
-      {/* Message */}
       {message && (
-        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined">check_circle</span>
-          {message}
-          <button
-            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-            onClick={() => setMessage("")}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
+        <MessageBanner message={message} onDismiss={() => setMessage("")} />
       )}
 
       {/* Main Layout */}

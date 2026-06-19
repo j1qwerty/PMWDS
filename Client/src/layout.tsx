@@ -381,7 +381,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             })()}
 
             {/* Manage — standalone, after Dashboard */}
-            {/* {(() => {
+            {(() => {
               const theme = sectionThemes.Team;
               const active = isActive("/managedepartment");
               return (
@@ -416,7 +416,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                   )}
                 </Link>
               );
-            })()} */}
+            })()}
 
             <ProjectsGroup
               theme={sectionThemes.Projects}

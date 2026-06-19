@@ -6,27 +6,22 @@ type HighRiskInterventionsProps = {
 };
 
 export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps) {
-  const highRiskTasks = tasks.filter(
-    task => task.priority === "Critical" || task.priority === "High" || task.status === "Delayed" || task.isOverdue
-  );
-
   return (
     <section className="max-w-150 flex flex-col gap-[clamp(1px,0.4vw,8px)] bg-white rounded-2xl p-6 shadow-md  p-[clamp(8px,2vw,32px)] border border-slate-100 hover:shadow-blue-200 ">
       <div className="flex items-center gap-[clamp(4px,1vw,8px)] border-b border-slate-300 pb-1">
         <span className="material-symbols-outlined text-error text-[clamp(16px,2vw,24px)]">warning</span>
         <h2 className="text-[clamp(12px,1.5vw,16px)] font-semibold text-on-surface">High-Risk Escalations</h2>
-        {highRiskTasks.length > 0 && (
+        {tasks.length > 0 && (
           <span className="px-[clamp(6px,1vw,8px)] py-[clamp(2px,0.4vw,4px)] rounded-full bg-red-100 text-red-600 text-[clamp(8px,1vw,10px)] font-bold">
-            {highRiskTasks.length} critical
+            {tasks.length} escalated
           </span>
         )}
       </div>
 
       <div className="flex flex-col gap-[clamp(4px,0.8vw,6px)]">
-        {highRiskTasks.slice(0, 4).map((task) => {
+        {tasks.map((task) => {
           const priorityColor = getPriorityColor(task.priority);
           const statusColor = getStatusColor(task.status);
-          const isCritical = task.priority === "Critical" || task.status === "Delayed";
 
           return (
             <div
@@ -51,10 +46,10 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
           );
         })}
 
-        {highRiskTasks.length === 0 && (
+        {tasks.length === 0 && (
           <div className="p-[clamp(12px,2vw,16px)]  text-center">
             <span className="material-symbols-outlined text-outline text-[clamp(18px,2.5vw,24px)] mb-[clamp(2px,0.4vw,4px)]">check_circle</span>
-            <p className="text-[clamp(9px,1.1vw,11px)] text-slate-500">No high-risk tasks</p>
+            <p className="text-[clamp(9px,1.1vw,11px)] text-slate-500">No escalated tasks</p>
           </div>
         )}
       </div>

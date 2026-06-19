@@ -6,24 +6,20 @@ type HighRiskInterventionsCompactProps = {
 };
 
 export function HighRiskInterventionsCompact({ tasks = [] }: HighRiskInterventionsCompactProps) {
-  const highRiskTasks = tasks.filter(
-    task => task.priority === "Critical" || task.priority === "High" || task.status === "Delayed" || task.isOverdue
-  );
-
   return (
     <section className="w-full max-w-150 flex flex-col gap-2 bg-surface-container-lowest rounded-xl p-md ambient-glow  shadow-md">
       <div className="flex items-center gap-2">
         <span className="material-symbols-outlined text-error text-lg">warning</span>
         <h2 className="text-lg font-semibold text-slate-700">High-Risk Interventions</h2>
-        {highRiskTasks.length > 0 && (
+        {tasks.length > 0 && (
           <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-bold">
-            {highRiskTasks.length} critical
+            {tasks.length} escalated
           </span>
         )}
       </div>
 
       <div className="flex flex-col gap-2">
-        {highRiskTasks.slice(0, 4).map((task, index) => {
+        {tasks.map((task, index) => {
           const deptColor = getDepartmentColor(index);
           const priorityColor = getPriorityColor(task.priority);
 
@@ -49,10 +45,10 @@ export function HighRiskInterventionsCompact({ tasks = [] }: HighRiskInterventio
           );
         })}
 
-        {highRiskTasks.length === 0 && (
+        {tasks.length === 0 && (
           <div className="p-4 rounded-xl border border-slate-200 text-center">
             <span className="material-symbols-outlined text-slate-300 text-2xl mb-1">check_circle</span>
-            <p className="text-xs text-slate-500">No high-risk tasks</p>
+            <p className="text-xs text-slate-500">No escalated tasks</p>
           </div>
         )}
       </div>

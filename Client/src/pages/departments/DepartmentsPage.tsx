@@ -16,6 +16,7 @@ import {
     usePermission,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
+import { MessageBanner } from "../shared/MessageBanner";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
 import { DepartmentList } from "./DepartmentList";
 
@@ -47,15 +48,15 @@ export function DepartmentsPage() {
     const { setNavHeader } = useNavHeader();
 
     useEffect(() => {
-      setNavHeader({
-        title: "Departments",
-        description: "Manage departments across all organizations",
-        action: canCreateDepartments ? {
-          label: "New Department",
-          onClick: () => setDeptModal({ open: true }),
-          icon: "add",
-        } : undefined,
-      });
+        setNavHeader({
+            title: "Departments",
+            description: "Manage departments across all organizations",
+            action: canCreateDepartments ? {
+                label: "New Department",
+                onClick: () => setDeptModal({ open: true }),
+                icon: "add",
+            } : undefined,
+        });
     }, [setNavHeader, canCreateDepartments]);
 
     const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -162,82 +163,72 @@ export function DepartmentsPage() {
 
 
 
-            {/* Message */}
             {message && (
-                <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-                    <span className="material-symbols-outlined">check_circle</span>
-                    {message}
-                    <button
-                        className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-                        onClick={() => setMessage("")}
-                    >
-                        <span className="material-symbols-outlined">close</span>
-                    </button>
-                </div>
+                <MessageBanner message={message} onDismiss={() => setMessage("")} />
             )}
 
             {/* Organization Tabs - only for admin users */}
             {isOrgAdmin && (
-            <div className="relative z-10 mb-5">
-                <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-                    {/* All Tab */}
-                    <button
-                        onClick={() => {
-                            setSelectedOrgId("");
-                            setSearchTerm("");
-                        }}
-                        className={`
+                <div className="relative z-10 mb-5">
+                    <div className="flex gap-2 overflow-x-auto pb-2 items-center">
+                        {/* All Tab */}
+                        <button
+                            onClick={() => {
+                                setSelectedOrgId("");
+                                setSearchTerm("");
+                            }}
+                            className={`
         px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
         ${selectedOrgId === ""
-                                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
-                                : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
-                            }
+                                    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
+                                    : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
+                                }
       `}
-                    >
-                        <span className="material-symbols-outlined text-lg">grid_view</span>
-                        All Departments
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedOrgId === ""
+                        >
+                            <span className="material-symbols-outlined text-lg">grid_view</span>
+                            All Departments
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedOrgId === ""
                                 ? "bg-emerald-500 text-emerald-100"
                                 : "bg-slate-100 text-slate-400"
-                            }`}>
-                            {departments.length}
-                        </span>
-                    </button>
+                                }`}>
+                                {departments.length}
+                            </span>
+                        </button>
 
-                    {/* Separator */}
-                    <div className="w-px h-8 bg-slate-200 self-center mx-1"></div>
+                        {/* Separator */}
+                        <div className="w-px h-8 bg-slate-200 self-center mx-1"></div>
 
-                    {/* Organization Tabs */}
-                    {organizations.map((org) => {
-                        const deptCount = departments.filter((d) => d.organizationId === org.id).length;
-                        return (
-                            <button
-                                key={org.id}
-                                onClick={() => {
-                                    setSelectedOrgId(org.id);
-                                    setSearchTerm("");
-                                }}
-                                className={`
+                        {/* Organization Tabs */}
+                        {organizations.map((org) => {
+                            const deptCount = departments.filter((d) => d.organizationId === org.id).length;
+                            return (
+                                <button
+                                    key={org.id}
+                                    onClick={() => {
+                                        setSelectedOrgId(org.id);
+                                        setSearchTerm("");
+                                    }}
+                                    className={`
             px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
             ${selectedOrgId === org.id
-                                        ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
-                                        : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
-                                    }
+                                            ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
+                                            : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
+                                        }
           `}
-                            >
-                                <span className="material-symbols-outlined text-lg">business</span>
-                                {org.name}
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedOrgId === org.id
+                                >
+                                    <span className="material-symbols-outlined text-lg">business</span>
+                                    {org.name}
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedOrgId === org.id
                                         ? "bg-indigo-500 text-indigo-100"
                                         : "bg-slate-100 text-slate-400"
-                                    }`}>
-                                    {deptCount}
-                                </span>
-                            </button>
-                        );
-                    })}
+                                        }`}>
+                                        {deptCount}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
             )}
 
             {/* Main Layout */}

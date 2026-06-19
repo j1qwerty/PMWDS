@@ -1,202 +1,43 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
+import type { Department, OrganizationRecord, User } from "../../types";
+import { getStatusColor } from "../shared/colors";
 import {
   AnimatedBackground,
   GlassCard,
+  Avatar,
+  useNavHeader,
+  usePermission,
+  LoadingPage,
+  MessageBanner,
   ModalOverlay,
   DeleteConfirmationModal,
   OrgFormModal,
   DeptFormModal,
-  useNavHeader,
-  usePermission,
-  Avatar,
-  LoadingPage,
-  InputF,
 } from "../shared";
-import type { Department, OrganizationRecord, User } from "../../types";
 
-type TabKey = "organizations" | "departments" | "users";
-
-const TABS: { key: TabKey; label: string; icon: string; superAdminOnly?: boolean }[] = [
-  { key: "organizations", label: "Organizations", icon: "corporate_fare", superAdminOnly: true },
-  { key: "departments", label: "Departments", icon: "groups" },
-  { key: "users", label: "Users", icon: "person" },
-];
-
-// ─── User edit modal ──────────────────────────────────────────────
-function UserEditModal({
-  user,
-  departments,
-  organizations,
-  onSubmit,
-  onCancel,
-}: {
-  user: User;
-  departments: Department[];
-  organizations: OrganizationRecord[];
-  onSubmit: (data: Record<string, unknown>) => void;
-  onCancel: () => void;
-}) {
-  const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>(
-    user.departments?.map((d) => d.departmentId) || (user.departmentId ? [user.departmentId] : []),
-  );
-  const [primaryDeptId, setPrimaryDeptId] = useState<string>(
-    user.departments?.find((d) => d.isPrimary)?.departmentId || user.departmentId || "",
-  );
-
-  const orgOptions = useMemo(
-    () => organizations.map((o) => ({ value: o.id, label: o.name })),
-    [organizations],
-  );
-  const [selectedOrgId, setSelectedOrgId] = useState(user.organizationId || orgOptions[0]?.value || "");
-
-  const deptOptions = useMemo(
-    () =>
-      departments
-        .filter((d) => !selectedOrgId || d.organizationId === selectedOrgId)
-        .map((d) => ({ value: d.id, label: d.name })),
-    [departments, selectedOrgId],
-  );
-
-  const handleSubmit = () => {
-    onSubmit({
-      organizationId: selectedOrgId || null,
-      departmentIds: selectedDeptIds,
-      primaryDepartmentId: primaryDeptId || null,
-      departments: selectedDeptIds.map((deptId) => ({
-        departmentId: deptId,
-        isPrimary: deptId === primaryDeptId,
-      })),
-    });
-  };
-
-  return (
-    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200">
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-          <span className="material-symbols-outlined text-indigo-600 text-2xl">edit</span>
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Edit User Assignment</h2>
-          <p className="text-sm text-slate-500">{user.fullName}</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-5">
-        <div>
-          <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Organization</label>
-          <select
-            value={selectedOrgId}
-            onChange={(e) => {
-              setSelectedOrgId(e.target.value);
-              setSelectedDeptIds([]);
-              setPrimaryDeptId("");
-            }}
-            className="w-full p-2.5 rounded-lg border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-          >
-            <option value="">No organization</option>
-            {orgOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Departments</label>
-          <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
-            {deptOptions.length === 0 ? (
-              <div className="p-4 text-center text-sm text-slate-400">No departments available</div>
-            ) : (
-              deptOptions.map((dept) => {
-                const isSelected = selectedDeptIds.includes(dept.value);
-                const isPrimary = primaryDeptId === dept.value;
-                return (
-                  <label
-                    key={dept.value}
-                    className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                      isSelected ? "bg-indigo-50" : "hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {
-                        const next = isSelected
-                          ? selectedDeptIds.filter((id) => id !== dept.value)
-                          : [...selectedDeptIds, dept.value];
-                        setSelectedDeptIds(next);
-                        if (isPrimary && !next.includes(dept.value)) {
-                          setPrimaryDeptId(next[0] || "");
-                        }
-                      }}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="flex-1 text-sm font-medium text-slate-700">{dept.label}</span>
-                    {isSelected && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPrimaryDeptId(dept.value);
-                        }}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${
-                          isPrimary
-                            ? "bg-indigo-600 text-white"
-                            : "bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600"
-                        }`}
-                      >
-                        {isPrimary ? "Primary" : "Set Primary"}
-                      </button>
-                    )}
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors"
-          >
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Organizations ───────────────────────────────────────────
-function OrganizationsTab({
+// ─── Org Panel ────────────────────────────────────────────────────
+function OrgPanel({
   organizations,
   departments,
+  selectedOrgId,
+  onSelect,
   isSuperAdmin,
   onRefresh,
 }: {
   organizations: OrganizationRecord[];
   departments: Department[];
+  selectedOrgId: string | null;
+  onSelect: (id: string | null) => void;
   isSuperAdmin: boolean;
   onRefresh: () => Promise<void>;
 }) {
   const { auth } = useAuth();
   const [search, setSearch] = useState("");
   const [orgModal, setOrgModal] = useState<{ open: boolean; edit?: OrganizationRecord }>({ open: false });
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string; warning: string }>({
-    open: false, id: "", name: "", warning: "",
-  });
-  const [message, setMessage] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; warning: string } | null>(null);
 
   const filtered = useMemo(
     () => organizations.filter((o) => o.name.toLowerCase().includes(search.toLowerCase())),
@@ -204,351 +45,276 @@ function OrganizationsTab({
   );
 
   const handleDelete = async () => {
-    if (!auth) return;
+    if (!auth || !deleteTarget) return;
     try {
-      await api.deleteOrganization(auth.token, deleteConfirm.id);
-      setMessage("Organization deleted successfully.");
-      setDeleteConfirm({ open: false, id: "", name: "", warning: "" });
+      await api.deleteOrganization(auth.token, deleteTarget.id);
+      if (selectedOrgId === deleteTarget.id) onSelect(null);
+      setDeleteTarget(null);
       await onRefresh();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
+      /* ignore */
     }
   };
 
   const handleSubmit = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
-      if (orgModal.edit) {
-        await api.updateOrganization(auth.token, orgModal.edit.id, form);
-      } else {
-        await api.createOrganization(auth.token, form);
-      }
+      if (orgModal.edit) await api.updateOrganization(auth.token, orgModal.edit.id, form);
+      else await api.createOrganization(auth.token, form);
       setOrgModal({ open: false });
-      setMessage(orgModal.edit ? "Organization updated." : "Organization created.");
       await onRefresh();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      /* ignore */
     }
   };
 
   return (
-    <div className="space-y-5">
-      {message && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl py-3 px-4 text-emerald-700 text-sm flex items-center gap-2 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined text-base">check_circle</span>
-          {message}
-          <button className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700" onClick={() => setMessage("")}>
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        </div>
-      )}
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">search</span>
           <input
-            placeholder="Search organizations..."
+            placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm outline-none bg-white/70 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+            className="w-full h-9 pl-8 pr-2 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           />
         </div>
         {isSuperAdmin && (
           <button
             onClick={() => setOrgModal({ open: true })}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors"
+            className="h-9 w-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shrink-0"
+            title="New Organization"
           >
-            <span className="material-symbols-outlined text-base">add</span>
-            New Organization
+            <span className="material-symbols-outlined text-lg">add</span>
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="flex-1 overflow-y-auto space-y-1 pr-1">
         {filtered.map((org) => {
-          const orgDeptCount = departments.filter((d) => d.organizationId === org.id).length;
+          const deptCount = departments.filter((d) => d.organizationId === org.id).length;
+          const isSelected = selectedOrgId === org.id;
           return (
-            <GlassCard key={org.id} className="p-5 hover:shadow-md transition-all duration-200 group">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-indigo-600 text-xl">corporate_fare</span>
+            <div key={org.id} className="group">
+              <button
+                onClick={() => onSelect(isSelected ? null : org.id)}
+                className={`w-full text-left p-2.5 rounded-xl transition-all duration-200 border ${
+                  isSelected
+                    ? "bg-indigo-50 border-indigo-200 shadow-sm"
+                    : "bg-white border-transparent hover:border-slate-200 hover:shadow-sm"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    isSelected ? "bg-indigo-100" : "bg-slate-100"
+                  }`}>
+                    <span className={`material-symbols-outlined text-base ${
+                      isSelected ? "text-indigo-600" : "text-slate-400"
+                    }`}>corporate_fare</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-800 truncate">{org.name}</div>
+                    <div className="text-[10px] text-slate-400">{deptCount} dept{deptCount !== 1 ? "s" : ""}</div>
+                  </div>
+                  {isSuperAdmin && (
+                    <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                      <span
+                        onClick={(e) => { e.stopPropagation(); setOrgModal({ open: true, edit: org }); }}
+                        className="material-symbols-outlined text-sm text-slate-400 hover:text-indigo-600 cursor-pointer"
+                      >edit</span>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const linked = departments.filter((d) => d.organizationId === org.id).length;
+                          setDeleteTarget({
+                            id: org.id,
+                            name: org.name,
+                            warning: linked > 0 ? `This will also remove ${linked} department(s).` : "",
+                          });
+                        }}
+                        className="material-symbols-outlined text-sm text-slate-400 hover:text-red-500 cursor-pointer"
+                      >delete</span>
+                    </div>
+                  )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-slate-800 text-sm truncate">{org.name}</h3>
-                  {org.taxId && <p className="text-xs text-slate-400">ID: {org.taxId}</p>}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
-                <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">layers</span>
-                  {orgDeptCount} dept{orgDeptCount !== 1 ? "s" : ""}
-                </span>
-                {org.contactEmail && (
-                  <span className="flex items-center gap-1 truncate">
-                    <span className="material-symbols-outlined text-sm">mail</span>
-                    {org.contactEmail}
-                  </span>
-                )}
-              </div>
-
-              {org.director && (
-                <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-slate-50 mb-3">
+              </button>
+              {org.director && isSelected && (
+                <div className="flex items-center gap-2 mt-1 ml-2.5 px-2.5 py-1.5 rounded-lg bg-indigo-50/50">
                   <Avatar person={org.director} size="xs" />
-                  <div className="text-xs">
-                    <div className="font-semibold text-slate-700">{org.director.fullName}</div>
-                    <div className="text-slate-400 truncate">{org.director.email}</div>
+                  <div className="text-[10px]">
+                    <span className="font-medium text-slate-700">{org.director.fullName}</span>
+                    <span className="text-slate-400 ml-1">Director</span>
                   </div>
                 </div>
               )}
-
-              {isSuperAdmin && (
-                <div className="flex gap-2 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => setOrgModal({ open: true, edit: org })}
-                    className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">edit</span> Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      const linked = departments.filter((d) => d.organizationId === org.id).length;
-                      setDeleteConfirm({
-                        open: true,
-                        id: org.id,
-                        name: org.name,
-                        warning: linked > 0
-                          ? `This organization has ${linked} department(s). Deleting it will remove all associated departments.`
-                          : "",
-                      });
-                    }}
-                    className="flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">delete</span> Delete
-                  </button>
-                </div>
-              )}
-            </GlassCard>
+            </div>
           );
         })}
         {filtered.length === 0 && (
-          <div className="col-span-full text-center py-16 text-slate-400">
-            <span className="material-symbols-outlined text-5xl mb-3 block">search_off</span>
-            <p className="text-sm">No organizations found</p>
+          <div className="text-center py-8 text-slate-400">
+            <span className="material-symbols-outlined text-3xl mb-1 block">search_off</span>
+            <p className="text-xs">No organizations</p>
           </div>
         )}
       </div>
 
       {orgModal.open && (
         <ModalOverlay onClose={() => setOrgModal({ open: false })}>
-          <OrgFormModal
-            initialData={orgModal.edit}
-            onSubmit={handleSubmit}
-            onCancel={() => setOrgModal({ open: false })}
-          />
+          <OrgFormModal initialData={orgModal.edit} onSubmit={handleSubmit} onCancel={() => setOrgModal({ open: false })} />
         </ModalOverlay>
       )}
-
-      {deleteConfirm.open && (
-        <ModalOverlay onClose={() => setDeleteConfirm({ open: false, id: "", name: "", warning: "" })}>
-          <DeleteConfirmationModal
-            name={deleteConfirm.name}
-            warning={deleteConfirm.warning}
-            onConfirm={handleDelete}
-            onCancel={() => setDeleteConfirm({ open: false, id: "", name: "", warning: "" })}
-          />
+      {deleteTarget && (
+        <ModalOverlay onClose={() => setDeleteTarget(null)}>
+          <DeleteConfirmationModal name={deleteTarget.name} warning={deleteTarget.warning} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
         </ModalOverlay>
       )}
     </div>
   );
 }
 
-// ─── Tab: Departments ─────────────────────────────────────────────
-function DepartmentsTab({
+// ─── Dept Panel ───────────────────────────────────────────────────
+function DeptPanel({
   departments,
   organizations,
   users,
+  selectedDeptId,
+  onSelect,
+  orgFilter,
+  canManage,
   onRefresh,
 }: {
   departments: Department[];
   organizations: OrganizationRecord[];
   users: User[];
+  selectedDeptId: string | null;
+  onSelect: (id: string | null) => void;
+  orgFilter: string | null;
+  canManage: boolean;
   onRefresh: () => Promise<void>;
 }) {
   const { auth } = useAuth();
-  const perm = usePermission();
   const [search, setSearch] = useState("");
-  const [orgFilter, setOrgFilter] = useState("");
   const [deptModal, setDeptModal] = useState<{ open: boolean; edit?: Department }>({ open: false });
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string }>({
-    open: false, id: "", name: "",
-  });
-  const [message, setMessage] = useState("");
-
-  const canManage = perm.hasAny(
-    "DEPARTMENT_MANAGE", "DEPARTMENT_CREATE", "DEPARTMENT_EDIT", "DEPARTMENT_DELETE",
-  );
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = useMemo(() => {
     let list = departments;
+    if (orgFilter) list = list.filter((d) => d.organizationId === orgFilter);
     if (search) {
-      const term = search.toLowerCase();
-      list = list.filter((d) => d.name.toLowerCase().includes(term) || d.code.toLowerCase().includes(term));
-    }
-    if (orgFilter) {
-      list = list.filter((d) => d.organizationId === orgFilter);
+      const t = search.toLowerCase();
+      list = list.filter((d) => d.name.toLowerCase().includes(t) || d.code.toLowerCase().includes(t));
     }
     return list;
   }, [departments, search, orgFilter]);
 
-  const getOrgName = (orgId?: string | null) =>
-    organizations.find((o) => o.id === orgId)?.name || "N/A";
-
-  const getDeptHead = (userId?: string | null) =>
-    userId ? users.find((u) => u.id === userId) : undefined;
+  const getOrgName = (id?: string | null) => organizations.find((o) => o.id === id)?.name || "";
 
   const handleDelete = async () => {
-    if (!auth) return;
+    if (!auth || !deleteTarget) return;
     try {
-      await api.deleteDepartment(auth.token, deleteConfirm.id);
-      setMessage("Department deleted successfully.");
-      setDeleteConfirm({ open: false, id: "", name: "" });
+      await api.deleteDepartment(auth.token, deleteTarget.id);
+      if (selectedDeptId === deleteTarget.id) onSelect(null);
+      setDeleteTarget(null);
       await onRefresh();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
+      /* ignore */
     }
   };
 
   const handleSubmit = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
-      if (deptModal.edit) {
-        await api.updateDepartment(auth.token, deptModal.edit.id, form);
-      } else {
-        await api.createDepartment(auth.token, form);
-      }
+      if (deptModal.edit) await api.updateDepartment(auth.token, deptModal.edit.id, form);
+      else await api.createDepartment(auth.token, form);
       setDeptModal({ open: false });
-      setMessage(deptModal.edit ? "Department updated." : "Department created.");
       await onRefresh();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      /* ignore */
     }
   };
 
   return (
-    <div className="space-y-5">
-      {message && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl py-3 px-4 text-emerald-700 text-sm flex items-center gap-2 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined text-base">check_circle</span>
-          {message}
-          <button className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700" onClick={() => setMessage("")}>
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        </div>
-      )}
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">search</span>
           <input
-            placeholder="Search departments..."
+            placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm outline-none bg-white/70 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+            className="w-full h-9 pl-8 pr-2 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           />
         </div>
-        <select
-          value={orgFilter}
-          onChange={(e) => setOrgFilter(e.target.value)}
-          className="h-10 px-3.5 rounded-xl border border-slate-200 text-sm outline-none bg-white/70 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-        >
-          <option value="">All Organizations</option>
-          {organizations.map((o) => (
-            <option key={o.id} value={o.id}>{o.name}</option>
-          ))}
-        </select>
         {canManage && (
           <button
             onClick={() => setDeptModal({ open: true })}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors"
+            className="h-9 w-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition-colors shrink-0"
+            title="New Department"
           >
-            <span className="material-symbols-outlined text-base">add</span>
-            New Department
+            <span className="material-symbols-outlined text-lg">add</span>
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="flex-1 overflow-y-auto space-y-1 pr-1">
         {filtered.map((dept) => {
-          const head = getDeptHead(dept.departmentHeadUserId);
           const memberCount = users.filter(
             (u) => u.departmentId === dept.id || u.departments?.some((d) => d.departmentId === dept.id),
           ).length;
-
+          const isSelected = selectedDeptId === dept.id;
           return (
-            <GlassCard key={dept.id} className="p-5 hover:shadow-md transition-all duration-200 group">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-violet-600 text-xl">group</span>
+            <button
+              key={dept.id}
+              onClick={() => onSelect(isSelected ? null : dept.id)}
+              className={`w-full text-left p-2.5 rounded-xl transition-all duration-200 border ${
+                isSelected
+                  ? "bg-indigo-50 border-indigo-200 shadow-sm"
+                  : "bg-white border-transparent hover:border-slate-200 hover:shadow-sm"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  isSelected ? "bg-violet-100" : "bg-slate-100"
+                }`}>
+                  <span className={`material-symbols-outlined text-base ${
+                    isSelected ? "text-violet-600" : "text-slate-400"
+                  }`}>group</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-slate-800 text-sm truncate">{dept.name}</h3>
-                  <p className="text-[11px] text-slate-400 font-mono">{dept.code}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-3">
-                <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg">
-                  <span className="material-symbols-outlined text-sm">business</span>
-                  {getOrgName(dept.organizationId)}
-                </span>
-                <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg">
-                  <span className="material-symbols-outlined text-sm">people</span>
-                  {memberCount} members
-                </span>
-                <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg">
-                  <span className="material-symbols-outlined text-sm">dashboard</span>
-                  {dept.maxCapacity} capacity
-                </span>
-              </div>
-
-              {dept.description && (
-                <p className="text-xs text-slate-400 mb-3 line-clamp-2">{dept.description}</p>
-              )}
-
-              {head && (
-                <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-slate-50 mb-3">
-                  <Avatar person={head} size="xs" />
-                  <div className="text-xs">
-                    <div className="font-semibold text-slate-700">{head.fullName}</div>
-                    <div className="text-slate-400">Department Head</div>
+                  <div className="text-sm font-semibold text-slate-800 truncate">{dept.name}</div>
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                    <span>{dept.code}</span>
+                    <span>·</span>
+                    <span>{memberCount} members</span>
+                    {dept.organizationId && (
+                      <>
+                        <span>·</span>
+                        <span className="truncate">{getOrgName(dept.organizationId)}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-              )}
-
-              {canManage && (
-                <div className="flex gap-2 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => setDeptModal({ open: true, edit: dept })}
-                    className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">edit</span> Edit
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm({ open: true, id: dept.id, name: dept.name })}
-                    className="flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">delete</span> Delete
-                  </button>
-                </div>
-              )}
-            </GlassCard>
+                {canManage && (
+                  <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity" style={{ display: isSelected ? 'flex' : undefined }}>
+                    <span
+                      onClick={(e) => { e.stopPropagation(); setDeptModal({ open: true, edit: dept }); }}
+                      className="material-symbols-outlined text-sm text-slate-400 hover:text-indigo-600 cursor-pointer"
+                    >edit</span>
+                    <span
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: dept.id, name: dept.name }); }}
+                      className="material-symbols-outlined text-sm text-slate-400 hover:text-red-500 cursor-pointer"
+                    >delete</span>
+                  </div>
+                )}
+              </div>
+            </button>
           );
         })}
         {filtered.length === 0 && (
-          <div className="col-span-full text-center py-16 text-slate-400">
-            <span className="material-symbols-outlined text-5xl mb-3 block">search_off</span>
-            <p className="text-sm">No departments found</p>
+          <div className="text-center py-8 text-slate-400">
+            <span className="material-symbols-outlined text-3xl mb-1 block">search_off</span>
+            <p className="text-xs">No departments</p>
           </div>
         )}
       </div>
@@ -566,253 +332,203 @@ function DepartmentsTab({
           />
         </ModalOverlay>
       )}
-
-      {deleteConfirm.open && (
-        <ModalOverlay onClose={() => setDeleteConfirm({ open: false, id: "", name: "" })}>
-          <DeleteConfirmationModal
-            name={deleteConfirm.name}
-            onConfirm={handleDelete}
-            onCancel={() => setDeleteConfirm({ open: false, id: "", name: "" })}
-          />
+      {deleteTarget && (
+        <ModalOverlay onClose={() => setDeleteTarget(null)}>
+          <DeleteConfirmationModal name={deleteTarget.name} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
         </ModalOverlay>
       )}
     </div>
   );
 }
 
-// ─── Tab: Users ───────────────────────────────────────────────────
-function UsersTab({
+// ─── Member Panel ─────────────────────────────────────────────────
+function MemberPanel({
+  department,
   users,
-  departments,
-  organizations,
+  allUsers,
   onRefresh,
 }: {
+  department: Department | null;
   users: User[];
-  departments: Department[];
-  organizations: OrganizationRecord[];
+  allUsers: User[];
   onRefresh: () => Promise<void>;
 }) {
   const { auth } = useAuth();
-  const perm = usePermission();
-  const [search, setSearch] = useState("");
-  const [orgFilter, setOrgFilter] = useState("");
-  const [deptFilter, setDeptFilter] = useState("");
-  const [editUser, setEditUser] = useState<User | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
-  const canEdit = perm.hasAny("USER_MANAGE", "USER_EDIT", "USER_DEPARTMENT_MANAGE");
+  if (!department) {
+    return (
+      <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-slate-400">
+        <span className="material-symbols-outlined text-5xl mb-3">group</span>
+        <p className="text-sm font-medium">Select a department</p>
+        <p className="text-xs mt-1">Choose a department from the middle panel</p>
+      </div>
+    );
+  }
 
-  const orgDepts = useMemo(
-    () => (orgFilter ? departments.filter((d) => d.organizationId === orgFilter) : departments),
-    [departments, orgFilter],
+  const nonMembers = allUsers.filter(
+    (u) =>
+      u.isActive !== false &&
+      !users.some((m) => m.id === u.id),
   );
 
-  const filtered = useMemo(() => {
-    let list = users;
-    if (search) {
-      const term = search.toLowerCase();
-      list = list.filter(
-        (u) =>
-          u.fullName.toLowerCase().includes(term) ||
-          u.email.toLowerCase().includes(term) ||
-          (u.jobTitle ?? "").toLowerCase().includes(term),
-      );
-    }
-    if (orgFilter) {
-      list = list.filter(
-        (u) =>
-          u.organizationId === orgFilter ||
-          u.departments?.some((d) => d.organizationId === orgFilter),
-      );
-    }
-    if (deptFilter) {
-      list = list.filter(
-        (u) =>
-          u.departmentId === deptFilter ||
-          u.departments?.some((d) => d.departmentId === deptFilter),
-      );
-    }
-    return list;
-  }, [users, search, orgFilter, deptFilter]);
-
-  const getDeptNames = (user: User): string[] => {
-    const names: string[] = [];
-    if (user.departments) {
-      for (const d of user.departments) {
-        const dept = departments.find((dep) => dep.id === d.departmentId);
-        if (dept) names.push(dept.name);
-      }
-    } else if (user.departmentId) {
-      const dept = departments.find((d) => d.id === user.departmentId);
-      if (dept) names.push(dept.name);
-    }
-    return names;
-  };
-
-  const handleUserUpdate = async (data: Record<string, unknown>) => {
-    if (!auth || !editUser) return;
+  const addSelected = async () => {
+    if (!auth || selectedIds.length === 0) return;
     try {
-      const { organizationId, departmentIds, primaryDepartmentId, departments: depts } = data as any;
-      await api.updateUser(auth.token, editUser.id, { organizationId });
-      if (departmentIds?.length) {
-        await api.assignUserDepartments(auth.token, editUser.id, departmentIds, primaryDepartmentId || null);
+      for (const userId of selectedIds) {
+        const user = allUsers.find((u) => u.id === userId);
+        const existing = user?.departments?.map((d) => d.departmentId) || [];
+        if (user?.departmentId && !existing.includes(user.departmentId)) existing.push(user.departmentId);
+        if (!existing.includes(department.id)) existing.push(department.id);
+        await api.assignUserDepartments(auth.token, userId, existing, department.id);
       }
-      setEditUser(null);
-      setMessage(`${editUser.fullName} updated successfully.`);
+      setMessage(`${selectedIds.length} user(s) added`);
+      setSelectedIds([]);
+      setAdding(false);
       await onRefresh();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Update failed"}`);
+      setMessage(`Error: ${e instanceof Error ? e.message : "Failed"}`);
     }
   };
 
+  const removeMember = async (userId: string) => {
+    if (!auth) return;
+    try {
+      const user = allUsers.find((u) => u.id === userId);
+      const current = user?.departments?.map((d) => d.departmentId) || [];
+      const updated = current.filter((id) => id !== department.id);
+      await api.assignUserDepartments(auth.token, userId, updated.length > 0 ? updated : [department.id], updated[0] || null);
+      if (updated.length === 0) await api.updateUser(auth.token, userId, { departmentId: null } as any);
+      setMessage(`Removed from ${department.name}`);
+      await onRefresh();
+    } catch (e) {
+      setMessage(`Error: ${e instanceof Error ? e.message : "Failed"}`);
+    }
+  };
+
+  const head = department.departmentHeadUserId
+    ? allUsers.find((u) => u.id === department.departmentHeadUserId)
+    : undefined;
+
   return (
-    <div className="space-y-5">
-      {message && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl py-3 px-4 text-emerald-700 text-sm flex items-center gap-2 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined text-base">check_circle</span>
-          {message}
-          <button className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700" onClick={() => setMessage("")}>
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        </div>
-      )}
+    <div className="flex flex-col h-full">
+      {message && <div className="mb-3"><MessageBanner message={message} onDismiss={() => setMessage("")} /></div>}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
-          <input
-            placeholder="Search users..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm outline-none bg-white/70 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-          />
+      {/* Dept header */}
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white mb-4 shadow-sm">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold">{department.name}</h2>
+            <p className="text-sm text-indigo-100 font-mono">{department.code}</p>
+          </div>
+          <div className="text-right">
+            <span className="text-3xl font-bold">{users.length}</span>
+            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold">Members</p>
+          </div>
         </div>
-        <select
-          value={orgFilter}
-          onChange={(e) => {
-            setOrgFilter(e.target.value);
-            setDeptFilter("");
-          }}
-          className="h-10 px-3.5 rounded-xl border border-slate-200 text-sm outline-none bg-white/70 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-        >
-          <option value="">All Organizations</option>
-          {organizations.map((o) => (
-            <option key={o.id} value={o.id}>{o.name}</option>
-          ))}
-        </select>
-        <select
-          value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
-          className="h-10 px-3.5 rounded-xl border border-slate-200 text-sm outline-none bg-white/70 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-        >
-          <option value="">All Departments</option>
-          {orgDepts.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <GlassCard className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">User</th>
-                <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Email</th>
-                <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Role</th>
-                <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Departments</th>
-                <th className="text-left py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                {canEdit && <th className="text-right py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar person={user} size="sm" />
-                      <div>
-                        <div className="font-semibold text-slate-800">{user.fullName}</div>
-                        {user.jobTitle && <div className="text-xs text-slate-400">{user.jobTitle}</div>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 text-xs">{user.email}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {user.roles.map((role) => (
-                        <span
-                          key={role}
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600"
-                        >
-                          {role}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {getDeptNames(user).map((name) => (
-                        <span
-                          key={name}
-                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600"
-                        >
-                          {name}
-                        </span>
-                      ))}
-                      {getDeptNames(user).length === 0 && (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        user.isActive
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {user.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  {canEdit && (
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => setEditUser(user)}
-                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-                      >
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">edit</span>
-                          Assign
-                        </span>
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="text-center py-16 text-slate-400">
-            <span className="material-symbols-outlined text-5xl mb-3 block">search_off</span>
-            <p className="text-sm">No users found</p>
+        {head && (
+          <div className="flex items-center gap-2 mt-3 bg-white/10 rounded-xl px-3 py-2">
+            <Avatar person={head} size="xs" />
+            <div className="text-sm">
+              <span className="font-semibold">{head.fullName}</span>
+              <span className="text-indigo-200 ml-2 text-xs">Head</span>
+            </div>
           </div>
         )}
-      </GlassCard>
+        {department.description && (
+          <p className="text-xs text-indigo-100 mt-2 opacity-80">{department.description}</p>
+        )}
+      </div>
 
-      {editUser && (
-        <ModalOverlay onClose={() => setEditUser(null)}>
-          <UserEditModal
-            user={editUser}
-            departments={departments}
-            organizations={organizations}
-            onSubmit={handleUserUpdate}
-            onCancel={() => setEditUser(null)}
-          />
-        </ModalOverlay>
+      {/* Members */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members</h3>
+        <button
+          onClick={() => { setAdding(!adding); setSelectedIds([]); }}
+          className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+        >
+          <span className="material-symbols-outlined text-sm">{adding ? "close" : "person_add"}</span>
+          {adding ? "Cancel" : "Add"}
+        </button>
+      </div>
+
+      {/* Add panel */}
+      {adding && (
+        <div className="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">search</span>
+              <input
+                placeholder="Search users..."
+                className="w-full h-8 pl-8 pr-2 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                onChange={(e) => {
+                  const t = e.target.value.toLowerCase();
+                  setSelectedIds(nonMembers.filter((u) => u.fullName.toLowerCase().includes(t)).slice(0, 5).map((u) => u.id));
+                }}
+              />
+            </div>
+            <button
+              onClick={addSelected}
+              disabled={selectedIds.length === 0}
+              className="px-3 h-8 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Add {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+            </button>
+          </div>
+          <div className="max-h-32 overflow-y-auto space-y-0.5">
+            {nonMembers.slice(0, 30).map((u) => (
+              <label key={u.id} className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors ${
+                selectedIds.includes(u.id) ? "bg-indigo-50" : "hover:bg-white"
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(u.id)}
+                  onChange={() => setSelectedIds((prev) => prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id])}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <Avatar person={u} size="xs" />
+                <span className="flex-1 text-xs text-slate-700 truncate">{u.fullName}</span>
+              </label>
+            ))}
+            {nonMembers.length === 0 && <p className="text-xs text-slate-400 text-center py-3">All users are members</p>}
+          </div>
+        </div>
       )}
+
+      {/* Member list */}
+      <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+        {users.map((u) => {
+          const isPrimary = u.departments?.find((d) => d.departmentId === department.id)?.isPrimary;
+          return (
+            <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors group border border-transparent hover:border-slate-100">
+              <Avatar person={u} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-800 truncate">{u.fullName}</span>
+                  {isPrimary && <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">Primary</span>}
+                </div>
+                <div className="text-[11px] text-slate-400">{u.jobTitle || u.email}</div>
+              </div>
+              <button
+                onClick={() => removeMember(u.id)}
+                className="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700 p-1 rounded-lg hover:bg-red-50 transition-all"
+                title="Remove"
+              >
+                <span className="material-symbols-outlined text-base">remove_circle_outline</span>
+              </button>
+            </div>
+          );
+        })}
+        {users.length === 0 && (
+          <div className="text-center py-8 text-slate-400">
+            <span className="material-symbols-outlined text-3xl mb-1 block">group_off</span>
+            <p className="text-xs font-medium">No members</p>
+            <p className="text-[10px] mt-0.5">Click "Add" to assign users</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -824,94 +540,207 @@ export function Managedepartment() {
   const { data, loading, refresh } = useAppData();
   const { setNavHeader } = useNavHeader();
 
-  const [activeTab, setActiveTab] = useState<TabKey>(
-    isSuperAdmin ? "organizations" : "departments",
-  );
-
-  const visibleTabs = useMemo(
-    () => TABS.filter((t) => !t.superAdminOnly || isSuperAdmin),
-    [isSuperAdmin],
-  );
-
-  // If the user can't see the current tab, switch to the first visible one
-  useEffect(() => {
-    const tabKeys = visibleTabs.map((t) => t.key);
-    if (!tabKeys.includes(activeTab)) {
-      setActiveTab(tabKeys[0] || "departments");
-    }
-  }, [visibleTabs, activeTab]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     setNavHeader({
-      title: "manage",
-      description: "Manage organizations, departments, and users",
+      title: "Manage",
+      description: "Organizations, departments, and team assignments",
     });
   }, [setNavHeader]);
 
-  if (loading) return <LoadingPage label="Loading data..." />;
+  // Auto-select first org if none selected
+  useEffect(() => {
+    if (!selectedOrgId && data.organizations.length > 0 && isSuperAdmin) {
+      setSelectedOrgId(data.organizations[0].id);
+    }
+  }, [data.organizations, selectedOrgId, isSuperAdmin]);
 
-  const tabData = TABS.find((t) => t.key === activeTab);
+  // Auto-select first dept when org changes
+  useEffect(() => {
+    if (selectedOrgId) {
+      const orgDepts = data.departments.filter((d) => d.organizationId === selectedOrgId);
+      if (!selectedDeptId || !orgDepts.some((d) => d.id === selectedDeptId)) {
+        setSelectedDeptId(orgDepts[0]?.id || null);
+      }
+    }
+  }, [selectedOrgId, data.departments]);
+
+  const selectedOrg = data.organizations.find((o) => o.id === selectedOrgId) ?? null;
+  const selectedDept = data.departments.find((d) => d.id === selectedDeptId) ?? null;
+
+  const orgDepts = useMemo(
+    () => (selectedOrgId ? data.departments.filter((d) => d.organizationId === selectedOrgId) : []),
+    [data.departments, selectedOrgId],
+  );
+
+  const deptMembers = useMemo(
+    () => data.users.filter(
+      (u) => u.departmentId === selectedDeptId || u.departments?.some((d) => d.departmentId === selectedDeptId),
+    ),
+    [data.users, selectedDeptId],
+  );
+
+  if (loading) return <LoadingPage label="Loading..." />;
+
+  const totalDepts = data.departments.length;
+  const totalUsers = data.users.length;
+  const totalTasks = data.projects.reduce((sum, p) => sum + (p.totalTasks || 0), 0);
+  const unassignedUsers = data.users.filter(
+    (u) => u.isActive !== false && !u.departmentId && (!u.departments || u.departments.length === 0),
+  ).length;
+  const totalProjects = data.projects.length;
+
+  const stats = [
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+      ),
+      value: totalDepts,
+      label: 'Departments',
+      statusKey: 'Total',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+        </svg>
+      ),
+      value: totalUsers,
+      label: 'Total Users',
+      statusKey: 'Completed',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+      ),
+      value: unassignedUsers,
+      label: 'Unassigned',
+      statusKey: 'Pending',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+      ),
+      value: totalTasks,
+      label: 'Total Tasks',
+      statusKey: 'Planning',
+    },
+    {
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      ),
+      value: totalProjects,
+      label: 'Total Projects',
+      statusKey: 'Active',
+    },
+  ];
 
   return (
     <div className="relative">
       <AnimatedBackground />
 
-      {/* Tab bar */}
-      <div className="relative z-10 mb-6">
-        <div className="flex items-center gap-1 bg-white/60 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-1.5 shadow-sm overflow-x-auto">
-          {visibleTabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
-                  isActive
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
-                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">{tab.icon}</span>
-                {tab.label}
-                {tab.superAdminOnly && isSuperAdmin && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                    isActive ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600"
-                  }`}>
-                    Admin
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      {message && <div className="relative z-10 mb-4"><MessageBanner message={message} onDismiss={() => setMessage("")} /></div>}
+
+      {/* Stats */}
+      <div className="relative z-10 grid grid-cols-5 gap-4 mb-5">
+        {stats.map((stat) => {
+          const colors = getStatusColor(stat.statusKey);
+          return (
+            <div key={stat.label} className={`shadow-sm group relative overflow-hidden ${colors.shadowHoverColor} rounded-2xl p-4 hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
+              <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${colors.bg} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
+
+              <div className="relative flex items-center gap-3 mb-2">
+                <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
+                  {stat.icon}
+                </div>
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  {stat.label}
+                </span>
+              </div>
+
+              <div className="relative mt-2">
+                <span className={`text-2xl font-bold text-center tracking-wider ${colors.text}`}>
+                  {stat.value.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Tab content */}
-      <div className="relative z-10">
-        {activeTab === "organizations" && (
-          <OrganizationsTab
+      {/* Three-panel layout */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[220px_1fr_1fr] gap-4 min-h-[600px]">
+        {/* Left: Organizations */}
+        <GlassCard className="p-3.5 bg-white/80 border-slate-100 overflow-hidden flex flex-col">
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Organizations</h3>
+          <OrgPanel
             organizations={data.organizations}
             departments={data.departments}
+            selectedOrgId={isSuperAdmin ? selectedOrgId : null}
+            onSelect={isSuperAdmin ? setSelectedOrgId : () => {}}
             isSuperAdmin={isSuperAdmin}
             onRefresh={refresh}
           />
-        )}
-        {activeTab === "departments" && (
-          <DepartmentsTab
-            departments={data.departments}
-            organizations={data.organizations}
-            users={data.users}
-            onRefresh={refresh}
-          />
-        )}
-        {activeTab === "users" && (
-          <UsersTab
-            users={data.users}
-            departments={data.departments}
-            organizations={data.organizations}
-            onRefresh={refresh}
-          />
-        )}
+        </GlassCard>
+
+        {/* Middle: Departments */}
+        <GlassCard className="p-3.5 bg-white/80 border-slate-100 overflow-hidden flex flex-col">
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+            {isSuperAdmin && selectedOrg ? `${selectedOrg.name} · ` : ""}Departments
+          </h3>
+          {isSuperAdmin && !selectedOrgId ? (
+            <div className="flex-1 flex items-center justify-center text-slate-400">
+              <div className="text-center">
+                <span className="material-symbols-outlined text-4xl mb-2 block">arrow_back</span>
+                <p className="text-xs">Select an organization</p>
+              </div>
+            </div>
+          ) : (
+            <DeptPanel
+              departments={data.departments}
+              organizations={data.organizations}
+              users={data.users}
+              selectedDeptId={selectedDeptId}
+              onSelect={setSelectedDeptId}
+              orgFilter={selectedOrgId}
+              canManage={true}
+              onRefresh={refresh}
+            />
+          )}
+        </GlassCard>
+
+        {/* Right: Members */}
+        <GlassCard className="p-3.5 bg-white/80 border-slate-100 overflow-hidden flex flex-col">
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+            {selectedDept ? `${selectedDept.name} Members` : "Members"}
+          </h3>
+          {!selectedDeptId ? (
+            <div className="flex-1 flex items-center justify-center text-slate-400">
+              <div className="text-center">
+                <span className="material-symbols-outlined text-4xl mb-2 block">arrow_back</span>
+                <p className="text-xs">Select a department</p>
+              </div>
+            </div>
+          ) : (
+            <MemberPanel
+              department={selectedDept}
+              users={deptMembers}
+              allUsers={data.users}
+              onRefresh={refresh}
+            />
+          )}
+        </GlassCard>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom"; // Add this import
 import type { Project } from "../../../types";
 import { GlassCard } from "../../shared";
 import { ProjectCard } from "./ProjectCard";
@@ -172,18 +173,34 @@ export function ProjectSidebar({
         )}
       </div>
 
-      {savedScrollPos > 0 && (
-        <button
-          type="button"
-          onClick={handleJumpBack}
-          className="absolute bottom-4 right-4 size-9 flex items-center justify-center rounded-full bg-white border border-slate-200 shadow-lg text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-all z-10"
-          title="Back to previous position"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-        </button>
-      )}
+ {savedScrollPos > 0 && createPortal(
+  <button
+    type="button"
+    onClick={handleJumpBack}
+    className="fixed bottom-4 z-50 size-9 flex items-center justify-center rounded-full bg-white border border-blue-200 shadow-lg text-blue-500 transition-all max-md:!left-auto max-md:right-4 animate-[bounce-glow_2.5s_ease-in-out_infinite]"
+    style={{
+      left: 'calc(clamp(200px,25vw,240px) + 280px)',
+    }}
+    title="Back to previous position"
+  >
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+    </svg>
+    <style>{`
+      @keyframes bounce-glow {
+        0%, 100% { 
+          transform: translateY(0);
+          box-shadow: 0 2px 8px rgba(59,130,246,0.15), 0 1px 3px rgba(0,0,0,0.08);
+        }
+        50% { 
+          transform: translateY(-6px);
+          box-shadow: 0 8px 25px rgba(59,130,246,0.35), 0 2px 8px rgba(59,130,246,0.2);
+        }
+      }
+    `}</style>
+  </button>,
+  document.body
+)}
     </GlassCard>
   );
 }

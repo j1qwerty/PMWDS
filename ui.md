@@ -162,12 +162,12 @@
 - organisation page only for superadmin, director only deparment page
 - pojects page add more buttons on top nav
 - consistent toasts and stat cards design
-- add project detailed cleaned ui to workspace page in new tab, and proper tab management and ui
+- [x] add project detailed cleaned ui to workspace page in new tab, and proper tab management and ui
 - paginated results for documents and other sections, find all those sections make a list
 - dashboard taskperformanceTable - opens older task modals
 
 ### new project creation flow
-- new project modal with steps for project creation
+- [x] new project modal with steps for project creation
 1. project details
 2. departments select or create new department
 3. milestones and tasks boxes like project details pane
@@ -175,7 +175,7 @@
 
 
 ### roles - settings page
-- roles for director also but proper ui, hide superadmin mention for director
+- roles for director also but proper ui, hide superadmin for director
 - settings page for both ( also create organisations for superadmin button)
 
 ## priority 2

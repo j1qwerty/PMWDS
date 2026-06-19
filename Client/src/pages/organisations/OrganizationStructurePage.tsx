@@ -11,7 +11,7 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage, PERMISSION_GROUPS, usePermission, useNavHeader } from "../shared";
+import { LoadingPage, PERMISSION_GROUPS, usePermission, useNavHeader, MessageBanner } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth } = useAuth();
@@ -143,18 +143,8 @@ export function OrganizationStructurePage() {
     <div>
       <AnimatedBackground />
 
-      {/* Message */}
       {message && (
-        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined">check_circle</span>
-          {message}
-          <button 
-            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700" 
-            onClick={() => setMessage("")}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
+        <MessageBanner message={message} onDismiss={() => setMessage("")} />
       )}
 
       {/* Main Layout */}

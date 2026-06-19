@@ -12,6 +12,9 @@ import {
   ModalOverlay,
   DeleteConfirmationModal,
   usePermission,
+  StatCard,
+  TabButton,
+  MessageBanner,
 } from "../shared";
 import { RolesTable } from "./RolesTable";
 import { PermissionsTable } from "./PermissionsTable";
@@ -115,18 +118,8 @@ export function RolesPage() {
 
 
 
-      {/* Message */}
       {message && (
-        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined">check_circle</span>
-          {message}
-          <button
-            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-            onClick={() => setMessage("")}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
+        <MessageBanner message={message} onDismiss={() => setMessage("")} />
       )}
 
       {/* Stats Row */}
@@ -226,56 +219,4 @@ export function RolesPage() {
   );
 }
 
-// Helper Components
-function StatCard({ label, value, color, icon }: { label: string; value: string | number; color: string; icon: string }) {
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
-    violet: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-100" },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
-  };
-  const colors = colorMap[color] || colorMap.indigo;
 
-  return (
-    <div className={`rounded-xl border p-4 ${colors.border} ${colors.bg}`}>
-      <div className="flex items-center gap-3">
-        <span className={`material-symbols-outlined text-xl ${colors.text}`}>{icon}</span>
-        <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-          <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TabButton({ active, onClick, icon, label, count }: {
-  active: boolean;
-  onClick: () => void;
-  icon: string;
-  label: string;
-  count?: number;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 flex items-center gap-2
-        ${active
-          ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-px"
-          : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-        }
-      `}
-    >
-      <span className="material-symbols-outlined text-lg">{icon}</span>
-      {label}
-      {count !== undefined && (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-          active ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-500"
-        }`}>
-          {count}
-        </span>
-      )}
-    </button>
-  );
-}
