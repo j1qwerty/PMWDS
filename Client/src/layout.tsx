@@ -40,6 +40,7 @@ import {
 } from "react-icons/ri";
 import { SearchBar } from "./pages/shared/search";
 import { ProjectsGroup } from "./pages/shared/ProjectsGroup";
+import { HiOutlinePlusCircle } from "react-icons/hi";
 
 // ─── Helper: classNames ────────────────────────────────────────────
 function classNames(...classes: (string | boolean | undefined | null)[]) {
@@ -572,6 +573,21 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Right actions */}
               <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
+                {perm.has(PERMISSION_GROUPS.project.view) && (
+                  <Link
+                    to="/new-project"
+                    className="hidden md:flex items-center gap-1.5 shadow-sm rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 text-white border-0 hover:from-indigo-600 hover:to-indigo-700 hover:shadow-md transition-all duration-200 font-semibold whitespace-nowrap"
+                    style={{
+                      padding: 'clamp(6px, 1vw, 16px) clamp(8px, 1.2vw, 16px)',
+                      fontSize: 'clamp(10px, 1.2vw, 13px)',
+                      height: 'clamp(32px, 4.5vw, 44px)',
+                      minHeight: 'clamp(32px, 4.5vw, 44px)',
+                    }}
+                  >
+                    <HiOutlinePlusCircle style={{ fontSize: 'clamp(14px, 2vw, 20px)' }} />
+                    Newproject
+                  </Link>
+                )}
                 <NavActionButton />
 
                 {/* Chat button */}

@@ -85,41 +85,45 @@ export function ProjectDetailk({
   return (
     <div className="flex flex-col gap-5">
       
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  {/* Left Column: Milestones */}
+  <MilestonesTab
+    key={project.id}
+    projectId={project.id}
+    authToken={authToken ?? undefined}
+  />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  {/* Right Column: Basic Details + AI Insights */}
+  <div className="flex flex-col gap-5">
+    <ProjectBasicDetails
+      project={project}
+      canManage={canManageProjects}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onStatusChange={handleStatusChange}
+      users={users}
+      milestonesCount={milestones.length}
+      pendingWarning={pendingWarning}
+      setPendingWarning={setPendingWarning}
+      handleForceComplete={handleForceComplete}
+    />
 
-      <ProjectBasicDetails
-        project={project}
-        canManage={canManageProjects}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onStatusChange={handleStatusChange}
-        users={users}
-        milestonesCount={milestones.length}
-        pendingWarning={pendingWarning}
-        setPendingWarning={setPendingWarning}
-        handleForceComplete={handleForceComplete}
-      />
+    <AIInsightsSection
+      project={project}
+      progress={progress}
+      healthScore={healthScore}
+      delayRisk={delayRisk}
+      manager={manager}
+      formatMoney={formatMoney}
+    />
+  </div>
 
-       <DocumentsSection
-        projectId={project.id}
-        authToken={authToken}
-      />
-
-        <MilestonesTab
-          key={project.id}
-          projectId={project.id}
-          authToken={authToken ?? undefined}
-        />
-        <AIInsightsSection
-          project={project}
-          progress={progress}
-          healthScore={healthScore}
-          delayRisk={delayRisk}
-          manager={manager}
-          formatMoney={formatMoney}
-        />
-      </div>
+  {/* Documents Section - Commented out */}
+  {/* <DocumentsSection
+    projectId={project.id}
+    authToken={authToken}
+  /> */}
+</div>
 
      
     </div>

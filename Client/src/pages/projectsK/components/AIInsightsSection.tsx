@@ -36,7 +36,7 @@ export function AIInsightsSection({
         {/* <KeyMetrics project={project} delayRisk={delayRisk} healthScore={healthScore} /> */}
 
       {/* Health Matrix */}
-      <AIInsightBadges />
+      {/* <AIInsightBadges /> */}
         
       <ProjectHealthMatrix project={project} />
     </div>

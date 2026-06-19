@@ -11,7 +11,7 @@ interface MilestonesTabProps {
 }
 
 export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
-  const [activeTab, setActiveTab] = useState<"milestones" | "tasks" | "documents">("milestones");
+  const [activeTab, setActiveTab] = useState<"milestones" | "documents">("milestones");
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,26 +109,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
             onMouseLeave={(e) => { if (activeTab !== "milestones") e.currentTarget.style.color = "#767586"; }}
           >
             Milestones
-          </button>
-          <button
-            onClick={() => setActiveTab("tasks")}
-            style={{
-              paddingBottom: "12px",
-              fontWeight: activeTab === "tasks" ? 600 : 400,
-              fontSize: "14px",
-              color: activeTab === "tasks" ? "#4648d4" : "#767586",
-              borderBottom: activeTab === "tasks" ? "2px solid #4648d4" : "2px solid transparent",
-              background: "none",
-              borderTop: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              cursor: "pointer",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) => { if (activeTab !== "tasks") e.currentTarget.style.color = "#191c1e"; }}
-            onMouseLeave={(e) => { if (activeTab !== "tasks") e.currentTarget.style.color = "#767586"; }}
-          >
-            Tasks
           </button>
           <button
             onClick={() => setActiveTab("documents")}
@@ -340,78 +320,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Tasks Tab Content */}
-      {activeTab === "tasks" && (
-        <div style={{ marginTop: "24px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#191c1e", margin: 0 }}>All Tasks</h3>
-              <button style={{
-                color: "#4648d4",
-                fontSize: "14px",
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>add_task</span>
-                Add Task
-              </button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {tasks.map((task) => {
-                const parentMilestone = milestones.find(m => m.id === task.milestoneId);
-
-                return (
-                  <div key={task.id} style={{
-                    backgroundColor: "rgba(242,244,246,0.5)",
-                    padding: "16px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(224,227,229,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      <input
-                        type="checkbox"
-                        checked={task.status === "Completed"}
-                        readOnly
-                        style={{ borderRadius: "4px", color: "#4648d4", borderColor: "#c7c4d7" }}
-                      />
-                      <div>
-                        <p style={{
-                          fontSize: "14px",
-                          fontWeight: 500,
-                          color: "#191c1e",
-                          textDecoration: task.status === "Completed" ? "line-through" : "none",
-                          margin: 0,
-                        }}>
-                          {task.title}
-                        </p>
-                        <p style={{ fontSize: "10px", color: "#767586", margin: "2px 0 0 0" }}>
-                          {parentMilestone ? `Milestone: ${parentMilestone.name}` : "Standalone Task"}
-                          {task.dueDate ? ` · Due ${new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <StatusBadge status={task.status} />
-                  </div>
-                );
-              })}
-              {tasks.length === 0 && (
-                <div style={{ textAlign: "center", padding: "32px 0", color: "#767586", fontSize: "14px" }}>
-                  No tasks found for this project.
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 

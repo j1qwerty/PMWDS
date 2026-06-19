@@ -107,7 +107,7 @@ export function ProjectBasicDetails({
   const content = (
     <div className="flex items-start gap-4">
       {/* Progress Ring */}
-      <div className="relative flex items-center justify-center shrink-0">
+      {/* <div className="relative flex items-center justify-center shrink-0">
         <svg 
           className="size-14 -rotate-90" 
           viewBox="0 0 128 128"
@@ -140,7 +140,7 @@ export function ProjectBasicDetails({
             {Math.round(animatedProgress)}%
           </span>
         </div>
-      </div>
+      </div> */}
 
       {/* Project Info */}
       <div className="flex-1 min-w-0">

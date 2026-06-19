@@ -38,6 +38,7 @@ import { ActivityLogsPage } from ".//pages/activity/ActivityLogsPage";
 import { SettingsPage } from "./pages/settings/settings";
 import { TestPage } from "./pages/temp/TestPage";
 import { LoginPage } from "./pages/login/login";
+import { NewProjectPage } from "./pages/NewProject/NewProjectPage";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -49,6 +50,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 const ROUTE_GUARDS = {
+  newProject: PERMISSION_GROUPS.project.view,
   projects: PERMISSION_GROUPS.project.view,
   projectsK: PERMISSION_GROUPS.project.view,
   milestonesPage: PERMISSION_GROUPS.milestone.view,
@@ -116,6 +118,10 @@ function AppRoutes() {
                   element={<ProjectMilestonesPage />}
                 />
                 <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
+                <Route
+                  path="/new-project"
+                  element={<Guarded permission={ROUTE_GUARDS.newProject}><NewProjectPage /></Guarded>}
+                />
 
                 {/* Team */}
                 <Route

@@ -16,7 +16,7 @@ import {
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { formatMoney } from "../../ui";
-import TaskStats from "../shared/dash/TaskStats";
+import DashboardStats from "../dashboard/dashbaordStats";
 import {
   ConfirmDeleteModal,
   MilestoneFormModal,
@@ -495,7 +495,7 @@ export function ProjectsKPage() {
       )}
 
       <div className="mb-5">
-        <TaskStats tasks={tasks} />
+        <DashboardStats projects={projects} />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-2 min-h-[calc(100vh-12rem)]">
