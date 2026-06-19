@@ -17,11 +17,18 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit(form);
+    if (!form.name.trim()) return;
+    const payload: Record<string, unknown> = { name: form.name };
+    if (form.taxId) payload.taxId = form.taxId;
+    if (form.address) payload.address = form.address;
+    if (form.contactEmail) payload.contactEmail = form.contactEmail;
+    if (form.contactPhone) payload.contactPhone = form.contactPhone;
+    if (form.foundedDate) payload.foundedDate = form.foundedDate;
+    onSubmit(payload);
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[100vw] shadow-xl border border-slate-200">
+    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
           <span className="material-symbols-outlined text-emerald-600 text-2xl">add_business</span>
@@ -52,7 +59,7 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
             <input
               value={form.taxId}
               onChange={(e) => setForm({ ...form, taxId: e.target.value })}
-              placeholder="Tax ID"
+              placeholder="Tax ID (optional)"
               className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 transition-all"
             />
           </div>
@@ -61,7 +68,7 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
             <input
               value={form.contactPhone}
               onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-              placeholder="Phone"
+              placeholder="Phone (optional)"
               className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 transition-all"
             />
           </div>
@@ -73,7 +80,7 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
             type="email"
             value={form.contactEmail}
             onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-            placeholder="contact@organization.com"
+            placeholder="Email (optional)"
             className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 transition-all"
           />
         </div>
@@ -83,7 +90,7 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
           <input
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="Address"
+            placeholder="Address (optional)"
             className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 transition-all"
           />
         </div>
@@ -108,7 +115,8 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
           </button>
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl border-none bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 shadow-sm transition-colors"
+            disabled={!form.name.trim()}
+            className="px-5 py-2.5 rounded-xl border-none bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 shadow-sm transition-colors disabled:opacity-50"
           >
             Create Organization
           </button>

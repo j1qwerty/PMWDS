@@ -16,37 +16,37 @@ public class Organization : AuditableEntity
 
     public static Organization Create(
         string name,
-        string taxId,
-        string address,
-        string contactEmail,
-        string contactPhone,
-        DateTime foundedDate)
+        string? taxId = null,
+        string? address = null,
+        string? contactEmail = null,
+        string? contactPhone = null,
+        DateTime? foundedDate = null)
     {
         return new Organization
         {
             Name = name.Trim(),
-            TaxId = taxId.Trim(),
-            Address = address.Trim(),
-            ContactEmail = contactEmail.Trim(),
-            ContactPhone = contactPhone.Trim(),
-            FoundedDate = foundedDate
+            TaxId = (taxId ?? "").Trim(),
+            Address = (address ?? "").Trim(),
+            ContactEmail = (contactEmail ?? "").Trim(),
+            ContactPhone = (contactPhone ?? "").Trim(),
+            FoundedDate = foundedDate ?? default
         };
     }
 
     public void Update(
         string name,
-        string taxId,
-        string address,
-        string contactEmail,
-        string contactPhone,
-        DateTime foundedDate)
+        string? taxId = null,
+        string? address = null,
+        string? contactEmail = null,
+        string? contactPhone = null,
+        DateTime? foundedDate = null)
     {
         Name = name.Trim();
-        TaxId = taxId.Trim();
-        Address = address.Trim();
-        ContactEmail = contactEmail.Trim();
-        ContactPhone = contactPhone.Trim();
-        FoundedDate = foundedDate;
+        TaxId = (taxId ?? "").Trim();
+        Address = (address ?? "").Trim();
+        ContactEmail = (contactEmail ?? "").Trim();
+        ContactPhone = (contactPhone ?? "").Trim();
+        FoundedDate = foundedDate ?? default;
     }
 
     public void AddDepartment(Department department)

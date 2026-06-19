@@ -188,15 +188,15 @@ public class OrganizationsController : BaseApiController
 public record OrganizationResponse(
     Guid Id,
     string Name,
-    string TaxId,
-    string Address,
-    string ContactEmail,
-    string ContactPhone,
-    DateTime FoundedDate,
+    string? TaxId,
+    string? Address,
+    string? ContactEmail,
+    string? ContactPhone,
+    DateTime? FoundedDate,
     OrganizationDirectorResponse? Director,
     List<OrganizationDepartmentResponse> Departments,
     int DepartmentCount);
 
 public record OrganizationDirectorResponse(Guid Id, string FullName, string Email, string? ProfilePictureUrl);
 public record OrganizationDepartmentResponse(Guid Id, string Name, string Code);
-public record UpsertOrganizationRequest(string Name, string TaxId, string Address, string ContactEmail, string ContactPhone, DateTime FoundedDate);
+public record UpsertOrganizationRequest(string Name, string? TaxId = null, string? Address = null, string? ContactEmail = null, string? ContactPhone = null, DateTime? FoundedDate = null);

@@ -11,11 +11,11 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         b.ToTable("Organizations");
         b.HasKey(e => e.Id);
         b.Property(e => e.Name).HasMaxLength(200).IsRequired();
-        b.Property(e => e.TaxId).HasMaxLength(100).IsRequired();
-        b.Property(e => e.Address).HasMaxLength(500).IsRequired();
-        b.Property(e => e.ContactEmail).HasMaxLength(200).IsRequired();
-        b.Property(e => e.ContactPhone).HasMaxLength(50).IsRequired();
+        b.Property(e => e.TaxId).HasMaxLength(100);
+        b.Property(e => e.Address).HasMaxLength(500);
+        b.Property(e => e.ContactEmail).HasMaxLength(200);
+        b.Property(e => e.ContactPhone).HasMaxLength(50);
         b.HasIndex(e => e.Name).IsUnique();
-        b.HasIndex(e => e.TaxId).IsUnique();
+        b.HasIndex(e => e.TaxId).IsUnique().HasFilter("[TaxId] IS NOT NULL AND [TaxId] <> ''");
     }
 }
