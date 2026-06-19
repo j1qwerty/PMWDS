@@ -1,3 +1,4 @@
+// ProfilesPage.tsx
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -123,26 +124,28 @@ export function ProfilesPage() {
   if (loading) return <LoadingPage label="Loading profiles..." />;
 
   return (
-    <div>
+    <div className="min-h-screen">
       <AnimatedBackground />
 
-
-
       {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
+        <div className="relative z-10 mb-6">
+          <MessageBanner message={message} onDismiss={() => setMessage("")} />
+        </div>
       )}
 
       {/* Main Layout */}
-      <div className={`relative z-10 grid gap-6 ${isOwnProfile ? "grid-cols-1" : "grid-cols-[320px_1fr]"}`}>
+      <div className={`relative z-10 grid gap-6 ${isOwnProfile ? "grid-cols-1 max-w-5xl mx-auto" : "grid-cols-[320px_1fr]"}`}>
         {/* Left Panel: Profile List - hidden for own profile view */}
         {!isOwnProfile && (
-          <ProfileList
-            users={filteredUsers}
-            selectedUserId={selectedUser?.id || ""}
-            onSelect={setSelectedUser}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-          />
+          <div className="sticky top-6 self-start">
+            <ProfileList
+              users={filteredUsers}
+              selectedUserId={selectedUser?.id || ""}
+              onSelect={setSelectedUser}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
+          </div>
         )}
 
         {/* Right Panel: Profile Detail */}
@@ -156,13 +159,13 @@ export function ProfilesPage() {
             onImageUpload={canManageProfiles || selectedUser.id === auth?.userId ? handleImageUpload : undefined}
           />
         ) : (
-          <GlassCard className="p-16 text-center flex flex-col items-center justify-center flex-1 min-h-96">
-            <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-4xl text-slate-400">person</span>
+          <GlassCard className="p-16 text-center flex flex-col items-center justify-center flex-1 min-h-[600px]">
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center mb-6 shadow-inner">
+              <span className="material-symbols-outlined text-5xl text-indigo-400">person_search</span>
             </div>
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Profile</h3>
-            <p className="text-sm text-slate-400 ">
-              Choose a user from the left panel to view their profile details
+            <h3 className="text-xl font-semibold text-slate-700 mb-2">Select a Profile</h3>
+            <p className="text-sm text-slate-500 max-w-md">
+              Choose a user from the left panel to view their detailed profile information
             </p>
           </GlassCard>
         )}
