@@ -19,6 +19,8 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
+  const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
 
   const fetchData = () => {
     if (!authToken || !projectId) return;
@@ -54,11 +56,25 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     return acc;
   }, {} as Record<string, Task[]>);
 
+  const getMilestoneProgress = (milestoneId: string) => {
+    const milestoneTasks = tasksByMilestone[milestoneId] || [];
+    if (milestoneTasks.length === 0) return 0;
+    const completed = milestoneTasks.filter(t => t.status === "Completed").length;
+    return Math.round((completed / milestoneTasks.length) * 100);
+  };
+
   const handleFileUpload = async () => {
     if (!authToken || !uploadFile) return;
-    await api.uploadProjectDocument(authToken, projectId, uploadFile);
-    setUploadFile(null);
-    fetchData();
+    try {
+      await api.uploadProjectDocument(authToken, projectId, uploadFile);
+      setUploadFile(null);
+      setMessage("Document uploaded successfully");
+      setTimeout(() => setMessage(""), 3000);
+      fetchData();
+    } catch (error) {
+      setMessage("Failed to upload document");
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   const handleDownload = async (doc: ProjectDocument) => {
@@ -74,8 +90,41 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+    } catch (error) {
+      setMessage("Failed to download document");
+      setTimeout(() => setMessage(""), 3000);
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const toggleMilestoneExpansion = (milestoneId: string) => {
+    setExpandedMilestones(prev => {
+      const next = new Set(prev);
+      if (next.has(milestoneId)) {
+        next.delete(milestoneId);
+      } else {
+        next.add(milestoneId);
+      }
+      return next;
+    });
+  };
+
+  const handleTaskComplete = async (taskId: string) => {
+    if (!authToken) return;
+    setCompletingTasks(prev => new Set([...prev, taskId]));
+    try {
+      await api.updateTask(authToken, taskId, { status: "Completed" });
+      fetchData();
+    } catch (error) {
+      setMessage("Failed to update task");
+      setTimeout(() => setMessage(""), 3000);
+    } finally {
+      setCompletingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
     }
   };
 
@@ -85,239 +134,274 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, { bg: string; text: string }> = {
+      Completed: { bg: "bg-emerald-50", text: "text-emerald-700" },
+      InProgress: { bg: "bg-blue-50", text: "text-blue-700" },
+      Pending: { bg: "bg-slate-50", text: "text-slate-700" },
+      Delayed: { bg: "bg-rose-50", text: "text-rose-700" },
+    };
+    return colors[status] || colors.Pending;
+  };
+
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      High: "bg-rose-100 text-rose-700",
+      Medium: "bg-amber-100 text-amber-700",
+      Low: "bg-slate-100 text-slate-700",
+    };
+    return colors[priority] || colors.Low;
+  };
+
   return (
-    <div style={{ marginTop: "8px" }}>
+    <div className="mt-8">
       {/* Tabs Header */}
-      <div style={{ borderBottom: "1px solid #e0e3e5" }}>
-        <div style={{ display: "flex", gap: "24px" }}>
+      <div className="border-b border-slate-200">
+        <div className="flex gap-0">
           <button
             onClick={() => setActiveTab("milestones")}
-            style={{
-              paddingBottom: "12px",
-              fontWeight: activeTab === "milestones" ? 600 : 400,
-              fontSize: "14px",
-              color: activeTab === "milestones" ? "#4648d4" : "#767586",
-              borderBottom: activeTab === "milestones" ? "2px solid #4648d4" : "2px solid transparent",
-              background: "none",
-              borderTop: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              cursor: "pointer",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) => { if (activeTab !== "milestones") e.currentTarget.style.color = "#191c1e"; }}
-            onMouseLeave={(e) => { if (activeTab !== "milestones") e.currentTarget.style.color = "#767586"; }}
+            className={`
+              px-6 py-3 text-sm font-semibold transition-all duration-200
+              ${activeTab === "milestones" 
+                ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50" 
+                : "text-slate-500 border-b-2 border-transparent hover:text-slate-700 hover:bg-slate-50"
+              }
+            `}
           >
-            Milestones
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">flag</span>
+              Milestones
+              {milestones.length > 0 && (
+                <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                  {milestones.length}
+                </span>
+              )}
+            </span>
           </button>
           <button
             onClick={() => setActiveTab("documents")}
-            style={{
-              paddingBottom: "12px",
-              fontWeight: activeTab === "documents" ? 600 : 400,
-              fontSize: "14px",
-              color: activeTab === "documents" ? "#4648d4" : "#767586",
-              borderBottom: activeTab === "documents" ? "2px solid #4648d4" : "2px solid transparent",
-              background: "none",
-              borderTop: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              cursor: "pointer",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) => { if (activeTab !== "documents") e.currentTarget.style.color = "#191c1e"; }}
-            onMouseLeave={(e) => { if (activeTab !== "documents") e.currentTarget.style.color = "#767586"; }}
+            className={`
+              px-6 py-3 text-sm font-semibold transition-all duration-200
+              ${activeTab === "documents" 
+                ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50" 
+                : "text-slate-500 border-b-2 border-transparent hover:text-slate-700 hover:bg-slate-50"
+              }
+            `}
           >
-            Documents
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">description</span>
+              Documents
+              {documents.length > 0 && (
+                <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                  {documents.length}
+                </span>
+              )}
+            </span>
           </button>
         </div>
       </div>
 
+      {/* Messages */}
+      {message && (
+        <div className={`
+          mt-4 p-4 rounded-xl text-sm font-medium animate-in slide-in-from-top-2
+          ${message.includes("success") ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : 
+            message.includes("Failed") ? "bg-rose-50 text-rose-700 border border-rose-200" : 
+            "bg-blue-50 text-blue-700 border border-blue-200"}
+        `}>
+          {message}
+        </div>
+      )}
+
       {/* Milestones Tab Content */}
       {activeTab === "milestones" && (
-        <div style={{ 
-          marginTop: "24px",
-          paddingLeft: "8px",
-          borderLeft: "2px solid #e0e3e5",
-          marginLeft: "16px",
-        }}>
+        <div className="mt-6">
           {loading ? (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "#767586", fontSize: "14px" }}>
-              Loading milestones...
+            <div className="flex items-center justify-center py-16">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-slate-500">Loading milestones...</p>
+              </div>
             </div>
           ) : milestones.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "#767586", fontSize: "14px" }}>
-              No milestones created yet for this project.
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-3xl text-slate-400">flag</span>
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">No Milestones Yet</h3>
+              <p className="text-xs text-slate-500">Create milestones to track project progress and organize tasks.</p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {milestones.map((milestone) => {
-                const milestoneTasks = tasksByMilestone[milestone.id] || [];
-                const isCompleted = milestone.status === "Completed";
+            <div className="relative pl-8 ml-4 border-l-2 border-slate-200">
+              <div className="space-y-8">
+                {milestones.map((milestone) => {
+                  const milestoneTasks = tasksByMilestone[milestone.id] || [];
+                  const isCompleted = milestone.status === "Completed";
+                  const progress = getMilestoneProgress(milestone.id);
+                  const isExpanded = expandedMilestones.has(milestone.id);
+                  const statusColor = getStatusColor(milestone.status);
 
-                return (
-                  <div key={milestone.id} style={{ position: "relative", paddingLeft: "24px" }}>
-                    {/* Timeline dot */}
-                    <div style={{
-                      position: "absolute",
-                      width: "12px",
-                      height: "12px",
-                      borderRadius: "50%",
-                      left: "-7px",
-                      top: "8px",
-                      border: "2px solid #f7f9fb",
-                      backgroundColor: isCompleted ? "#4648d4" : "#ffffff",
-                      boxShadow: isCompleted ? "none" : "0 0 0 4px rgba(70,72,212,0.2)",
-                      ...(isCompleted ? {} : { borderColor: "#4648d4" }),
-                    }} />
-
-                    {/* Milestone card */}
-                    <div style={{
-                      background: "rgba(255, 255, 255, 0.7)",
-                      backdropFilter: "blur(20px)",
-                      WebkitBackdropFilter: "blur(20px)",
-                      border: isCompleted ? "1px solid rgba(255, 255, 255, 0.4)" : "1px solid rgba(70,72,212,0.3)",
-                      borderRadius: "12px",
-                      padding: "16px",
-                    }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                        <h3 style={{
-                          fontSize: "18px",
-                          fontWeight: 600,
-                          color: "#191c1e",
-                          lineHeight: "1.6",
-                          margin: 0,
-                        }}>
-                          {milestone.name}
-                        </h3>
-                        <StatusBadge status={milestone.status} />
+                  return (
+                    <div key={milestone.id} className="relative pl-6">
+                      {/* Timeline dot */}
+                      <div className={`
+                        absolute w-4 h-4 rounded-full -left-[41px] top-6
+                        border-2 border-white ring-2 transition-all duration-300
+                        ${isCompleted 
+                          ? "bg-emerald-500 ring-emerald-200" 
+                          : "bg-indigo-600 ring-indigo-200"
+                        }
+                      `}>
+                        {isCompleted && (
+                          <span className="material-symbols-outlined text-white text-xs absolute inset-0 flex items-center justify-center">
+                            check
+                          </span>
+                        )}
                       </div>
 
-                      {milestone.description && (
-                        <div style={{ fontSize: "14px", color: "#767586", marginBottom: "12px" }}>
-                          {milestone.description}
-                        </div>
-                      )}
+                      {/* Milestone card */}
+                      <div className={`
+                        bg-white rounded-xl border transition-all duration-200 hover:shadow-md
+                        ${isCompleted 
+                          ? "border-emerald-200 bg-emerald-50/30" 
+                          : "border-slate-200"
+                        }
+                      `}>
+                        <div className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className={`
+                                  px-2.5 py-1 rounded-lg text-xs font-semibold
+                                  ${statusColor.bg} ${statusColor.text}
+                                `}>
+                                  {/* {milestone.status} */}
+                                </span>
+                               
+                              </div>
+                              <h3 className="text-lg font-bold text-slate-900 mb-1">{milestone.name}</h3>
+                              {milestone.description && (
+                                <p className="text-sm text-slate-600 line-clamp-2">{milestone.description}</p>
+                              )}
+                            </div>
+                            <StatusBadge status={milestone.status} />
+                             {milestone.isCritical && (
+                                  <span className="mx-2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700">
+                                    Critical
+                                  </span>
+                                )}
+                          </div>
 
-                      {/* Tasks under this milestone */}
-                      {milestoneTasks.length > 0 && (
-                        <div style={{
-                          marginTop: "16px",
-                          paddingTop: "16px",
-                          borderTop: "1px solid rgba(224,227,229,0.5)",
-                        }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                            {milestoneTasks.map((task) => {
-                              const taskDone = task.status === "Completed";
+                          {/* Progress bar */}
+                          <div className="mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-medium text-slate-500">
+                                {milestoneTasks.length} task{milestoneTasks.length !== 1 ? 's' : ''}
+                              </span>
+                              <span className="text-xs font-bold text-slate-700">{progress}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  progress === 100 ? "bg-emerald-500" :
+                                  progress >= 75 ? "bg-amber-400" :
+                                  progress >= 50 ? "bg-cyan-400" :
+                                  progress >= 25 ? "bg-rose-400" : "bg-slate-300"
+                                }`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
 
-                              return taskDone ? (
-                                // Completed task
-                                <div key={task.id} style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  backgroundColor: "#f2f4f6",
-                                  padding: "8px",
-                                  borderRadius: "4px",
-                                  fontSize: "14px",
-                                }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                    <span className="material-symbols-outlined" style={{ color: "#10B981", fontSize: "18px" }}>
-                                      check_circle
-                                    </span>
-                                    <span style={{ textDecoration: "line-through", color: "#767586" }}>
-                                      {task.title}
-                                    </span>
-                                  </div>
-                                  {task.assignedToUserName && (
-                                    <div style={{
-                                      width: "20px",
-                                      height: "20px",
-                                      borderRadius: "50%",
-                                      backgroundColor: "#e0e3e5",
-                                      border: "1px solid #f7f9fb",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontSize: "8px",
-                                      color: "#464554",
-                                      fontWeight: 700,
-                                    }}>
-                                      {task.assignedToUserName.charAt(0)}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                // Active task
-                                <div key={task.id} style={{
-                                  backgroundColor: "#f7f9fb",
-                                  padding: "12px",
-                                  borderRadius: "8px",
-                                  border: "1px solid #e0e3e5",
-                                  transition: "box-shadow 0.2s",
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)"}
-                                onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
-                                >
-                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                      <input
-                                        type="checkbox"
-                                        style={{
-                                          borderRadius: "4px",
-                                          color: "#4648d4",
-                                          borderColor: "#c7c4d7",
-                                        }}
-                                      />
-                                      <span style={{ fontSize: "14px", fontWeight: 500, color: "#191c1e" }}>
-                                        {task.title}
-                                      </span>
-                                    </div>
-                                    <PriorityBadge priority={task.priority} />
-                                  </div>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: "24px" }}>
-                                    <div style={{
-                                      width: "128px",
-                                      height: "4px",
-                                      backgroundColor: "#e6e8ea",
-                                      borderRadius: "9999px",
-                                      overflow: "hidden",
-                                    }}>
-                                      <div style={{
-                                        height: "100%",
-                                        backgroundColor: "#4648d4",
-                                        borderRadius: "9999px",
-                                        width: `${task.progressPercentage || 0}%`,
-                                      }} />
+                          {/* Tasks toggle button */}
+                          {milestoneTasks.length > 0 && (
+                            <button
+                              onClick={() => toggleMilestoneExpansion(milestone.id)}
+                              className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-lg transition-transform duration-200"
+                                style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                              >
+                                chevron_right
+                              </span>
+                              {isExpanded ? 'Hide' : 'Show'} Tasks ({milestoneTasks.length})
+                            </button>
+                          )}
+
+                          {/* Expanded tasks */}
+                          {isExpanded && milestoneTasks.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                              {milestoneTasks.map((task) => {
+                                const taskDone = task.status === "Completed";
+                                const isCompleting = completingTasks.has(task.id);
+
+                                return taskDone ? (
+                                  <div key={task.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                      <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+                                      <span className="text-sm text-slate-500 line-through">{task.title}</span>
                                     </div>
                                     {task.assignedToUserName && (
-                                      <div style={{
-                                        width: "20px",
-                                        height: "20px",
-                                        borderRadius: "50%",
-                                        backgroundColor: "#e0e3e5",
-                                        border: "1px solid #f7f9fb",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        fontSize: "8px",
-                                        color: "#464554",
-                                        fontWeight: 700,
-                                      }}>
-                                        {task.assignedToUserName.charAt(0)}
+                                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 ring-2 ring-white">
+                                        {task.assignedToUserName.charAt(0).toUpperCase()}
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                ) : (
+                                  <div key={task.id} className="p-4 bg-slate-50/50 rounded-lg border border-slate-200 hover:border-indigo-200 transition-all">
+                                    <div className="flex items-start justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          onClick={() => handleTaskComplete(task.id)}
+                                          disabled={isCompleting}
+                                          className="relative flex items-center justify-center w-5 h-5 rounded border-2 border-slate-300 hover:border-indigo-500 transition-colors"
+                                        >
+                                          {isCompleting && (
+                                            <div className="absolute inset-0 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                          )}
+                                        </button>
+                                        <div>
+                                          <span className="text-sm font-medium text-slate-900">{task.title}</span>
+                                          {task.description && (
+                                            <p className="text-xs text-slate-500 mt-1 line-clamp-1">{task.description}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                          {task.priority}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pl-8">
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${task.progressPercentage || 0}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-xs font-medium text-slate-500">
+                                          {task.progressPercentage || 0}%
+                                        </span>
+                                      </div>
+                                      {task.assignedToUserName && (
+                                        <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 ring-2 ring-white ml-3">
+                                          {task.assignedToUserName.charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -325,161 +409,117 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
 
       {/* Documents Tab Content */}
       {activeTab === "documents" && (
-        <div style={{ marginTop: "24px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#191c1e", margin: 0 }}>Documents</h3>
-              <label style={{
-                color: "#4648d4",
-                fontSize: "14px",
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                cursor: "pointer",
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>upload_file</span>
-                Upload Document
+        <div className="mt-6">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Documents</h3>
+                <p className="text-sm text-slate-500 mt-1">Manage project-related files and documents</p>
+              </div>
+              <label className="
+                inline-flex items-center gap-2 px-4 py-2.5 
+                bg-indigo-600 text-white text-sm font-semibold 
+                rounded-xl hover:bg-indigo-700 transition-colors 
+                cursor-pointer shadow-sm
+              ">
+                <span className="material-symbols-outlined text-lg">upload_file</span>
+                Upload
                 <input
                   type="file"
-                  style={{ display: "none" }}
+                  className="hidden"
                   onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
                 />
               </label>
             </div>
 
+            {/* Upload preview */}
             {uploadFile && (
-              <div style={{
-                backgroundColor: "rgba(70,72,212,0.05)",
-                border: "1px solid rgba(70,72,212,0.2)",
-                borderRadius: "8px",
-                padding: "16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span className="material-symbols-outlined" style={{ color: "#4648d4" }}>description</span>
-                  <div>
-                    <p style={{ fontSize: "14px", fontWeight: 500, color: "#191c1e", margin: 0 }}>{uploadFile.name}</p>
-                    <p style={{ fontSize: "10px", color: "#767586", margin: "2px 0 0 0" }}>{(uploadFile.size / 1024).toFixed(1)} KB</p>
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-indigo-600">description</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{uploadFile.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{formatFileSize(uploadFile.size)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUploadFile(null)}
+                      className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleFileUpload}
+                      className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Upload File
+                    </button>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    onClick={() => setUploadFile(null)}
-                    style={{
-                      fontSize: "12px",
-                      color: "#767586",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleFileUpload}
-                    style={{
-                      padding: "4px 12px",
-                      backgroundColor: "#4648d4",
-                      color: "#ffffff",
-                      fontSize: "12px",
-                      borderRadius: "4px",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Upload
-                  </button>
-                </div>
               </div>
             )}
 
-            {message && (
-              <div style={{
-                backgroundColor: "#f0fdf4",
-                color: "#15803d",
-                fontSize: "14px",
-                padding: "12px",
-                borderRadius: "8px",
-                border: "1px solid #bbf7d0",
-              }}>
-                {message}
+            {/* Documents list */}
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
               </div>
-            )}
-
-            {documents.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            ) : documents.length > 0 ? (
+              <div className="grid gap-3">
                 {documents.map((doc) => (
                   <div
                     key={doc.id}
-                    style={{
-                      backgroundColor: "rgba(242,244,246,0.5)",
-                      border: "1px solid rgba(224,227,229,0.3)",
-                      borderRadius: "8px",
-                      padding: "12px 16px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
+                    className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all group"
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
-                      <span className="material-symbols-outlined" style={{ color: "#4648d4", fontSize: "20px" }}>
-                        description
-                      </span>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: "14px", fontWeight: 500, color: "#191c1e", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {doc.title}
-                        </p>
-                        <p style={{ fontSize: "10px", color: "#767586", margin: "2px 0 0 0" }}>
-                          {formatFileSize(doc.fileSizeBytes)} · {new Date(doc.createdDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-indigo-600 text-xl">description</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-900 truncate">{doc.title}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-slate-500">{formatFileSize(doc.fileSizeBytes)}</span>
+                            <span className="text-xs text-slate-300">•</span>
+                            <span className="text-xs text-slate-500">
+                              {new Date(doc.createdDate).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                              })}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
+                        className="
+                          p-2 rounded-lg text-slate-400 hover:text-indigo-600 
+                          hover:bg-indigo-50 transition-all opacity-0 group-hover:opacity-100
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                        "
+                        title="Download"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {downloadingId === doc.id ? "hourglass_top" : "download"}
+                        </span>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleDownload(doc)}
-                      disabled={downloadingId === doc.id}
-                      style={{
-                        padding: "6px",
-                        backgroundColor: "transparent",
-                        border: "1px solid rgba(224,227,229,0.5)",
-                        borderRadius: "6px",
-                        cursor: downloadingId === doc.id ? "not-allowed" : "pointer",
-                        opacity: downloadingId === doc.id ? 0.5 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (downloadingId !== doc.id) {
-                          e.currentTarget.style.backgroundColor = "rgba(70,72,212,0.05)";
-                          e.currentTarget.style.borderColor = "rgba(70,72,212,0.3)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                        e.currentTarget.style.borderColor = "rgba(224,227,229,0.5)";
-                      }}
-                      title="Download"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#4648d4" }}>
-                        {downloadingId === doc.id ? "hourglass_top" : "download"}
-                      </span>
-                    </button>
                   </div>
                 ))}
               </div>
-            )}
-
-            {!uploadFile && !message && documents.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 0", color: "#767586" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "36px", marginBottom: "12px", fontVariationSettings: "'FILL' 1" }}>
-                  folder_open
-                </span>
-                <p style={{ fontSize: "14px", margin: "0 0 4px 0" }}>No documents uploaded yet.</p>
-                <p style={{ fontSize: "12px", margin: 0 }}>Upload project documents, specs, or reports.</p>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-3xl text-slate-400">folder_open</span>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-1">No Documents Yet</h3>
+                <p className="text-xs text-slate-500">Upload project documents, specifications, or reports.</p>
               </div>
             )}
           </div>

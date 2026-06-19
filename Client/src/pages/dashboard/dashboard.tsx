@@ -8,13 +8,12 @@ import { NotificationList } from "../shared/NotificationList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
-import { ModalOverlay, PageSkeleton, useNavHeader, useToast } from "../shared";
+import { PageSkeleton, useNavHeader, useToast } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
-import { TaskDetail } from "../tasks/TaskDetail";
-import { TaskFormModal } from "../tasks/TaskFormModal";
+import { TaskEditModal } from "../shared/modals/TaskEditModal";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
 import DashboardStats from "./dashbaordStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
@@ -58,7 +57,6 @@ export function DashboardPage() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("All Tasks");
@@ -145,14 +143,7 @@ export function DashboardPage() {
 
   const openTaskEditor = async (task: Task) => {
     if (!auth) return;
-    setEditingTask(task);
-    if (task.projectId) {
-      try {
-        setMilestones(await api.getMilestonesByProject(auth.token, task.projectId));
-      } catch {
-        setMilestones([]);
-      }
-    }
+    setSelectedTask(task);
   };
 
 
@@ -167,11 +158,6 @@ export function DashboardPage() {
     if (selectedTask) {
       setSelectedTask(await api.getTask(auth.token, selectedTask.id));
     }
-  };
-
-  const updateSelectedTask = (patch: Partial<Task>) => {
-    setSelectedTask(current => current ? { ...current, ...patch } : current);
-    setMyTasks(current => current.map(task => task.id === selectedTask?.id ? { ...task, ...patch } : task));
   };
 
   const departmentWorkload: WorkloadItem[] = useMemo(() => {
@@ -320,58 +306,64 @@ export function DashboardPage() {
       </section>
 
       {selectedTask && (
-        <ModalOverlay onClose={() => setSelectedTask(null)}>
-          <div className="bg-white rounded-2xl p-6 w-[980px] max-w-[95vw] max-h-[92vh] overflow-hidden shadow-xl border border-slate-200">
-            <TaskDetail
-              task={selectedTask}
-              users={users}
-              allTasks={myTasks}
-              project={projects.find(project => project.id === selectedTask.projectId) ?? null}
-              milestone={milestones.find(milestone => milestone.id === selectedTask.milestoneId) ?? null}
-              isAdmin={canEditTasks}
-              onStatusChange={async (status) => {
-                if (!auth) return;
-                await api.updateTaskStatus(auth.token, selectedTask.id, status);
-                updateSelectedTask({ status });
-              }}
-              onEdit={() => openTaskEditor(selectedTask)}
-              onUpdateProgress={async (progressPercentage, notes) => {
-                if (!auth) return;
-                const updated = await api.updateTaskProgress(auth.token, selectedTask.id, progressPercentage, notes);
-                setSelectedTask(updated);
-                setMyTasks(current => current.map(task => task.id === updated.id ? updated : task));
-              }}
-              onAddComment={async (comment) => {
-                if (!auth) return;
-                await api.addTaskComment(auth.token, selectedTask.id, comment);
-                await refreshTaskLists();
-              }}
-              onStartTimer={async (description) => {
-                if (!auth) return;
-                await api.startTaskTimer(auth.token, selectedTask.id, description);
-              }}
-              onRefresh={refreshTaskLists}
-            />
-          </div>
-        </ModalOverlay>
-      )}
-
-      {editingTask && (
-        <TaskFormModal
-          open
-          initialData={editingTask}
-          projects={projects}
-          departments={departments}
-          milestones={milestones}
+        <TaskEditModal
+          task={selectedTask}
           users={users}
-          onClose={() => setEditingTask(null)}
-          onSubmit={async (payload) => {
+          project={projects.find(p => p.id === selectedTask.projectId) ?? null}
+          milestone={milestones.find(m => m.id === selectedTask.milestoneId) ?? null}
+          mayEdit={canEditTasks}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={async (taskId, data) => {
             if (!auth) return;
-            const updated = await api.updateTask(auth.token, editingTask.id, payload);
-            setMyTasks(current => current.map(task => task.id === updated.id ? updated : task));
-            setSelectedTask(current => current?.id === updated.id ? updated : current);
-            setEditingTask(null);
+            try {
+              if (data.status !== selectedTask.status) {
+                await api.updateTaskStatus(auth.token, taskId, data.status);
+              }
+              if (data.progress !== Math.round(selectedTask.progressPercentage || 0)) {
+                await api.updateTaskProgress(auth.token, taskId, data.progress);
+              }
+              if (data.priority !== (selectedTask.priority || "Medium")) {
+                await api.updateTask(auth.token, taskId, {
+                  title: selectedTask.title,
+                  description: selectedTask.description ?? "",
+                  priority: data.priority,
+                  startDate: selectedTask.startDate,
+                  dueDate: selectedTask.dueDate,
+                  estimatedHours: selectedTask.estimatedHours ?? 0,
+                  milestoneId: selectedTask.milestoneId,
+                });
+              }
+              const freshTask = await api.getTask(auth.token, taskId);
+              setSelectedTask(freshTask);
+              setMyTasks(current => current.map(t => t.id === freshTask.id ? freshTask : t));
+            } catch (e) {
+              addToast(e instanceof Error ? e.message : "Failed to update task", "error");
+              throw e;
+            }
           }}
+          onAddComment={async (taskId, text) => {
+            if (!auth) return;
+            await api.addTaskComment(auth.token, taskId, text);
+            await refreshTaskLists();
+          }}
+          onDelete={async (taskId) => {
+            if (!auth) return;
+            await api.deleteTask(auth.token, taskId);
+            setMyTasks(current => current.filter(t => t.id !== taskId));
+            setSelectedTask(null);
+            await refreshTaskLists();
+          }}
+          onEscalate={async () => {
+            if (!auth) return;
+            await api.escalateTask(auth.token, selectedTask.id);
+            addToast("Task escalated.");
+            await refreshTaskLists();
+          }}
+          onStartTimer={async (taskId, description) => {
+            if (!auth) return;
+            await api.startTaskTimer(auth.token, taskId, description);
+          }}
+          onRefresh={refreshTaskLists}
         />
       )}
 

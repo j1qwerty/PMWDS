@@ -222,10 +222,10 @@ function Layout({ children }: { children: React.ReactNode }) {
       {
         title: "Overview",
         items: [
-          { path: "/projects", label: "Projects", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
-          { path: "/projectsK", label: "Workspace", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
-          { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [PERMISSION_GROUPS.milestone.view] },
-          { path: "/tasks", label: "Tasks", icon: "tasks", permissions: [PERMISSION_GROUPS.task.view] },
+          // { path: "/projects", label: "Projects", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
+          { path: "/projectsK", label: "Projects", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
+          // { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [PERMISSION_GROUPS.milestone.view] },
+          // { path: "/tasks", label: "Tasks", icon: "tasks", permissions: [PERMISSION_GROUPS.task.view] },
           { path: "/notificationsPage", label: "Notifications", icon: "inbox", permissions: [PERMISSION_GROUPS.notification.view] },
           { path: "/chat", label: "Chats", icon: "chat", permissions: [] },
         ],
@@ -252,7 +252,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         items: [
           { path: "/roles", label: "Roles", icon: "roles", permissions: [PERMISSION_GROUPS.role.view] },
           { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [PERMISSION_GROUPS.activityLog.view] },
-          { path: "/test-page", label: "Test Page", icon: "test", permissions: [] },
+          // { path: "/test-page", label: "Test Page", icon: "test", permissions: [] },
           { path: "/settings", label: "Settings", icon: "settings", permissions: [PERMISSION_GROUPS.system.manage] },
         ],
       },
@@ -379,6 +379,44 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })()}
+
+            {/* Manage — standalone, after Dashboard */}
+            {/* {(() => {
+              const theme = sectionThemes.Team;
+              const active = isActive("/managedepartment");
+              return (
+                <Link
+                  to="/managedepartment"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className={classNames(
+                    "relative flex items-center rounded-md transition-all duration-200 group",
+                    sidebarCompact
+                      ? "justify-center px-0"
+                      : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(4px,0.8vw,7px)]",
+                    active
+                      ? `${theme.active} ${theme.borderActive}`
+                      : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                  )}
+                  title={sidebarCompact ? "Manage" : undefined}
+                >
+                  <span
+                    className={classNames(
+                      "transition-all duration-300 shrink-0",
+                      active
+                        ? `${theme.iconActive} scale-110`
+                        : `${theme.iconDefault} group-hover:scale-110`
+                    )}
+                  >
+                    {iconMap.departments}
+                  </span>
+                  {!sidebarCompact && (
+                    <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                      Manage
+                    </span>
+                  )}
+                </Link>
+              );
+            })()} */}
 
             <ProjectsGroup
               theme={sectionThemes.Projects}
