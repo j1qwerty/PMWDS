@@ -178,6 +178,12 @@ public class UsersController : BaseApiController
                 .Where(role => !role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
+            var isCurrentlySuperAdmin = user.Roles.Any(r => r.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+            if (isCurrentlySuperAdmin && !requestedRoles.Contains("SuperAdmin", StringComparer.OrdinalIgnoreCase))
+            {
+                requestedRoles.Add("SuperAdmin");
+            }
+
             if (requestedRoles.Count == 0)
             {
                 requestedRoles.Add("Viewer");

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { Department, OrganizationRecord, SkillRecord, User, WorkloadReport } from "../../types";
+import type { Department, OrganizationRecord, SkillRecord, User } from "../../types";
 import {
   AnimatedBackground,
   DeleteConfirmationModal,
@@ -14,10 +14,9 @@ import {
   MessageBanner,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
-import { WorkloadView } from "./WorkloadView";
-import { RegisterUserForm } from "./RegisterUserForm";
 import { UserSkillsPanel } from "./UserSkillsPanel"
 import { UserEditModal } from "./UserEditModal";
+import { UserFormModal } from "../NewProject/components/UserFormModal";
 
 export function UsersPage() {
   const { auth } = useAuth();
@@ -29,13 +28,12 @@ export function UsersPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [skills, setSkills] = useState<SkillRecord[]>([]);
-  const [workload, setWorkload] = useState<WorkloadReport | null>(null);
-  const [workloadDepartmentId, setWorkloadDepartmentId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"directory" | "workload" | "manage">("directory");
+  const [activeTab, setActiveTab] = useState<"directory" | "manage">("directory");
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [showCreateUser, setShowCreateUser] = useState(false);
 
   const { setNavHeader } = useNavHeader();
 
@@ -45,10 +43,7 @@ export function UsersPage() {
       description: "People operations, capacity, activation state, and workload shape",
       action: canManageUsers ? {
         label: "New User",
-        onClick: () => {
-          setActiveTab("manage");
-          setTimeout(() => document.getElementById("register-user-form")?.scrollIntoView({ behavior: "smooth" }), 100);
-        },
+        onClick: () => setShowCreateUser(true),
         icon: "add",
       } : undefined,
     });
@@ -75,14 +70,12 @@ export function UsersPage() {
       api.getDepartments(auth.token),
       api.getOrganizations(auth.token),
       api.getSkills(auth.token),
-      api.getWorkload(auth.token),
     ])
-      .then(([userData, departmentData, orgData, skillData, workloadData]) => {
+      .then(([userData, departmentData, orgData, skillData]) => {
         setUsers(userData);
         setDepartments(departmentData);
         setOrganizations(orgData);
         setSkills(skillData);
-        setWorkload(workloadData);
       })
       .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load users."))
       .finally(() => setLoading(false));
@@ -105,22 +98,14 @@ export function UsersPage() {
     <div>
       <AnimatedBackground />
 
-
-
       {message && (
         <MessageBanner message={message} onDismiss={() => setMessage("")} />
       )}
 
       {/* Stats Row */}
-      <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <StatCard label="Total Users" value={users.length} color="indigo" icon="people" />
         <StatCard label="Departments" value={departments.length} color="violet" icon="business" />
-        <StatCard 
-          label="Avg Workload" 
-          value={`${Math.round((workload?.members ?? []).reduce((sum, m) => sum + (m.workloadScore || 0), 0) / (workload?.members?.length || 1))}%`}
-          color="amber" 
-          icon="trending_up" 
-        />
         <StatCard 
           label="Active Users" 
           value={users.filter(u => u.isActive !== false).length} 
@@ -138,12 +123,6 @@ export function UsersPage() {
             icon="groups"
             label="Directory"
             count={users.length}
-          />
-          <TabButton
-            active={activeTab === "workload"}
-            onClick={() => setActiveTab("workload")}
-            icon="monitoring"
-            label="Workload"
           />
           {canManageUsers && (
             <TabButton
@@ -176,48 +155,14 @@ export function UsersPage() {
           />
         )}
 
-        {activeTab === "workload" && (
-          <>
-            <UsersTableFilters
-              departments={departments}
-              organizations={organizations}
-              selectedDepartmentId={workloadDepartmentId}
-              showOrganizationFilter={isAdmin}
-              onDepartmentChange={async (departmentId) => {
-                setWorkloadDepartmentId(departmentId);
-                if (auth) {
-                  setWorkload(await api.getWorkload(auth.token, departmentId || null));
-                }
-              }}
-            />
-            <WorkloadView workload={workload} />
-          </>
+        {activeTab === "manage" && canManageUsers && (
+          <UserSkillsPanel 
+            users={users}
+            skills={skills}
+            onMessage={setMessage}
+            onUpdate={loadData}
+          />
         )}
-
-{activeTab === "manage" && canManageUsers && (
-   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-    <div id="register-user-form">
-    <RegisterUserForm 
-      departments={departments}
-      organizations={organizations}
-      lockedOrganizationId={isAdmin ? undefined : organizations[0]?.id}
-      canSelectSuperAdminRole={isAdmin}
-      onSubmit={async (form) => {
-        if (!auth) return;
-        await api.registerUser(auth.token, form);
-        setMessage("User registered successfully.");
-        loadData();
-      }} 
-    />
-    </div>
-    <UserSkillsPanel 
-      users={users}
-      skills={skills}
-      onMessage={setMessage}
-      onUpdate={loadData}
-    />
-  </div>
-)}
       </div>
 
       {editingUser && auth && (
@@ -234,6 +179,21 @@ export function UsersPage() {
             setMessage("User updated successfully.");
             void loadData();
           }}
+        />
+      )}
+
+      {showCreateUser && auth && (
+        <UserFormModal
+          organizations={organizations}
+          defaultOrganizationId={isAdmin ? "" : organizations[0]?.id}
+          hideOrganization={!isAdmin}
+          onSubmit={async (data) => {
+            await api.registerUser(auth.token, data);
+            setShowCreateUser(false);
+            setMessage("User registered successfully.");
+            loadData();
+          }}
+          onCancel={() => setShowCreateUser(false)}
         />
       )}
 
@@ -257,56 +217,6 @@ export function UsersPage() {
           />
         </div>
       )}
-    </div>
-  );
-}
-
-function UsersTableFilters({
-  departments,
-  organizations,
-  selectedDepartmentId,
-  showOrganizationFilter,
-  onDepartmentChange,
-}: {
-  departments: Department[];
-  organizations: OrganizationRecord[];
-  selectedDepartmentId: string;
-  showOrganizationFilter: boolean;
-  onDepartmentChange: (departmentId: string) => void;
-}) {
-  const [organizationId, setOrganizationId] = useState("");
-  const visibleDepartments = useMemo(
-    () => organizationId ? departments.filter((department) => department.organizationId === organizationId) : departments,
-    [departments, organizationId],
-  );
-
-  return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-      {showOrganizationFilter && (
-        <select
-          value={organizationId}
-          onChange={(event) => {
-            setOrganizationId(event.target.value);
-            onDepartmentChange("");
-          }}
-          className="h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-        >
-          <option value="">All Organizations</option>
-          {organizations.map((organization) => (
-            <option key={organization.id} value={organization.id}>{organization.name}</option>
-          ))}
-        </select>
-      )}
-      <select
-        value={selectedDepartmentId}
-        onChange={(event) => onDepartmentChange(event.target.value)}
-        className="h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-      >
-        <option value="">All Departments</option>
-        {visibleDepartments.map((department) => (
-          <option key={department.id} value={department.id}>{department.name}</option>
-        ))}
-      </select>
     </div>
   );
 }

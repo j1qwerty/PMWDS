@@ -25,9 +25,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
   const [email] = useState(user.email);
   const [jobTitle, setJobTitle] = useState(user.jobTitle ?? "");
   const [availabilityStatus, setAvailabilityStatus] = useState(user.availabilityStatus || "Available");
-  const [availabilityPercentage, setAvailabilityPercentage] = useState(user.availabilityPercentage ?? 100);
   const [departmentIds, setDepartmentIds] = useState<string[]>(user.departments?.map((item) => item.departmentId) ?? (user.departmentId ? [user.departmentId] : []));
-  const [primaryDepartmentId, setPrimaryDepartmentId] = useState(user.departmentId ?? user.departments?.find((item) => item.isPrimary)?.departmentId ?? "");
   const [organizationId, setOrganizationId] = useState(initialOrganizationId);
   const [roles, setRoles] = useState<string[]>(user.roles?.length ? user.roles : ["Viewer"]);
   const [saving, setSaving] = useState(false);
@@ -47,15 +45,11 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
   );
 
   const toggleDepartment = (departmentId: string) => {
-    setDepartmentIds((current) => {
-      const next = current.includes(departmentId)
+    setDepartmentIds((current) =>
+      current.includes(departmentId)
         ? current.filter((item) => item !== departmentId)
-        : [...current, departmentId];
-      if (!next.includes(primaryDepartmentId)) {
-        setPrimaryDepartmentId(next[0] ?? "");
-      }
-      return next;
-    });
+        : [...current, departmentId]
+    );
   };
 
   const toggleRole = (role: string) => {
@@ -77,11 +71,9 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
         jobTitle,
         phoneNumber: "",
         organizationId: organizationId || null,
-        departmentId: primaryDepartmentId || null,
         departmentIds,
         roleNames: roles,
         availabilityStatus,
-        availabilityPercentage,
         profilePictureUrl: profilePictureUrl || null,
       });
     } catch (cause) {
@@ -116,7 +108,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
             <Field label="Job title" value={jobTitle} onChange={setJobTitle} />
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2">
+          <section>
             <label className="grid gap-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Availability</span>
               <select value={availabilityStatus} onChange={(event) => setAvailabilityStatus(event.target.value)} className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100">
@@ -124,13 +116,6 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
-            </label>
-            <label className="grid gap-1.5">
-              <span className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Capacity
-                <span>{availabilityPercentage}%</span>
-              </span>
-              <input type="range" min="0" max="100" value={availabilityPercentage} onChange={(event) => setAvailabilityPercentage(Number(event.target.value))} className="h-11 accent-indigo-600" />
             </label>
           </section>
 
@@ -150,26 +135,27 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
 
           <section className="space-y-3">
             <div>
-              <h4 className="text-sm font-bold text-slate-800">Organization and departments</h4>
-              <p className="text-xs text-slate-400">Select an organization. Departments and the primary department can stay unassigned.</p>
+              <h4 className="text-sm font-bold text-slate-800">{canSelectSuperAdminRole ? "Organization and " : ""}Departments</h4>
+              <p className="text-xs text-slate-400">Select departments for this user.</p>
             </div>
-            <label className="grid gap-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Organization</span>
-              <select
-                value={organizationId}
-                onChange={(event) => {
-                  setOrganizationId(event.target.value);
-                  setDepartmentIds([]);
-                  setPrimaryDepartmentId("");
-                }}
-                className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-              >
-                <option value="">Unassigned</option>
-                {organizations.map((organization) => (
-                  <option key={organization.id} value={organization.id}>{organization.name}</option>
-                ))}
-              </select>
-            </label>
+            {canSelectSuperAdminRole && (
+              <label className="grid gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Organization</span>
+                <select
+                  value={organizationId}
+                  onChange={(event) => {
+                    setOrganizationId(event.target.value);
+                    setDepartmentIds([]);
+                  }}
+                  className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                >
+                  <option value="">Unassigned</option>
+                  {organizations.map((organization) => (
+                    <option key={organization.id} value={organization.id}>{organization.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="grid gap-3 md:grid-cols-2">
               {departmentsByOrg.map(({ org, departments: orgDepartments }) => (
                 <div key={org.id} className="rounded-xl border border-slate-100 p-3">
@@ -186,15 +172,6 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
                 </div>
               ))}
             </div>
-            <label className="grid gap-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Primary department</span>
-              <select value={primaryDepartmentId} onChange={(event) => setPrimaryDepartmentId(event.target.value)} className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100">
-                <option value="">Unassigned</option>
-                {departments.filter((department) => departmentIds.includes(department.id)).map((department) => (
-                  <option key={department.id} value={department.id}>{department.name}</option>
-                ))}
-              </select>
-            </label>
           </section>
         </div>
 
