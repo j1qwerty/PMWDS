@@ -39,7 +39,6 @@ import { SettingsPage } from "./pages/settings/settings";
 import { TestPage } from "./pages/temp/TestPage";
 import { LoginPage } from "./pages/login/login";
 import { NewProjectPage } from "./pages/NewProject/NewProjectPage";
-import { Managedepartment } from "./pages/Managedepartment/managedepartment";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
@@ -124,11 +123,7 @@ function AppRoutes() {
                   element={<Guarded permission={ROUTE_GUARDS.newProject}><NewProjectPage /></Guarded>}
                 />
 
-                {/* Manage */}
-                <Route
-                  path="/managedepartment"
-                  element={<Managedepartment />}
-                />
+              
 
                 {/* Team */}
                 <Route

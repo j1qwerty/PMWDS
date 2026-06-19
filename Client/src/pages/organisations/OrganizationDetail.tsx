@@ -5,6 +5,13 @@ import { DepartmentCard } from "./DepartmentCard";
 import type { OrganizationRecord, Department, User } from "../../types";
 import { Avatar } from "../shared";
 
+function formatDate(dateStr: string | undefined | null): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+}
+
 interface OrganizationDetailProps {
   organization: OrganizationRecord;
   departments: Department[];
@@ -121,7 +128,7 @@ export function OrganizationDetail({
           <div className="bg-amber-50 rounded-xl p-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1">Founded</div>
             <div className="text-lg font-bold text-amber-600">
-              {new Date(organization.foundedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+              {formatDate(organization.foundedDate)}
             </div>
             <div className="text-xs text-amber-400 mt-1">Established</div>
           </div>
@@ -152,7 +159,7 @@ export function OrganizationDetail({
           <InfoTile 
             icon="calendar_today" 
             label="Founded Date" 
-            value={new Date(organization.foundedDate).toLocaleDateString()} 
+            value={formatDate(organization.foundedDate)}
           />
           <InfoTile 
             icon="description" 

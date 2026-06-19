@@ -1,25 +1,30 @@
 import { useMemo } from "react";
-import type { Department, User } from "../../types";
-import { Avatar, GlassCard } from "../shared";
+import type { Department, OrganizationRecord } from "../../types";
 
 interface DepartmentListProps {
   departments: Department[];
-  users: User[];
   selectedDeptId: string;
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onSelectDept: (id: string) => void;
   organizationName?: string;
+  organizations?: OrganizationRecord[];
+  selectedOrgId?: string;
+  onSelectOrg?: (id: string) => void;
+  isSuperAdmin?: boolean;
 }
 
 export function DepartmentList({
   departments,
-  users,
   selectedDeptId,
   searchTerm,
   onSearchChange,
   onSelectDept,
   organizationName,
+  organizations,
+  selectedOrgId,
+  onSelectOrg,
+  isSuperAdmin,
 }: DepartmentListProps) {
   const filteredList = useMemo(() => {
     if (!searchTerm) return departments;
@@ -33,79 +38,75 @@ export function DepartmentList({
   }, [departments, searchTerm]);
 
   return (
-    <GlassCard className="p-2 max-h-[calc(100vh-20px)] flex flex-col">
+    <div className="bg-white rounded-2xl p-5 max-h-[calc(100vh-20px)] flex flex-col shadow-lg border border-blue-100">
       {/* Header */}
-      <div className="mb-3 px-1">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          {organizationName || "All Departments"}
+      <div className="mb-5">
+        <h3 className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+          All Departments
         </h3>
       </div>
 
+      {/* Organization Dropdown - Super Admin only */}
+      {isSuperAdmin && organizations && onSelectOrg && (
+        <div className="mb-4">
+          <select
+            value={selectedOrgId || ""}
+            onChange={(e) => {
+              onSelectOrg(e.target.value);
+            }}
+            className="w-full h-11 px-4 rounded-xl bg-blue-50/50 border border-blue-100 text-sm text-slate-700 outline-none focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+          >
+            <option value="">All Organizations</option>
+            {organizations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Search Bar */}
-      <div className="mb-3 relative">
-        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
-          search
-        </span>
+      <div className="mb-4 relative">
         <input
           type="text"
           placeholder="Search departments..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full h-10 pl-10 pr-10 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+          className="w-full h-11 px-4 rounded-xl bg-blue-50/50 border border-blue-100 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
         />
         {searchTerm && (
-          <button
-            onClick={() => onSearchChange("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <span className="text-[10px] font-medium text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+              {filteredList.length}/{departments.length}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Search Results Count */}
-      {searchTerm && (
-        <div className="mb-3 px-1 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">
-            {filteredList.length} of {departments.length} departments
-          </span>
-          <button
-            onClick={() => onSearchChange("")}
-            className="text-[11px] text-indigo-600 hover:text-indigo-700 font-medium"
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
       {/* Department List */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-2">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 pb-2">
         {filteredList.map((dept, index) => (
           <DepartmentListItem
             key={dept.id}
             department={dept}
             isSelected={selectedDeptId === dept.id}
             onClick={() => onSelectDept(dept.id)}
-            animationDelay={index * 0.05}
-            departmentHead={users.find((u) => u.id === dept.departmentHeadUserId)}
           />
         ))}
 
         {filteredList.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
-            <span className="material-symbols-outlined text-4xl mb-3 block">
-              {searchTerm ? "search_off" : "folder_open"}
-            </span>
-            <p className="text-sm font-medium">
+          <div className="text-center py-16">
+            <p className="text-sm font-medium text-slate-400">
               {searchTerm ? "No departments found" : "No departments"}
             </p>
-            <p className="text-xs mt-1">
-              {searchTerm ? "Try adjusting your search" : "Select an organization above"}
+            <p className="text-xs mt-1 text-slate-400">
+              {searchTerm ? "Try adjusting your search" : "No departments available"}
             </p>
           </div>
         )}
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -114,98 +115,71 @@ function DepartmentListItem({
   department,
   isSelected,
   onClick,
-  animationDelay,
-  departmentHead,
 }: {
   department: Department;
   isSelected: boolean;
   onClick: () => void;
-  animationDelay: number;
-  departmentHead?: User;
 }) {
-  const capacityPercent = Math.round((department.capacityUtilization || 0) * 100);
-
-  const getCapacityColor = (percent: number) => {
-    if (percent > 80) return "bg-amber-400";
-    if (percent > 60) return "bg-emerald-400";
-    return "bg-indigo-400";
-  };
-
   return (
     <button
       onClick={onClick}
       className={`
-        text-left p-3 rounded-xl cursor-pointer transition-all duration-200
+        group relative text-left p-4 rounded-xl cursor-pointer transition-all duration-200
+        border
         ${
           isSelected
-            ? "bg-indigo-50 border border-indigo-200 shadow-sm"
-            : "bg-white border border-transparent hover:bg-slate-50 hover:border-slate-200"
+            ? "bg-blue-50/80 border-blue-700 "
+            : "bg-white border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-300"
         }
       `}
-      style={{ animation: `slideIn 0.3s ease ${animationDelay}s both` }}
     >
-      <div className="flex items-start gap-3">
-        {/* Icon */}
-        <div
-          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-            isSelected ? "bg-indigo-100" : "bg-slate-100"
-          }`}
-        >
-          <span
-            className={`material-symbols-outlined text-lg ${
-              isSelected ? "text-indigo-600" : "text-slate-400"
-            }`}
-          >
-            groups
-          </span>
-        </div>
-
-        {/* Content */}
+      {/* Selected glow effect */}
+      {isSelected && (
+        <div className="absolute inset-0 rounded-xl bg-linear-to-r from-blue-400/5 to-blue-500/5 ring-1 ring-blue-300/30 shadow-[0_0_15px_-3px_rgba(59,130,246,0.15)]" />
+      )}
+      
+      <div className="relative flex items-center justify-between gap-4">
+        {/* Department Info */}
         <div className="min-w-0 flex-1">
-          {/* Name & Code */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-sm text-slate-800 truncate">
+          <div className="flex items-baseline gap-2.5 mb-1">
+            <span className={`
+              font-medium text-sm truncate transition-colors duration-200
+              ${isSelected ? 'text-blue-700' : 'text-slate-700 group-hover:text-slate-900'}
+            `}>
               {department.name}
             </span>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 bg-slate-100 px-1.5 py-0.5 rounded">
+            <span className={`
+              text-[10px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-md border
+              ${isSelected 
+                ? 'bg-blue-100 text-blue-600 border-blue-200' 
+                : 'bg-slate-100 text-slate-500 border-slate-200'}
+            `}>
               {department.code}
             </span>
           </div>
-
-          {/* Capacity Bar */}
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${getCapacityColor(capacityPercent)}`}
-                style={{ width: `${capacityPercent}%` }}
-              />
-            </div>
-            <span className="text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums">
-              {capacityPercent}%
-            </span>
-          </div>
-
-          {/* Department Head */}
-          {departmentHead && (
-            <div className="flex items-center gap-1.5">
-              <Avatar person={departmentHead} size="xs" />
-              <span className="text-[10px] text-slate-400 truncate font-medium">
-                {departmentHead.fullName}
-              </span>
-            </div>
+          {department.description && (
+            <p className={`
+              text-xs truncate leading-relaxed
+              ${isSelected ? 'text-blue-400' : 'text-slate-400'}
+            `}>
+              {department.description}
+            </p>
           )}
+        </div>
 
-          {/* No Head Assigned */}
-          {!departmentHead && department.departmentHeadUserId && (
-            <div className="flex items-center gap-1.5">
-              <div className="size-4 rounded-full bg-amber-100 flex items-center justify-center ring-2 ring-white">
-                <span className="material-symbols-outlined text-[10px] text-amber-600">person</span>
-              </div>
-              <span className="text-[10px] text-slate-400 truncate italic">
-                Head unassigned
-              </span>
-            </div>
-          )}
+        {/* Chevron indicator */}
+        <div className={`
+          shrink-0 transition-all duration-300
+          ${isSelected ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'}
+        `}>
+          <svg 
+            className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
     </button>

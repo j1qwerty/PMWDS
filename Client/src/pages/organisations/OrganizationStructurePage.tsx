@@ -30,6 +30,7 @@ export function OrganizationStructurePage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [selectedOrgDetail, setSelectedOrgDetail] = useState<OrganizationRecord | null>(null);
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,17 @@ export function OrganizationStructurePage() {
   };
 
   useEffect(() => { loadData(); }, [auth, data, canManageDepartments]);
+
+  useEffect(() => {
+    if (!auth || !selectedOrgId) { setSelectedOrgDetail(null); return; }
+    let cancelled = false;
+    api.getOrganization(auth.token, selectedOrgId).then((org) => {
+      if (!cancelled) setSelectedOrgDetail(org);
+    }).catch(() => {
+      if (!cancelled) setSelectedOrgDetail(null);
+    });
+    return () => { cancelled = true; };
+  }, [auth, selectedOrgId]);
 
   const selectedOrg = organizations.find((o) => o.id === selectedOrgId) ?? null;
   const orgDepartments = departments.filter((d) => d.organizationId === selectedOrgId);
@@ -127,7 +139,7 @@ export function OrganizationStructurePage() {
 
   useEffect(() => {
     setNavHeader({
-      title: "structure",
+      title: "Organisations",
       description: "Manage organizations and their departments",
       action: canCreateOrganization ? {
         label: "New Organization",
@@ -162,7 +174,7 @@ export function OrganizationStructurePage() {
         <div className="flex flex-col gap-5">
           {selectedOrg ? (
             <OrganizationDetail
-              organization={selectedOrg}
+              organization={selectedOrgDetail ?? selectedOrg}
               departments={orgDepartments}
               users={users}
               isAdmin={canManageOrganization}

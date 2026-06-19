@@ -6,7 +6,6 @@ import type { Department, OrganizationRecord, User } from "../../types";
 import {
     AnimatedBackground,
     GlassCard,
-    GradientButton,
     useNavHeader,
     LoadingPage,
     ModalOverlay,
@@ -167,122 +166,27 @@ export function DepartmentsPage() {
                 <MessageBanner message={message} onDismiss={() => setMessage("")} />
             )}
 
-            {/* Organization Tabs - only for admin users */}
-            {isOrgAdmin && (
-                <div className="relative z-10 mb-5">
-                    <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-                        {/* All Tab */}
-                        <button
-                            onClick={() => {
-                                setSelectedOrgId("");
-                                setSearchTerm("");
-                            }}
-                            className={`
-        px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
-        ${selectedOrgId === ""
-                                    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/25"
-                                    : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-200 hover:text-emerald-600"
-                                }
-      `}
-                        >
-                            <span className="material-symbols-outlined text-lg">grid_view</span>
-                            All Departments
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedOrgId === ""
-                                ? "bg-emerald-500 text-emerald-100"
-                                : "bg-slate-100 text-slate-400"
-                                }`}>
-                                {departments.length}
-                            </span>
-                        </button>
-
-                        {/* Separator */}
-                        <div className="w-px h-8 bg-slate-200 self-center mx-1"></div>
-
-                        {/* Organization Tabs */}
-                        {organizations.map((org) => {
-                            const deptCount = departments.filter((d) => d.organizationId === org.id).length;
-                            return (
-                                <button
-                                    key={org.id}
-                                    onClick={() => {
-                                        setSelectedOrgId(org.id);
-                                        setSearchTerm("");
-                                    }}
-                                    className={`
-            px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2
-            ${selectedOrgId === org.id
-                                            ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
-                                            : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600"
-                                        }
-          `}
-                                >
-                                    <span className="material-symbols-outlined text-lg">business</span>
-                                    {org.name}
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${selectedOrgId === org.id
-                                        ? "bg-indigo-500 text-indigo-100"
-                                        : "bg-slate-100 text-slate-400"
-                                        }`}>
-                                        {deptCount}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
             {/* Main Layout */}
             <div className="grid grid-cols-[320px_1fr] gap-6 relative z-10">
                 {/* Left Panel: Department List */}
                 <DepartmentList
                     departments={filteredDepartments}
-                    users={users}
+                    // users={users}
                     selectedDeptId={selectedDeptId}
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
                     onSelectDept={setSelectedDeptId}
                     organizationName={selectedOrgId ? selectedOrganization?.name : "All Departments"}
+                    organizations={organizations}
+                    selectedOrgId={selectedOrgId}
+                    onSelectOrg={setSelectedOrgId}
+                    isSuperAdmin={perm.isSuperAdmin}
                 />
 
                 {/* Right Panel: Department Detail */}
                 <div className="flex flex-col gap-5">
                     {selectedDepartment ? (
                         <>
-
-                            {/* Admin Actions */}
-                            {canEditSelectedDepartment && (
-                                <GlassCard className="p-4">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <h4 className="text-sm font-semibold text-slate-700">Department Actions</h4>
-                                            <p className="text-xs text-slate-400">Manage this department</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <GradientButton
-                                                variant="ghost"
-                                                onClick={() => setDeptModal({ open: true, editDept: selectedDepartment })}
-                                            >
-                                                <span className="material-symbols-outlined text-base">edit</span>
-                                                Edit
-                                            </GradientButton>
-                                            {canDeleteDepartments && (
-                                                <GradientButton
-                                                    variant="danger"
-                                                    onClick={() => setDeleteConfirm({
-                                                        open: true,
-                                                        id: selectedDepartment.id,
-                                                        name: selectedDepartment.name,
-                                                    })}
-                                                >
-                                                    <span className="material-symbols-outlined text-base">delete</span>
-                                                    Delete
-                                                </GradientButton>
-                                            )}
-                                        </div>
-                                    </div>
-                                </GlassCard>
-                            )}
-
 
                             <DepartmentDetailCard
                                 department={selectedDepartment}
@@ -292,6 +196,20 @@ export function DepartmentsPage() {
                                 childCount={childCount}
                                 teamMembers={selectedTeamMembers}
                                 dashboard={dashboard}
+                                canEdit={canEditSelectedDepartment}
+                                canDelete={canDeleteDepartments}
+                                onEdit={() => setDeptModal({ open: true, editDept: selectedDepartment })}
+                                onDelete={() => setDeleteConfirm({
+                                    open: true,
+                                    id: selectedDepartment.id,
+                                    name: selectedDepartment.name,
+                                })}
+                                allDepartments={departments}
+                                allUsers={users}
+                                allOrganizations={organizations}
+                                canManageUsers={canEditDepartments}
+                                isSuperAdmin={perm.roles.includes("SuperAdmin")}
+                                onRefresh={refreshAppData}
                             />
 
 
@@ -319,6 +237,7 @@ export function DepartmentsPage() {
                         organizations={organizations}
                         users={users}
                         selectedOrgId={selectedOrgId}
+                        showOrganization={perm.roles.includes("SuperAdmin")}
                         onSubmit={handleDeptSubmit}
                         onCancel={() => setDeptModal({ open: false })}
                     />

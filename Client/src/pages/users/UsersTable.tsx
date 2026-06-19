@@ -42,7 +42,7 @@ export function UsersTable({
     const matchesSearch = !searchTerm || 
       user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesDept = !selectedDept || user.departmentId === selectedDept;
+    const matchesDept = !selectedDept || user.departmentId === selectedDept || user.departments?.some(d => d.departmentId === selectedDept);
     const userDept = departments.find(d => d.id === user.departmentId);
     const userOrgId = user.organizationId ?? userDept?.organizationId ?? user.departments?.find(item => item.organizationId)?.organizationId;
     const matchesOrg = !selectedOrg || userOrgId === selectedOrg;

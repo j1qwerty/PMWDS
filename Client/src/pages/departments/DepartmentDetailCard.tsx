@@ -1,6 +1,11 @@
+import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
-import { Avatar, AvatarStack } from "../shared";
+import { Avatar, AvatarStack, GradientButton } from "../shared";
+import { useAuth } from "../../auth";
+import { api } from "../../api";
+import { DepartmentUsersModal } from "../NewProject/components/DepartmentUsersModal";
+import { UserFormModal } from "../NewProject/components/UserFormModal";
 
 interface DepartmentDetailCardProps {
   department: Department;
@@ -10,6 +15,16 @@ interface DepartmentDetailCardProps {
   childCount: number;
   teamMembers?: User[];
   dashboard?: Record<string, unknown> | null;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  allDepartments?: Department[];
+  allUsers?: User[];
+  allOrganizations?: OrganizationRecord[];
+  canManageUsers?: boolean;
+  isSuperAdmin?: boolean;
+  onRefresh?: () => void;
 }
 
 export function DepartmentDetailCard({
@@ -18,7 +33,21 @@ export function DepartmentDetailCard({
   departmentHead,
   teamMembers = [],
   dashboard,
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
+  allDepartments = [],
+  allUsers = [],
+  allOrganizations = [],
+  canManageUsers,
+  isSuperAdmin,
+  onRefresh,
 }: DepartmentDetailCardProps) {
+  const { auth } = useAuth();
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+
   const activeProjects = Number(dashboard?.["activeProjects"] ?? 0);
   const completedProjects = Number(dashboard?.["completedProjects"] ?? 0);
   const teamMembersCount = teamMembers.length || Number(dashboard?.["teamMembers"] ?? 0);
@@ -26,6 +55,19 @@ export function DepartmentDetailCard({
   const capacityPercent = Math.min((department.capacityUtilization || 0) * 100, 100);
   const displayMembers = teamMembers.slice(0, 5);
   const extraCount = Math.max(0, teamMembers.length - 5);
+
+  const handleAssignUserDepartments = async (userId: string, departmentIds: string[]) => {
+    if (!auth) return;
+    await api.assignUserDepartments(auth.token, userId, departmentIds);
+    onRefresh?.();
+  };
+
+  const handleCreateUser = async (data: Record<string, unknown>) => {
+    if (!auth) return;
+    await api.registerUser(auth.token, data);
+    setShowCreateUserModal(false);
+    onRefresh?.();
+  };
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -37,61 +79,42 @@ export function DepartmentDetailCard({
           </div>
           <div>
             <h3 className="text-xl font-bold text-slate-900">{department.name}</h3>
-            <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100">
-                {department.code}
-              </span>
-              {organization && (
-                <span className="text-xs text-slate-500 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">business</span>
-                  {organization.name}
-                </span>
-              )}
+            <span className="items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100">
+              {department.code}
+            </span>
+
+
+            {/* Description */}
+            {department.description && (
+              <p className="text-sm text-slate-600 mb-6 leading-relaxed">{department.description}</p>
+            )}
+
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {canEdit && onEdit && (
+            <GradientButton variant="ghost" onClick={onEdit}>
+              <span className="material-symbols-outlined text-base">edit</span>
+              Edit
+            </GradientButton>
+          )}
+          {canDelete && onDelete && (
+            <GradientButton variant="danger" onClick={onDelete}>
+              <span className="material-symbols-outlined text-base">delete</span>
+              Delete
+            </GradientButton>
+          )}
+          {department.maxCapacity > 0 && (
+            <div className="text-right bg-slate-50 rounded-xl px-4 py-3">
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Capacity</p>
+              <p className="text-2xl font-bold text-slate-800">{department.maxCapacity}</p>
             </div>
-          </div>
-        </div>
-        {department.maxCapacity > 0 && (
-          <div className="text-right shrink-0 bg-slate-50 rounded-xl px-4 py-3">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Capacity</p>
-            <p className="text-2xl font-bold text-slate-800">{department.maxCapacity}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Description */}
-      {department.description && (
-        <p className="text-sm text-slate-600 mb-6 leading-relaxed">{department.description}</p>
-      )}
-
-      {/* Capacity Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-xs mb-2">
-          <span className="text-slate-500 font-medium">Capacity Utilization</span>
-          <span className={`font-semibold ${
-            capacityPercent > 80 ? "text-amber-600" : capacityPercent > 60 ? "text-emerald-600" : "text-slate-600"
-          }`}>
-            {formatPercent(department.capacityUtilization)}
-          </span>
-        </div>
-        <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              capacityPercent > 80
-                ? "bg-gradient-to-r from-amber-400 to-amber-500"
-                : capacityPercent > 60
-                ? "bg-gradient-to-r from-emerald-400 to-emerald-500"
-                : "bg-gradient-to-r from-indigo-400 to-indigo-500"
-            }`}
-            style={{ width: `${capacityPercent}%` }}
-          />
+          )}
         </div>
       </div>
 
-      {/* Details Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-        <DetailItem icon="business" label="Organization" value={organization?.name ?? "Unassigned"} />
-        <DetailItem icon="person" label="Dept Head" value={departmentHead?.fullName ?? "Unassigned"} avatar={departmentHead} />
-      </div>
+
+
 
       {/* Dashboard Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -102,12 +125,34 @@ export function DepartmentDetailCard({
       </div>
 
       {/* Team Members Section */}
-      {teamMembers.length > 0 && (
-        <div className="pt-4 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members</h4>
+      <div className="pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members</h4>
+          <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400">{teamMembers.length} members</span>
+            {canManageUsers && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowUserModal(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">edit</span>
+                  Users
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateUserModal(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">person_add</span>
+                  New User
+                </button>
+              </>
+            )}
           </div>
+        </div>
+        {teamMembers.length > 0 ? (
           <div className="flex items-center gap-3">
             <AvatarStack people={displayMembers} limit={5} size="md" />
             {extraCount > 0 && <span className="sr-only">{extraCount} more team members</span>}
@@ -115,10 +160,33 @@ export function DepartmentDetailCard({
               <div className="flex items-center gap-2 ml-4 pl-4 border-l-2 border-slate-200">
                 <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Head</span>
                 <Avatar person={departmentHead} size="md" className="border-2 border-indigo-300 ring-indigo-100" />
+                <span className="text-sm font-medium text-slate-700">{departmentHead.fullName}</span>
               </div>
             )}
           </div>
-        </div>
+        ) : (
+          <p className="text-xs text-slate-400">No users assigned to this department.</p>
+        )}
+      </div>
+
+      {showUserModal && (
+        <DepartmentUsersModal
+          department={department}
+          allDepartments={allDepartments}
+          allUsers={allUsers}
+          onSave={handleAssignUserDepartments}
+          onCancel={() => setShowUserModal(false)}
+        />
+      )}
+
+      {showCreateUserModal && (
+        <UserFormModal
+          organizations={allOrganizations}
+          defaultOrganizationId={organization?.id || ""}
+          hideOrganization={!isSuperAdmin}
+          onSubmit={handleCreateUser}
+          onCancel={() => setShowCreateUserModal(false)}
+        />
       )}
 
       {/* Workload Bar */}
@@ -126,21 +194,19 @@ export function DepartmentDetailCard({
         <div className="mt-4 pt-4 border-t border-slate-100">
           <div className="flex justify-between text-xs mb-2">
             <span className="text-slate-500 font-medium">Team Workload</span>
-            <span className={`font-semibold ${
-              avgWorkload > 80 ? "text-red-600" : avgWorkload > 60 ? "text-amber-600" : "text-emerald-600"
-            }`}>
+            <span className={`font-semibold ${avgWorkload > 80 ? "text-red-600" : avgWorkload > 60 ? "text-amber-600" : "text-emerald-600"
+              }`}>
               {avgWorkload}%
             </span>
           </div>
           <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                avgWorkload > 80
+              className={`h-full rounded-full transition-all duration-500 ${avgWorkload > 80
                   ? "bg-gradient-to-r from-red-400 to-red-500"
                   : avgWorkload > 60
-                  ? "bg-gradient-to-r from-amber-400 to-amber-500"
-                  : "bg-gradient-to-r from-emerald-400 to-emerald-500"
-              }`}
+                    ? "bg-gradient-to-r from-amber-400 to-amber-500"
+                    : "bg-gradient-to-r from-emerald-400 to-emerald-500"
+                }`}
               style={{ width: `${Math.min(avgWorkload, 100)}%` }}
             />
           </div>
@@ -151,10 +217,10 @@ export function DepartmentDetailCard({
 }
 
 // Helper Components
-function DetailItem({ icon, label, value, avatar }: { 
-  icon: string; 
-  label: string; 
-  value: string; 
+function DetailItem({ icon, label, value, avatar }: {
+  icon: string;
+  label: string;
+  value: string;
   avatar?: User;
 }) {
   return (
@@ -173,9 +239,9 @@ function DetailItem({ icon, label, value, avatar }: {
   );
 }
 
-function StatCard({ label, value, color }: { 
-  label: string; 
-  value: string | number; 
+function StatCard({ label, value, color }: {
+  label: string;
+  value: string | number;
   color: "indigo" | "slate" | "emerald" | "sky";
 }) {
   const colorMap = {

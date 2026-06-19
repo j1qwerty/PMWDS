@@ -27,8 +27,7 @@ export function DepartmentCard({
   onDelete,
   teamMembers = [],
   departmentHead,
-  activeProjects = 0,
-  completedProjects = 0,
+
   avgWorkload = 0,
 }: DepartmentCardProps) {
   const colors = [
@@ -61,6 +60,10 @@ export function DepartmentCard({
             <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{department.code}</div>
           </div>
         </div>
+         <div className="bg-slate-50 rounded-lg p-2">
+          <div className="text-[10px] text-slate-400 font-medium mb-0.5">Max</div>
+          <div className="text-sm font-bold text-slate-700">{department.maxCapacity}</div>
+        </div>
         {(canEdit || canDelete) && (
           <div className="flex gap-1 shrink-0 ml-2">
             {canEdit && (
@@ -85,44 +88,11 @@ export function DepartmentCard({
         )}
       </div>
 
-      {/* Description */}
-      {department.description && (
-        <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">
-          {department.description}
-        </p>
-      )}
+     
 
-      {/* Capacity Bar */}
-      <div className="mb-4">
-        <div className="flex justify-between text-[11px] mb-1.5">
-          <span className="text-slate-400 font-medium">Capacity</span>
-          <span className={`font-semibold ${capacityPercent > 80 ? 'text-amber-600' : capacityPercent > 60 ? 'text-emerald-600' : 'text-slate-600'}`}>
-            {formatPercent(department.capacityUtilization)}
-          </span>
-        </div>
-        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${color.bar}`}
-            style={{ width: `${capacityPercent}%` }}
-          />
-        </div>
-      </div>
+     
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-        <div className="bg-slate-50 rounded-lg p-2">
-          <div className="text-[10px] text-slate-400 font-medium mb-0.5">Max</div>
-          <div className="text-sm font-bold text-slate-700">{department.maxCapacity}</div>
-        </div>
-        <div className="bg-slate-50 rounded-lg p-2">
-          <div className="text-[10px] text-slate-400 font-medium mb-0.5">Active</div>
-          <div className="text-sm font-bold text-indigo-600">{activeProjects}</div>
-        </div>
-        <div className="bg-slate-50 rounded-lg p-2">
-          <div className="text-[10px] text-slate-400 font-medium mb-0.5">Done</div>
-          <div className="text-sm font-bold text-emerald-600">{completedProjects}</div>
-        </div>
-      </div>
+    
 
       {/* Team Members & Department Head */}
       <div className="flex items-center justify-between pt-3 border-t border-slate-100">

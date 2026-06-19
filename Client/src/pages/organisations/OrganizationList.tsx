@@ -1,4 +1,3 @@
-import { GlassCard } from "../shared/GlassCard";
 import type { OrganizationRecord } from "../../types";
 
 interface OrganizationListProps {
@@ -15,54 +14,104 @@ export function OrganizationList({ organizations, selectedOrgId, onSelect, searc
   );
 
   return (
-    <GlassCard className="p-4 max-h-[calc(100vh-220px)] flex flex-col">
+    <div className="bg-white rounded-2xl p-5 max-h-[calc(100vh-220px)] flex flex-col shadow-lg border border-blue-100">
+      {/* Header */}
+      <div className="mb-5">
+        <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+          Organizations
+        </h3>
+      </div>
+
+      {/* Search Bar */}
       <div className="mb-4 relative">
-        <span className="material-symbols-outlined absolute left-3 top-2 text-[#767586] text-lg pointer-events-none">
-          search
-        </span>
         <input
+          type="text"
           placeholder="Search organizations..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full h-10 pl-10 pr-3.5 rounded-[10px] border border-[#e0e3e5] text-[13px] outline-none bg-white box-border"
+          className="w-full h-11 px-4 rounded-xl bg-blue-50/50 border border-blue-100 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
         />
-      </div>
-
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2 p-2">
-        {filtered.map((org, index) => {
-          const isSelected = selectedOrgId === org.id;
-          return (
-            <div
-              key={org.id}
-              onClick={() => onSelect(org.id)}
-              className={`
-                p-3.5 rounded-xl cursor-pointer relative overflow-hidden transition-all duration-300
-                animate-slideIn
-                ${isSelected 
-                  ? "bg-gradient-to-r from-[rgba(70,72,212,0.08)] to-[rgba(129,39,207,0.05)] border border-[rgba(70,72,212,0.3)] scale-[1.02]" 
-                  : "bg-white/40 border border-[rgba(224,227,229,0.3)] hover:bg-white/70 hover:border-[rgba(70,72,212,0.2)]"
-                }
-              `}
-              style={{ animationDelay: `${index * 0.05}s` }}
-            >
-              {isSelected && (
-                <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-[#4648d4] to-[#8127cf] rounded-l" />
-              )}
-              <div className="font-bold text-sm text-[#191c1e] mb-2">{org.name}</div>
-              <div className="text-[11px] text-[#767586] flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[14px]">business</span>
-                <span>{org.departmentCount || 0} department{(org.departmentCount || 0) !== 1 ? 's' : ''}</span>
-              </div>
-            </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="text-center py-10 text-[#767586] text-[13px]">
-            <span className="material-symbols-outlined text-[40px] mb-2 block">search_off</span>
-            No organizations found
+        {searchTerm && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <span className="text-[10px] font-medium text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+              {filtered.length}/{organizations.length}
+            </span>
           </div>
         )}
       </div>
-    </GlassCard>
+
+      {/* Organization List */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1">
+  {filtered.map((org) => {
+    const isSelected = selectedOrgId === org.id;
+    return (
+      <button
+        key={org.id}
+        onClick={() => onSelect(org.id)}
+        className={`
+          group relative text-left p-4 rounded-xl cursor-pointer transition-all duration-200
+          border
+          ${
+            isSelected
+              ? "bg-blue-50/80 border-blue-700"
+              : "bg-white border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-300"
+          }
+        `}
+      >
+        {/* Selected glow effect */}
+        {isSelected && (
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/5 to-blue-500/5 ring-1 ring-blue-300/30 shadow-[0_0_15px_-3px_rgba(59,130,246,0.15)]" />
+        )}
+        
+        <div className="relative flex items-center justify-between gap-4">
+          {/* Organization Info */}
+          <div className="min-w-0 flex-1">
+            <span className={`
+              font-medium text-sm truncate block transition-colors duration-200
+              ${isSelected ? 'text-blue-700' : 'text-slate-700 group-hover:text-slate-900'}
+            `}>
+              {org.name}
+            </span>
+            <span className={`
+              text-[10px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-md border mt-1 inline-block
+              ${isSelected 
+                ? 'bg-blue-100 text-blue-600 border-blue-200' 
+                : 'bg-slate-100 text-slate-500 border-slate-200'}
+            `}>
+              {org.departmentCount || 0} dept{(org.departmentCount || 0) !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* Chevron indicator */}
+          <div className={`
+            shrink-0 transition-all duration-300
+            ${isSelected ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'}
+          `}>
+            <svg 
+              className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </button>
+    );
+  })}
+  
+  {filtered.length === 0 && (
+    <div className="text-center py-16">
+      <p className="text-sm font-medium text-slate-400">
+        No organizations found
+      </p>
+      <p className="text-xs mt-1 text-slate-400">
+        Try adjusting your search
+      </p>
+    </div>
+  )}
+</div>
+    </div>
   );
 }

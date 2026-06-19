@@ -145,12 +145,13 @@
 
 # TODO 
 ## fixes
-- 
+- deptFormModal select none to unassign head (not working)
 - 
 
 
 ## top priority
 + very imp - remove any ui element using pagedate api , instead use the manual api for those elements
++ role management for director , can mange certain permissions and roles
 
 - refactor modals and overlays for consistency 
 - redesign modals

@@ -380,43 +380,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               );
             })()}
 
-            {/* Manage — standalone, after Dashboard */}
-            {(() => {
-              const theme = sectionThemes.Team;
-              const active = isActive("/managedepartment");
-              return (
-                <Link
-                  to="/managedepartment"
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className={classNames(
-                    "relative flex items-center rounded-md transition-all duration-200 group",
-                    sidebarCompact
-                      ? "justify-center px-0"
-                      : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(4px,0.8vw,7px)]",
-                    active
-                      ? `${theme.active} ${theme.borderActive}`
-                      : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-                  )}
-                  title={sidebarCompact ? "Manage" : undefined}
-                >
-                  <span
-                    className={classNames(
-                      "transition-all duration-300 shrink-0",
-                      active
-                        ? `${theme.iconActive} scale-110`
-                        : `${theme.iconDefault} group-hover:scale-110`
-                    )}
-                  >
-                    {iconMap.departments}
-                  </span>
-                  {!sidebarCompact && (
-                    <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
-                      Manage
-                    </span>
-                  )}
-                </Link>
-              );
-            })()}
+          
 
             <ProjectsGroup
               theme={sectionThemes.Projects}

@@ -1,9 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { InputF } from "./InputF";
 import { SelectF } from "./SelectF";
-import { ScopedUserSelect } from "./ScopedUserSelect";
-import { usePermission } from "./RoleGate";
 
 interface DeptFormModalProps {
   initialData?: Department;
@@ -11,15 +9,18 @@ interface DeptFormModalProps {
   organizations: OrganizationRecord[];
   users?: User[];
   selectedOrgId: string;
+  showOrganization?: boolean;
   onSubmit: (data: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 
 export function DeptFormModal({ 
   initialData, 
+  departments,
   organizations, 
   users = [], 
   selectedOrgId, 
+  showOrganization,
   onSubmit, 
   onCancel 
 }: DeptFormModalProps) {
@@ -29,23 +30,23 @@ export function DeptFormModal({
     description: initialData?.description || "",
     organizationId: initialData?.organizationId || selectedOrgId,
     parentDepartmentId: initialData?.parentDepartmentId || "",
-    departmentHeadUserId: initialData?.departmentHeadUserId || "",
+    departmentHeadUserId: initialData?.departmentHeadUserId ?? "",
     maxCapacity: initialData?.maxCapacity ?? 24,
   });
-
-  const perm = usePermission();
+  const headSelectRef = useRef<HTMLSelectElement>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const rawValue = headSelectRef.current?.value ?? "";
     onSubmit({
       ...form,
       parentDepartmentId: form.parentDepartmentId || null,
-      departmentHeadUserId: form.departmentHeadUserId || null,
+      departmentHeadUserId: rawValue || null,
     });
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+    <div className="bg-white rounded-2xl p-8  max-w-[100vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
           <span className="material-symbols-outlined text-indigo-600 text-2xl">
@@ -74,30 +75,32 @@ export function DeptFormModal({
           onChange={(v) => setForm({ ...form, description: v })} 
         />
 
-        {perm.isSuperAdmin ? (
+        {showOrganization && (
           <SelectF
             label="Organization"
             value={form.organizationId}
             onChange={(v) => setForm({ ...form, organizationId: v, parentDepartmentId: "" })}
             options={organizations.map((o) => ({ value: o.id, label: o.name }))}
           />
-        ) : (
-          <InputF
-            label="Organization"
-            value={organizations.find((organization) => organization.id === form.organizationId)?.name || "Assigned organization"}
-            onChange={() => undefined}
-            disabled
-          />
         )}
 
         {/* Parent department is intentionally hidden. Submit null so departments remain top-level. */}
-        <ScopedUserSelect
-          users={users}
-          value={form.departmentHeadUserId}
-          organizationId={form.organizationId}
-          label="Department Head"
-          onChange={(departmentHeadUserId) => setForm({ ...form, departmentHeadUserId })}
-        />
+        <div>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Department Head</label>
+          <select
+            ref={headSelectRef}
+            value={form.departmentHeadUserId}
+            onChange={(e) => setForm({ ...form, departmentHeadUserId: e.target.value })}
+            className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+          >
+            <option value="">None</option>
+            {users
+              .filter((u) => !u.roles?.includes("SuperAdmin"))
+              .map((u) => (
+                <option key={u.id} value={u.id}>{u.fullName}</option>
+              ))}
+          </select>
+        </div>
 
         <InputF
           label="Maximum Capacity"
