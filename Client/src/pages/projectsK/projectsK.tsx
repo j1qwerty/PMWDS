@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -53,6 +54,7 @@ const emptyProjectForm = (): ProjectFormState => ({
 });
 
 export function ProjectsKPage() {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
@@ -112,7 +114,7 @@ export function ProjectsKPage() {
   useEffect(() => {
     const actions = [];
     if (canManageProjects) {
-      actions.push({ label: "New Project", onClick: () => setCreateProjectOpen(true), icon: "add_circle" });
+      actions.push({ label: "New Project", onClick: () => navigate("/new-project"), icon: "add_circle" });
     }
     if (selectedProjectId && canManageMilestones) {
       actions.push({ label: "New milestone", onClick: () => setMilestoneModal({ open: true }), icon: "add_circle" });

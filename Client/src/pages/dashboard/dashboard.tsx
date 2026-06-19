@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -37,6 +38,7 @@ const emptyProjectForm = (): ProjectFormState => ({
 });
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
@@ -72,13 +74,7 @@ export function DashboardPage() {
       description: "Overview of projects, tasks, and key metrics",
       action: canManageProjects ? {
         label: "New Project",
-        onClick: () => {
-          setProjectForm({
-            ...emptyProjectForm(),
-            organizationId: shouldFilterByOrg && userOrganizationId ? userOrganizationId : "",
-          });
-          setShowCreateModal(true);
-        },
+        onClick: () => navigate("/new-project"),
         icon: "add_circle",
       } : undefined,
     });

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -20,6 +21,7 @@ import { DepartmentCards } from "./components/DepartmentCards";
 
 
 export function ProjectsPage() {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
@@ -64,7 +66,7 @@ export function ProjectsPage() {
       description: "Manage and track projects across departments",
       action: canManageProjects ? {
         label: "New Project",
-        onClick: () => setShowCreateModal(true),
+        onClick: () => navigate("/new-project"),
         icon: "add_circle",
       } : undefined,
     });
