@@ -15,6 +15,7 @@ import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
 import { MilestonesStep } from "./steps/MilestonesStep";
 import { TasksStep } from "./steps/TasksStep";
+import { UsersStep } from "./steps/UsersStep";
 
 interface MilestoneEntry {
   id: string;
@@ -45,6 +46,7 @@ interface StepConfig {
 const STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "departments", label: "Departments", icon: "groups" },
+  { key: "users", label: "Users", icon: "person" },
   { key: "milestones", label: "Milestones", icon: "flag" },
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
@@ -102,6 +104,7 @@ export function NewProjectPage() {
       case 1: return selectedDepartmentIds.length > 0;
       case 2: return true;
       case 3: return true;
+      case 4: return true;
       default: return true;
     }
   };
@@ -121,10 +124,10 @@ export function NewProjectPage() {
     }
   };
 
-  const showSkip = currentStep === 2 && milestones.length === 0;
+  const showSkip = currentStep === 3 && milestones.length === 0;
 
   const handleSkip = () => {
-    setCurrentStep(3);
+    setCurrentStep(4);
   };
 
   const handleFinish = async () => {
@@ -346,12 +349,21 @@ export function NewProjectPage() {
               />
             )}
             {currentStep === 2 && (
+              <UsersStep
+                selectedDepartmentIds={selectedDepartmentIds}
+                departments={data.departments}
+                users={data.users}
+                organizations={data.organizations}
+                onRefresh={refresh}
+              />
+            )}
+            {currentStep === 3 && (
               <MilestonesStep
                 milestones={milestones}
                 onChange={setMilestones}
               />
             )}
-            {currentStep === 3 && (
+            {currentStep === 4 && (
               <TasksStep
                 milestones={milestones}
                 tasks={tasks}

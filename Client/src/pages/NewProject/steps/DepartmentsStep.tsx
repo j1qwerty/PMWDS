@@ -37,6 +37,7 @@ export function DepartmentsStep({
   const [orgModalOpen, setOrgModalOpen] = useState(false);
 
   const scopedDepartments = useMemo(() => {
+    if (isSuperAdmin && !selectedOrgId) return [];
     let filtered = departments;
     if (shouldFilterByOrg && userOrganizationId) {
       filtered = filtered.filter((d) => d.organizationId === userOrganizationId);
@@ -49,7 +50,7 @@ export function DepartmentsStep({
       filtered = filtered.filter((d) => d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q));
     }
     return filtered;
-  }, [departments, selectedOrgId, search, shouldFilterByOrg, userOrganizationId]);
+  }, [departments, isSuperAdmin, selectedOrgId, search, shouldFilterByOrg, userOrganizationId]);
 
   const prevOrgRef = useRef(selectedOrgId);
   useEffect(() => {
@@ -108,7 +109,7 @@ export function DepartmentsStep({
               onChange={(e) => setSelectedOrgId(e.target.value)}
               className="flex-1 p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
             >
-              <option value="">All Organizations</option>
+              <option value="">Select an organization...</option>
               {organizations.map((o) => (
                 <option key={o.id} value={o.id}>{o.name}</option>
               ))}
@@ -239,9 +240,17 @@ export function DepartmentsStep({
               {scopedDepartments.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-12 text-center text-slate-400">
-                    <span className="material-symbols-outlined text-4xl mb-2 block">search_off</span>
-                    <p className="text-sm font-medium">No departments found</p>
-                    <p className="text-xs mt-1">Try adjusting your search or organization filter</p>
+                    <span className="material-symbols-outlined text-4xl mb-2 block">
+                      {isSuperAdmin && !selectedOrgId ? "arrow_drop_down_circle" : "search_off"}
+                    </span>
+                    <p className="text-sm font-medium">
+                      {isSuperAdmin && !selectedOrgId ? "Select an organization first" : "No departments found"}
+                    </p>
+                    <p className="text-xs mt-1">
+                      {isSuperAdmin && !selectedOrgId
+                        ? "Choose an organization from the dropdown above to view its departments"
+                        : "Try adjusting your search or organization filter"}
+                    </p>
                   </td>
                 </tr>
               )}

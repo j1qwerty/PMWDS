@@ -872,8 +872,10 @@ export interface PageUserDto {
   email: string;
   profilePictureUrl: string | null;
   jobTitle: string | null;
+  organizationId: string | null;
   departmentId: string | null;
   departmentName: string | null;
+  departments: UserDepartmentAssignment[];
   isActive: boolean;
   roles: string[];
   skills: { skillId: string; skillName: string; proficiencyLevel: number }[];

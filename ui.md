@@ -150,6 +150,7 @@
 
 
 ## top priority
++ very imp - remove any ui element using pagedate api , instead use the manual api for those elements
 
 - refactor modals and overlays for consistency 
 - redesign modals

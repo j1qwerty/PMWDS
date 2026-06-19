@@ -99,7 +99,6 @@ function mapDepartments(pages: PagesDataResponse): Department[] {
 }
 
 function mapUsers(pages: PagesDataResponse): User[] {
-  const departmentsById = new Map(items(pages.departments).map((department) => [department.id, department]));
   return items(pages.users).map((user) => ({
     id: user.id,
     firstName: user.firstName,
@@ -108,10 +107,10 @@ function mapUsers(pages: PagesDataResponse): User[] {
     email: user.email,
     profilePictureUrl: user.profilePictureUrl,
     jobTitle: user.jobTitle,
-    organizationId: user.departmentId ? departmentsById.get(user.departmentId)?.organizationId ?? null : null,
+    organizationId: user.organizationId ?? null,
     department: user.departmentName,
     departmentId: user.departmentId,
-    departments: [],
+    departments: user.departments ?? [],
     profileId: null,
     bio: null,
     availabilityStatus: "Available",
