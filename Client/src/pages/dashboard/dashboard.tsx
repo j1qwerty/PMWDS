@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -8,9 +7,10 @@ import { NotificationList } from "../shared/NotificationList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
-import { PageSkeleton, useNavHeader, useToast } from "../shared";
+import { PageSkeleton, useNavHeader, useToast, ModalOverlay } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
+import { NewProjectPage } from "../NewProject/NewProjectPage";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
@@ -37,7 +37,6 @@ const emptyProjectForm = (): ProjectFormState => ({
 });
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const { auth } = useAuth();
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
@@ -64,6 +63,7 @@ export function DashboardPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
+  const [newProjectWizardOpen, setNewProjectWizardOpen] = useState(false);
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function DashboardPage() {
       description: "Overview of projects, tasks, and key metrics",
       action: canManageProjects ? {
         label: "New Project",
-        onClick: () => navigate("/new-project"),
+        onClick: () => setNewProjectWizardOpen(true),
         icon: "add_circle",
       } : undefined,
     });
@@ -383,6 +383,12 @@ export function DashboardPage() {
           setProjectForm(emptyProjectForm());
         }}
       />
+
+      {newProjectWizardOpen && (
+        <ModalOverlay onClose={() => setNewProjectWizardOpen(false)} widthClassName="max-w-4xl">
+          <NewProjectPage onClose={() => setNewProjectWizardOpen(false)} />
+        </ModalOverlay>
+      )}
 
     </div>
   );

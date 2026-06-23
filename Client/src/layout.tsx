@@ -455,7 +455,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               })()}
 
               {/* Chat */}
-              {(() => {
+              {/* {(() => {
                 const theme = sectionThemes.Overview;
                 const active = isActive("/chat");
                 return (
@@ -490,7 +490,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                     )}
                   </Link>
                 );
-              })()}
+              })()} */}
             </div>
 
             {/* Projects Group (Dynamic) */}

@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
 import {
-  AnimatedBackground,
   GlassCard,
-  useNavHeader,
   useToast,
   LoadingPage,
 } from "../shared";
@@ -51,7 +49,7 @@ const STEPS: StepConfig[] = [
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
-export function NewProjectPage() {
+export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const { auth } = useAuth();
   const { data, refresh } = useAppData();
@@ -77,15 +75,6 @@ export function NewProjectPage() {
 
   // Step 4: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
-
-  const { setNavHeader } = useNavHeader();
-
-  useEffect(() => {
-    setNavHeader({
-      title: "New Project",
-      description: "Create a project step by step",
-    });
-  }, [setNavHeader]);
 
   const handleDetailsChange = (field: string, value: string | number) => {
     switch (field) {
@@ -194,6 +183,7 @@ export function NewProjectPage() {
 
       await refresh();
       addToast("Project created successfully!");
+      onClose?.();
       navigate(`/projects/${projectId}/tasks`);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to create project", "error");
@@ -226,213 +216,205 @@ export function NewProjectPage() {
   }, [selectedDepartmentIds, data.users]);
 
   return (
-    <div className="relative">
-      <AnimatedBackground />
+    <div className="max-w-full mx-auto ">
+      <div className=" bg-white shadow-md rounded-2xl p-6 md:p-8">
+        {/* Steps indicator */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-0">
+            {STEPS.map((step, idx) => {
+              const completed = idx < currentStep;
+              const active = idx === currentStep;
+              const pending = idx > currentStep;
 
-      {/* Step circles */}
-      <div className="relative z-10 mb-8">
-        <div className="flex items-center justify-center gap-0 max-w-3xl mx-auto">
-          {STEPS.map((step, idx) => {
-            const completed = idx < currentStep;
-            const active = idx === currentStep;
-            const pending = idx > currentStep;
-            const complete = isStepComplete(idx);
-
-            return (
-              <div key={step.key} className="flex items-center flex-1 last:flex-none">
-                {/* Circle + label */}
-                <div className="flex flex-col items-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (idx < currentStep || isStepComplete(currentStep)) {
-                        setCurrentStep(idx);
-                      }
-                    }}
-                    disabled={!isStepComplete(currentStep) && idx > currentStep}
-                    className={`
-                      relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300
-                      ${completed
-                        ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 scale-100"
-                        : active
-                        ? "bg-white border-2 border-indigo-500 text-indigo-600 shadow-lg shadow-indigo-100 scale-110"
-                        : pending
-                        ? "bg-slate-50 border-2 border-slate-200 text-slate-300"
-                        : "bg-slate-50 border-2 border-slate-200 text-slate-400"
-                      }
-                      ${idx < currentStep ? "cursor-pointer hover:scale-105" : ""}
-                      ${!isStepComplete(currentStep) && idx > currentStep ? "cursor-not-allowed" : "cursor-pointer"}
-                    `}
-                    title={step.label}
-                  >
-                    {completed ? (
-                      <span className="material-symbols-outlined text-xl">check</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-xl">{step.icon}</span>
-                    )}
-                    {/* Number badge for pending */}
-                    {pending && (
-                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-300 text-white text-[10px] font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                    )}
-                    {active && (
-                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-indigo-500" />
-                    )}
-                  </button>
-                  <span className={`
-                    mt-2 text-center whitespace-nowrap text-[10px] font-bold uppercase tracking-wider transition-colors duration-200
-                    ${completed ? "text-indigo-600" : active ? "text-indigo-600" : pending ? "text-slate-300" : "text-slate-400"}
-                  `}>
-                    {step.label}
-                  </span>
-                </div>
-
-                {/* Connector line */}
-                {idx < STEPS.length - 1 && (
-                  <div className="flex-1 h-0.5 mx-3 mt-[-1.5rem] rounded-full transition-colors duration-300 relative">
-                    <div className={`
-                      absolute inset-0 rounded-full transition-all duration-500
-                      ${idx < currentStep ? "bg-indigo-500" : "bg-slate-200"}
-                    `} />
-                    <div className={`
-                      absolute inset-0 rounded-full bg-indigo-500 transition-all duration-500
-                      ${idx === currentStep ? "w-0" : idx < currentStep ? "w-full" : "w-0"}
-                    `} style={{
-                      width: idx < currentStep ? "100%" : "0%",
-                    }} />
+              return (
+                <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                  {/* Circle + label */}
+                  <div className="flex flex-col items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx < currentStep || isStepComplete(currentStep)) {
+                          setCurrentStep(idx);
+                        }
+                      }}
+                      disabled={!isStepComplete(currentStep) && idx > currentStep}
+                      className={`
+                        relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300
+                        ${completed
+                          ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 scale-100"
+                          : active
+                          ? "bg-white border-2 border-indigo-500 text-indigo-600 shadow-lg shadow-indigo-100 scale-110"
+                          : pending
+                          ? "bg-slate-50 border-2 border-slate-200 text-slate-300"
+                          : "bg-slate-50 border-2 border-slate-200 text-slate-400"
+                        }
+                        ${idx < currentStep ? "cursor-pointer hover:scale-105" : ""}
+                        ${!isStepComplete(currentStep) && idx > currentStep ? "cursor-not-allowed" : "cursor-pointer"}
+                      `}
+                      title={step.label}
+                    >
+                      {completed ? (
+                        <span className="material-symbols-outlined text-xl">check</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-xl">{step.icon}</span>
+                      )}
+                      {pending && (
+                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-300 text-white text-[10px] font-bold flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                      )}
+                      {active && (
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-indigo-500" />
+                      )}
+                    </button>
+                    <span className={`
+                      mt-2 text-center whitespace-nowrap text-[10px] font-bold uppercase tracking-wider transition-colors duration-200
+                      ${completed ? "text-indigo-600" : active ? "text-indigo-600" : pending ? "text-slate-300" : "text-slate-400"}
+                    `}>
+                      {step.label}
+                    </span>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Step content */}
-      <div className="relative z-10 max-w-3xl mx-auto">
-        <GlassCard className="p-6 md:p-8">
-          {/* Step title */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <span className="material-symbols-outlined text-indigo-600 text-xl">
-                {STEPS[currentStep].icon}
-              </span>
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">{STEPS[currentStep].label}</h2>
-              <p className="text-xs text-slate-400">Step {currentStep + 1} of {STEPS.length}</p>
-            </div>
-          </div>
-
-          {/* Step body */}
-          <div className="min-h-[300px]">
-            {currentStep === 0 && (
-              <ProjectDetailsStep
-                name={name}
-                description={description}
-                priority={priority}
-                budget={budget}
-                startDate={startDate}
-                endDate={endDate}
-                onChange={handleDetailsChange}
-              />
-            )}
-            {currentStep === 1 && (
-              <DepartmentsStep
-                selectedDepartmentIds={selectedDepartmentIds}
-                onDepartmentsChange={setSelectedDepartmentIds}
-                departments={scopedDepartments}
-                organizations={data.organizations}
-                users={data.users}
-                onRefresh={refresh}
-              />
-            )}
-            {currentStep === 2 && (
-              <UsersStep
-                selectedDepartmentIds={selectedDepartmentIds}
-                departments={data.departments}
-                users={data.users}
-                organizations={data.organizations}
-                onRefresh={refresh}
-              />
-            )}
-            {currentStep === 3 && (
-              <MilestonesStep
-                milestones={milestones}
-                onChange={setMilestones}
-              />
-            )}
-            {currentStep === 4 && (
-              <TasksStep
-                milestones={milestones}
-                tasks={tasks}
-                onChange={setTasks}
-                users={departmentUsers}
-              />
-            )}
-          </div>
-
-          {/* Navigation buttons */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
-            <div>
-              {currentStep > 0 && (
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-base">arrow_back</span>
-                  Back
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              {showSkip && (
-                <button
-                  type="button"
-                  onClick={handleSkip}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  Skip
-                </button>
-              )}
-              {currentStep < STEPS.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={!canProceed}
-                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                  <span className="material-symbols-outlined text-base">arrow_forward</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleFinish}
-                  disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <>
-                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-base">check_circle</span>
-                      Finish
-                    </>
+                  {/* Connector line */}
+                  {idx < STEPS.length - 1 && (
+                    <div className="flex-1 h-0.5 mx-3 mt-[-1.5rem] rounded-full relative">
+                      <div className={`
+                        absolute inset-0 rounded-full transition-all duration-500
+                        ${idx < currentStep ? "bg-indigo-500" : "bg-slate-200"}
+                      `} />
+                      <div className={`
+                        absolute inset-0 rounded-full bg-indigo-500 transition-all duration-500
+                      `} style={{
+                        width: idx < currentStep ? "100%" : "0%",
+                      }} />
+                    </div>
                   )}
-                </button>
-              )}
-            </div>
+                </div>
+              );
+            })}
           </div>
-        </GlassCard>
+        </div>
+
+        {/* Step title */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+            <span className="material-symbols-outlined text-indigo-600 text-xl">
+              {STEPS[currentStep].icon}
+            </span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">{STEPS[currentStep].label}</h2>
+            <p className="text-xs text-slate-400">Step {currentStep + 1} of {STEPS.length}</p>
+          </div>
+        </div>
+
+        {/* Step body */}
+        <div className="min-h-[300px]">
+          {currentStep === 0 && (
+            <ProjectDetailsStep
+              name={name}
+              description={description}
+              priority={priority}
+              budget={budget}
+              startDate={startDate}
+              endDate={endDate}
+              onChange={handleDetailsChange}
+            />
+          )}
+          {currentStep === 1 && (
+            <DepartmentsStep
+              selectedDepartmentIds={selectedDepartmentIds}
+              onDepartmentsChange={setSelectedDepartmentIds}
+              departments={scopedDepartments}
+              organizations={data.organizations}
+              users={data.users}
+              onRefresh={refresh}
+            />
+          )}
+          {currentStep === 2 && (
+            <UsersStep
+              selectedDepartmentIds={selectedDepartmentIds}
+              departments={data.departments}
+              users={data.users}
+              organizations={data.organizations}
+              onRefresh={refresh}
+            />
+          )}
+          {currentStep === 3 && (
+            <MilestonesStep
+              milestones={milestones}
+              onChange={setMilestones}
+            />
+          )}
+          {currentStep === 4 && (
+            <TasksStep
+              milestones={milestones}
+              tasks={tasks}
+              onChange={setTasks}
+              users={departmentUsers}
+            />
+          )}
+        </div>
+
+        {/* Navigation buttons */}
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
+          <div>
+            {currentStep > 0 && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">arrow_back</span>
+                Back
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {showSkip && (
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                Skip
+              </button>
+            )}
+            {currentStep < STEPS.length - 1 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+                <span className="material-symbols-outlined text-base">arrow_forward</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleFinish}
+                disabled={submitting}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    Finish
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

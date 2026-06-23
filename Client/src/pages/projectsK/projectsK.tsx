@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -8,6 +7,7 @@ import {
   AnimatedBackground,
   LoadingPage,
   useNavHeader,
+  ModalOverlay,
   PERMISSION_GROUPS,
   usePermission,
   useToast,
@@ -15,6 +15,7 @@ import {
   projectBelongsToAnyDepartment,
   projectBelongsToDepartment,
 } from "../shared";
+import { NewProjectPage } from "../NewProject/NewProjectPage";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { formatMoney } from "../../ui";
 import DashboardStats from "../dashboard/dashbaordStats";
@@ -44,7 +45,6 @@ const emptyProjectForm = (): ProjectFormState => ({
 });
 
 export function ProjectsKPage() {
-  const navigate = useNavigate();
   const { auth } = useAuth();
   const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
@@ -71,6 +71,7 @@ export function ProjectsKPage() {
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
+  const [newProjectWizardOpen, setNewProjectWizardOpen] = useState(false);
 
   const { setNavHeader } = useNavHeader();
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
@@ -78,7 +79,7 @@ export function ProjectsKPage() {
   useEffect(() => {
     const actions = [];
     if (canManageProjects) {
-      actions.push({ label: "New Project", onClick: () => navigate("/new-project"), icon: "add_circle" });
+      actions.push({ label: "New Project", onClick: () => setNewProjectWizardOpen(true), icon: "add_circle" });
     }
     setNavHeader({
       title: "Project Workspace",
@@ -431,6 +432,12 @@ export function ProjectsKPage() {
           setDeleteProjectTarget(null);
         }}
       />
+
+      {newProjectWizardOpen && (
+        <ModalOverlay onClose={() => setNewProjectWizardOpen(false)} widthClassName="max-w-4xl">
+          <NewProjectPage onClose={() => setNewProjectWizardOpen(false)} />
+        </ModalOverlay>
+      )}
     </div>
   );
 }
