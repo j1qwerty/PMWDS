@@ -11,7 +11,7 @@ import {
   getProjectDepartmentIds,
   projectBelongsToDepartment,
   usePermission,
-  MessageBanner,
+  useToast,
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
@@ -25,7 +25,7 @@ export function ReportsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [downloads, setDownloads] = useState<string[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ 
     organizationId: "",
@@ -106,9 +106,9 @@ export function ReportsPage() {
       anchor.click();
       URL.revokeObjectURL(url);
       setDownloads((current) => [label, ...current].slice(0, 5));
-      setMessage(`${label} report downloaded successfully.`);
+      addToast(`${label} report downloaded successfully.`);
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Download failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Download failed"}`, "error");
     }
   };
 
@@ -139,7 +139,7 @@ export function ReportsPage() {
   const downloadDepartmentWorkload = () => {
     if (!auth) return;
     if (!filters.departmentId) {
-      setMessage("Select a department before downloading the department workload report.");
+      addToast("Select a department before downloading the department workload report.", "error");
       return;
     }
     handleDownload("department-workload", () =>
@@ -172,9 +172,7 @@ export function ReportsPage() {
 
 
 
-      {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
-      )}
+
 
       {/* Main Content */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">

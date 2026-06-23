@@ -16,7 +16,7 @@ import {
 import { ProfileList } from "./ProfileList";
 import { ProfileDetail } from "./ProfileDetail";
 import { ProfileFormModal } from "./ProfileFormModal";
-import { MessageBanner } from "../shared/MessageBanner";
+
 
 export function ProfilesPage() {
   const { auth, updateCurrentUser } = useAuth();
@@ -29,7 +29,7 @@ export function ProfilesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfileRecord | null>(null);
-  const [message, setMessage] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -44,7 +44,7 @@ export function ProfilesPage() {
           setUsers([me]);
           setSelectedUser(me);
         })
-        .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load profile."))
+        .catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to load profile.", "error"))
         .finally(() => setLoading(false));
     } else {
       api.getUsers(auth.token)
@@ -54,7 +54,7 @@ export function ProfilesPage() {
             setSelectedUser(userData[0]);
           }
         })
-        .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load profiles."))
+        .catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to load profiles.", "error"))
         .finally(() => setLoading(false));
     }
   }, [auth, isOwnProfile]);
@@ -89,9 +89,9 @@ export function ProfilesPage() {
       const updatedProfile = await api.upsertProfile(auth.token, selectedUser.id, payload);
       setProfile(updatedProfile);
       setProfileModal(false);
-      setMessage("Profile saved successfully.");
+      addToast("Profile saved successfully.");
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
   };
 
@@ -126,12 +126,6 @@ export function ProfilesPage() {
   return (
     <div className="min-h-screen">
       <AnimatedBackground />
-
-      {message && (
-        <div className="relative z-10 mb-6">
-          <MessageBanner message={message} onDismiss={() => setMessage("")} />
-        </div>
-      )}
 
       {/* Main Layout */}
       <div className={`relative z-10 grid gap-6 ${isOwnProfile ? "grid-cols-1 max-w-5xl mx-auto" : "grid-cols-[320px_1fr]"}`}>

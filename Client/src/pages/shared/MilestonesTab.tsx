@@ -4,6 +4,7 @@ import { api } from "../../api";
 import type { Milestone, Task, ProjectDocument } from "../../types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
+import { useToast } from "./Toast";
 
 interface MilestonesTabProps {
   projectId: string;
@@ -17,7 +18,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
@@ -68,12 +69,10 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     try {
       await api.uploadProjectDocument(authToken, projectId, uploadFile);
       setUploadFile(null);
-      setMessage("Document uploaded successfully");
-      setTimeout(() => setMessage(""), 3000);
+      addToast("Document uploaded successfully");
       fetchData();
     } catch (error) {
-      setMessage("Failed to upload document");
-      setTimeout(() => setMessage(""), 3000);
+      addToast("Failed to upload document", "error");
     }
   };
 
@@ -91,8 +90,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      setMessage("Failed to download document");
-      setTimeout(() => setMessage(""), 3000);
+      addToast("Failed to download document", "error");
     } finally {
       setDownloadingId(null);
     }
@@ -117,8 +115,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       await api.updateTask(authToken, taskId, { status: "Completed" });
       fetchData();
     } catch (error) {
-      setMessage("Failed to update task");
-      setTimeout(() => setMessage(""), 3000);
+      addToast("Failed to update task", "error");
     } finally {
       setCompletingTasks(prev => {
         const next = new Set(prev);
@@ -201,17 +198,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
         </div>
       </div>
 
-      {/* Messages */}
-      {message && (
-        <div className={`
-          mt-4 p-4 rounded-xl text-sm font-medium animate-in slide-in-from-top-2
-          ${message.includes("success") ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : 
-            message.includes("Failed") ? "bg-rose-50 text-rose-700 border border-rose-200" : 
-            "bg-blue-50 text-blue-700 border border-blue-200"}
-        `}>
-          {message}
-        </div>
-      )}
 
       {/* Milestones Tab Content */}
       {activeTab === "milestones" && (

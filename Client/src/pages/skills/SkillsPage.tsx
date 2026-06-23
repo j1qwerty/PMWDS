@@ -12,6 +12,7 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   Avatar,
+  useToast,
 } from "../shared";
 import { SkillFormModal } from "./SkillFormModal";
 
@@ -29,7 +30,7 @@ export function SkillsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -81,7 +82,7 @@ export function SkillsPage() {
         setDepartments(deptData);
         setOrganizations(orgData);
       })
-      .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load data."))
+      .catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to load data.", "error"))
       .finally(() => setLoading(false));
   };
 
@@ -156,15 +157,15 @@ export function SkillsPage() {
     try {
       if (skillModal.editSkill) {
         await api.updateSkill(auth.token, skillModal.editSkill.id, payload);
-        setMessage("Skill updated successfully.");
-      } else {
+        addToast("Skill updated successfully.");
+    } else {
         await api.createSkill(auth.token, payload);
-        setMessage("Skill created successfully.");
+        addToast("Skill created successfully.");
       }
       setSkillModal({ open: false });
       loadData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
   };
 
@@ -172,12 +173,12 @@ export function SkillsPage() {
     if (!auth || !deleteConfirm.skill) return;
     try {
       await api.deleteSkill(auth.token, deleteConfirm.skill.id);
-      setMessage("Skill deleted successfully.");
+      addToast("Skill deleted successfully.");
       setDeleteConfirm({ open: false, skill: null });
       if (selectedSkillId === deleteConfirm.skill.id) setSelectedSkillId(null);
       loadData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
     }
   };
 
@@ -192,12 +193,12 @@ export function SkillsPage() {
           skillDetails: [...(u.skillDetails || []), { skillId: selectedSkillId, skillName: selectedSkill?.name || "", proficiencyLevel: newProficiency, experienceMonths: newExperience }]
         };
       }));
-      setMessage("Skill assigned successfully.");
+      addToast("Skill assigned successfully.");
       setNewUserId("");
       setNewProficiency(3);
       setNewExperience(12);
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Assignment failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Assignment failed"}`, "error");
     }
   };
 
@@ -215,7 +216,7 @@ export function SkillsPage() {
         };
       }));
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Update failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Update failed"}`, "error");
     }
   };
 
@@ -230,9 +231,9 @@ export function SkillsPage() {
           skillDetails: (u.skillDetails || []).filter(s => s.skillId !== skillId)
         };
       }));
-      setMessage("Skill assignment removed.");
+      addToast("Skill assignment removed.");
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Removal failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Removal failed"}`, "error");
     }
   };
 
@@ -248,12 +249,12 @@ export function SkillsPage() {
           skillDetails: [...(u.skillDetails || []), { skillId: newUserSkillId, skillName: newSkill?.name || "", proficiencyLevel: newUserSkillProf, experienceMonths: newUserSkillExp }]
         };
       }));
-      setMessage("Skill assigned successfully.");
+      addToast("Skill assigned successfully.");
       setNewUserSkillId("");
       setNewUserSkillProf(3);
       setNewUserSkillExp(12);
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Assignment failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Assignment failed"}`, "error");
     }
   };
 
@@ -262,19 +263,6 @@ export function SkillsPage() {
   return (
     <div>
       <AnimatedBackground />
-
-      {message && (
-        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined">check_circle</span>
-          {message}
-          <button
-            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-            onClick={() => setMessage("")}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      )}
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Left Panel: Skills Table */}

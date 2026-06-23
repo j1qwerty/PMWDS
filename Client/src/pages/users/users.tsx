@@ -10,7 +10,7 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   StatCard,
-  MessageBanner,
+  useToast,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
 import { UserEditModal } from "./UserEditModal";
@@ -26,7 +26,7 @@ export function UsersPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [skills, setSkills] = useState<SkillRecord[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -51,7 +51,7 @@ export function UsersPage() {
     if (user.isActive === false) {
       const updated = await api.reactivateUser(auth.token, user.id);
       setUsers((current) => current.map((item) => item.id === updated.id ? updated : item));
-      setMessage("User reactivated.");
+      addToast("User reactivated.");
       void loadData();
       return;
     }
@@ -74,7 +74,7 @@ export function UsersPage() {
         setOrganizations(orgData);
         setSkills(skillData);
       })
-      .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load users."))
+      .catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to load users.", "error"))
       .finally(() => setLoading(false));
   };
 
@@ -94,10 +94,6 @@ export function UsersPage() {
   return (
     <div>
       <AnimatedBackground />
-
-      {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
-      )}
 
       {/* Stats Row */}
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
@@ -125,7 +121,7 @@ export function UsersPage() {
           onToggleUserActive={handleToggleUserActive}
           onPictureUploaded={(updated) => {
             setUsers(current => current.map(user => user.id === updated.id ? updated : user));
-            setMessage("Profile picture updated.");
+            addToast("Profile picture updated.");
           }}
           onUpdate={loadData}
         />
@@ -142,7 +138,7 @@ export function UsersPage() {
             const updated = await api.updateUser(auth.token, editingUser.id, payload);
             setUsers((current) => current.map((user) => user.id === updated.id ? updated : user));
             setEditingUser(null);
-            setMessage("User updated successfully.");
+            addToast("User updated successfully.");
             void loadData();
           }}
         />
@@ -156,7 +152,7 @@ export function UsersPage() {
           onSubmit={async (data) => {
             await api.registerUser(auth.token, data);
             setShowCreateUser(false);
-            setMessage("User registered successfully.");
+            addToast("User registered successfully.");
             loadData();
           }}
           onCancel={() => setShowCreateUser(false)}
@@ -176,7 +172,7 @@ export function UsersPage() {
                 )
               );
               setDeletingUser(null);
-              setMessage("User deactivated.");
+              addToast("User deactivated.");
               void loadData();
             }}
             onCancel={() => setDeletingUser(null)}

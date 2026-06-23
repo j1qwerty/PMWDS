@@ -15,6 +15,7 @@ import {
   ModalOverlay,
   PERMISSION_GROUPS,
   usePermission,
+  useToast,
   } from "../shared";
 
 import { NotificationInbox } from "./NotificationInbox";
@@ -36,7 +37,7 @@ export function NotificationsPage() {
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
   const [rules, setRules] = useState<AlertRuleRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"inbox" | "templates" | "rules">("inbox");
 
@@ -88,7 +89,7 @@ export function NotificationsPage() {
   const handleMarkAllRead = async () => {
     if (!auth) return;
     await api.markAllNotificationsRead(auth.token);
-    setMessage("All notifications marked as read.");
+    addToast("All notifications marked as read.");
     await refreshAppData();
   };
 
@@ -101,7 +102,7 @@ export function NotificationsPage() {
   const handleDeleteNotification = async (id: string) => {
     if (!auth) return;
     await api.deleteNotification(auth.token, id);
-    setMessage("Notification deleted.");
+    addToast("Notification deleted.");
     await refreshAppData();
   };
 
@@ -109,17 +110,17 @@ export function NotificationsPage() {
     if (!auth) return;
     await api.broadcastNotification(auth.token, payload);
     setBroadcastOpen(false);
-    setMessage("Broadcast sent successfully.");
+    addToast("Broadcast sent successfully.");
   };
 
   const handleTemplateSubmit = async (payload: Record<string, unknown>) => {
     if (!auth) return;
     if (templateModal.editTemplate) {
       await api.updateNotificationTemplate(auth.token, templateModal.editTemplate.id, payload);
-      setMessage("Template updated.");
+      addToast("Template updated.");
     } else {
       await api.createNotificationTemplate(auth.token, payload);
-      setMessage("Template created.");
+      addToast("Template created.");
     }
     setTemplateModal({ open: false });
     await refreshAppData();
@@ -129,10 +130,10 @@ export function NotificationsPage() {
     if (!auth) return;
     if (ruleModal.editRule) {
       await api.updateAlertRule(auth.token, ruleModal.editRule.id, payload);
-      setMessage("Rule updated.");
+      addToast("Rule updated.");
     } else {
       await api.createAlertRule(auth.token, payload);
-      setMessage("Rule created.");
+      addToast("Rule created.");
     }
     setRuleModal({ open: false });
     await refreshAppData();
@@ -145,7 +146,7 @@ export function NotificationsPage() {
     } else {
       await api.deleteAlertRule(auth.token, deleteConfirm.id);
     }
-    setMessage(`${deleteConfirm.type === "template" ? "Template" : "Rule"} deleted.`);
+    addToast(`${deleteConfirm.type === "template" ? "Template" : "Rule"} deleted.`);
     setDeleteConfirm({ open: false, type: "template", id: "", name: "" });
     await refreshAppData();
   };
@@ -155,20 +156,6 @@ export function NotificationsPage() {
   return (
     <div>
       <AnimatedBackground />
-
-      {/* Message */}
-      {message && (
-        <div className="relative z-10 mb-5 bg-emerald-50 border border-emerald-200 rounded-xl py-3.5 px-5 text-emerald-700 text-sm flex items-center gap-2.5 animate-[slideIn_0.3s_ease]">
-          <span className="material-symbols-outlined">check_circle</span>
-          {message}
-          <button
-            className="ml-auto bg-transparent border-none cursor-pointer text-emerald-500 hover:text-emerald-700"
-            onClick={() => setMessage("")}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      )}
 
       {/* Stats Row */}
       <div className={`relative z-10 grid grid-cols-2 ${canConfigure ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3 mb-5`}>

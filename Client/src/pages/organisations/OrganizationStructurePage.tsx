@@ -11,7 +11,7 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 import { OrgFormModal } from "../shared/OrgFormModal";
 import { DeptFormModal } from "../shared/DeptFormModal";
 import { GlassCard } from "../shared/GlassCard";
-import { LoadingPage, PERMISSION_GROUPS, usePermission, useNavHeader, MessageBanner } from "../shared";
+import { LoadingPage, PERMISSION_GROUPS, usePermission, useNavHeader, useToast } from "../shared";
 
 export function OrganizationStructurePage() {
   const { auth } = useAuth();
@@ -31,7 +31,7 @@ export function OrganizationStructurePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedOrgDetail, setSelectedOrgDetail] = useState<OrganizationRecord | null>(null);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -93,11 +93,11 @@ export function OrganizationStructurePage() {
       } else {
         await api.deleteDepartment(auth.token, deleteConfirm.id);
       }
-      setMessage(`${deleteConfirm.type === "org" ? "Organization" : "Department"} deleted successfully.`);
+      addToast(`${deleteConfirm.type === "org" ? "Organization" : "Department"} deleted successfully.`);
       setDeleteConfirm({ open: false, type: "org", id: "", name: "" });
       await refreshAppData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
     }
   };
 
@@ -112,9 +112,9 @@ export function OrganizationStructurePage() {
       }
       setOrgModal({ open: false });
       await refreshAppData();
-      setMessage(orgModal.editOrg ? "Organization updated." : "Organization created.");
+      addToast(orgModal.editOrg ? "Organization updated." : "Organization created.");
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
   };
 
@@ -129,9 +129,9 @@ export function OrganizationStructurePage() {
       }
       setDeptModal({ open: false });
       await refreshAppData();
-      setMessage(deptModal.editDept ? "Department updated." : "Department created.");
+      addToast(deptModal.editDept ? "Department updated." : "Department created.");
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
   };
 
@@ -155,9 +155,7 @@ export function OrganizationStructurePage() {
     <div>
       <AnimatedBackground />
 
-      {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
-      )}
+
 
       {/* Main Layout */}
       <div className={`${canCreateOrganization ? "grid grid-cols-[320px_1fr]" : "grid grid-cols-1"} gap-6 relative z-10`}>

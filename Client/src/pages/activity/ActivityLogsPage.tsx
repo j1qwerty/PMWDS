@@ -12,7 +12,7 @@ import {
   useNavHeader,
   usePermission,
   StatCard,
-  MessageBanner,
+  useToast,
 } from "../shared";
 import { ActivityList } from "./ActivityList";
 import { ActivityForm } from "./ActivityForm";
@@ -27,7 +27,7 @@ export function ActivityLogsPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLogRecord[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -70,7 +70,7 @@ export function ActivityLogsPage() {
         setUsers(userData as User[]);
         setLogs(logData);
       })
-      .catch((cause) => setMessage(cause instanceof Error ? cause.message : "Failed to load activity logs."))
+      .catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to load activity logs.", "error"))
       .finally(() => setLoading(false));
   };
 
@@ -128,10 +128,10 @@ export function ActivityLogsPage() {
         description: form.description,
         metadata: JSON.parse(form.metadata || "{}"),
       });
-      setMessage("Activity logged successfully.");
+      addToast("Activity logged successfully.");
       loadData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Failed to log activity"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Failed to log activity"}`, "error");
     }
   };
 
@@ -143,9 +143,7 @@ export function ActivityLogsPage() {
 
 
 
-      {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
-      )}
+
 
       {/* Stats Row */}
       <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">

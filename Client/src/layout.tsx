@@ -210,7 +210,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const newUiNavGroups: Array<{
+  const navGroups: Array<{
     title: string;
     items: Array<{
       path: string;
@@ -219,44 +219,32 @@ function Layout({ children }: { children: React.ReactNode }) {
       permissions: string[];
     }>;
   }> = [
-      {
-        title: "Overview",
-        items: [
-          // { path: "/projects", label: "Projects", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
-          { path: "/projectsK", label: "Projects", icon: "projects", permissions: [PERMISSION_GROUPS.project.view] },
-          // { path: "/milestonesPage", label: "Milestones", icon: "milestones", permissions: [PERMISSION_GROUPS.milestone.view] },
-          // { path: "/tasks", label: "Tasks", icon: "tasks", permissions: [PERMISSION_GROUPS.task.view] },
-          { path: "/notificationsPage", label: "Notifications", icon: "inbox", permissions: [PERMISSION_GROUPS.notification.view] },
-          { path: "/chat", label: "Chats", icon: "chat", permissions: [] },
-        ],
-      },
-      {
-        title: "Team",
-        items: [
-          { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [PERMISSION_GROUPS.organization.view] },
-          { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
-          { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
-          { path: "/profiles", label: "Profiles", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
-          { path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] },
-        ],
-      },
-      {
-        title: "Tools",
-        items: [
-          { path: "/reports", label: "Reports", icon: "reports", permissions: [PERMISSION_GROUPS.report.view] },
-          { path: "/ai", label: "AI Insights", icon: "ai", permissions: [PERMISSION_GROUPS.ai.view] },
-        ],
-      },
-      {
-        title: "System",
-        items: [
-          { path: "/roles", label: "Roles", icon: "roles", permissions: [PERMISSION_GROUPS.role.view] },
-          { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [PERMISSION_GROUPS.activityLog.view] },
-          // { path: "/test-page", label: "Test Page", icon: "test", permissions: [] },
-          { path: "/settings", label: "Settings", icon: "settings", permissions: [PERMISSION_GROUPS.system.manage] },
-        ],
-      },
-    ];
+    {
+      title: "Team",
+      items: [
+        { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [PERMISSION_GROUPS.organization.view] },
+        { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
+        { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
+        { path: "/profiles", label: "Profiles", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
+        { path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] },
+      ],
+    },
+    {
+      title: "Tools",
+      items: [
+        { path: "/reports", label: "Reports", icon: "reports", permissions: [PERMISSION_GROUPS.report.view] },
+        { path: "/ai", label: "AI Insights", icon: "ai", permissions: [PERMISSION_GROUPS.ai.view] },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { path: "/roles", label: "Roles", icon: "roles", permissions: [PERMISSION_GROUPS.role.view] },
+        { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [PERMISSION_GROUPS.activityLog.view] },
+        { path: "/settings", label: "Settings", icon: "settings", permissions: [PERMISSION_GROUPS.system.manage] },
+      ],
+    },
+  ];
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -338,77 +326,204 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div
             className={classNames(
               "sidebar-scrollbar flex-1 overflow-y-auto transition-all duration-300",
-              "space-y-[clamp(16px,2.5vw,20px)]",
-              sidebarCompact ? "px-[clamp(2px,0.5vw,4px)]" : "px-[clamp(8px,1.5vw,12px)] pr-[clamp(8px,2vw,16px)]"
+              sidebarCompact ? "px-[clamp(2px,0.5vw,4px)]" : "px-[clamp(8px,1.5vw,12px)]"
             )}
           >
-            {/* Dashboard — standalone, no group wrapper */}
-            {(() => {
-              const theme = sectionThemes.Overview;
-              const active = isActive("/");
-              return (
-                <Link
-                  to="/"
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className={classNames(
-                    "relative flex items-center rounded-md transition-all duration-200 group",
-                    sidebarCompact
-                      ? "justify-center px-0 ]"
-                      : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(4px,0.8vw,7px)]",
-                    active
-                      ? `${theme.active} ${theme.borderActive}`
-                      : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-                  )}
-                  title={sidebarCompact ? "Dashboard" : undefined}
-                >
-                  <span
+            {/* Main Navigation Items */}
+            <div className="space-y-[clamp(2px,0.4vw,4px)] py-[clamp(4px,1vw,8px)]">
+              {/* Dashboard */}
+              {(() => {
+                const theme = sectionThemes.Overview;
+                const active = isActive("/");
+                return (
+                  <Link
+                    to="/"
+                    onClick={() => setMobileSidebarOpen(false)}
                     className={classNames(
-                      "transition-all duration-300 shrink-0",
+                      "relative flex items-center rounded-md transition-all duration-200 group",
+                      sidebarCompact
+                        ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
+                        : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
                       active
-                        ? `${theme.iconActive} scale-110`
-                        : `${theme.iconDefault} group-hover:scale-110`
+                        ? `${theme.active} ${theme.borderActive}`
+                        : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
                     )}
+                    title={sidebarCompact ? "Dashboard" : undefined}
                   >
-                    {iconMap.home}
-                  </span>
-                  {!sidebarCompact && (
-                    <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
-                      Dashboard
+                    <span
+                      className={classNames(
+                        "transition-all duration-300 shrink-0",
+                        active
+                          ? `${theme.iconActive} scale-110`
+                          : `${theme.iconDefault} group-hover:scale-110`
+                      )}
+                    >
+                      {iconMap.home}
                     </span>
-                  )}
-                </Link>
-              );
-            })()}
+                    {!sidebarCompact && (
+                      <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                        Dashboard
+                      </span>
+                    )}
+                  </Link>
+                );
+              })()}
 
-          
+              {/* Projects */}
+              {(() => {
+                const theme = sectionThemes.Overview;
+                const active = isActive("/projectsK");
+                return (
+                  <Link
+                    to="/projectsK"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={classNames(
+                      "relative flex items-center rounded-md transition-all duration-200 group",
+                      sidebarCompact
+                        ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
+                        : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
+                      active
+                        ? `${theme.active} ${theme.borderActive}`
+                        : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                    )}
+                    title={sidebarCompact ? "Projects" : undefined}
+                  >
+                    <span
+                      className={classNames(
+                        "transition-all duration-300 shrink-0",
+                        active
+                          ? `${theme.iconActive} scale-110`
+                          : `${theme.iconDefault} group-hover:scale-110`
+                      )}
+                    >
+                      {iconMap.projects}
+                    </span>
+                    {!sidebarCompact && (
+                      <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                        Projects
+                      </span>
+                    )}
+                  </Link>
+                );
+              })()}
 
-            <ProjectsGroup
-              theme={sectionThemes.Projects}
-              iconClass={iconClass}
-              compact={sidebarCompact}
-              onRequestExpand={() => setSidebarCompact(false)}
-            />
+              {/* Notifications */}
+              {(() => {
+                const theme = sectionThemes.Overview;
+                const active = isActive("/notificationsPage");
+                return (
+                  <Link
+                    to="/notificationsPage"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={classNames(
+                      "relative flex items-center rounded-md transition-all duration-200 group",
+                      sidebarCompact
+                        ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
+                        : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
+                      active
+                        ? `${theme.active} ${theme.borderActive}`
+                        : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                    )}
+                    title={sidebarCompact ? "Notifications" : undefined}
+                  >
+                    <span
+                      className={classNames(
+                        "transition-all duration-300 shrink-0",
+                        active
+                          ? `${theme.iconActive} scale-110`
+                          : `${theme.iconDefault} group-hover:scale-110`
+                      )}
+                    >
+                      {iconMap.inbox}
+                    </span>
+                    {!sidebarCompact && (
+                      <>
+                        <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                          Notifications
+                        </span>
+                        {unreadCount > 0 && (
+                          <span className="ml-auto h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                        )}
+                      </>
+                    )}
+                    {/* Notification dot for compact sidebar */}
+                    {sidebarCompact && unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
+                    )}
+                  </Link>
+                );
+              })()}
 
-            {newUiNavGroups.map((group) => {
-              const theme = sectionThemes[group.title] || sectionThemes.Overview;
-              const visibleItems = group.items.filter(
-                (item) =>
-                  item.permissions.length === 0 || perm.hasAny(...item.permissions)
-              );
-              if (visibleItems.length === 0) return null;
+              {/* Chat */}
+              {(() => {
+                const theme = sectionThemes.Overview;
+                const active = isActive("/chat");
+                return (
+                  <Link
+                    to="/chat"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={classNames(
+                      "relative flex items-center rounded-md transition-all duration-200 group",
+                      sidebarCompact
+                        ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
+                        : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
+                      active
+                        ? `${theme.active} ${theme.borderActive}`
+                        : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
+                    )}
+                    title={sidebarCompact ? "Chats" : undefined}
+                  >
+                    <span
+                      className={classNames(
+                        "transition-all duration-300 shrink-0",
+                        active
+                          ? `${theme.iconActive} scale-110`
+                          : `${theme.iconDefault} group-hover:scale-110`
+                      )}
+                    >
+                      {iconMap.chat}
+                    </span>
+                    {!sidebarCompact && (
+                      <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
+                        Chats
+                      </span>
+                    )}
+                  </Link>
+                );
+              })()}
+            </div>
 
-              return (
-                <div key={group.title} className="space-y-[clamp(4px,0.8vw,6px)]">
-                  {!sidebarCompact && (
-                    <div className={classNames(
-                      "px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold",
-                      theme.textDefault
-                    )}>
-                      {group.title}
-                    </div>
-                  )}
+            {/* Projects Group (Dynamic) */}
+            <div className="py-[clamp(4px,1vw,8px)]">
+              <ProjectsGroup
+                theme={sectionThemes.Projects}
+                iconClass={iconClass}
+                compact={sidebarCompact}
+                onRequestExpand={() => setSidebarCompact(false)}
+              />
+            </div>
 
-                  <div className="space-y-[clamp(1px,0.3vw,2px)]">
+            {/* Navigation Groups */}
+            <div className="space-y-[clamp(12px,2vw,16px)] py-[clamp(4px,1vw,8px)]">
+              {navGroups.map((group) => {
+                const theme = sectionThemes[group.title] || sectionThemes.Overview;
+                const visibleItems = group.items.filter(
+                  (item) =>
+                    item.permissions.length === 0 || perm.hasAny(...item.permissions)
+                );
+                if (visibleItems.length === 0) return null;
+
+                return (
+                  <div key={group.title} className="space-y-[clamp(2px,0.4vw,4px)]">
+                    {!sidebarCompact && (
+                      <div className={classNames(
+                        "px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.4vw,3px)] text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold",
+                        theme.textDefault
+                      )}>
+                        {group.title}
+                      </div>
+                    )}
+
                     {visibleItems.map((item) => {
                       const active = isActive(item.path);
 
@@ -420,8 +535,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                           className={classNames(
                             "relative flex items-center rounded-md transition-all duration-200 group",
                             sidebarCompact
-                              ? "justify-center px-0 py-[clamp(7px,1vw,9px)]"
-                              : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(7px,1vw,9px)]",
+                              ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
+                              : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
                             active
                               ? `${theme.active} ${theme.borderActive}`
                               : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
@@ -444,28 +559,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                               {item.label}
                             </span>
                           )}
-
-                          {/* Notification dot for expanded sidebar */}
-                          {!sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
-                            unreadCount > 0 && (
-                              <span className="ml-auto h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
-                            )}
-
-                          {/* Notification dot for compact sidebar */}
-                          {sidebarCompact && (item.path === "/notifications" || item.path === "/notificationsPage") &&
-                            unreadCount > 0 && (
-                              <span className="absolute -top-0.5 -right-0.5 h-[clamp(6px,0.8vw,8px)] w-[clamp(6px,0.8vw,8px)] rounded-full bg-error shadow-[0_0_10px_rgba(186,26,26,0.9)] animate-pulse" />
-                            )}
                         </Link>
                       );
                     })}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-
-
 
           {/* Profile & Logout */}
           <div className={classNames(
@@ -611,14 +712,12 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Content */}
           <main
-            className="flex flex-1 flex-col relative font-sans w-full "
+            className="flex flex-1 flex-col relative font-sans w-full"
             style={{
               padding: 'clamp(4px,2vw,16px)',
               gap: 'clamp(4px,2.5vw,16px)',
             }}
           >
-       
-         
             {children}
           </main>
         </div>

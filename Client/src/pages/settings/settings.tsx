@@ -10,7 +10,7 @@ import {
   usePermission,
   useNavHeader,
   TabButton,
-  MessageBanner,
+  useToast,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
 import { AIConfiguration } from "./AIConfiguration";
@@ -22,7 +22,7 @@ export function SettingsPage() {
   const perm = usePermission();
   const canManageSystem = perm.has(PERMISSION_GROUPS.system.manage);
 
-  const [saved, setSaved] = useState("");
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database" | "background">("profile");
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
   const [databaseLoading, setDatabaseLoading] = useState(false);
@@ -133,7 +133,7 @@ export function SettingsPage() {
             useEnvironmentDefault: p.useEnvironmentDefault,
           })),
       });
-      setSaved(result.message || "AI settings saved successfully.");
+      addToast(result.message || "AI settings saved successfully.");
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Failed to save AI settings");
     } finally {
@@ -222,9 +222,7 @@ export function SettingsPage() {
 
 
 
-      {saved && (
-        <MessageBanner message={saved} onDismiss={() => setSaved("")} />
-      )}
+
 
       {/* Tab Navigation */}
       <div className="relative z-10 mb-5">
@@ -271,7 +269,7 @@ export function SettingsPage() {
         {activeTab === "profile" && (
           <ProfileSettings
             auth={auth}
-            onSave={() => { setSaved("Profile settings saved!"); setTimeout(() => setSaved(""), 2000); }}
+            onSave={() => { addToast("Profile settings saved!"); }}
             onLogout={logout}
           />
         )}

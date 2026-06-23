@@ -14,7 +14,7 @@ import {
   usePermission,
   StatCard,
   TabButton,
-  MessageBanner,
+  useToast,
 } from "../shared";
 import { RolesTable } from "./RolesTable";
 import { PermissionsTable } from "./PermissionsTable";
@@ -30,7 +30,7 @@ export function RolesPage() {
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"roles" | "permissions">("roles");
 
@@ -65,15 +65,15 @@ export function RolesPage() {
     try {
       if (roleModal.editRole) {
         await api.updateRole(auth.token, roleModal.editRole.id, payload);
-        setMessage("Role updated successfully.");
+        addToast("Role updated successfully.");
       } else {
         await api.createRole(auth.token, payload);
-        setMessage("Role created successfully.");
+        addToast("Role created successfully.");
       }
       setRoleModal({ open: false });
       await refreshAppData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
   };
 
@@ -82,15 +82,15 @@ export function RolesPage() {
     try {
       if (permissionModal.editPermission) {
         await api.updatePermission(auth.token, permissionModal.editPermission.id, payload);
-        setMessage("Permission updated successfully.");
+        addToast("Permission updated successfully.");
       } else {
         await api.createPermission(auth.token, payload);
-        setMessage("Permission created successfully.");
+        addToast("Permission created successfully.");
       }
       setPermissionModal({ open: false });
       await refreshAppData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
   };
 
@@ -102,11 +102,11 @@ export function RolesPage() {
       } else {
         await api.deletePermission(auth.token, deleteConfirm.id);
       }
-      setMessage(`${deleteConfirm.type === "role" ? "Role" : "Permission"} deleted.`);
+      addToast(`${deleteConfirm.type === "role" ? "Role" : "Permission"} deleted.`);
       setDeleteConfirm({ open: false, type: "role", id: "", name: "" });
       await refreshAppData();
     } catch (e) {
-      setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
+      addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
     }
   };
 
@@ -118,9 +118,7 @@ export function RolesPage() {
 
 
 
-      {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
-      )}
+
 
       {/* Stats Row */}
       <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">

@@ -1,7 +1,10 @@
 # responsive.md 
 # Development Tasks & Improvements
+
+
 ## clarification
-- departments specific milestones in prject creation workflow
+- reclarification departments specific milestones in prject creation workflow 
+- 
 
 ## 🚨 Immediate Fixes
 - [ ] Fix deptFormModal - select none to unassign head functionality

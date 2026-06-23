@@ -16,7 +16,7 @@ import {
   usePermission,
   StatCard,
   TabButton,
-  MessageBanner,
+  useToast,
 } from "../shared";
 import { NotificationInbox } from "./NotificationInbox";
 import { NotificationTemplates } from "./NotificationTemplates";
@@ -36,7 +36,7 @@ export function NotificationsPage() {
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
   const [rules, setRules] = useState<AlertRuleRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"inbox" | "templates" | "rules">("inbox");
 
@@ -96,7 +96,7 @@ export function NotificationsPage() {
   const handleMarkAllRead = async () => {
     if (!auth) return;
     await api.markAllNotificationsRead(auth.token);
-    setMessage("All notifications marked as read.");
+    addToast("All notifications marked as read.");
     loadData();
   };
 
@@ -109,7 +109,7 @@ export function NotificationsPage() {
   const handleDeleteNotification = async (id: string) => {
     if (!auth) return;
     await api.deleteNotification(auth.token, id);
-    setMessage("Notification deleted.");
+    addToast("Notification deleted.");
     loadData();
   };
 
@@ -117,17 +117,17 @@ export function NotificationsPage() {
     if (!auth) return;
     await api.broadcastNotification(auth.token, payload);
     setBroadcastOpen(false);
-    setMessage("Broadcast sent successfully.");
+    addToast("Broadcast sent successfully.");
   };
 
   const handleTemplateSubmit = async (payload: Record<string, unknown>) => {
     if (!auth) return;
     if (templateModal.editTemplate) {
       await api.updateNotificationTemplate(auth.token, templateModal.editTemplate.id, payload);
-      setMessage("Template updated.");
+      addToast("Template updated.");
     } else {
       await api.createNotificationTemplate(auth.token, payload);
-      setMessage("Template created.");
+      addToast("Template created.");
     }
     setTemplateModal({ open: false });
     loadData();
@@ -137,10 +137,10 @@ export function NotificationsPage() {
     if (!auth) return;
     if (ruleModal.editRule) {
       await api.updateAlertRule(auth.token, ruleModal.editRule.id, payload);
-      setMessage("Rule updated.");
+      addToast("Rule updated.");
     } else {
       await api.createAlertRule(auth.token, payload);
-      setMessage("Rule created.");
+      addToast("Rule created.");
     }
     setRuleModal({ open: false });
     loadData();
@@ -153,7 +153,7 @@ export function NotificationsPage() {
     } else {
       await api.deleteAlertRule(auth.token, deleteConfirm.id);
     }
-    setMessage(`${deleteConfirm.type === "template" ? "Template" : "Rule"} deleted.`);
+    addToast(`${deleteConfirm.type === "template" ? "Template" : "Rule"} deleted.`);
     setDeleteConfirm({ open: false, type: "template", id: "", name: "" });
     loadData();
   };
@@ -166,9 +166,7 @@ export function NotificationsPage() {
 
 
 
-      {message && (
-        <MessageBanner message={message} onDismiss={() => setMessage("")} />
-      )}
+
 
       {/* Stats Row */}
       <div className={`relative z-10 grid grid-cols-2 ${canConfigure ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3 mb-5`}>

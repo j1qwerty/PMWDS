@@ -13,9 +13,9 @@ import {
     DeptFormModal,
     PERMISSION_GROUPS,
     usePermission,
+    useToast,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { MessageBanner } from "../shared/MessageBanner";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
 import { DepartmentList } from "./DepartmentList";
 
@@ -38,7 +38,7 @@ export function DepartmentsPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [selectedOrgId, setSelectedOrgId] = useState("");
     const [selectedDeptId, setSelectedDeptId] = useState("");
-    const [message, setMessage] = useState("");
+    const { addToast } = useToast();
     const [loading, setLoading] = useState(true);
     const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -127,12 +127,12 @@ export function DepartmentsPage() {
         if (!auth) return;
         try {
             await api.deleteDepartment(auth.token, deleteConfirm.id);
-            setMessage("Department deleted successfully.");
+            addToast("Department deleted successfully.");
             setDeleteConfirm({ open: false, id: "", name: "" });
             if (selectedDeptId === deleteConfirm.id) setSelectedDeptId("");
             await refreshAppData();
         } catch (e) {
-            setMessage(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`);
+            addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
         }
     };
 
@@ -148,9 +148,9 @@ export function DepartmentsPage() {
             }
             setDeptModal({ open: false });
             await refreshAppData();
-            setMessage(deptModal.editDept ? "Department updated." : "Department created.");
+            addToast(deptModal.editDept ? "Department updated." : "Department created.");
         } catch (e) {
-            setMessage(`Error: ${e instanceof Error ? e.message : "Save failed"}`);
+            addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
         }
     };
 
@@ -162,9 +162,7 @@ export function DepartmentsPage() {
 
 
 
-            {message && (
-                <MessageBanner message={message} onDismiss={() => setMessage("")} />
-            )}
+
 
             {/* Main Layout */}
             <div className="grid grid-cols-[320px_1fr] gap-6 relative z-10">
