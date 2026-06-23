@@ -10,11 +10,9 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   StatCard,
-  TabButton,
   MessageBanner,
 } from "../shared";
 import { UsersTable } from "./UsersTable";
-import { UserSkillsPanel } from "./UserSkillsPanel"
 import { UserEditModal } from "./UserEditModal";
 import { UserFormModal } from "../NewProject/components/UserFormModal";
 
@@ -30,7 +28,6 @@ export function UsersPage() {
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"directory" | "manage">("directory");
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -114,55 +111,24 @@ export function UsersPage() {
         />
       </div>
 
-      {/* Tab Navigation */}
-      <div className="relative z-10 mb-5">
-        <div className="flex gap-2 border-b border-slate-200">
-          <TabButton
-            active={activeTab === "directory"}
-            onClick={() => setActiveTab("directory")}
-            icon="groups"
-            label="Directory"
-            count={users.length}
-          />
-          {canManageUsers && (
-            <TabButton
-              active={activeTab === "manage"}
-              onClick={() => setActiveTab("manage")}
-              icon="settings"
-              label="Manage"
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Tab Content */}
+      {/* Users Directory */}
       <div className="relative z-10">
-        {activeTab === "directory" && (
-          <UsersTable
-            users={users}
-            departments={departments}
-            organizations={organizations}
-            token={auth?.token ?? ""}
-            canUploadPictures={isAdmin}
-            showOrganizationFilter={isAdmin}
-            canManageUsers={canManageUsers}
-            onEditUser={setEditingUser}
-            onToggleUserActive={handleToggleUserActive}
-            onPictureUploaded={(updated) => {
-              setUsers(current => current.map(user => user.id === updated.id ? updated : user));
-              setMessage("Profile picture updated.");
-            }}
-          />
-        )}
-
-        {activeTab === "manage" && canManageUsers && (
-          <UserSkillsPanel 
-            users={users}
-            skills={skills}
-            onMessage={setMessage}
-            onUpdate={loadData}
-          />
-        )}
+        <UsersTable
+          users={users}
+          departments={departments}
+          organizations={organizations}
+          token={auth?.token ?? ""}
+          canUploadPictures={isAdmin}
+          showOrganizationFilter={isAdmin}
+          canManageUsers={canManageUsers}
+          onEditUser={setEditingUser}
+          onToggleUserActive={handleToggleUserActive}
+          onPictureUploaded={(updated) => {
+            setUsers(current => current.map(user => user.id === updated.id ? updated : user));
+            setMessage("Profile picture updated.");
+          }}
+          onUpdate={loadData}
+        />
       </div>
 
       {editingUser && auth && (
@@ -220,5 +186,3 @@ export function UsersPage() {
     </div>
   );
 }
-
-

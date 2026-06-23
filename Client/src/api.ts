@@ -420,6 +420,19 @@ export const api = {
       body: { skillId, proficiencyLevel, experienceMonths },
     });
   },
+  updateUserSkill(token: string, userId: string, skillId: string, proficiencyLevel: number, experienceMonths: number) {
+    return request<User>(`users/${userId}/skills/${skillId}`, {
+      token,
+      method: "PUT",
+      body: { proficiencyLevel, experienceMonths },
+    });
+  },
+  removeUserSkill(token: string, userId: string, skillId: string) {
+    return request<User>(`users/${userId}/skills/${skillId}`, {
+      token,
+      method: "DELETE",
+    });
+  },
   deactivateUser(token: string, id: string) {
     return request<void>(`users/${id}/deactivate`, { token, method: "PATCH" });
   },

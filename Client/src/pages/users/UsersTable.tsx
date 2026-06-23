@@ -16,6 +16,7 @@ interface UsersTableProps {
   onPictureUploaded: (user: User) => void;
   onEditUser?: (user: User) => void;
   onToggleUserActive?: (user: User) => void;
+  onUpdate?: () => void;
 }
 
 export function UsersTable({
@@ -29,6 +30,7 @@ export function UsersTable({
   onPictureUploaded,
   onEditUser,
   onToggleUserActive,
+  onUpdate,
 }: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrg, setSelectedOrg] = useState("");
@@ -48,6 +50,17 @@ export function UsersTable({
     const matchesOrg = !selectedOrg || userOrgId === selectedOrg;
     return matchesSearch && matchesDept && matchesOrg;
   });
+
+  const handleAvailabilityChange = async (userId: string, status: string) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+    try {
+      await api.updateAvailability(token, userId, status, user.availabilityPercentage || 100);
+      onUpdate?.();
+    } catch {
+      // silently fail; parent can handle refresh
+    }
+  };
 
   return (
     <GlassCard className="overflow-hidden">
@@ -162,7 +175,23 @@ export function UsersTable({
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-1.5">
-                      <StatusBadge status={user.availabilityStatus || "Available"} />
+                      <div className="relative inline-block">
+                        <select
+                          value={user.availabilityStatus || "Available"}
+                          onChange={(e) => handleAvailabilityChange(user.id, e.target.value)}
+                          className="appearance-none w-full min-w-[110px] px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] font-medium outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
+                        >
+                          <option>Available</option>
+                          <option>Busy</option>
+                          <option>Away</option>
+                          <option>In Meeting</option>
+                          <option>Deep Work</option>
+                          <option>Offline</option>
+                        </select>
+                        <span className="material-symbols-outlined absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">
+                          expand_more
+                        </span>
+                      </div>
                       <AccountStatusBadge isActive={user.isActive !== false} />
                     </div>
                   </td>
@@ -235,25 +264,7 @@ export function UsersTable({
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const statusMap: Record<string, { bg: string; text: string; dot: string }> = {
-    Available: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-    Busy: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
-    Away: { bg: "bg-slate-50", text: "text-slate-700", dot: "bg-slate-500" },
-    "In Meeting": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
-    Offline: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
-    "Deep Work": { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-500" },
-  };
 
-  const colors = statusMap[status] || statusMap.Available;
-
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${colors.bg} ${colors.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`}></span>
-      {status}
-    </span>
-  );
-}
 
 function AccountStatusBadge({ isActive }: { isActive: boolean }) {
   return (

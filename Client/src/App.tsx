@@ -10,10 +10,7 @@ import { PERMISSION_GROUPS, Permission } from "./permissions";
 
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
-import { ProjectsPage } from "./pages/projects/projects";
 import { ProjectsKPage } from "./pages/projectsK/projectsK";
-import { MilestonesPage } from "./pages/milestones/MilestonesPage";
-import { TasksPage } from "./pages/tasks/tasks";
 import { NotificationsPage } from "./pages/notifications/notifications";
 
 // Project-nested views
@@ -36,7 +33,6 @@ import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { RolesPage } from "./pages/roles/RolesPage";
 import { ActivityLogsPage } from ".//pages/activity/ActivityLogsPage";
 import { SettingsPage } from "./pages/settings/settings";
-import { TestPage } from "./pages/temp/TestPage";
 import { LoginPage } from "./pages/login/login";
 import { NewProjectPage } from "./pages/NewProject/NewProjectPage";
 
@@ -51,10 +47,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 const ROUTE_GUARDS = {
   newProject: PERMISSION_GROUPS.project.view,
-  projects: PERMISSION_GROUPS.project.view,
   projectsK: PERMISSION_GROUPS.project.view,
-  milestonesPage: PERMISSION_GROUPS.milestone.view,
-  tasks: PERMISSION_GROUPS.task.view,
   notificationsPage: PERMISSION_GROUPS.notification.view,
   organizationStructure: PERMISSION_GROUPS.organization.view,
   departmentsPage: PERMISSION_GROUPS.department.view,
@@ -91,20 +84,8 @@ function AppRoutes() {
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
                 <Route
-                  path="/projects"
-                  element={<Guarded permission={ROUTE_GUARDS.projects}><ProjectsPage /></Guarded>}
-                />
-                <Route
                   path="/projectsK"
                   element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsKPage /></Guarded>}
-                />
-                <Route
-                  path="/milestonesPage"
-                  element={<Guarded permission={ROUTE_GUARDS.milestonesPage}><MilestonesPage /></Guarded>}
-                />
-                <Route
-                  path="/tasks"
-                  element={<Guarded permission={ROUTE_GUARDS.tasks}><TasksPage /></Guarded>}
                 />
                 <Route
                   path="/notificationsPage"
@@ -154,7 +135,6 @@ function AppRoutes() {
                   path="/activity-logs"
                   element={<Guarded permission={ROUTE_GUARDS.activityLogs}><ActivityLogsPage /></Guarded>}
                 />
-                <Route path="/test-page" element={<TestPage />} />
                 <Route
                   path="/settings"
                   element={<Guarded permission={ROUTE_GUARDS.settings}><SettingsPage /></Guarded>}
