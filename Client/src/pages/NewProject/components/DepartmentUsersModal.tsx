@@ -99,8 +99,9 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={onCancel}>
-      <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/20" onClick={onCancel}>
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-indigo-600 text-2xl">group</span>
@@ -150,9 +151,9 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
                       {(() => {
                         const names = getOtherDeptNames(u);
                         return names.length > 0 ? (
-                          <span className="text-xs text-slate-400">{names.join(", ")}</span>
+                          <span className="text-xs text-slate-400 ">{names.join(", ")}</span>
                         ) : (
-                          <span className="text-xs text-slate-300 italic">No other departments</span>
+                          <span className="text-xs text-slate-300 italic"></span>
                         );
                       })()}
                     </div>
@@ -217,6 +218,7 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
           </button>
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -25,7 +25,7 @@ internal static class MilestonesSeeder
             if (await context.Milestones.AnyAsync(m => m.ProjectId == project.Id && m.Name == spec.Name, ct))
                 continue;
 
-            var milestone = Milestone.Create(project.Id, spec.Name, spec.Description, spec.Date, spec.Order, spec.IsActive);
+            var milestone = Milestone.Create(project.Id, spec.Name, spec.Description, spec.Date, spec.Order, spec.IsActive, project.DepartmentId);
             milestone.SetCreatedBy(SeedConstants.SeedUser);
             milestone.UpdateProgress(spec.Progress);
             await context.Milestones.AddAsync(milestone, ct);

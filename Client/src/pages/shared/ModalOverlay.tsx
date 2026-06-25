@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 interface ModalOverlayProps {
   children: ReactNode;
@@ -17,26 +17,33 @@ export function ModalOverlay({
   contentClassName = "",
   widthClassName = "max-w-2xl",
 }: ModalOverlayProps) {
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   return (
     <div
-      className="fixed inset-0 bg-black/35 backdrop-blur-md flex items-center justify-center z-1000 animate-[fadeIn_0.2s_ease] p-4"
+      className="fixed inset-0 bg-black/35 backdrop-blur-md z-1000 animate-[fadeIn_0.2s_ease] overflow-y-auto overscroll-contain"
       onClick={closeOnBackdrop ? onClose : undefined}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${widthClassName} animate-[slideUp_0.3s_ease] flex justify-center`}
-      >
-        {showCloseButton && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close modal"
-            className="absolute -top-2 -right-2 z-10 w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
-          >
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
-        )}
-        <div className={`w-full ${contentClassName}`}>{children}</div>
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`relative w-full ${widthClassName} animate-[slideUp_0.3s_ease] flex justify-center`}
+        >
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close modal"
+              className="absolute -top-2 -right-2 z-10 w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+          )}
+          <div className={`w-full ${contentClassName}`}>{children}</div>
+        </div>
       </div>
     </div>
   );

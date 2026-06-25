@@ -20,6 +20,7 @@
 - [ ] Hide organization-related info from director and other users (all elements)
 - [ ] Test page and pages API restricted to superadmin only (clean up if unnecessary)
 - [ ] Hide manual activity creation for director
+- [ ] deactivated users do not show up anywhere on deactivation except the users page
 
 ### Modals & Overlays
 - [ ] Refactor all modals and overlays for consistency

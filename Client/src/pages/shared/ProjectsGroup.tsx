@@ -67,6 +67,10 @@ function getInitials(name: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+function isNewProject(project: Project): boolean {
+  return (project.totalTasks ?? 0) === 0;
+}
+
 export function ProjectsGroup({
   theme,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -117,7 +121,12 @@ export function ProjectsGroup({
         .map((d) => d.id);
       filtered = filtered.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
     }
-    return filtered;
+    return [...filtered].sort((a, b) => {
+      const aNew = isNewProject(a);
+      const bNew = isNewProject(b);
+      if (aNew !== bNew) return aNew ? -1 : 1;
+      return new Date(b.createdDate ?? 0).getTime() - new Date(a.createdDate ?? 0).getTime();
+    });
   }, [data.projects, data.departments, shouldFilterByOrg, userOrganizationId, perm]);
 
   const DISPLAY_LIMIT = 10;
@@ -168,6 +177,7 @@ export function ProjectsGroup({
       <div className="flex flex-col items-center gap-1 border-t border-surface-variant/60 pt-2">
         {visibleProjects.map((project) => {
           const active = isChildActive(project.id);
+          const isNew = isNewProject(project);
           return (
             <button
               key={project.id}
@@ -178,6 +188,7 @@ export function ProjectsGroup({
                 active
                   ? `${theme.initialActiveBg} ${theme.initialActiveText} ring-2 ring-violet-300`
                   : `${theme.initialBg} ${theme.initialText}`
+              } ${isNew ? "ring-2 ring-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.45)]" : ""
               }`}
             >
               {getInitials(project.name)}
@@ -212,6 +223,7 @@ export function ProjectsGroup({
           const childTasksActive = isChildExactActive(project.id, "/tasks");
           const childMilestonesActive = isChildExactActive(project.id, "/milestones");
           const status = getStatusColor(project.status);
+          const isNew = isNewProject(project);
           return (
             <div key={project.id} className="flex flex-col">
               <button
@@ -221,7 +233,7 @@ export function ProjectsGroup({
                   parentActive
                     ? `${theme.active} ${theme.borderActive}`
                     : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-                }`}
+                } ${isNew ? "bg-emerald-50/80 ring-1 ring-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.28)]" : ""}`}
                 
                 title={project.name}
               >
@@ -241,6 +253,11 @@ export function ProjectsGroup({
                 <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em] truncate flex-1 text-left">
                   {project.name}
                 </span>
+                {isNew && (
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                    New
+                  </span>
+                )}
                 
                 <HiOutlineChevronRight
                   className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${

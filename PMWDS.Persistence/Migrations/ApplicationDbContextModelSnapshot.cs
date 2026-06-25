@@ -1099,6 +1099,9 @@ namespace PMWDS.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("TEXT");
 
@@ -1148,6 +1151,8 @@ namespace PMWDS.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DueDate");
+
+                    b.HasIndex("DepartmentId");
 
                     b.HasIndex("ProjectId");
 
@@ -2927,11 +2932,18 @@ namespace PMWDS.Persistence.Migrations
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Milestone", b =>
                 {
+                    b.HasOne("PMWDS.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PMWDS.Domain.Entities.Project", "Project")
                         .WithMany("Milestones")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Department");
 
                     b.Navigation("Project");
                 });
@@ -3214,6 +3226,8 @@ namespace PMWDS.Persistence.Migrations
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Milestone", b =>
                 {
+                    b.Navigation("Department");
+
                     b.Navigation("Tasks");
                 });
 

@@ -44,6 +44,7 @@ export function MilestoneFormModal({ open, projectId, initialData, onSubmit, onC
       description: form.description,
       dueDate: form.dueDate,
       isCritical: form.isCritical,
+      departmentId: initialData?.departmentId ?? null,
       projectId,
     };
     if (!hasTasks) payload.progressPercentage = form.progressPercentage;

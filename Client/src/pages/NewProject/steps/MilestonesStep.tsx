@@ -3,6 +3,7 @@ import { GlassCard } from "../../shared";
 
 interface MilestoneEntry {
   id: string;
+  departmentId?: string;
   name: string;
   description: string;
   dueDate: string;
@@ -29,7 +30,7 @@ export function MilestonesStep({ milestones, onChange }: MilestonesStepProps) {
     if (!form.name.trim() || !form.dueDate.trim()) return;
     if (editIdx !== null) {
       const updated = [...milestones];
-      updated[editIdx] = { ...form, id: updated[editIdx].id };
+      updated[editIdx] = { ...updated[editIdx], ...form };
       onChange(updated);
     } else {
       onChange([...milestones, { ...form, id: crypto.randomUUID?.() || Math.random().toString(36).slice(2) }]);

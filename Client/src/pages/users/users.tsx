@@ -5,6 +5,7 @@ import type { Department, OrganizationRecord, SkillRecord, User } from "../../ty
 import {
   AnimatedBackground,
   DeleteConfirmationModal,
+  ModalOverlay,
   useNavHeader,
   PageSkeleton,
   PERMISSION_GROUPS,
@@ -160,7 +161,7 @@ export function UsersPage() {
       )}
 
       {deletingUser && auth && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setDeletingUser(null)}>
           <DeleteConfirmationModal
             name={deletingUser.fullName}
             warning="The user remains in the database and can be audited later."
@@ -177,7 +178,7 @@ export function UsersPage() {
             }}
             onCancel={() => setDeletingUser(null)}
           />
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

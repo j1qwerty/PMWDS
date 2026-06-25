@@ -109,6 +109,23 @@ public class PagesController : BaseApiController
         var organizationIds = await _scope.GetOrganizationIdsAsync(ct);
         var projectIds = await projectsQuery.Select(p => p.Id).ToListAsync(ct);
         var scopedUserIds = await usersQuery.Select(u => u.Id).ToListAsync(ct);
+        var milestoneQuery = _db.Milestones.AsNoTracking()
+            .Include(m => m.Tasks)
+            .Include(m => m.Department)
+            .Where(m => projectIds.Contains(m.ProjectId));
+        List<Guid>? visibleMilestoneIds = null;
+        if (_scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin)
+        {
+            var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
+            milestoneQuery = milestoneQuery.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
+            visibleMilestoneIds = await milestoneQuery.Select(m => m.Id).ToListAsync(ct);
+        }
+
+        var taskQuery = BuildTaskQuery(projectIds);
+        if (visibleMilestoneIds != null)
+        {
+            taskQuery = taskQuery.Where(t => t.MilestoneId.HasValue && visibleMilestoneIds.Contains(t.MilestoneId.Value));
+        }
 
         var organizations = await GetOrganizationsAsync(organizationsQuery, pagination, ct);
         var departments = await ToPageAsync(
@@ -126,20 +143,17 @@ public class PagesController : BaseApiController
             ct);
         var projects = await GetProjectsAsync(projectsQuery, pagination, ct);
         var milestones = await ToPageAsync(
-            _db.Milestones.AsNoTracking()
-                .Include(m => m.Tasks)
-                .Where(m => projectIds.Contains(m.ProjectId))
-                .OrderBy(m => m.DueDate).ThenBy(m => m.Order),
+            milestoneQuery.OrderBy(m => m.DueDate).ThenBy(m => m.Order),
             pagination,
             MilestoneDto.FromEntity,
             ct);
         var tasks = await ToPageAsync(
-            BuildTaskQuery(projectIds).Where(t => t.ParentTaskId == null).OrderBy(t => t.DueDate),
+            taskQuery.Where(t => t.ParentTaskId == null).OrderBy(t => t.DueDate),
             pagination,
             TaskDto.FromEntity,
             ct);
         var subtasks = await ToPageAsync(
-            BuildTaskQuery(projectIds).Where(t => t.ParentTaskId != null).OrderBy(t => t.DueDate),
+            taskQuery.Where(t => t.ParentTaskId != null).OrderBy(t => t.DueDate),
             pagination,
             TaskDto.FromEntity,
             ct);

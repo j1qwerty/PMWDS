@@ -12,11 +12,13 @@ import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
 import { MilestonesStep } from "./steps/MilestonesStep";
+import { MilestoneDepartmentsStep } from "./steps/MilestoneDepartmentsStep";
 import { TasksStep } from "./steps/TasksStep";
 import { UsersStep } from "./steps/UsersStep";
 
 interface MilestoneEntry {
   id: string;
+  departmentId?: string;
   name: string;
   description: string;
   dueDate: string;
@@ -41,11 +43,20 @@ interface StepConfig {
   icon: string;
 }
 
-const STEPS: StepConfig[] = [
+const LEGACY_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "departments", label: "Departments", icon: "groups" },
   { key: "users", label: "Users", icon: "person" },
   { key: "milestones", label: "Milestones", icon: "flag" },
+  { key: "tasks", label: "Tasks", icon: "task_alt" },
+];
+
+const EXECUTIVE_STEPS: StepConfig[] = [
+  { key: "details", label: "Project Details", icon: "folder" },
+  { key: "milestones", label: "Milestones", icon: "flag" },
+  { key: "milestoneDepartments", label: "Assign Departments", icon: "account_tree" },
+  { key: "departments", label: "Departments", icon: "groups" },
+  { key: "users", label: "Users", icon: "person" },
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
@@ -76,6 +87,14 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 4: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
+  const isSuperAdmin = auth?.roles?.includes("SuperAdmin") ?? false;
+  const isDirector = auth?.roles?.includes("Director") ?? false;
+  const usesExecutiveFlow = isSuperAdmin || isDirector;
+  const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
+  const currentStepKey = steps[currentStep]?.key ?? "details";
+  const earlyFinishStepIndex = steps.findIndex((step) => step.key === "milestoneDepartments");
+  const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
+
   const handleDetailsChange = (field: string, value: string | number) => {
     switch (field) {
       case "name": setName(value as string); break;
@@ -88,12 +107,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   };
 
   const isStepComplete = (step: number): boolean => {
-    switch (step) {
-      case 0: return name.trim().length > 0 && startDate.trim().length > 0 && endDate.trim().length > 0;
-      case 1: return selectedDepartmentIds.length > 0;
-      case 2: return true;
-      case 3: return true;
-      case 4: return true;
+    switch (steps[step]?.key) {
+      case "details": return name.trim().length > 0 && startDate.trim().length > 0 && endDate.trim().length > 0;
+      case "departments": return selectedDepartmentIds.length > 0;
+      case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
+      case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
+      case "users": return true;
+      case "tasks": return true;
       default: return true;
     }
   };
@@ -102,7 +122,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const handleNext = () => {
     if (!canProceed) return;
-    if (currentStep < STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep((s) => s + 1);
     }
   };
@@ -113,14 +133,23 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const showSkip = currentStep === 3 && milestones.length === 0;
+  const showSkip = !usesExecutiveFlow && currentStepKey === "milestones" && milestones.length === 0;
 
   const handleSkip = () => {
-    setCurrentStep(4);
+    const tasksStepIndex = steps.findIndex((step) => step.key === "tasks");
+    if (tasksStepIndex >= 0) setCurrentStep(tasksStepIndex);
   };
 
   const handleFinish = async () => {
     if (!auth) return;
+    const assignedDepartmentIds = usesExecutiveFlow
+      ? Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]))
+      : selectedDepartmentIds;
+    if (assignedDepartmentIds.length === 0) {
+      addToast("Assign at least one department before finishing.", "error");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const sanitized = name.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase().slice(0, 20);
@@ -138,8 +167,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         plannedEndDate: endDate || "",
         plannedBudget: budget,
         organizationId: "",
-        departmentId: selectedDepartmentIds[0] || "",
-        departmentIds: selectedDepartmentIds,
+        departmentId: assignedDepartmentIds[0] || "",
+        departmentIds: assignedDepartmentIds,
         projectManagerId: "",
         priority,
       });
@@ -154,6 +183,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           description: ms.description || "",
           dueDate: ms.dueDate || "",
           isCritical: ms.isCritical,
+          departmentId: ms.departmentId || null,
           projectId,
         });
         createdMilestoneIds[ms.id] = created.id;
@@ -184,7 +214,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       await refresh();
       addToast("Project created successfully!");
       onClose?.();
-      navigate(`/projects/${projectId}/tasks`);
+      navigate(tasks.length > 0 ? `/projects/${projectId}/tasks` : `/projects/${projectId}/milestones`);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to create project", "error");
     } finally {
@@ -201,8 +231,11 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   }, [data.departments, shouldFilterByOrg, userOrganizationId]);
 
   const departmentUsers = useMemo(() => {
-    if (selectedDepartmentIds.length === 0) return [];
-    const deptSet = new Set(selectedDepartmentIds);
+    const effectiveDepartmentIds = usesExecutiveFlow
+      ? milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]
+      : selectedDepartmentIds;
+    if (effectiveDepartmentIds.length === 0) return [];
+    const deptSet = new Set(effectiveDepartmentIds);
     const seen = new Set<string>();
     return data.users.filter((u) => {
       if (seen.has(u.id)) return false;
@@ -213,7 +246,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         u.departments?.some((d) => deptSet.has(d.departmentId));
       return belongsToDept;
     });
-  }, [selectedDepartmentIds, data.users]);
+  }, [selectedDepartmentIds, milestones, data.users, usesExecutiveFlow]);
 
   return (
     <div className="max-w-full mx-auto ">
@@ -221,7 +254,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         {/* Steps indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-0">
-            {STEPS.map((step, idx) => {
+            {steps.map((step, idx) => {
               const completed = idx < currentStep;
               const active = idx === currentStep;
               const pending = idx > currentStep;
@@ -276,7 +309,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                   </div>
 
                   {/* Connector line */}
-                  {idx < STEPS.length - 1 && (
+                  {idx < steps.length - 1 && (
                     <div className="flex-1 h-0.5 mx-3 mt-[-1.5rem] rounded-full relative">
                       <div className={`
                         absolute inset-0 rounded-full transition-all duration-500
@@ -299,18 +332,18 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-indigo-600 text-xl">
-              {STEPS[currentStep].icon}
+              {steps[currentStep].icon}
             </span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{STEPS[currentStep].label}</h2>
-            <p className="text-xs text-slate-400">Step {currentStep + 1} of {STEPS.length}</p>
+            <h2 className="text-lg font-bold text-slate-900">{steps[currentStep].label}</h2>
+            <p className="text-xs text-slate-400">Step {currentStep + 1} of {steps.length}</p>
           </div>
         </div>
 
         {/* Step body */}
         <div className="min-h-[300px]">
-          {currentStep === 0 && (
+          {currentStepKey === "details" && (
             <ProjectDetailsStep
               name={name}
               description={description}
@@ -321,7 +354,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onChange={handleDetailsChange}
             />
           )}
-          {currentStep === 1 && (
+          {currentStepKey === "departments" && (
             <DepartmentsStep
               selectedDepartmentIds={selectedDepartmentIds}
               onDepartmentsChange={setSelectedDepartmentIds}
@@ -331,7 +364,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onRefresh={refresh}
             />
           )}
-          {currentStep === 2 && (
+          {currentStepKey === "users" && (
             <UsersStep
               selectedDepartmentIds={selectedDepartmentIds}
               departments={data.departments}
@@ -340,13 +373,20 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onRefresh={refresh}
             />
           )}
-          {currentStep === 3 && (
+          {currentStepKey === "milestones" && (
             <MilestonesStep
               milestones={milestones}
               onChange={setMilestones}
             />
           )}
-          {currentStep === 4 && (
+          {currentStepKey === "milestoneDepartments" && (
+            <MilestoneDepartmentsStep
+              milestones={milestones}
+              departments={scopedDepartments}
+              onChange={setMilestones}
+            />
+          )}
+          {currentStepKey === "tasks" && (
             <TasksStep
               milestones={milestones}
               tasks={tasks}
@@ -380,21 +420,11 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 Skip
               </button>
             )}
-            {currentStep < STEPS.length - 1 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canProceed}
-                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-                <span className="material-symbols-outlined text-base">arrow_forward</span>
-              </button>
-            ) : (
+            {canEarlyFinish && (
               <button
                 type="button"
                 onClick={handleFinish}
-                disabled={submitting}
+                disabled={submitting || !canProceed}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
@@ -413,6 +443,39 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 )}
               </button>
             )}
+            {currentStep < steps.length - 1 && !(canEarlyFinish && !isSuperAdmin) ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+                <span className="material-symbols-outlined text-base">arrow_forward</span>
+              </button>
+            ) : !canEarlyFinish ? (
+              <button
+                type="button"
+                onClick={handleFinish}
+                disabled={submitting || !canProceed}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    Finish
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

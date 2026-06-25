@@ -28,7 +28,7 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200">
+    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
           <span className="material-symbols-outlined text-emerald-600 text-2xl">add_business</span>

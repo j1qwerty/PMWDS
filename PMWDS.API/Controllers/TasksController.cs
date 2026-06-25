@@ -53,6 +53,20 @@ public class TasksController : BaseApiController
         var tasks = (await _uow.Tasks.GetByProjectAsync(projectId, ct))
             .OrderByDescending(task => task.CreatedDate)
             .ToList();
+        if (_scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin)
+        {
+            var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
+            var visibleMilestoneIds = await _db.Milestones
+                .Where(milestone =>
+                    milestone.ProjectId == projectId &&
+                    milestone.DepartmentId.HasValue &&
+                    departmentIds.Contains(milestone.DepartmentId.Value))
+                .Select(milestone => milestone.Id)
+                .ToListAsync(ct);
+            tasks = tasks
+                .Where(task => task.MilestoneId.HasValue && visibleMilestoneIds.Contains(task.MilestoneId.Value))
+                .ToList();
+        }
         var items = tasks
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)

@@ -268,27 +268,31 @@ export function DepartmentsStep({
 
       {/* Create department modal */}
       {deptModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setDeptModalOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()}>
-            <DeptFormModal
-              organizations={organizations}
-              users={users}
-              selectedOrgId={selectedOrgId}
-              onSubmit={handleCreateDept}
-              onCancel={() => setDeptModalOpen(false)}
-            />
+        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/20" onClick={() => setDeptModalOpen(false)}>
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div onClick={(e) => e.stopPropagation()}>
+              <DeptFormModal
+                organizations={organizations}
+                users={users}
+                selectedOrgId={selectedOrgId}
+                onSubmit={handleCreateDept}
+                onCancel={() => setDeptModalOpen(false)}
+              />
+            </div>
           </div>
         </div>
       )}
 
       {/* Create organization modal */}
       {orgModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setOrgModalOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()}>
-            <OrgFormModal
-              onSubmit={handleCreateOrg}
-              onCancel={() => setOrgModalOpen(false)}
-            />
+        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/20" onClick={() => setOrgModalOpen(false)}>
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div onClick={(e) => e.stopPropagation()}>
+              <OrgFormModal
+                onSubmit={handleCreateOrg}
+                onCancel={() => setOrgModalOpen(false)}
+              />
+            </div>
           </div>
         </div>
       )}
