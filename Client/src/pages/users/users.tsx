@@ -117,6 +117,7 @@ export function UsersPage() {
           token={auth?.token ?? ""}
           canUploadPictures={isAdmin}
           showOrganizationFilter={isAdmin}
+          showOrganizationName={isAdmin}
           canManageUsers={canManageUsers}
           onEditUser={setEditingUser}
           onToggleUserActive={handleToggleUserActive}

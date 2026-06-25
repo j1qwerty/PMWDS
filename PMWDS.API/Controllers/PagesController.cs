@@ -252,6 +252,8 @@ public class PagesController : BaseApiController
     {
         var total = await query.CountAsync(ct);
         var projects = await query.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).ToListAsync(ct);
+        var projectIds = projects.Select(p => p.Id).ToList();
+
         var managerIds = projects
             .Select(p => p.ProjectManagerId)
             .Where(id => Guid.TryParse(id, out _))
@@ -261,9 +263,69 @@ public class PagesController : BaseApiController
         var managerNames = await _db.Users.AsNoTracking()
             .Where(u => managerIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id.ToString(), u => u.FullName, ct);
-        var items = projects
-            .Select(p => ProjectDto.FromEntity(p, managerNames.GetValueOrDefault(p.ProjectManagerId)))
-            .ToList();
+
+        var isDepartmentHead = _scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin;
+        var isDirectorOrSuperAdmin = _scope.IsDirector || _scope.IsSuperAdmin;
+
+        Dictionary<Guid, List<(Guid DepartmentId, bool HasTasks)>>? projectDeptTaskInfo = null;
+        if (isDepartmentHead || isDirectorOrSuperAdmin)
+        {
+            var milestoneInfo = await _db.Milestones.AsNoTracking()
+                .Where(m => projectIds.Contains(m.ProjectId) && m.DepartmentId != null)
+                .Select(m => new {
+                    m.ProjectId,
+                    DepartmentId = m.DepartmentId!.Value,
+                    TaskCount = m.Tasks.Count
+                })
+                .ToListAsync(ct);
+
+            projectDeptTaskInfo = milestoneInfo
+                .GroupBy(m => m.ProjectId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.GroupBy(m => m.DepartmentId)
+                          .Select(deptGroup => (deptGroup.Key, deptGroup.Any(m => m.TaskCount > 0)))
+                          .ToList()
+                );
+        }
+
+        var userDepartmentIds = isDepartmentHead
+            ? await _scope.GetDepartmentIdsAsync(ct)
+            : null;
+
+        var items = projects.Select(p =>
+        {
+            var dto = ProjectDto.FromEntity(p, managerNames.GetValueOrDefault(p.ProjectManagerId));
+
+            if (isDepartmentHead && userDepartmentIds != null && projectDeptTaskInfo != null)
+            {
+                if (projectDeptTaskInfo.TryGetValue(p.Id, out var deptMilestones))
+                {
+                    var userDeptMilestones = deptMilestones
+                        .Where(m => userDepartmentIds.Contains(m.DepartmentId))
+                        .ToList();
+
+                    if (userDeptMilestones.Count > 0)
+                    {
+                        var anyUserDeptHasTasks = userDeptMilestones.Any(m => m.HasTasks);
+                        return dto with { IsNewForCurrentUser = !anyUserDeptHasTasks };
+                    }
+                }
+                return dto with { IsNewForCurrentUser = (p.Tasks?.Count ?? 0) == 0 };
+            }
+
+            if (isDirectorOrSuperAdmin && projectDeptTaskInfo != null)
+            {
+                if (projectDeptTaskInfo.TryGetValue(p.Id, out var deptMilestones) && deptMilestones.Count > 0)
+                {
+                    var allDeptsHaveTasks = deptMilestones.All(m => m.HasTasks);
+                    return dto with { IsNewForCurrentUser = !allDeptsHaveTasks };
+                }
+                return dto with { IsNewForCurrentUser = (p.Tasks?.Count ?? 0) == 0 };
+            }
+
+            return dto with { IsNewForCurrentUser = (p.Tasks?.Count ?? 0) == 0 };
+        }).ToList();
 
         return PaginatedResponse<ProjectDto>.Create(items, pagination, total);
     }

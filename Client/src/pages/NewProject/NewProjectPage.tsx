@@ -76,7 +76,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const [priority, setPriority] = useState("Medium");
   const [budget, setBudget] = useState(0);
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
 
   // Step 2: Departments
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
@@ -248,13 +248,15 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     });
   }, [selectedDepartmentIds, milestones, data.users, usesExecutiveFlow]);
 
+  const visibleSteps = usesExecutiveFlow && !isSuperAdmin ? steps.slice(0, earlyFinishStepIndex + 1) : steps;
+
   return (
     <div className="max-w-full mx-auto ">
       <div className=" bg-white shadow-md rounded-2xl p-6 md:p-8">
         {/* Steps indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-0">
-            {steps.map((step, idx) => {
+            {visibleSteps.map((step, idx) => {
               const completed = idx < currentStep;
               const active = idx === currentStep;
               const pending = idx > currentStep;
@@ -309,7 +311,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                   </div>
 
                   {/* Connector line */}
-                  {idx < steps.length - 1 && (
+                  {idx < visibleSteps.length - 1 && (
                     <div className="flex-1 h-0.5 mx-3 mt-[-1.5rem] rounded-full relative">
                       <div className={`
                         absolute inset-0 rounded-full transition-all duration-500
@@ -337,7 +339,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">{steps[currentStep].label}</h2>
-            <p className="text-xs text-slate-400">Step {currentStep + 1} of {steps.length}</p>
+            <p className="text-xs text-slate-400">Step {currentStep + 1} of {visibleSteps.length}</p>
           </div>
         </div>
 

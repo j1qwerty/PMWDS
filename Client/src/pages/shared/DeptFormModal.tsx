@@ -84,7 +84,7 @@ export function DeptFormModal({
           />
         )}
 
-        {/* Parent department is intentionally hidden. Submit null so departments remain top-level. */}
+        {/* Submit null so departments remain top-level. */}
         <div>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Department Head</label>
           <select

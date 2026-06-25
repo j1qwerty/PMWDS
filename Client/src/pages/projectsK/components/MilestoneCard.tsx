@@ -74,6 +74,11 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           
+          {milestone.departmentName && (
+            <span className="text-[10px] text-slate-400">
+              {milestone.departmentName}
+            </span>
+          )}
           {milestone.dueDate && (
             <span className="text-[10px] text-slate-400">
               Due {new Date(milestone.dueDate).toLocaleDateString()}

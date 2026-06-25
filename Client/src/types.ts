@@ -159,6 +159,7 @@ export interface Project {
   totalMilestones?: number;
   completedMilestones?: number;
   createdDate: string;
+  isNewForCurrentUser?: boolean;
 }
 
 export interface ProjectDepartmentAssignment {

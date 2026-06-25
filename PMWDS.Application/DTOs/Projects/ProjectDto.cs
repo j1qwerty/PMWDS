@@ -33,8 +33,9 @@ public record ProjectDto(
  int CompletedTasks,
  int OverdueTasks,
  int TotalMilestones,
- int CompletedMilestones,
- DateTime CreatedDate)
+  int CompletedMilestones,
+  DateTime CreatedDate,
+  bool IsNewForCurrentUser = true)
 {
     public static ProjectDto FromEntity(Project p, string? projectManagerName = null)
     => new(

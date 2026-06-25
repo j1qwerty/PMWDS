@@ -10,6 +10,9 @@
 - [ ] Fix deptFormModal - select none to unassign head functionality
 - [ ] Remove any UI elements using pagedata API, use manual API instead
 - [ ] Role management for director - manage specific permissions and roles
+- [ ] new project status for each head according to any tasks under those milestones 
+- [ ] new project milestones - assign multiple departments to a single milestones
+- [ ] multiple task creation , idempotency for all modals creation and edit
 
 ## 🔴 High Priority
 
@@ -78,5 +81,5 @@
 
 ### Code Organization
 - [ ] Rearrange file locations and rename components logically
-- [ ] Remove old/unused components and pages
+- [x] Remove old/unused components and pages
 ```

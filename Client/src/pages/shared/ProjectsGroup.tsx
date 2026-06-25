@@ -68,6 +68,9 @@ function getInitials(name: string): string {
 }
 
 function isNewProject(project: Project): boolean {
+  if (project.isNewForCurrentUser !== undefined) {
+    return project.isNewForCurrentUser;
+  }
   return (project.totalTasks ?? 0) === 0;
 }
 

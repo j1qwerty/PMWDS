@@ -16,6 +16,7 @@ import {
   getStatusColor,
   BgRenderer,
 } from "../shared";
+import { useUserOrganization } from "../shared/useUserOrganization";
 import TaskSubtaskBoard, { allBoards } from "../shared/dash/TaskSubtaskBoard";
 import { MilestoneDetailModal, MilestoneFormModal, ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
@@ -44,7 +45,8 @@ export function ProjectTasksPage() {
   const { auth } = useAuth();
   const { addToast } = useToast();
   const perm = usePermission();
-  const canManageMilestones = perm.has(PERMISSION_GROUPS.milestone.manage);
+  const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
+  const canManageMilestones = perm.isSuperAdmin || perm.roles.includes("Director");
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -58,6 +60,7 @@ export function ProjectTasksPage() {
   const [milestoneModal, setMilestoneModal] = useState<{ open: boolean; edit?: Milestone }>({
     open: false,
   });
+  const [milestoneError, setMilestoneError] = useState("");
   const [viewProject, setViewProject] = useState(false);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
@@ -87,7 +90,7 @@ export function ProjectTasksPage() {
     if (canManageMilestones) {
       actions.push({
         label: "New milestone",
-        onClick: () => setMilestoneModal({ open: true }),
+        onClick: () => { setMilestoneModal({ open: true }); setMilestoneError(""); },
         icon: "flag",
       });
     }
@@ -191,6 +194,7 @@ export function ProjectTasksPage() {
 
   const handleMilestoneSubmit = async (form: Record<string, unknown>) => {
     if (!auth || !ws.project) return;
+    setMilestoneError("");
     try {
       if (milestoneModal.edit) {
         await api.updateMilestone(auth.token, milestoneModal.edit.id, form);
@@ -202,7 +206,7 @@ export function ProjectTasksPage() {
       setMilestoneModal({ open: false });
       await ws.refresh();
     } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to save milestone", "error");
+      setMilestoneError(e instanceof Error ? e.message : "Failed to save milestone");
     }
   };
 
@@ -581,8 +585,13 @@ export function ProjectTasksPage() {
         open={milestoneModal.open}
         projectId={ws.project.id}
         initialData={milestoneModal.edit}
+        departments={appData.departments}
+        organizations={appData.organizations}
+        isSuperAdmin={perm.isSuperAdmin}
+        userOrganizationId={userOrganizationId}
         onSubmit={handleMilestoneSubmit}
-        onClose={() => setMilestoneModal({ open: false })}
+        onClose={() => { setMilestoneModal({ open: false }); setMilestoneError(""); }}
+        serverError={milestoneError}
       />
 
       <ProjectDetailModal

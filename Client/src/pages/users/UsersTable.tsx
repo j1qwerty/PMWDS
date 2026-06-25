@@ -11,7 +11,8 @@ interface UsersTableProps {
   organizations: OrganizationRecord[];
   token: string;
   canUploadPictures: boolean;
-  showOrganizationFilter?: boolean;
+   showOrganizationFilter?: boolean;
+   showOrganizationName?: boolean;
   canManageUsers?: boolean;
   onPictureUploaded: (user: User) => void;
   onEditUser?: (user: User) => void;
@@ -26,6 +27,7 @@ export function UsersTable({
   token,
   canUploadPictures,
   showOrganizationFilter = true,
+  showOrganizationName = false,
   canManageUsers = false,
   onPictureUploaded,
   onEditUser,
@@ -136,7 +138,7 @@ export function UsersTable({
               const dept = departments.find(d => d.id === user.departmentId);
               const org = organizations.find(item => item.id === (user.organizationId ?? dept?.organizationId));
               const departmentsLabel = user.departments?.length
-                ? user.departments.map(item => `${item.departmentName}${item.organizationName ? ` (${item.organizationName})` : ""}`).join(", ")
+                ? user.departments.map(item => `${item.departmentName}${showOrganizationName && item.organizationName ? ` (${item.organizationName})` : ""}`).join(", ")
                 : dept?.name || user.department || "Unassigned";
 
               return (
@@ -157,7 +159,13 @@ export function UsersTable({
                         )}
                       </div>
                       <div>
-                        <div className="font-semibold text-slate-800">{user.fullName}</div>
+                        <div className="flex items-center gap-1.5" title={user.isActive !== false ? "Active" : "Inactive"}>
+                          <span
+                            className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${user.isActive !== false ? "bg-emerald-500" : "bg-slate-400"}`}
+                            
+                          />
+                          <span className="font-semibold text-slate-800">{user.fullName}</span>
+                        </div>
                         <div className="text-xs text-slate-400">{user.email}</div>
                       </div>
                     </div>
@@ -171,7 +179,7 @@ export function UsersTable({
                     <span className="text-xs text-slate-600">
                       {departmentsLabel}
                     </span>
-                    {org && <div className="text-[10px] text-slate-400 mt-1">{org.name}</div>}
+                    {showOrganizationName && org && <div className="text-[10px] text-slate-400 mt-1">{org.name}</div>}
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-1.5">
@@ -192,7 +200,6 @@ export function UsersTable({
                           expand_more
                         </span>
                       </div>
-                      <AccountStatusBadge isActive={user.isActive !== false} />
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -264,13 +271,3 @@ export function UsersTable({
   );
 }
 
-
-
-function AccountStatusBadge({ isActive }: { isActive: boolean }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-slate-400"}`}></span>
-      {isActive ? "Active" : "Inactive"}
-    </span>
-  );
-}
