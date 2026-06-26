@@ -45,6 +45,7 @@ public class CreateTaskCommandHandler
         dto.DueDate,
         (int)dto.EstimatedHours,
         dto.MilestoneId,
+        dto.DepartmentId,
         dto.ParentTaskId);
         task.SetCreatedBy(
         _currentUser.UserId ?? "system");

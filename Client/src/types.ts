@@ -184,6 +184,7 @@ export interface Task {
   projectName?: string | null;
   milestoneId?: string | null;
   milestoneName?: string | null;
+  departmentId?: string | null;
   parentTaskId?: string | null;
   assignedToUserId?: string | null;
   assignedToUserName?: string | null;
@@ -856,6 +857,7 @@ export interface TaskDto {
   projectName: string | null;
   milestoneId: string | null;
   milestoneName: string | null;
+  departmentId?: string | null;
   assignedToUserId: string | null;
   assignedToUserName: string | null;
   isEscalated: boolean;

@@ -548,7 +548,7 @@ export function ProjectMilestonesPage() {
         defaultProjectId={ws.project.id}
         defaultMilestoneId={taskModal.milestoneId ?? selectedTask?.milestoneId ?? ""}
         projects={[ws.project]}
-        departments={[]}
+        departments={appData.departments}
         milestones={ws.milestones}
         users={ws.users}
         onSubmit={handleTaskSubmit}

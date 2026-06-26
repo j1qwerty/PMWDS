@@ -63,7 +63,9 @@ public class TasksController : BaseApiController
                 .Select(milestone => milestone.Id)
                 .ToListAsync(ct);
             tasks = tasks
-                .Where(task => task.MilestoneId.HasValue && visibleMilestoneIds.Contains(task.MilestoneId.Value))
+                .Where(task =>
+                    (task.MilestoneId.HasValue && visibleMilestoneIds.Contains(task.MilestoneId.Value) && task.DepartmentId == null) ||
+                    (task.DepartmentId.HasValue && departmentIds.Contains(task.DepartmentId.Value)))
                 .ToList();
         }
         var items = tasks
@@ -183,7 +185,8 @@ public class TasksController : BaseApiController
             dto.StartDate,
             dto.DueDate,
             (int)dto.EstimatedHours,
-            dto.MilestoneId);
+            dto.MilestoneId,
+            dto.DepartmentId);
         task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
         if (dto.MilestoneId.HasValue) await RecalculateTaskMilestoneAsync(task, ct);
@@ -534,6 +537,7 @@ public class TasksController : BaseApiController
             dto.EstimatedHours,
             dto.ProjectId,
             dto.MilestoneId,
+            null,
             id,
             dto.AssignedToUserId,
             dto.Priority);
@@ -572,7 +576,8 @@ public class TasksController : BaseApiController
             dto.StartDate,
             dto.DueDate,
             (int)dto.EstimatedHours,
-            dto.MilestoneId);
+            dto.MilestoneId,
+            dto.DepartmentId);
         task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
         return Ok(TaskDto.FromEntity(task));

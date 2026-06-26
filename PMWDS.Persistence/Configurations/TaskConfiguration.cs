@@ -53,8 +53,13 @@ public class TaskConfiguration
         .WithOne(a => a.Task)
         .HasForeignKey(a => a.TaskId)
         .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(e => e.Department)
+        .WithMany()
+        .HasForeignKey(e => e.DepartmentId)
+        .OnDelete(DeleteBehavior.SetNull);
         // Indexes
         b.HasIndex(e => e.ProjectId);
+        b.HasIndex(e => e.DepartmentId);
         b.HasIndex(e => e.AssignedToUserId);
         b.HasIndex(e => e.Status);
         b.HasIndex(e => e.DueDate);

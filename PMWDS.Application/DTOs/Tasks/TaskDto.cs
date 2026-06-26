@@ -19,6 +19,7 @@ public record TaskDto(
     string? ProjectName,
     Guid? MilestoneId,
     string? MilestoneName,
+    Guid? DepartmentId,
     Guid? ParentTaskId,
     string? AssignedToUserId,
     string? AssignedToUserName,
@@ -70,6 +71,7 @@ public record TaskDto(
             ProjectName: t.Project?.Name,
             MilestoneId: t.MilestoneId,
             MilestoneName: t.Milestone?.Name,
+            DepartmentId: t.DepartmentId,
             ParentTaskId: t.ParentTaskId,
             AssignedToUserId: t.AssignedToUserId,
             AssignedToUserName: assignments
@@ -223,6 +225,7 @@ public record TaskDto(
     float EstimatedHours,
     Guid ProjectId,
     Guid? MilestoneId,
+    Guid? DepartmentId,
     Guid? ParentTaskId,
     string? AssignedToUserId,
     Domain.Enums.TaskPriority Priority =
@@ -235,7 +238,8 @@ public record TaskDto(
     DateTime DueDate,
     float EstimatedHours,
     Domain.Enums.TaskPriority Priority,
-    Guid? MilestoneId);
+    Guid? MilestoneId,
+    Guid? DepartmentId = null);
     public record UpdateTaskProgressDto(
     double ProgressPercentage,
     string? Notes = null);

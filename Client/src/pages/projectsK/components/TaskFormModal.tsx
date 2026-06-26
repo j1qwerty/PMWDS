@@ -38,6 +38,7 @@ export function TaskFormModal({
     estimatedHours: 8,
     projectId: defaultProjectId,
     milestoneId: defaultMilestoneId,
+    departmentId: "",
     assignedToUserIds: [] as string[],
     priority: "Medium",
   });
@@ -52,6 +53,7 @@ export function TaskFormModal({
         estimatedHours: initialData?.estimatedHours || 8,
         projectId: initialData?.projectId || defaultProjectId,
         milestoneId: initialData?.milestoneId || defaultMilestoneId,
+        departmentId: initialData?.departmentId || "",
         assignedToUserIds:
           initialData?.assignees?.map((a) => a.userId) ||
           (initialData?.assignedToUserId ? [initialData.assignedToUserId] : []),
@@ -70,6 +72,8 @@ export function TaskFormModal({
   if (!open) return null;
 
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
+  const selectedMilestone = projectMilestones.find((m) => m.id === form.milestoneId);
+  const milestoneDepartments = selectedMilestone?.departmentIds ?? [];
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const selectedDepartment = selectedProject
     ? departments.find((d) => d.id === getProjectDepartmentIds(selectedProject)[0])
@@ -92,6 +96,7 @@ export function TaskFormModal({
       assignedToUserIds: form.assignedToUserIds,
     };
     if (form.milestoneId) submission.milestoneId = form.milestoneId;
+    if (form.departmentId) submission.departmentId = form.departmentId;
     if (form.assignedToUserIds[0]) submission.assignedToUserId = form.assignedToUserIds[0];
     onSubmit(submission);
   };
@@ -135,9 +140,23 @@ export function TaskFormModal({
           <SelectF
             label="Milestone"
             value={form.milestoneId || ""}
-            onChange={(v) => setForm({ ...form, milestoneId: v })}
+            onChange={(v) => setForm({ ...form, milestoneId: v, departmentId: "" })}
             options={[{ value: "", label: "None" }, ...projectMilestones.map((m) => ({ value: m.id, label: m.name }))]}
           />
+          {milestoneDepartments.length > 0 && (
+            <SelectF
+              label="Department"
+              value={form.departmentId}
+              onChange={(v) => setForm({ ...form, departmentId: v })}
+              options={[
+                { value: "", label: "All departments" },
+                ...milestoneDepartments.map((deptId) => {
+                  const dept = departments.find((d) => d.id === deptId);
+                  return { value: deptId, label: dept?.name ?? deptId };
+                }),
+              ]}
+            />
+          )}
           {assignedUsers.length > 0 && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
               <AvatarStack people={assignedUsers} size="xs" />

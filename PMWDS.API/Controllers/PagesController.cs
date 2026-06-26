@@ -114,17 +114,20 @@ public class PagesController : BaseApiController
             .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .Where(m => projectIds.Contains(m.ProjectId));
         List<Guid>? visibleMilestoneIds = null;
+        List<Guid>? userDepartmentIds = null;
         if (_scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin)
         {
-            var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            milestoneQuery = milestoneQuery.Where(m => m.MilestoneDepartments.Any(md => departmentIds.Contains(md.DepartmentId)));
+            userDepartmentIds = await _scope.GetDepartmentIdsAsync(ct);
+            milestoneQuery = milestoneQuery.Where(m => m.MilestoneDepartments.Any(md => userDepartmentIds.Contains(md.DepartmentId)));
             visibleMilestoneIds = await milestoneQuery.Select(m => m.Id).ToListAsync(ct);
         }
 
         var taskQuery = BuildTaskQuery(projectIds);
-        if (visibleMilestoneIds != null)
+        if (visibleMilestoneIds != null && userDepartmentIds != null)
         {
-            taskQuery = taskQuery.Where(t => t.MilestoneId.HasValue && visibleMilestoneIds.Contains(t.MilestoneId.Value));
+            taskQuery = taskQuery.Where(t =>
+                (t.MilestoneId.HasValue && visibleMilestoneIds.Contains(t.MilestoneId.Value) && t.DepartmentId == null) ||
+                (t.DepartmentId.HasValue && userDepartmentIds.Contains(t.DepartmentId.Value)));
         }
 
         var organizations = await GetOrganizationsAsync(organizationsQuery, pagination, ct);

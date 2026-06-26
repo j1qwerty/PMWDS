@@ -35,6 +35,7 @@ interface TaskEntry {
   estimatedHours: number;
   startDate: string;
   dueDate: string;
+  departmentId?: string;
 }
 
 interface StepConfig {
@@ -204,6 +205,14 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         const actualMilestoneId = createdMilestoneIds[task.milestoneId];
         if (actualMilestoneId) {
           taskPayload.milestoneId = actualMilestoneId;
+        }
+        if (task.departmentId) {
+          taskPayload.departmentId = task.departmentId;
+        } else if (task.milestoneId) {
+          const ms = milestones.find((m) => m.id === task.milestoneId);
+          if (ms?.departmentIds?.length) {
+            taskPayload.departmentId = ms.departmentIds[0];
+          }
         }
         if (task.assignedToUserIds[0]) {
           taskPayload.assignedToUserId = task.assignedToUserIds[0];

@@ -329,6 +329,12 @@ public static class DatabaseConnectionService
                     await ExecuteSqliteAsync(connection, "INSERT INTO \"MilestoneDepartments\" (\"Id\", \"MilestoneId\", \"DepartmentId\", \"CreatedDate\", \"ModifiedDate\", \"CreatedBy\", \"ModifiedBy\", \"IsDeleted\", \"DeletedAt\") SELECT LOWER(HEX(RANDOMBLOB(4)) || '-' || HEX(RANDOMBLOB(2)) || '-' || '4' || SUBSTR(HEX(RANDOMBLOB(2)),2) || '-' || 'a' || SUBSTR(HEX(RANDOMBLOB(2)),2) || '-' || HEX(RANDOMBLOB(6))) as \"Id\", \"Id\" as \"MilestoneId\", \"DepartmentId\", datetime('now') as \"CreatedDate\", NULL, 'system', NULL, 0, NULL FROM \"Milestones\" WHERE \"DepartmentId\" IS NOT NULL", ct);
                 }
             }
+
+            if (!await HasSqliteColumnAsync(connection, "Tasks", "DepartmentId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Tasks\" ADD COLUMN \"DepartmentId\" TEXT NULL", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_Tasks_DepartmentId\" ON \"Tasks\" (\"DepartmentId\")", ct);
+            }
         }
         finally
         {

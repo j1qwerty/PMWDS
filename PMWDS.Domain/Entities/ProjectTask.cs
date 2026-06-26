@@ -9,6 +9,7 @@ public class ProjectTask : AuditableEntity
     // Core Properties
     public Guid ProjectId { get; private set; }
     public Guid? MilestoneId { get; private set; }
+    public Guid? DepartmentId { get; private set; }
     public Guid? ParentTaskId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
@@ -42,6 +43,7 @@ public class ProjectTask : AuditableEntity
                                                        // Navigation
     public Project? Project { get; private set; }
     public Milestone? Milestone { get; private set; }
+    public Department? Department { get; private set; }
     public ProjectTask? ParentTask { get; private set; }
     public IReadOnlyCollection<ProjectTask> SubTasks =>
     _subTasks.AsReadOnly();
@@ -87,12 +89,14 @@ public class ProjectTask : AuditableEntity
     DateTime dueDate,
     int estimatedHours,
     Guid? milestoneId = null,
+    Guid? departmentId = null,
     Guid? parentTaskId = null)
     {
         return new ProjectTask
         {
             ProjectId = projectId,
             MilestoneId = milestoneId,
+            DepartmentId = departmentId,
             ParentTaskId = parentTaskId,
             Title = title,
             Description = description,
@@ -118,7 +122,8 @@ public class ProjectTask : AuditableEntity
     DateTime startDate,
     DateTime dueDate,
     int estimatedHours,
-    Guid? milestoneId)
+    Guid? milestoneId,
+    Guid? departmentId = null)
     {
         Title = title;
         Description = description;
@@ -127,6 +132,7 @@ public class ProjectTask : AuditableEntity
         DueDate = dueDate;
         EstimatedHours = estimatedHours;
         MilestoneId = milestoneId;
+        DepartmentId = departmentId;
     }
     public void UpdateStatus(TaskStatus status)
     {
