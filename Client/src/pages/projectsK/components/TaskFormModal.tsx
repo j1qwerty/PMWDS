@@ -3,6 +3,8 @@ import type { Department, Milestone, Project, Task, User } from "../../../types"
 import { priorities } from "../../constants";
 import { ModalOverlay, InputF, SelectF, AvatarStack, ScopedUserSelect, getProjectDepartmentIds } from "../../shared";
 
+const getToday = () => new Date().toISOString().slice(0, 10);
+
 interface TaskFormModalProps {
   open: boolean;
   initialData?: Task;
@@ -13,8 +15,17 @@ interface TaskFormModalProps {
   milestones: Milestone[];
   users: User[];
   organizationId?: string | null;
+  roles?: string[];
   onSubmit: (data: Record<string, unknown>) => void;
   onClose: () => void;
+}
+
+interface FieldErrors {
+  title?: string;
+  projectId?: string;
+  startDate?: string;
+  dueDate?: string;
+  estimatedHours?: string;
 }
 
 export function TaskFormModal({
@@ -27,13 +38,14 @@ export function TaskFormModal({
   milestones,
   users,
   organizationId,
+  roles = [],
   onSubmit,
   onClose,
 }: TaskFormModalProps) {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    startDate: "",
+    startDate: getToday(),
     dueDate: "",
     estimatedHours: 8,
     projectId: defaultProjectId,
@@ -41,13 +53,15 @@ export function TaskFormModal({
     assignedToUserIds: [] as string[],
     priority: "Medium",
   });
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
     if (open) {
+      setErrors({});
       setForm({
         title: initialData?.title || "",
         description: initialData?.description || "",
-        startDate: initialData?.startDate?.slice(0, 10) || "",
+        startDate: initialData?.startDate?.slice(0, 10) || getToday(),
         dueDate: initialData?.dueDate?.slice(0, 10) || "",
         estimatedHours: initialData?.estimatedHours || 8,
         projectId: initialData?.projectId || defaultProjectId,
@@ -69,6 +83,7 @@ export function TaskFormModal({
 
   if (!open) return null;
 
+  const canAssignMilestone = roles.some((r) => r === "SuperAdmin" || r === "Director");
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const selectedDepartment = selectedProject
@@ -78,12 +93,26 @@ export function TaskFormModal({
     ? getProjectDepartmentIds(selectedProject)[0]
     : undefined;
 
+  const validate = (): FieldErrors => {
+    const errs: FieldErrors = {};
+    if (!form.title.trim()) errs.title = "Title is required";
+    if (!defaultProjectId && !form.projectId) errs.projectId = "Project is required";
+    if (!form.startDate) errs.startDate = "Start date is required";
+    if (!form.dueDate) errs.dueDate = "Due date is required";
+    if (form.startDate && form.dueDate && form.startDate > form.dueDate)
+      errs.dueDate = "Due date must be after start date";
+    if (form.estimatedHours < 1) errs.estimatedHours = "Must be at least 1 hour";
+    return errs;
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.projectId) return;
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const submission: Record<string, unknown> = {
-      title: form.title,
-      description: form.description,
+      title: form.title.trim(),
+      description: form.description.trim(),
       startDate: form.startDate,
       dueDate: form.dueDate,
       estimatedHours: form.estimatedHours,
@@ -109,14 +138,26 @@ export function TaskFormModal({
           </div>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <InputF label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
+          <div>
+            <InputF label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
+            {errors.title && <span className="text-xs text-red-500 mt-1 block">{errors.title}</span>}
+          </div>
           <InputF label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           <div className="grid grid-cols-2 gap-4">
-            <InputF label="Start" type="date" value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} />
-            <InputF label="Due" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+            <div>
+              <InputF label="Start" type="date" value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} />
+              {errors.startDate && <span className="text-xs text-red-500 mt-1 block">{errors.startDate}</span>}
+            </div>
+            <div>
+              <InputF label="Due" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+              {errors.dueDate && <span className="text-xs text-red-500 mt-1 block">{errors.dueDate}</span>}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <InputF label="Est. hours" type="number" value={form.estimatedHours} onChange={(v) => setForm({ ...form, estimatedHours: Number(v) })} />
+            <div>
+              <InputF label="Est. hours" type="number" value={form.estimatedHours} onChange={(v) => setForm({ ...form, estimatedHours: Number(v) })} />
+              {errors.estimatedHours && <span className="text-xs text-red-500 mt-1 block">{errors.estimatedHours}</span>}
+            </div>
             <SelectF
               label="Priority"
               value={form.priority}
@@ -125,19 +166,24 @@ export function TaskFormModal({
             />
           </div>
           {!defaultProjectId && (
+            <div>
+              <SelectF
+                label="Project"
+                value={form.projectId}
+                onChange={(v) => setForm({ ...form, projectId: v, milestoneId: "" })}
+                options={[{ value: "", label: "Select project" }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
+              />
+              {errors.projectId && <span className="text-xs text-red-500 mt-1 block">{errors.projectId}</span>}
+            </div>
+          )}
+          {canAssignMilestone && (
             <SelectF
-              label="Project"
-              value={form.projectId}
-              onChange={(v) => setForm({ ...form, projectId: v, milestoneId: "" })}
-              options={[{ value: "", label: "Select project" }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
+              label="Milestone"
+              value={form.milestoneId || ""}
+              onChange={(v) => setForm({ ...form, milestoneId: v })}
+              options={[{ value: "", label: "None" }, ...projectMilestones.map((m) => ({ value: m.id, label: m.name }))]}
             />
           )}
-          <SelectF
-            label="Milestone"
-            value={form.milestoneId || ""}
-            onChange={(v) => setForm({ ...form, milestoneId: v })}
-            options={[{ value: "", label: "None" }, ...projectMilestones.map((m) => ({ value: m.id, label: m.name }))]}
-          />
           {assignedUsers.length > 0 && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
               <AvatarStack people={assignedUsers} size="xs" />

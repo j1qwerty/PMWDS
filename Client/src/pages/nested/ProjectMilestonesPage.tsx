@@ -551,6 +551,7 @@ export function ProjectMilestonesPage() {
         departments={[]}
         milestones={ws.milestones}
         users={ws.users}
+        roles={auth?.roles}
         onSubmit={handleTaskSubmit}
         onClose={() => setTaskModal({ open: false })}
       />
