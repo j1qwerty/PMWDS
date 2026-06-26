@@ -56,6 +56,7 @@ export function ProjectFormModal({
   }, [form.name]);
 
   const [showProjectManager, setShowProjectManager] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
 
@@ -86,7 +87,7 @@ export function ProjectFormModal({
             <h2 className="text-xl font-bold text-slate-900">{title}</h2>
           </div>
         </div>
-        <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={(e) => { if (submitting) return; setSubmitting(true); onSubmit(e); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Field label="Name" required>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" required />
@@ -176,8 +177,8 @@ export function ProjectFormModal({
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600">
               Cancel
             </button>
-            <button type="submit" className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-              {submitLabel}
+            <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              {submitting ? "Saving..." : submitLabel}
             </button>
           </div>
         </form>

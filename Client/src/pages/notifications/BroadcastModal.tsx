@@ -8,6 +8,7 @@ interface BroadcastModalProps {
 }
 
 export function BroadcastModal({ departments, onSubmit, onCancel }: BroadcastModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: "",
     message: "",
@@ -17,6 +18,8 @@ export function BroadcastModal({ departments, onSubmit, onCancel }: BroadcastMod
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     onSubmit({ ...form, departmentId: form.departmentId || null, actionUrl: form.actionUrl || null });
   };
 
@@ -84,8 +87,8 @@ export function BroadcastModal({ departments, onSubmit, onCancel }: BroadcastMod
           <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={!form.title || !form.message} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            Send Broadcast
+          <button type="submit" disabled={submitting || !form.title || !form.message} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? "Sending..." : "Send Broadcast"}
           </button>
         </div>
       </form>

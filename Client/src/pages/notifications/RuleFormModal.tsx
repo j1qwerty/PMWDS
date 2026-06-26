@@ -8,6 +8,7 @@ interface RuleFormModalProps {
 }
 
 export function RuleFormModal({ initialData, onSubmit, onCancel }: RuleFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: initialData?.name || "",
     conditionType: initialData?.conditionType || "",
@@ -36,6 +37,8 @@ export function RuleFormModal({ initialData, onSubmit, onCancel }: RuleFormModal
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     let actionParams;
     try {
       actionParams = JSON.parse(form.actionParameters);
@@ -96,8 +99,8 @@ export function RuleFormModal({ initialData, onSubmit, onCancel }: RuleFormModal
 
         <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
           <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">Cancel</button>
-          <button type="submit" disabled={!form.name || !form.conditionType || !form.actionType} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {initialData ? "Update Rule" : "Create Rule"}
+          <button type="submit" disabled={submitting || !form.name || !form.conditionType || !form.actionType} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? "Saving..." : (initialData ? "Update Rule" : "Create Rule")}
           </button>
         </div>
       </form>

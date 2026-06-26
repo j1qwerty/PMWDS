@@ -10,6 +10,7 @@ interface ProfileFormModalProps {
 }
 
 export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     bio: profile?.bio || user?.bio || "",
     jobTitle: profile?.jobTitle || user?.jobTitle || "",
@@ -32,6 +33,8 @@ export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileF
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     onSubmit({
       ...form,
       dateOfBirth: form.dateOfBirth || null,
@@ -148,9 +151,10 @@ export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileF
           </button>
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors"
+            disabled={submitting}
+            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Profile
+            {submitting ? "Saving..." : "Save Profile"}
           </button>
         </div>
       </form>

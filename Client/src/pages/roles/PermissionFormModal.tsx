@@ -22,6 +22,7 @@ interface PermissionFormModalProps {
 }
 
 export function PermissionFormModal({ initialData, onSubmit, onCancel }: PermissionFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     code: initialData?.code || "",
     name: initialData?.name || "",
@@ -44,6 +45,8 @@ export function PermissionFormModal({ initialData, onSubmit, onCancel }: Permiss
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     onSubmit({ ...form, code: form.code || undefined });
   };
 
@@ -130,8 +133,8 @@ export function PermissionFormModal({ initialData, onSubmit, onCancel }: Permiss
           <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={!form.name || (!initialData && !form.code)} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {initialData ? "Update Permission" : "Create Permission"}
+          <button type="submit" disabled={submitting || !form.name || (!initialData && !form.code)} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? "Saving..." : (initialData ? "Update Permission" : "Create Permission")}
           </button>
         </div>
       </form>

@@ -3,9 +3,10 @@ interface DeleteConfirmationModalProps {
   warning?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  submitting?: boolean;
 }
 
-export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel }: DeleteConfirmationModalProps) {
+export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel, submitting = false }: DeleteConfirmationModalProps) {
   return (
     <div className="bg-white rounded-2xl p-8  w-full shadow-xl border border-slate-200">
       <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-5">
@@ -33,9 +34,10 @@ export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel }: 
         </button>
         <button
           onClick={onConfirm}
-          className="px-5 py-2.5 rounded-xl border-none bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-sm transition-colors"
+          disabled={submitting}
+          className="px-5 py-2.5 rounded-xl border-none bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Delete Permanently
+          {submitting ? "Deleting..." : "Delete Permanently"}
         </button>
       </div>
     </div>

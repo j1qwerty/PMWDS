@@ -9,6 +9,7 @@ interface RoleFormModalProps {
 }
 
 export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: RoleFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
@@ -37,6 +38,8 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     onSubmit({ ...form, permissionIds: selectedPermissions });
   };
 
@@ -153,8 +156,8 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
           <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={!form.name} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {initialData ? "Update Role" : "Create Role"}
+          <button type="submit" disabled={submitting || !form.name} className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? "Saving..." : (initialData ? "Update Role" : "Create Role")}
           </button>
         </div>
       </form>

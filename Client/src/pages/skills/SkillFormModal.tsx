@@ -26,6 +26,7 @@ const COMMON_CATEGORIES = [
 ];
 
 export function SkillFormModal({ initialData, onSubmit, onCancel }: SkillFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: initialData?.name || "",
     category: initialData?.category || "",
@@ -49,6 +50,8 @@ export function SkillFormModal({ initialData, onSubmit, onCancel }: SkillFormMod
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     onSubmit(form);
   };
 
@@ -180,10 +183,10 @@ export function SkillFormModal({ initialData, onSubmit, onCancel }: SkillFormMod
           </button>
           <button
             type="submit"
-            disabled={!form.name}
+            disabled={submitting || !form.name}
             className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {initialData ? "Update Skill" : "Create Skill"}
+            {submitting ? "Saving..." : (initialData ? "Update Skill" : "Create Skill")}
           </button>
         </div>
       </form>

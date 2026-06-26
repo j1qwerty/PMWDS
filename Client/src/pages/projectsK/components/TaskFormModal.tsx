@@ -54,6 +54,7 @@ export function TaskFormModal({
     priority: "Medium",
   });
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -107,9 +108,11 @@ export function TaskFormModal({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
+    setSubmitting(true);
     const submission: Record<string, unknown> = {
       title: form.title.trim(),
       description: form.description.trim(),
@@ -206,8 +209,8 @@ export function TaskFormModal({
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm">
               Cancel
             </button>
-            <button type="submit" className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
-              Save
+            <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+              {submitting ? "Saving..." : "Save"}
             </button>
           </div>
         </form>

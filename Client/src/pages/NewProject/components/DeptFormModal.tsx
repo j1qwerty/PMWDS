@@ -16,6 +16,7 @@ export function DeptFormModal({
   onSubmit,
   onCancel,
 }: DeptFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     code: "",
@@ -27,6 +28,8 @@ export function DeptFormModal({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     onSubmit({
       ...form,
       departmentHeadUserId: form.departmentHeadUserId || null,
@@ -135,9 +138,10 @@ export function DeptFormModal({
           </button>
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors"
+            disabled={submitting}
+            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50"
           >
-            Create Department
+            {submitting ? "Creating..." : "Create Department"}
           </button>
         </div>
       </form>

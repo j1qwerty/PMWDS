@@ -28,8 +28,11 @@ export function SubtaskFormModal({
     priority: "Medium",
   });
 
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     if (open) {
+      setSubmitting(false);
       setForm({
         title: "",
         description: "",
@@ -44,7 +47,8 @@ export function SubtaskFormModal({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (submitting || !form.title.trim()) return;
+    setSubmitting(true);
     const submission: Record<string, unknown> = {
       title: form.title.trim(),
       description: form.description,
@@ -96,8 +100,8 @@ export function SubtaskFormModal({
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm">
               Cancel
             </button>
-            <button type="submit" disabled={!form.title.trim()} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
-              Create Subtask
+            <button type="submit" disabled={submitting || !form.title.trim()} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+              {submitting ? "Saving..." : "Create Subtask"}
             </button>
           </div>
         </form>

@@ -27,6 +27,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
     organizationId: "",
   });
   const [validationError, setValidationError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setValidationError("");
@@ -61,6 +62,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setValidationError("");
 
     if (!form.name.trim()) {
@@ -72,6 +74,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
       return;
     }
 
+    setSubmitting(true);
     const payload: Record<string, unknown> = {
       name: form.name,
       description: form.description,
@@ -183,8 +186,8 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm">
               Cancel
             </button>
-            <button type="submit" className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
-              Save
+            <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+              {submitting ? "Saving..." : "Save"}
             </button>
           </div>
         </form>

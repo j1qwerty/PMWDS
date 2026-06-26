@@ -6,6 +6,7 @@ interface OrgFormModalProps {
 }
 
 export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     taxId: "",
@@ -17,7 +18,8 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (submitting || !form.name.trim()) return;
+    setSubmitting(true);
     const payload: Record<string, unknown> = { name: form.name };
     if (form.taxId) payload.taxId = form.taxId;
     if (form.address) payload.address = form.address;
@@ -115,10 +117,10 @@ export function OrgFormModal({ onSubmit, onCancel }: OrgFormModalProps) {
           </button>
           <button
             type="submit"
-            disabled={!form.name.trim()}
+            disabled={submitting || !form.name.trim()}
             className="px-5 py-2.5 rounded-xl border-none bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 shadow-sm transition-colors disabled:opacity-50"
           >
-            Create Organization
+            {submitting ? "Creating..." : "Create Organization"}
           </button>
         </div>
       </form>
