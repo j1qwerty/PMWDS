@@ -3,8 +3,8 @@ namespace PMWDS.Application.DTOs.Projects;
 public record MilestoneDto(
  Guid Id,
  Guid ProjectId,
- Guid? DepartmentId,
- string? DepartmentName,
+ List<Guid> DepartmentIds,
+ List<string> DepartmentNames,
  string Name,
  string Description,
  int Order,
@@ -21,11 +21,18 @@ public record MilestoneDto(
      var hasTasks = tasks.Count > 0;
      var progress = m.RecalculateProgressFromTasks();
      m.RecalculateStatusFromTasks();
+     var departmentIds = m.MilestoneDepartments?
+         .Select(md => md.DepartmentId)
+         .ToList() ?? new List<Guid>();
+     var departmentNames = m.MilestoneDepartments?
+         .Select(md => md.Department?.Name ?? string.Empty)
+         .Where(name => !string.IsNullOrEmpty(name))
+         .ToList() ?? new List<string>();
      return new(
      m.Id,
      m.ProjectId,
-     m.DepartmentId,
-     m.Department?.Name,
+     departmentIds,
+     departmentNames,
      m.Name,
      m.Description,
      m.Order,

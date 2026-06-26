@@ -114,8 +114,8 @@ export interface ProjectSummary {
 export interface Milestone {
   id: string;
   projectId: string;
-  departmentId?: string | null;
-  departmentName?: string | null;
+  departmentIds: string[];
+  departmentNames: string[];
   name: string;
   description: string;
   order: number;
@@ -833,8 +833,8 @@ export interface ProjectDto {
 export interface MilestoneDto {
   id: string;
   projectId: string;
-  departmentId?: string | null;
-  departmentName?: string | null;
+  departmentIds: string[];
+  departmentNames: string[];
   name: string;
   description: string;
   order: number;

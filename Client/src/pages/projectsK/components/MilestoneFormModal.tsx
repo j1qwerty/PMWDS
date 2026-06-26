@@ -23,7 +23,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
     dueDate: "",
     progressPercentage: 0,
     isCritical: false,
-    departmentId: "",
+    departmentIds: [] as string[],
     organizationId: "",
   });
   const [validationError, setValidationError] = useState("");
@@ -37,7 +37,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
         dueDate: initialData?.dueDate?.slice(0, 10) || "",
         progressPercentage: initialData?.progressPercentage || 0,
         isCritical: initialData?.isCritical || false,
-        departmentId: initialData?.departmentId || "",
+        departmentIds: initialData?.departmentIds || [],
         organizationId: "",
       });
     }
@@ -59,6 +59,15 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
   const hasTasks = initialData?.hasTasks ?? false;
   const isEditMode = !!initialData;
 
+  const toggleDepartment = (deptId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      departmentIds: prev.departmentIds.includes(deptId)
+        ? prev.departmentIds.filter((id) => id !== deptId)
+        : [...prev.departmentIds, deptId],
+    }));
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setValidationError("");
@@ -77,7 +86,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
       description: form.description,
       dueDate: form.dueDate,
       isCritical: form.isCritical,
-      departmentId: form.departmentId || null,
+      departmentIds: form.departmentIds,
       projectId,
     };
     payload.progressPercentage = 0;
@@ -109,13 +118,12 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
           <InputF label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           <InputF label="Due Date" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} required />
 
-    
           {isSuperAdmin && (
             <div>
               <label className="text-[11px] font-bold text-[#191c1e] uppercase tracking-wider block mb-1">Organization</label>
               <select
                 value={form.organizationId}
-                onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "" })}
+                onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentIds: [] })}
                 className="w-full border border-slate-200 rounded-lg p-2 text-sm"
               >
                 <option value="">All organizations</option>
@@ -127,19 +135,33 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
           )}
 
           <div>
-            <label className="text-[11px] font-bold text-[#191c1e] uppercase tracking-wider block mb-1">Department</label>
-            <select
-              value={form.departmentId}
-              onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
-              className="w-full border border-slate-200 rounded-lg p-2 text-sm"
-            >
-              <option value="">None</option>
-              {filteredDepartments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+            <label className="text-[11px] font-bold text-[#191c1e] uppercase tracking-wider block mb-1">
+              Departments ({form.departmentIds.length} selected)
+            </label>
+            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1">
+              {filteredDepartments.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-2">No departments available</p>
+              ) : (
+                filteredDepartments.map((d) => {
+                  const checked = form.departmentIds.includes(d.id);
+                  return (
+                    <label
+                      key={d.id}
+                      className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleDepartment(d.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700">{d.name}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
           </div>
-
 
           {isEditMode && hasTasks ? (
             <div>
@@ -160,17 +182,11 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
               </p>
             </div>
           ) : null}
-          {/* <InputF
-            label="Progress %"
-            type="number"
-            value={form.progressPercentage}
-            onChange={(v) => setForm({ ...form, progressPercentage: Math.min(100, Math.max(0, Number(v))) })}
-          /> */}
+
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
             <input type="checkbox" checked={form.isCritical} onChange={(e) => setForm({ ...form, isCritical: e.target.checked })} className="rounded" />
             Critical milestone
           </label>
-
 
           {validationError || serverError ? (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2">

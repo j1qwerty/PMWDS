@@ -59,8 +59,7 @@ public class TasksController : BaseApiController
             var visibleMilestoneIds = await _db.Milestones
                 .Where(milestone =>
                     milestone.ProjectId == projectId &&
-                    milestone.DepartmentId.HasValue &&
-                    departmentIds.Contains(milestone.DepartmentId.Value))
+                    milestone.MilestoneDepartments.Any(md => departmentIds.Contains(md.DepartmentId)))
                 .Select(milestone => milestone.Id)
                 .ToListAsync(ct);
             tasks = tasks

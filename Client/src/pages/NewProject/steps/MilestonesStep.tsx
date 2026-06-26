@@ -3,7 +3,7 @@ import { GlassCard } from "../../shared";
 
 interface MilestoneEntry {
   id: string;
-  departmentId?: string;
+  departmentIds: string[];
   name: string;
   description: string;
   dueDate: string;
@@ -33,7 +33,7 @@ export function MilestonesStep({ milestones, onChange }: MilestonesStepProps) {
       updated[editIdx] = { ...updated[editIdx], ...form };
       onChange(updated);
     } else {
-      onChange([...milestones, { ...form, id: crypto.randomUUID?.() || Math.random().toString(36).slice(2) }]);
+      onChange([...milestones, { ...form, id: crypto.randomUUID?.() || Math.random().toString(36).slice(2), departmentIds: [] }]);
     }
     resetForm();
   };

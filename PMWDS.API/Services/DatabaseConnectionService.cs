@@ -240,7 +240,8 @@ public static class DatabaseConnectionService
             "ActivityLogs",
             "AIProviderCredentials",
             "UserDepartments",
-            "ProjectDepartments"
+            "ProjectDepartments",
+            "MilestoneDepartments"
         };
 
         var connection = db.Database.GetDbConnection();
@@ -318,11 +319,15 @@ public static class DatabaseConnectionService
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Roles\" ADD COLUMN \"PaginationPageSize\" INTEGER NOT NULL DEFAULT 10", ct);
             }
 
-            if (!await HasSqliteColumnAsync(connection, "Milestones", "DepartmentId", ct))
+            if (!await HasSqliteTableAsync(connection, "MilestoneDepartments", ct))
             {
-                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Milestones\" ADD COLUMN \"DepartmentId\" TEXT NULL", ct);
-                await ExecuteSqliteAsync(connection, "UPDATE \"Milestones\" SET \"DepartmentId\" = (SELECT \"DepartmentId\" FROM \"Projects\" WHERE \"Projects\".\"Id\" = \"Milestones\".\"ProjectId\") WHERE \"DepartmentId\" IS NULL", ct);
-                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_Milestones_DepartmentId\" ON \"Milestones\" (\"DepartmentId\")", ct);
+                await ExecuteSqliteAsync(connection, "CREATE TABLE \"MilestoneDepartments\" (\"Id\" TEXT NOT NULL, \"MilestoneId\" TEXT NOT NULL, \"DepartmentId\" TEXT NOT NULL, \"CreatedDate\" TEXT NOT NULL, \"ModifiedDate\" TEXT NULL, \"CreatedBy\" TEXT NULL, \"ModifiedBy\" TEXT NULL, \"IsDeleted\" INTEGER NOT NULL DEFAULT 0, \"DeletedAt\" TEXT NULL, CONSTRAINT \"PK_MilestoneDepartments\" PRIMARY KEY (\"Id\"))", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX \"IX_MilestoneDepartments_DepartmentId\" ON \"MilestoneDepartments\" (\"DepartmentId\")", ct);
+                await ExecuteSqliteAsync(connection, "CREATE UNIQUE INDEX \"IX_MilestoneDepartments_MilestoneId_DepartmentId\" ON \"MilestoneDepartments\" (\"MilestoneId\", \"DepartmentId\")", ct);
+                if (await HasSqliteColumnAsync(connection, "Milestones", "DepartmentId", ct))
+                {
+                    await ExecuteSqliteAsync(connection, "INSERT INTO \"MilestoneDepartments\" (\"Id\", \"MilestoneId\", \"DepartmentId\", \"CreatedDate\", \"ModifiedDate\", \"CreatedBy\", \"ModifiedBy\", \"IsDeleted\", \"DeletedAt\") SELECT LOWER(HEX(RANDOMBLOB(4)) || '-' || HEX(RANDOMBLOB(2)) || '-' || '4' || SUBSTR(HEX(RANDOMBLOB(2)),2) || '-' || 'a' || SUBSTR(HEX(RANDOMBLOB(2)),2) || '-' || HEX(RANDOMBLOB(6))) as \"Id\", \"Id\" as \"MilestoneId\", \"DepartmentId\", datetime('now') as \"CreatedDate\", NULL, 'system', NULL, 0, NULL FROM \"Milestones\" WHERE \"DepartmentId\" IS NOT NULL", ct);
+                }
             }
         }
         finally
@@ -332,6 +337,14 @@ public static class DatabaseConnectionService
                 await connection.CloseAsync();
             }
         }
+    }
+
+    private static async Task<bool> HasSqliteTableAsync(DbConnection connection, string tableName, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{tableName}'";
+        var result = await command.ExecuteScalarAsync(ct);
+        return result != null && result != DBNull.Value;
     }
 
     private static async Task<bool> HasSqliteColumnAsync(DbConnection connection, string tableName, string columnName, CancellationToken ct)

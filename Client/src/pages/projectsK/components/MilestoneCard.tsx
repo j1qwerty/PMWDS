@@ -74,9 +74,9 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           
-          {milestone.departmentName && (
-            <span className="text-[10px] text-slate-400">
-              {milestone.departmentName}
+          {milestone.departmentNames && milestone.departmentNames.length > 0 && (
+            <span className="text-[10px] text-slate-400 truncate max-w-[120px]">
+              {milestone.departmentNames.join(", ")}
             </span>
           )}
           {milestone.dueDate && (

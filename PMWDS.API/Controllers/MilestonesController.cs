@@ -38,7 +38,7 @@ public class MilestonesController : BaseApiController
 
         var milestones = await _db.Milestones
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .Where(m => m.ProjectId == projectId)
             .ToListAsync(ct);
         milestones = await ScopeMilestonesForCurrentUserAsync(milestones, ct);
@@ -51,7 +51,7 @@ public class MilestonesController : BaseApiController
     {
         var milestone = await _db.Milestones
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
@@ -79,17 +79,27 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (dto.DepartmentId.HasValue && !await IsDepartmentAssignedToProjectAsync(dto.ProjectId, dto.DepartmentId.Value, ct))
+        if (dto.DepartmentIds?.Count > 0)
         {
-            return BadRequest(new { message = "Milestone department must be assigned to the project." });
+            foreach (var deptId in dto.DepartmentIds)
+            {
+                if (!await IsDepartmentAssignedToProjectAsync(dto.ProjectId, deptId, ct))
+                {
+                    return BadRequest(new { message = $"Department {deptId} is not assigned to the project." });
+                }
+            }
         }
 
-        var milestone = Milestone.Create(dto.ProjectId, dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
+        var milestone = Milestone.Create(dto.ProjectId, dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical);
+        if (dto.DepartmentIds?.Count > 0)
+        {
+            milestone.AssignDepartments(dto.DepartmentIds);
+        }
         milestone.SetCreatedBy("system");
         await _uow.Milestones.AddAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
         await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
-        await SendProjectAssignedNotificationAsync(milestone.ProjectId, dto.DepartmentId, ct);
+        await SendProjectAssignedNotificationAsync(milestone.ProjectId, dto.DepartmentIds, ct);
         return CreatedAtAction(nameof(GetById), new { id = milestone.Id }, MilestoneDto.FromEntity(milestone));
     }
 
@@ -99,7 +109,7 @@ public class MilestonesController : BaseApiController
     {
         var milestone = await _db.Milestones
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         if (milestone == null)
         {
@@ -115,12 +125,22 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (dto.DepartmentId.HasValue && !await IsDepartmentAssignedToProjectAsync(milestone.ProjectId, dto.DepartmentId.Value, ct))
+        if (dto.DepartmentIds?.Count > 0)
         {
-            return BadRequest(new { message = "Milestone department must be assigned to the project." });
+            foreach (var deptId in dto.DepartmentIds)
+            {
+                if (!await IsDepartmentAssignedToProjectAsync(milestone.ProjectId, deptId, ct))
+                {
+                    return BadRequest(new { message = $"Department {deptId} is not assigned to the project." });
+                }
+            }
         }
 
-        milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
+        milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical);
+        if (dto.DepartmentIds != null)
+        {
+            milestone.AssignDepartments(dto.DepartmentIds);
+        }
 
         if (milestone.Tasks.Count > 0)
         {
@@ -138,7 +158,7 @@ public class MilestonesController : BaseApiController
         await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         var refreshed = await _db.Milestones
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
@@ -191,7 +211,7 @@ public class MilestonesController : BaseApiController
         await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         var refreshed = await _db.Milestones
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
@@ -255,7 +275,7 @@ public class MilestonesController : BaseApiController
         await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         var refreshed = await _db.Milestones
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
@@ -310,7 +330,7 @@ public class MilestonesController : BaseApiController
 
         var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
         return milestones
-            .Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value))
+            .Where(m => m.MilestoneDepartments.Any(md => departmentIds.Contains(md.DepartmentId)))
             .ToList();
     }
 
@@ -322,7 +342,7 @@ public class MilestonesController : BaseApiController
         }
 
         var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-        return milestone.DepartmentId.HasValue && departmentIds.Contains(milestone.DepartmentId.Value);
+        return milestone.MilestoneDepartments.Any(md => departmentIds.Contains(md.DepartmentId));
     }
 
     private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)
@@ -332,9 +352,9 @@ public class MilestonesController : BaseApiController
              project.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId)),
             ct);
 
-    private async Task SendProjectAssignedNotificationAsync(Guid projectId, Guid? departmentId, CancellationToken ct)
+    private async Task SendProjectAssignedNotificationAsync(Guid projectId, List<Guid>? departmentIds, CancellationToken ct)
     {
-        if (!departmentId.HasValue)
+        if (departmentIds == null || departmentIds.Count == 0)
         {
             return;
         }
@@ -349,7 +369,7 @@ public class MilestonesController : BaseApiController
         }
 
         var departmentHeadIds = await _db.Departments
-            .Where(department => department.Id == departmentId.Value && department.DepartmentHeadUserId != null)
+            .Where(department => departmentIds.Contains(department.Id) && department.DepartmentHeadUserId != null)
             .Select(department => department.DepartmentHeadUserId!)
             .ToListAsync(ct);
 
@@ -387,7 +407,7 @@ public record CreateMilestoneDto(
     string Description,
     DateTime DueDate,
     int Order,
-    Guid? DepartmentId = null,
+    List<Guid>? DepartmentIds = null,
     bool IsCritical = false);
 
 public record UpdateMilestoneDto(
@@ -396,5 +416,5 @@ public record UpdateMilestoneDto(
     DateTime DueDate,
     int Order,
     bool IsCritical,
-    Guid? DepartmentId,
+    List<Guid>? DepartmentIds,
     double ProgressPercentage);

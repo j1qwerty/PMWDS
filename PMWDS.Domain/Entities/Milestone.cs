@@ -6,7 +6,6 @@ namespace PMWDS.Domain.Entities;
 public class Milestone : AuditableEntity
 {
     public Guid ProjectId { get; private set; }
-    public Guid? DepartmentId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public int Order { get; private set; }
@@ -17,21 +16,21 @@ public class Milestone : AuditableEntity
     public double ProgressPercentage { get; private set; }
     // Navigation
     public Project? Project { get; private set; }
-    public Department? Department { get; private set; }
     public IReadOnlyCollection<ProjectTask> Tasks =>
     _tasks.AsReadOnly();
+    public IReadOnlyCollection<MilestoneDepartment> MilestoneDepartments =>
+    _milestoneDepartments.AsReadOnly();
     private readonly List<ProjectTask> _tasks = new();
+    private readonly List<MilestoneDepartment> _milestoneDepartments = new();
     protected Milestone() { }
     public static Milestone Create(
     Guid projectId, string name,
     string description, DateTime dueDate,
-    int order, bool isCritical = false,
-    Guid? departmentId = null)
+    int order, bool isCritical = false)
     {
         return new Milestone
         {
             ProjectId = projectId,
-            DepartmentId = departmentId,
             Name = name,
             Description = description,
             DueDate = dueDate,
@@ -60,19 +59,21 @@ public class Milestone : AuditableEntity
     string description,
     DateTime dueDate,
     int order,
-    bool isCritical,
-    Guid? departmentId = null)
+    bool isCritical)
     {
         Name = name;
         Description = description;
         DueDate = dueDate;
         Order = order;
         IsCritical = isCritical;
-        DepartmentId = departmentId;
     }
-    public void AssignDepartment(Guid? departmentId)
+    public void AssignDepartments(List<Guid> departmentIds)
     {
-        DepartmentId = departmentId;
+        _milestoneDepartments.Clear();
+        foreach (var deptId in departmentIds)
+        {
+            _milestoneDepartments.Add(MilestoneDepartment.Create(Id, deptId));
+        }
     }
     public void UpdateProgress(double percentage)
     {

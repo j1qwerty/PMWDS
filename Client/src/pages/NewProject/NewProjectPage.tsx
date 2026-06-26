@@ -18,7 +18,7 @@ import { UsersStep } from "./steps/UsersStep";
 
 interface MilestoneEntry {
   id: string;
-  departmentId?: string;
+  departmentIds: string[];
   name: string;
   description: string;
   dueDate: string;
@@ -111,7 +111,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       case "details": return name.trim().length > 0 && startDate.trim().length > 0 && endDate.trim().length > 0;
       case "departments": return selectedDepartmentIds.length > 0;
       case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
-      case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
+      case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => milestone.departmentIds.length > 0);
       case "users": return true;
       case "tasks": return true;
       default: return true;
@@ -143,7 +143,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const handleFinish = async () => {
     if (!auth) return;
     const assignedDepartmentIds = usesExecutiveFlow
-      ? Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]))
+      ? Array.from(new Set(milestones.flatMap((milestone) => milestone.departmentIds)))
       : selectedDepartmentIds;
     if (assignedDepartmentIds.length === 0) {
       addToast("Assign at least one department before finishing.", "error");
@@ -183,7 +183,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           description: ms.description || "",
           dueDate: ms.dueDate || "",
           isCritical: ms.isCritical,
-          departmentId: ms.departmentId || null,
+          departmentIds: ms.departmentIds,
           projectId,
         });
         createdMilestoneIds[ms.id] = created.id;
@@ -232,7 +232,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const departmentUsers = useMemo(() => {
     const effectiveDepartmentIds = usesExecutiveFlow
-      ? milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]
+      ? milestones.flatMap((milestone) => milestone.departmentIds)
       : selectedDepartmentIds;
     if (effectiveDepartmentIds.length === 0) return [];
     const deptSet = new Set(effectiveDepartmentIds);
@@ -385,6 +385,9 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             <MilestoneDepartmentsStep
               milestones={milestones}
               departments={scopedDepartments}
+              organizations={data.organizations}
+              isSuperAdmin={isSuperAdmin}
+              userOrganizationId={userOrganizationId}
               onChange={setMilestones}
             />
           )}

@@ -111,13 +111,13 @@ public class PagesController : BaseApiController
         var scopedUserIds = await usersQuery.Select(u => u.Id).ToListAsync(ct);
         var milestoneQuery = _db.Milestones.AsNoTracking()
             .Include(m => m.Tasks)
-            .Include(m => m.Department)
+            .Include(m => m.MilestoneDepartments).ThenInclude(md => md.Department)
             .Where(m => projectIds.Contains(m.ProjectId));
         List<Guid>? visibleMilestoneIds = null;
         if (_scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            milestoneQuery = milestoneQuery.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
+            milestoneQuery = milestoneQuery.Where(m => m.MilestoneDepartments.Any(md => departmentIds.Contains(md.DepartmentId)));
             visibleMilestoneIds = await milestoneQuery.Select(m => m.Id).ToListAsync(ct);
         }
 
@@ -271,10 +271,11 @@ public class PagesController : BaseApiController
         if (isDepartmentHead || isDirectorOrSuperAdmin)
         {
             var milestoneInfo = await _db.Milestones.AsNoTracking()
-                .Where(m => projectIds.Contains(m.ProjectId) && m.DepartmentId != null)
-                .Select(m => new {
+                .Include(m => m.MilestoneDepartments)
+                .Where(m => projectIds.Contains(m.ProjectId) && m.MilestoneDepartments.Any())
+                .SelectMany(m => m.MilestoneDepartments, (m, md) => new {
                     m.ProjectId,
-                    DepartmentId = m.DepartmentId!.Value,
+                    md.DepartmentId,
                     TaskCount = m.Tasks.Count
                 })
                 .ToListAsync(ct);
