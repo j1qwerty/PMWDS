@@ -2,12 +2,8 @@
 # Development Tasks & Improvements
 
 
-## clarification
-- reclarification departments specific milestones in prject creation workflow 
-- 
-
 ## 🚨 Immediate Fixes
-- [ ] Fix deptFormModal - select none to unassign head functionality
+- [x] Fix deptFormModal - select none to unassign head functionality
 - [ ] Remove any UI elements using pagedata API, use manual API instead
 - [ ] Role management for director - manage specific permissions and roles
 - [ ] new project status for each head according to any tasks under those milestones 
@@ -15,6 +11,9 @@
 - [ ] multiple task creation , idempotency for all modals creation and edit
 
 ## 🔴 High Priority
+
+### feature
+- [ ] milestone dependencies ( project creator decides which milestones are dependent or what other milestone and set conditions(progress based ), dept heads can see the msg for dependencies , and based on that they can start tasks or halt after certain progress  )
 
 ### Role & Access Management
 - [ ] Role management for director with proper UI (hide superadmin features)

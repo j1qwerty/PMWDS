@@ -161,7 +161,6 @@ internal static class RolesAndPermissionsSeeder
         var allPermissionCodes = permissions.Keys.ToArray();
         var directorPermissionCodes = new[]
         {
-            PermissionCodes.OrganizationManage,
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
             PermissionCodes.MilestoneManage,

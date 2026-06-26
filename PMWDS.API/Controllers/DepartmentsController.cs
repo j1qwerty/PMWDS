@@ -134,10 +134,7 @@ public class DepartmentsController : BaseApiController
 
         var department = Department.Create(dto.Name, dto.Code, dto.Description, dto.ParentDepartmentId);
         department.SetCreatedBy("system");
-        if (!string.IsNullOrWhiteSpace(dto.DepartmentHeadUserId))
-        {
-            department.AssignHead(dto.DepartmentHeadUserId);
-        }
+        department.AssignHead(dto.DepartmentHeadUserId);
 
         if (organizationId.HasValue)
         {
@@ -216,10 +213,7 @@ public class DepartmentsController : BaseApiController
         }
 
         department.Update(dto.Name, dto.Code, dto.Description);
-        if (!string.IsNullOrWhiteSpace(dto.DepartmentHeadUserId))
-        {
-            department.AssignHead(dto.DepartmentHeadUserId);
-        }
+        department.AssignHead(dto.DepartmentHeadUserId);
 
         department.AssignToOrganization(organizationId);
 
