@@ -7,8 +7,8 @@
 - [ ] Remove any UI elements using pagedata API, use manual API instead
 - [ ] Role management for director - manage specific permissions and roles
 - [ ] new project status for each head according to any tasks under those milestones 
-- [ ] new project milestones - assign multiple departments to a single milestones
-- [ ] multiple task creation , idempotency for all modals creation and edit
+- [x] frontend : multiple task creation , idempotency for all modals creation and edit
+- [ ] backend idempotency
 
 ## 🔴 High Priority
 
@@ -30,6 +30,7 @@
 - [ ] Add delete buttons for projects, milestones, and tasks in proper positions with confirmation modals
 
 ### UI Components
+- [x] projecttaskpage when there are no tasks for a milestone no board is displayed, instead display the empty board, add setting if needed
 - [ ] ProjectMilestone page - show details on side only on big screens, or show on view icon click
 - [ ] Decide on TaskSubtask card vs TaskCard usage across all places
 - [ ] Add escalate task button and mentions functionality
@@ -56,9 +57,9 @@
 - [ ] Reorganize and refactor navigation and sidebar
 
 ### User Management
-- [ ] Add workload column to users table (fix inconsistencies)
-- [ ] Merge users and profiles pages
-- [ ] Merge skills, new users, and departments pages into new tabular page
+- [x] Add workload column to users table (fix inconsistencies)
+- [x] Merge users and profiles pages
+- [x] Merge skills, new users, and departments pages into new tabular page
 
 ### Status Management
 - [ ] Hide manual status changes for milestones and projects

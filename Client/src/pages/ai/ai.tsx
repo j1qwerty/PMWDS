@@ -126,22 +126,22 @@ export function AIPage() {
   return (
     <div>
       {/* <AnimatedBackground /> */}
-    <BgRenderer
-  config={{
-    gradient: { enabled: true, type: "radial", color1: "#4F46E5", color2: "#27cbec", color3: "#A855F7", angle: 0, opacity: 0.15 },
-    patterns: {
-      hexagons: { enabled: true, color: "#4F46E5", opacity: 0.21, size: 120, strokeWidth: 0.3 },
-      grid: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
-      dots: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
-      diagonal: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5, angle: 45 },
-      crosshatch: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5, angle: 45 },
-      rings: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
-      diamonds: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
-    },
-    waves: { enabled: false, color: "#4F46E5", opacity: 0.2, amplitude: 15, frequency: 2, speed: 1, count: 3 },
-    blobs: { enabled: true, color1: "#4F46E5", color2: "#7C3AED", opacity: 0.12, count: 3, animation: "float", speed: 1, size: 1 },
-  }}
-/>
+      {/* <BgRenderer
+        config={{
+          gradient: { enabled: true, type: "radial", color1: "#4F46E5", color2: "#27cbec", color3: "#A855F7", angle: 0, opacity: 0.15 },
+          patterns: {
+            hexagons: { enabled: true, color: "#4F46E5", opacity: 0.21, size: 120, strokeWidth: 0.3 },
+            grid: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+            dots: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+            diagonal: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5, angle: 45 },
+            crosshatch: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5, angle: 45 },
+            rings: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+            diamonds: { enabled: false, color: "#4F46E5", opacity: 0.3, size: 40, strokeWidth: 0.5 },
+          },
+          waves: { enabled: false, color: "#4F46E5", opacity: 0.2, amplitude: 15, frequency: 2, speed: 1, count: 3 },
+          blobs: { enabled: true, color1: "#4F46E5", color2: "#7C3AED", opacity: 0.12, count: 3, animation: "float", speed: 1, size: 1 },
+        }}
+      /> */}
 
 
 
@@ -167,7 +167,7 @@ export function AIPage() {
 
       {/* Main Grid Layout */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
-        
+
         {/* Left Sidebar: Projects (Agents) */}
         <div className="flex flex-col gap-5 lg:max-h-150">
           <ProjectList
@@ -175,7 +175,7 @@ export function AIPage() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
           />
-          
+
           {/* System Load Card */}
           <GlassCard className="p-4 border border-indigo-100/30">
             <div className="flex items-center gap-2 mb-3 text-indigo-600">
@@ -202,12 +202,12 @@ export function AIPage() {
 
           {/* Health & Risk Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <HealthCard 
+            <HealthCard
               project={selectedProject}
               health={health}
-              // projects={projects}
-              // selectedProjectId={selectedProjectId}
-              // onProjectChange={setSelectedProjectId}
+            // projects={projects}
+            // selectedProjectId={selectedProjectId}
+            // onProjectChange={setSelectedProjectId}
             />
             <RiskPredictionCard health={health} />
           </div>
@@ -246,8 +246,8 @@ export function AIPage() {
                     <span className="font-bold text-amber-600">{formatPercent(delay.delayProbability * 100)}</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full" 
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full"
                       style={{ width: `${Math.min(delay.delayProbability * 100, 100)}%` }}
                     />
                   </div>

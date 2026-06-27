@@ -77,6 +77,7 @@ public static class PermissionCodes
     public const string ActivityLogView = "ACTIVITY_LOG_VIEW";
     public const string ActivityLogCreate = "ACTIVITY_LOG_CREATE";
 
+    public const string ReportManage = "REPORT_MANAGE";
     public const string ReportView = "REPORT_VIEW";
     public const string ReportCreate = "REPORT_CREATE";
     public const string ReportEdit = "REPORT_EDIT";

@@ -350,7 +350,6 @@ export function ProjectTasksPage() {
       <div className="relative z-10 space-y-6">
         {orderedMilestones.map((milestone, idx) => {
           const tasks = groupedTasks.get(milestone.id) ?? [];
-          if (tasks.length === 0) return null;
           const colors = getStatusColor(milestone.status);
           return (
             <section

@@ -304,6 +304,9 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
     Permission.IntegrationEdit,
     Permission.IntegrationDelete,
   ],
+  [Permission.AiManage]: [
+    Permission.AiView,
+  ],
 };
 
 export function isSuperAdmin(perms: readonly string[] | undefined | null): boolean {

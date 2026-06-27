@@ -79,6 +79,7 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.ActivityLogManage, "Manage Activity Logs", "Manage all activity log permissions.", "Audit", true),
             (PermissionCodes.ActivityLogView, "View Activity Logs", "View activity logs.", "Audit", true),
             (PermissionCodes.ActivityLogCreate, "Create Activity Logs", "Create activity log entries.", "Audit", false),
+            (PermissionCodes.ReportManage, "Manage Reports", "Manage all report permissions.", "Reports", false),
             (PermissionCodes.ReportView, "View Reports", "View reports.", "Reports", false),
             (PermissionCodes.ReportCreate, "Create Reports", "Create reports.", "Reports", false),
             (PermissionCodes.ReportEdit, "Edit Reports", "Update reports.", "Reports", false),
@@ -168,7 +169,10 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.SubtaskManage,
             PermissionCodes.UserManage,
             PermissionCodes.NotificationManage,
-            PermissionCodes.ActivityLogManage
+            PermissionCodes.ActivityLogManage,
+            PermissionCodes.ReportManage,
+            PermissionCodes.AiView,
+            PermissionCodes.AiManage
         };
         var projectManagerPermissionCodes = new[]
         {
