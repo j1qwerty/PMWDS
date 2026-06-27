@@ -3,13 +3,15 @@ import { useAuth } from "../../auth";
 import {
   PERMISSION_GROUPS,
   Permission,
+  ROLE_LEVELS,
+  expandPermissions,
   isSuperAdmin,
   type PermissionCode,
   type PermissionModule,
 } from "../../permissions";
 import type { Role } from "../../types";
 
-export { Permission, PERMISSION_GROUPS };
+export { Permission, PERMISSION_GROUPS, ROLE_LEVELS, expandPermissions };
 export type { PermissionCode, PermissionModule };
 
 type RoleGateProps = {

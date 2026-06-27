@@ -5,16 +5,26 @@ import { Avatar } from "../shared";
 const roleOptions: Role[] = ["Viewer", "TeamMember", "DepartmentHead", "ProjectManager", "Director", "SuperAdmin"];
 const availabilityOptions = ["Available", "Busy", "Away", "InMeeting", "Offline", "DeepWork"];
 
+const ROLE_LEVEL_MAP: Record<string, number> = {
+  SuperAdmin: 100,
+  Director: 90,
+  ProjectManager: 80,
+  DepartmentHead: 70,
+  TeamMember: 40,
+  Viewer: 10,
+};
+
 type UserEditModalProps = {
   user: User;
   departments: Department[];
   organizations: OrganizationRecord[];
   canSelectSuperAdminRole: boolean;
+  userMaxLevel: number;
   onClose: () => void;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 };
 
-export function UserEditModal({ user, departments, organizations, canSelectSuperAdminRole, onClose, onSubmit }: UserEditModalProps) {
+export function UserEditModal({ user, departments, organizations, canSelectSuperAdminRole, userMaxLevel, onClose, onSubmit }: UserEditModalProps) {
   const initialOrganizationId =
     user.organizationId ??
     user.departments?.find((item) => item.organizationId)?.organizationId ??
@@ -31,7 +41,11 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [profilePictureUrl] = useState(user.profilePictureUrl ?? "");
-  const visibleRoleOptions = canSelectSuperAdminRole ? roleOptions : roleOptions.filter((role) => role !== "SuperAdmin");
+  const visibleRoleOptions = roleOptions.filter((role) => {
+    if (role === "SuperAdmin" && !canSelectSuperAdminRole) return false;
+    if (canSelectSuperAdminRole) return true;
+    return (ROLE_LEVEL_MAP[role] ?? 0) < userMaxLevel;
+  });
 
   const departmentsByOrg = useMemo(
     () =>

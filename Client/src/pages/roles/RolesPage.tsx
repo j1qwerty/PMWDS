@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -8,10 +8,12 @@ import {
   GlassCard,
   LoadingPage,
   PERMISSION_GROUPS,
+  ROLE_LEVELS,
   useNavHeader,
   ModalOverlay,
   DeleteConfirmationModal,
   usePermission,
+  expandPermissions,
   StatCard,
   TabButton,
   useToast,
@@ -27,6 +29,11 @@ export function RolesPage() {
   const perm = usePermission();
   const canManageRoles = perm.has(PERMISSION_GROUPS.role.manage);
   const canManagePermissions = perm.has(PERMISSION_GROUPS.permission.manage);
+
+  const userMaxLevel = useMemo(() => {
+    if (!auth?.roles?.length) return 0;
+    return Math.max(...auth.roles.map((r) => ROLE_LEVELS[r] ?? 0));
+  }, [auth]);
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
@@ -50,11 +57,27 @@ export function RolesPage() {
     setNavHeader({ title: "Roles & Permissions", description: "Manage role definitions, permission levels, and access control" });
   }, [setNavHeader]);
 
+  const visibleRoles = useMemo(() => {
+    if (perm.isSuperAdmin) return roles;
+    return roles.filter((r) => r.permissionLevel < userMaxLevel);
+  }, [roles, userMaxLevel, perm.isSuperAdmin]);
+
+  const ADMIN_ONLY_MODULES = new Set(["Authorization", "Authentication", "System"]);
+
+  const assignablePermissions = useMemo(() => {
+    if (!auth) return [];
+    if (perm.isSuperAdmin) return permissions;
+    const userPermSet = new Set(expandPermissions(auth.permissions));
+    return permissions.filter((p) =>
+      !ADMIN_ONLY_MODULES.has(p.module) && userPermSet.has(p.code),
+    );
+  }, [permissions, auth, perm.isSuperAdmin]);
+
   const loadData = () => {
     if (!auth) return;
     setLoading(true);
     setRoles(data.roles);
-    setPermissions(data.permissions);
+    api.getPermissions(auth.token).then(setPermissions).catch(() => setPermissions(data.permissions));
     setLoading(false);
   };
 
@@ -146,7 +169,7 @@ export function RolesPage() {
             onClick={() => setActiveTab("roles")}
             icon="shield"
             label="Roles"
-            count={roles.length}
+            count={visibleRoles.length}
           />
           <TabButton
             active={activeTab === "permissions"}
@@ -162,7 +185,7 @@ export function RolesPage() {
       <div className="relative z-10">
         {activeTab === "roles" && (
           <RolesTable
-            roles={roles}
+            roles={visibleRoles}
             onEdit={(role) => setRoleModal({ open: true, editRole: role })}
             onDelete={(role) => setDeleteConfirm({ open: true, type: "role", id: role.id, name: role.name })}
             onCreate={() => setRoleModal({ open: true })}
@@ -186,7 +209,7 @@ export function RolesPage() {
         <ModalOverlay onClose={() => setRoleModal({ open: false })}>
           <RoleFormModal
             initialData={roleModal.editRole}
-            permissions={permissions}
+            permissions={assignablePermissions}
             onSubmit={handleRoleSubmit}
             onCancel={() => setRoleModal({ open: false })}
           />

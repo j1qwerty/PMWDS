@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,13 @@ public class RolesController : BaseApiController
         "AI"
     };
 
+    private static readonly HashSet<string> AdminOnlyModules = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Authentication",
+        "Authorization",
+        "System"
+    };
+
     private static readonly Dictionary<string, string[]> ManagePermissionCoverage = new(StringComparer.OrdinalIgnoreCase)
     {
         [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
@@ -47,23 +55,31 @@ public class RolesController : BaseApiController
 
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public RolesController(IUnitOfWork uow, ApplicationDbContext context)
+    public RolesController(IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser)
     {
         _uow = uow;
         _context = context;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetRoles(CancellationToken ct)
     {
+        var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
+
         var roles = await _context.Roles
             .Include(r => r.Permissions)
             .OrderBy(r => r.PermissionLevel)
             .ToListAsync(ct);
 
-        return Ok(roles.Select(r => new RoleResponse(
+        var filtered = User.IsInRole("SuperAdmin")
+            ? roles
+            : roles.Where(r => r.PermissionLevel < userMaxLevel).ToList();
+
+        return Ok(filtered.Select(r => new RoleResponse(
             r.Id,
             r.Name,
             r.Description,
@@ -86,11 +102,20 @@ public class RolesController : BaseApiController
             return Conflict(new { message = $"Role '{req.Name}' already exists." });
         }
 
+        if (!User.IsInRole("SuperAdmin"))
+        {
+            var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
+            if (req.PermissionLevel >= userMaxLevel)
+            {
+                return Forbid();
+            }
+        }
+
         var role = Role.Create(req.Name, req.Description, req.PermissionLevel);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? 10);
         role.SetCreatedBy("system");
 
-        var permissions = await LoadNormalizedPermissionsAsync(req.PermissionIds, ct);
+        var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
         foreach (var permission in permissions)
         {
             role.AddPermission(permission);
@@ -120,10 +145,19 @@ public class RolesController : BaseApiController
             return NotFound();
         }
 
+        if (!User.IsInRole("SuperAdmin"))
+        {
+            var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
+            if (role.PermissionLevel >= userMaxLevel)
+            {
+                return Forbid();
+            }
+        }
+
         role.Update(req.Name, req.Description, req.PermissionLevel);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
-        var permissions = await LoadNormalizedPermissionsAsync(req.PermissionIds, ct);
+        var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
 
         role.Permissions.Clear();
         foreach (var permission in permissions)
@@ -140,6 +174,18 @@ public class RolesController : BaseApiController
     [Authorize(Policy = "Roles.Delete")]
     public async Task<IActionResult> DeleteRole(Guid id, CancellationToken ct)
     {
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
+        if (role == null) return NotFound();
+
+        if (!User.IsInRole("SuperAdmin"))
+        {
+            var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
+            if (role.PermissionLevel >= userMaxLevel)
+            {
+                return Forbid();
+            }
+        }
+
         await _uow.Roles.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
@@ -195,19 +241,70 @@ public class RolesController : BaseApiController
     private static IEnumerable<Permission> VisiblePermissions(IEnumerable<Permission> permissions)
         => permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
 
-    private async Task<List<Permission>> LoadNormalizedPermissionsAsync(IReadOnlyCollection<Guid> permissionIds, CancellationToken ct)
+    private async Task<int> GetCurrentUserMaxLevelAsync(CancellationToken ct)
     {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var parsedId))
+            return 0;
+
+        var user = await _context.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == parsedId, ct);
+
+        return user?.Roles.Max(r => r.PermissionLevel) ?? 0;
+    }
+
+    private async Task<HashSet<string>> GetCurrentUserPermissionCodesAsync(CancellationToken ct)
+    {
+        if (User.IsInRole("SuperAdmin"))
+        {
+            var all = await _context.Permissions.Select(p => p.Code).ToListAsync(ct);
+            return new HashSet<string>(all, StringComparer.OrdinalIgnoreCase);
+        }
+
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var parsedId))
+            return new HashSet<string>();
+
+        var codes = await _context.Users
+            .Where(u => u.Id == parsedId)
+            .SelectMany(u => u.Roles.SelectMany(r => r.Permissions.Select(p => p.Code)))
+            .Distinct()
+            .ToListAsync(ct);
+
+        var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
+        foreach (var manageCode in codes)
+        {
+            if (ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
+            {
+                foreach (var c in covered) expanded.Add(c);
+            }
+        }
+
+        return expanded;
+    }
+
+    private async Task<List<Permission>> LoadAssignablePermissionsAsync(IReadOnlyCollection<Guid> permissionIds, CancellationToken ct)
+    {
+        var userPermissions = await GetCurrentUserPermissionCodesAsync(ct);
+
         var selected = await VisiblePermissionQuery()
             .Where(permission => permissionIds.Contains(permission.Id))
             .ToListAsync(ct);
-        var selectedCodes = selected.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var assignable = selected
+            .Where(p => userPermissions.Contains(p.Code))
+            .Where(p => User.IsInRole("SuperAdmin") || !AdminOnlyModules.Contains(p.Module))
+            .ToList();
+
+        var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var coveredCodes = ManagePermissionCoverage
             .Where(pair => selectedCodes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        return selected
-            .Where(permission => !coveredCodes.Contains(permission.Code))
+        return assignable
+            .Where(p => !coveredCodes.Contains(p.Code))
             .ToList();
     }
 }

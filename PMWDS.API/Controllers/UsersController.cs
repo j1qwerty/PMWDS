@@ -178,6 +178,29 @@ public class UsersController : BaseApiController
                 .Where(role => !role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
+            if (!User.IsInRole("SuperAdmin") && requestedRoles.Count > 0)
+            {
+                var currentUserId = _currentUser.UserId;
+                var currentUserMaxLevel = 0;
+                if (Guid.TryParse(currentUserId, out var currentUserGuid))
+                {
+                    var currentUserEntity = await _db.Users
+                        .Include(u => u.Roles)
+                        .FirstOrDefaultAsync(u => u.Id == currentUserGuid, ct);
+                    if (currentUserEntity != null)
+                    {
+                        currentUserMaxLevel = currentUserEntity.Roles.Max(r => r.PermissionLevel);
+                    }
+                }
+
+                var exceedLevel = await _uow.Roles.FindAsync(
+                    r => requestedRoles.Contains(r.Name) && r.PermissionLevel >= currentUserMaxLevel, ct);
+                if (exceedLevel.Any())
+                {
+                    return Forbid();
+                }
+            }
+
             var isCurrentlySuperAdmin = user.Roles.Any(r => r.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
             if (isCurrentlySuperAdmin && !requestedRoles.Contains("SuperAdmin", StringComparer.OrdinalIgnoreCase))
             {

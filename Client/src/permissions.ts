@@ -347,6 +347,15 @@ export function expandPermissions(userPermissions: readonly string[] | undefined
   return Array.from(set);
 }
 
+export const ROLE_LEVELS: Record<string, number> = {
+  SuperAdmin: 100,
+  Director: 90,
+  ProjectManager: 80,
+  DepartmentHead: 70,
+  TeamMember: 40,
+  Viewer: 10,
+};
+
 export function getModuleGroup(module: PermissionModule) {
   return PERMISSION_GROUPS[module];
 }

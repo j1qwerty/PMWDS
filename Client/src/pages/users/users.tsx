@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, SkillRecord, User } from "../../types";
@@ -9,6 +9,7 @@ import {
   useNavHeader,
   PageSkeleton,
   PERMISSION_GROUPS,
+  ROLE_LEVELS,
   usePermission,
   StatCard,
   useToast,
@@ -22,6 +23,11 @@ export function UsersPage() {
   const perm = usePermission();
   const isAdmin = perm.isAdmin;
   const canManageUsers = perm.has(PERMISSION_GROUPS.user.manage);
+
+  const userMaxLevel = useMemo(() => {
+    if (!auth?.roles?.length) return 0;
+    return Math.max(...auth.roles.map((r) => ROLE_LEVELS[r] ?? 0));
+  }, [auth]);
 
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -135,6 +141,7 @@ export function UsersPage() {
           departments={departments}
           organizations={organizations}
           canSelectSuperAdminRole={isAdmin}
+          userMaxLevel={userMaxLevel}
           onClose={() => setEditingUser(null)}
           onSubmit={async (payload) => {
             const updated = await api.updateUser(auth.token, editingUser.id, payload);

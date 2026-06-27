@@ -335,8 +335,27 @@ public class PagesController : BaseApiController
     }
 
     private Task<PaginatedResponse<PageRoleDto>> GetRolesAsync(PaginationQuery pagination, CancellationToken ct)
-        => ToPageAsync(
-            _db.Roles.AsNoTracking().Include(r => r.Permissions).OrderBy(r => r.PermissionLevel).ThenBy(r => r.Name),
+    {
+        IQueryable<Role> query = _db.Roles.AsNoTracking().Include(r => r.Permissions);
+
+        if (!_scope.IsSuperAdmin)
+        {
+            var currentUserId = _currentUser.UserId;
+            if (Guid.TryParse(currentUserId, out var parsedId))
+            {
+                var user = _db.Users
+                    .Include(u => u.Roles)
+                    .FirstOrDefault(u => u.Id == parsedId);
+                if (user != null)
+                {
+                    var maxLevel = user.Roles.Max(r => r.PermissionLevel);
+                    query = query.Where(r => r.PermissionLevel < maxLevel);
+                }
+            }
+        }
+
+        return ToPageAsync(
+            query.OrderBy(r => r.PermissionLevel).ThenBy(r => r.Name),
             pagination,
             r => new PageRoleDto(
                 r.Id,
@@ -346,6 +365,7 @@ public class PagesController : BaseApiController
                 r.PaginationPageSize,
                 VisiblePermissionCodes(r.Permissions).OrderBy(code => code).ToList()),
             ct);
+    }
 
     private Task<PaginatedResponse<PagePermissionDto>> GetPermissionsAsync(PaginationQuery pagination, CancellationToken ct)
         => ToPageAsync(

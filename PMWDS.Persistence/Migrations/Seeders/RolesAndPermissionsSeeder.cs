@@ -171,6 +171,8 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.NotificationManage,
             PermissionCodes.ActivityLogManage,
             PermissionCodes.ReportManage,
+            PermissionCodes.RoleManage,
+            PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
             PermissionCodes.AiManage
         };
