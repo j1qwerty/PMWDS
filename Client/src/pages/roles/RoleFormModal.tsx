@@ -392,7 +392,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                             type="checkbox"
                             checked={selectedPermissions.has(permission.id)}
                             onChange={() => togglePermission(permission.id)}
-                            disabled={module.managePermission && selectedPermissions.has(module.managePermission.id)}
+                            disabled={!!(module.managePermission && selectedPermissions.has(module.managePermission.id))}
                             className="hidden"
                           />
                           <div className="flex-1 min-w-0">
