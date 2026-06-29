@@ -278,7 +278,7 @@ export function ProjectBasicDetails({
                 size="xs" 
               />
               <span className="text-xs font-medium truncate">
-                {manager?.fullName || project.projectManagerName}
+                <span className={manager?.isActive === false ? "text-red-500" : ""}>{manager?.fullName || project.projectManagerName}</span>
               </span>
             </div>
           )}

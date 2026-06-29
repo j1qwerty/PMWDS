@@ -78,7 +78,7 @@ export function TaskFormModal({
   const assignedUsers = useMemo(() => {
     return form.assignedToUserIds.map((id) => {
       const user = users.find((u) => u.id === id);
-      return { id, fullName: user?.fullName ?? "Unknown", profilePictureUrl: user?.profilePictureUrl ?? null };
+      return { id, fullName: user?.fullName ?? "Unknown", profilePictureUrl: user?.profilePictureUrl ?? null, isActive: user?.isActive ?? true };
     });
   }, [form.assignedToUserIds, users]);
 
@@ -191,7 +191,9 @@ export function TaskFormModal({
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
               <AvatarStack people={assignedUsers} size="xs" />
               <span className="text-slate-600 font-medium truncate max-w-50">
-                {assignedUsers.map(u => u.fullName).join(", ")}
+                {assignedUsers.map((u, i) => (
+                  <span key={u.id} className={u.isActive === false ? "text-red-500" : ""}>{i > 0 ? ", " : ""}{u.fullName}</span>
+                ))}
               </span>
             </div>
           )}

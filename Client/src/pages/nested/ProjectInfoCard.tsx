@@ -80,7 +80,7 @@ export function ProjectInfoCard({
             {project.projectManagerId && (
               <div className="flex items-center gap-1.5" title="Project Manager">
                 <Avatark person={manager} name={project.projectManagerName} size="xs" />
-                <span className="text-xs font-medium text-slate-500 truncate max-w-[120px]">
+                <span className={`text-xs font-medium truncate max-w-[120px] ${manager?.isActive === false ? "text-red-500" : "text-slate-500"}`}>
                   {manager?.fullName || project.projectManagerName}
                 </span>
               </div>

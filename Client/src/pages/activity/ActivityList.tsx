@@ -108,7 +108,7 @@ export function ActivityList({ logs, users }: ActivityListProps) {
                       {userName && (
                         <div className="flex items-center gap-1.5 mb-1.5">
                           {user && <Avatar person={user} size="xs" className="shadow-none ring-0" />}
-                          <span className="text-[10px] text-slate-400">{userName}</span>
+                          <span className={`text-[10px] ${user?.isActive === false ? "text-red-400" : "text-slate-400"}`}>{userName}</span>
                           {log.projectName && (
                             <span className="text-[10px] text-slate-400">/ {log.projectName}</span>
                           )}

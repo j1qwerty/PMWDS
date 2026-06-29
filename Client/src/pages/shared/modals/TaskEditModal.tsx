@@ -58,6 +58,7 @@ export function TaskEditModal({
       id: u.id,
       fullName: u.fullName || (matched?.fullName ?? undefined),
       profilePictureUrl: matched?.profilePictureUrl ?? null,
+      isActive: matched?.isActive ?? true,
     };
   });
 
@@ -207,7 +208,9 @@ export function TaskEditModal({
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
               <AvatarStack people={assignedUsersResolved} size="xs" />
               <span className="text-slate-600 font-medium truncate max-w-50">
-                {assignedUsersResolved.map(u => u.fullName).join(", ")}
+                {assignedUsersResolved.map((u, i) => (
+                  <span key={u.id} className={u.isActive === false ? "text-red-500" : ""}>{i > 0 ? ", " : ""}{u.fullName}</span>
+                ))}
               </span>
             </div>
           )}

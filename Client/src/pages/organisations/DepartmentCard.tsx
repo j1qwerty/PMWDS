@@ -111,7 +111,7 @@ export function DepartmentCard({
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-slate-400 font-medium">Head</span>
             <Avatar person={departmentHead} size="sm" />
-            <span className="text-[11px] font-medium text-slate-600">{departmentHead.fullName}{departmentHead.isActive === false && <span className="ml-1 text-[10px] text-slate-400 font-normal">(Inactive)</span>}</span>
+            <span className={`text-[11px] font-medium ${departmentHead.isActive === false ? "text-red-500" : "text-slate-600"}`}>{departmentHead.fullName}</span>
           </div>
         )}
         

@@ -104,7 +104,7 @@ export function DepartmentDetailCard({
               {departmentHead ? (
                 <>
                   <Avatar person={departmentHead} size="sm" className="shadow-none ring-0" />
-                  {departmentHead.fullName}
+                  <span className={departmentHead.isActive === false ? "text-red-500" : ""}>{departmentHead.fullName}</span>
                 </>
               ) : (
                 "Unassigned"
@@ -155,6 +155,7 @@ export function DepartmentDetailCard({
               <div className="flex items-center gap-2 ml-4 pl-4 border-l border-slate-200">
                 <span className="text-[10px] text-slate-400 font-medium">Head:</span>
                 <Avatar person={departmentHead} size="md" />
+                <span className={departmentHead.isActive === false ? "text-[10px] text-red-500 font-medium" : "text-[10px] text-slate-400 font-medium"}>{departmentHead.fullName}</span>
               </div>
             )}
           </div>

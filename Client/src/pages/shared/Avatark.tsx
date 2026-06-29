@@ -5,6 +5,7 @@ type AvatarkPerson = {
   profilePictureUrl?: string | null;
   fullName?: string | null;
   email?: string | null;
+  isActive?: boolean;
 };
 
 type AvatarkProps = {
@@ -37,6 +38,7 @@ function toAvatarkPerson(person?: AvatarkPerson | null) {
     profilePictureUrl: person.profilePictureUrl,
     fullName: person.fullName ?? undefined,
     email: person.email ?? undefined,
+    isActive: person.isActive,
   };
 }
 
@@ -58,11 +60,11 @@ export function getAvatarUrl(person?: AvatarkPerson | null, nameOverride?: strin
 
 export function Avatark({ person, name, src, size = "md", className = "" }: AvatarkProps) {
   const label = name || person?.fullName || person?.name || person?.email || "User";
-  const safe = toAvatarkPerson(person);
+  const inactive = person?.isActive === false;
 
   return (
     <img
-      className={`${sizeClass[size]} rounded-full object-cover ring-2 ring-white shadow-sm bg-slate-100 ${className}`}
+      className={`${sizeClass[size]} rounded-full object-cover ring-2 ring-white shadow-sm bg-slate-100 ${inactive ? "opacity-60 ring-1 ring-red-300" : ""} ${className}`}
       src={getAvatarUrl(person, name, src)}
       alt={label}
       loading="lazy"
@@ -81,7 +83,7 @@ export function AvatarStackk({ users, limit = 4, size = "sm" }: { users: Avatark
         return (
           <div
             key={person.id || person.userId || `${person.fullName || person.name || "user"}-${index}`}
-            title={name}
+            title={person.isActive === false ? `${name} (Inactive)` : name}
             className="relative group"
           >
             <Avatark person={toAvatarkPerson(person)} size={size} />

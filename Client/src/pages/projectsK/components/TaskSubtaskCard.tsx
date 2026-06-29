@@ -75,6 +75,7 @@ export function TaskSubtaskCard({
           id: a.userId,
           fullName: user?.fullName ?? a.fullName ?? null,
           profilePictureUrl: user?.profilePictureUrl ?? null,
+          isActive: user?.isActive ?? true,
         };
       }),
     [task.assignees, userMap],

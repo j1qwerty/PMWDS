@@ -49,10 +49,11 @@ export function getAvatarUrl(person?: AvatarPerson | null, nameOverride?: string
 
 export function Avatar({ person, name, src, size = "md", className = "" }: AvatarProps) {
   const label = name || person?.fullName || person?.name || person?.email || "User";
+  const inactive = person?.isActive === false;
 
   return (
     <img
-      className={`${sizeClass[size]} rounded-full object-cover ring-2 ring-white shadow-sm bg-slate-100 ${className}`}
+      className={`${sizeClass[size]} rounded-full object-cover ring-2 ring-white shadow-sm bg-slate-100 ${inactive ? "opacity-60 ring-1 ring-red-300" : ""} ${className}`}
       src={getAvatarUrl(person, name, src)}
       alt={label}
       loading="lazy"
@@ -71,7 +72,7 @@ export function AvatarStack({ people, limit = 4, size = "sm" }: { people: Avatar
         return (
           <div
             key={person.id || person.userId || `${person.fullName || person.name || "user"}-${index}`}
-            title={name}
+            title={person.isActive === false ? `${name} (Inactive)` : name}
             className="relative group"
           >
             <Avatar
