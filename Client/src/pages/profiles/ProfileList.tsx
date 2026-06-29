@@ -64,6 +64,7 @@ export function ProfileList({ users, selectedUserId, onSelect, searchTerm, onSea
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-sm text-slate-800 truncate">
                   {user.fullName}
+                  {user.isActive === false && <span className="ml-1.5 text-[10px] text-slate-400 font-normal">(Inactive)</span>}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   {user.jobTitle && (

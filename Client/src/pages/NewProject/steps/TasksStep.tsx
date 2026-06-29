@@ -290,7 +290,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Assignees</label>
                   <div className="flex flex-wrap gap-1.5">
-                    {users.map((u) => (
+                    {users.filter(u => u.isActive !== false).map((u) => (
                       <button
                         key={u.id}
                         type="button"

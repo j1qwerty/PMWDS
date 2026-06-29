@@ -71,7 +71,7 @@ export function DepartmentsStep({
   };
 
   const getDeptUsers = (deptId: string) =>
-    users.filter((u) => u.departmentId === deptId || u.departments?.some((d) => d.departmentId === deptId));
+    users.filter((u) => u.isActive !== false && (u.departmentId === deptId || u.departments?.some((d) => d.departmentId === deptId)));
 
   const handleCreateDept = async (form: Record<string, unknown>) => {
     if (!auth) return;

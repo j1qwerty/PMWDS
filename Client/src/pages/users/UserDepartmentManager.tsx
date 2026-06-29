@@ -60,7 +60,7 @@ export function UserDepartmentManager({
             onChange={event => setUserId(event.target.value)}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white outline-none focus:border-indigo-300"
           >
-            {users.map(user => (
+            {users.filter(u => u.isActive !== false).map(user => (
               <option key={user.id} value={user.id}>{user.fullName}</option>
             ))}
           </select>

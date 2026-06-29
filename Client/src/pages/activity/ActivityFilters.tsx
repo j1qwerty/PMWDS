@@ -50,7 +50,7 @@ export function ActivityFilters({
             <option value="">All Users</option>
             <option value="__my__">My Activity</option>
             <option value="" disabled>──</option>
-            {users.map((user) => (
+            {users.filter((u) => u.isActive !== false).map((user) => (
               <option key={user.id} value={user.id}>{user.fullName}</option>
             ))}
           </select>

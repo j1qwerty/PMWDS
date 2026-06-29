@@ -123,7 +123,6 @@ export function UsersTable({
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Name</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Role</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Department</th>
-              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Status</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Workload</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Burnout Risk</th>
               {canManageUsers && <th className="text-right px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>}
@@ -161,7 +160,7 @@ export function UsersTable({
                       <div>
                         <div className="flex items-center gap-1.5" title={user.isActive !== false ? "Active" : "Inactive"}>
                           <span
-                            className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${user.isActive !== false ? "bg-emerald-500" : "bg-slate-400"}`}
+                            className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${user.isActive !== false ? "bg-emerald-500" : "bg-red-500"}`}
                             
                           />
                           <span className="font-semibold text-slate-800">{user.fullName}</span>
@@ -181,27 +180,7 @@ export function UsersTable({
                     </span>
                     {showOrganizationName && org && <div className="text-[10px] text-slate-400 mt-1">{org.name}</div>}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1.5">
-                      <div className="relative inline-block">
-                        <select
-                          value={user.availabilityStatus || "Available"}
-                          onChange={(e) => handleAvailabilityChange(user.id, e.target.value)}
-                          className="appearance-none w-full min-w-[110px] px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px] font-medium outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
-                        >
-                          <option>Available</option>
-                          <option>Busy</option>
-                          <option>Away</option>
-                          <option>In Meeting</option>
-                          <option>Deep Work</option>
-                          <option>Offline</option>
-                        </select>
-                        <span className="material-symbols-outlined absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">
-                          expand_more
-                        </span>
-                      </div>
-                    </div>
-                  </td>
+
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden max-w-[100px]">

@@ -110,7 +110,7 @@ export function DeptFormModal({
           >
             <option value="">None</option>
             {users
-              .filter((u) => !u.roles?.includes("SuperAdmin"))
+              .filter((u) => u.isActive !== false && !u.roles?.includes("SuperAdmin"))
               .map((u) => (
                 <option key={u.id} value={u.id}>{u.fullName}</option>
               ))}

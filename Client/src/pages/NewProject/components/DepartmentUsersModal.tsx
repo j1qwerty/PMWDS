@@ -15,6 +15,7 @@ type Tab = "current" | "other";
 export function DepartmentUsersModal({ department, allDepartments, allUsers, onSave, onCancel }: DepartmentUsersModalProps) {
   const orgUsers = useMemo(
     () => allUsers.filter((u) => {
+      if (u.isActive === false) return false;
       if (u.roles?.includes("SuperAdmin")) return false;
       const userDept = allDepartments.find((d) => d.id === u.departmentId);
       const userOrgId = u.organizationId ??

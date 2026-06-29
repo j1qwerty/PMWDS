@@ -238,6 +238,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     const deptSet = new Set(effectiveDepartmentIds);
     const seen = new Set<string>();
     return data.users.filter((u) => {
+      if (u.isActive === false) return false;
       if (seen.has(u.id)) return false;
       seen.add(u.id);
       if (u.roles?.includes("SuperAdmin")) return false;

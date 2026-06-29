@@ -47,9 +47,14 @@ public class AuthController : BaseApiController
         var passwordVerification = user == null
             ? PasswordVerificationResult.Failed
             : VerifyPassword(user, req.Password);
-        if (user == null || !user.IsActive || passwordVerification == PasswordVerificationResult.Failed)
+        if (user == null || passwordVerification == PasswordVerificationResult.Failed)
         {
             return Unauthorized(new { Message = "Invalid credentials." });
+        }
+
+        if (!user.IsActive)
+        {
+            return Unauthorized(new { Message = "Your account has been deactivated. Please contact your administrator." });
         }
 
         var roles = UserRoleResolver.Resolve(user);

@@ -120,7 +120,7 @@ export function SkillsPage() {
   const unassignedUsers = useMemo(() => {
     if (!selectedSkillId) return [];
     return users.filter(u =>
-      !u.skillDetails?.some(s => s.skillId === selectedSkillId)
+      u.isActive !== false && !u.skillDetails?.some(s => s.skillId === selectedSkillId)
     );
   }, [users, selectedSkillId]);
 
@@ -133,6 +133,7 @@ export function SkillsPage() {
     : departments;
 
   const filteredUsers = users.filter(user => {
+    if (user.isActive === false) return false;
     const matchesSearch = !userSearch ||
       user.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
       (user.email && user.email.toLowerCase().includes(userSearch.toLowerCase()));
@@ -487,7 +488,7 @@ export function SkillsPage() {
                               <Avatar person={user} size="sm" className="shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-semibold text-slate-700 truncate">{user.fullName}</p>
-                                <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{user.email} {user.isActive === false && <span className="text-slate-400">(Inactive)</span>}</p>
                               </div>
 
                               {canManage ? (

@@ -95,7 +95,9 @@ export function LoginPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
 
-      if (message.toLowerCase().includes("invalid credentials") || message.toLowerCase().includes("unauthorized")) {
+      if (message.toLowerCase().includes("deactivated")) {
+        setError("Your account has been deactivated. Please contact your administrator.");
+      } else if (message.toLowerCase().includes("invalid credentials") || message.toLowerCase().includes("unauthorized")) {
         setError("Invalid email or password. Please try again.");
       } else if (message.toLowerCase().includes("network")) {
         setError("Network error. Please check your connection.");

@@ -123,7 +123,7 @@ export function UsersPage() {
           token={auth?.token ?? ""}
           canUploadPictures={isAdmin}
           showOrganizationFilter={isAdmin}
-          showOrganizationName={isAdmin}
+          showOrganizationName={perm.isSuperAdmin}
           canManageUsers={canManageUsers}
           onEditUser={setEditingUser}
           onToggleUserActive={handleToggleUserActive}

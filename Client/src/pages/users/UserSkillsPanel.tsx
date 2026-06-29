@@ -74,9 +74,9 @@ export function UserSkillsPanel({ users, onMessage, onUpdate }: UserSkillsPanelP
               onChange={(e) => setSelectedUser(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
             >
-              {users.map((user) => (
+              {users.filter((u) => u.isActive !== false).map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.fullName}{user.isActive === false ? " (Inactive)" : ""}
+                  {user.fullName}
                 </option>
               ))}
             </select>

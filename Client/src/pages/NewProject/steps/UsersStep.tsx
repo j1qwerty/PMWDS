@@ -30,7 +30,7 @@ export function UsersStep({ selectedDepartmentIds, departments, users, organizat
   );
 
   const getDeptUsers = (deptId: string) =>
-    users.filter((u) => u.departmentId === deptId || u.departments?.some((d) => d.departmentId === deptId));
+    users.filter((u) => u.isActive !== false && (u.departmentId === deptId || u.departments?.some((d) => d.departmentId === deptId)));
 
   const handleAssignUserDepartments = async (userId: string, departmentIds: string[]) => {
     if (!auth) return;

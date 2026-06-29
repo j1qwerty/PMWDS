@@ -36,6 +36,7 @@ export function ScopedUserSelect({
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return users.filter((user) => {
+      if (!user.isActive) return false;
       if (hideSuperAdmins && user.roles.includes("SuperAdmin")) return false;
       const inOrganization = !organizationId || user.organizationId === organizationId || user.departments?.some((assignment) => assignment.organizationId === organizationId);
       const inDepartment = !departmentId || user.departments?.some((assignment) => assignment.departmentId === departmentId) || user.departmentId === departmentId;
