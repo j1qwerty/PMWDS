@@ -16,7 +16,7 @@
 ## 🔴 High Priority
 
 ### feature
-- [ ] milestone dependencies 
+- [x] milestone dependencies 
 - [ ] Implement paginated results for documents and other sections (audit all sections, create list of sections/components for update)
 - [ ] Settings page for both roles (add create organizations button for superadmin)
 - [ ] All types of settings and settings API
@@ -36,8 +36,8 @@
 - [x] projecttaskpage when there are no tasks for a milestone no board is displayed, instead display the empty board, add setting if needed
 - [ ] ProjectMilestone page - show details on side only on big screens, or show on view icon click
 - [x] Decide on TaskSubtask card vs TaskCard usage across all places
-- [ ] Add escalate task button and mentions functionality
-- [ ] Add more buttons to projects page top navigation
+- [x] Add escalate task button and mentions functionality
+- [x] Add more buttons to projects page top navigation
 - [x] Consistent toasts 
 - [ ] consistent stat cards design
 - [x] User assignment in departments page

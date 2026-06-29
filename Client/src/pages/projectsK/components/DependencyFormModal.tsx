@@ -85,10 +85,10 @@ export function DependencyFormModal({
   if (!open) return null;
 
   return (
-    <ModalOverlay onClose={onClose} widthClassName="max-w-lg">
-      <form onSubmit={handleSave} className="bg-white rounded-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200">
+    <ModalOverlay onClose={onClose} >
+      <form onSubmit={handleSave} className="bg-white rounded-2xl w-full  flex flex-col shadow-xl border border-slate-200">
         <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-          <div>
+          <div> 
             <h3 className="text-lg font-bold text-slate-900">{editDep ? "Edit Dependency" : "New Dependency"}</h3>
             <p className="text-xs text-slate-400 mt-1">
               {editDep ? "Update the dependency condition" : "Define which milestone blocks another"}

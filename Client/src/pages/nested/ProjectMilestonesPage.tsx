@@ -660,6 +660,7 @@ export function ProjectMilestonesPage() {
         authToken={auth?.token}
         users={ws.users}
         milestones={ws.milestones}
+        dependencies={ws.dependencies}
         onClose={() => setViewProject(false)}
         onEdit={() => navigate("/projectsK")}
         onStatusChange={() => { ws.refresh(); }}

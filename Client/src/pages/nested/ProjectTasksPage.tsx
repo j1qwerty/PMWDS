@@ -18,7 +18,7 @@ import {
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import TaskSubtaskBoard, { allBoards } from "../shared/dash/TaskSubtaskBoard";
-import { MilestoneDetailModal, MilestoneFormModal, ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "../projectsK/components";
+import { MilestoneDetailModal, MilestoneFormModal, ProjectDetailModal, ProjectFormModal, type ProjectFormState, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal, DependencyFormModal } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
@@ -67,6 +67,7 @@ export function ProjectTasksPage() {
 
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
+  const [depModalOpen, setDepModalOpen] = useState(false);
 
   const [showBoardSettings, setShowBoardSettings] = useState(false);
   const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>({
@@ -103,7 +104,7 @@ export function ProjectTasksPage() {
     }
     actions.push({
       label: "Dependencies",
-      onClick: () => navigate(`/projects/${ws.project.id}/dependencies`),
+      onClick: () => setDepModalOpen(true),
       icon: "account_tree",
     });
     setNavHeader({
@@ -111,7 +112,7 @@ export function ProjectTasksPage() {
       description: "Tasks grouped by milestone",
       actions,
     });
-  }, [setNavHeader, ws.project, canManageTasks, navigate]);
+  }, [setNavHeader, ws.project, canManageTasks]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -187,6 +188,30 @@ export function ProjectTasksPage() {
     setDeleteProjectTarget(null);
     addToast("Project deleted");
     navigate("/projectsK");
+  };
+
+  const handleAddDependency = async (payload: Record<string, unknown>) => {
+    if (!auth || !ws.project) return;
+    try {
+      await api.createMilestoneDependency(auth.token, { ...payload, projectId: ws.project.id });
+      addToast("Dependency created");
+      await ws.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to create dependency", "error");
+      throw e;
+    }
+  };
+
+  const handleUpdateDependency = async (id: string, payload: Record<string, unknown>) => {
+    if (!auth) return;
+    try {
+      await api.updateMilestoneDependency(auth.token, id, payload);
+      addToast("Dependency updated");
+      await ws.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to update dependency", "error");
+      throw e;
+    }
   };
 
   const getProgressColor = (progress: number): string => {
@@ -601,12 +626,21 @@ export function ProjectTasksPage() {
         serverError={milestoneError}
       />
 
+      <DependencyFormModal
+        open={depModalOpen}
+        milestones={ws.milestones}
+        onAdd={handleAddDependency}
+        onUpdate={handleUpdateDependency}
+        onClose={() => setDepModalOpen(false)}
+      />
+
       <ProjectDetailModal
         project={viewProject ? ws.project : null}
         canManage={canManageProjects}
         authToken={auth?.token}
         users={ws.users}
         milestones={ws.milestones}
+        dependencies={ws.dependencies}
         onClose={() => setViewProject(false)}
         onEdit={() => navigate("/projectsK")}
         onStatusChange={() => { ws.refresh(); }}

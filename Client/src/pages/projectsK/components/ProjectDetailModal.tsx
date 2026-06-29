@@ -181,7 +181,7 @@ function DependenciesSection({ dependencies, milestones }: { dependencies: Miles
       <div className="flex flex-col items-center justify-center h-full min-h-[250px] text-slate-400">
         <span className="material-symbols-outlined text-5xl mb-3">account_tree</span>
         <p className="text-sm font-medium text-slate-500">No dependencies defined</p>
-        <p className="text-xs mt-1">Go to the Dependencies page to add milestone dependency rules.</p>
+        <p className="text-xs mt-1">Go to the milestones to add dependency rules.</p>
       </div>
     );
   }
