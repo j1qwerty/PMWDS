@@ -32,6 +32,8 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
       className={`text-left p-3 rounded-xl shadow-sm border cursor-pointer transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-400 ${
         isSelected
           ? "bg-indigo-50 border-blue-500 border-b hover:bg-blue-100"
+          : milestone.isBlocked
+          ? "bg-amber-50/60 border-amber-200 hover:shadow-md hover:border-amber-400"
           : "bg-white border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200"
       }`}
       style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}
@@ -39,17 +41,19 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
       {/* Row 1: Small icon and name (full name wrap text) */}
       <div className="flex items-start gap-2 mb-2">
         <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 ${
-          milestone.isCritical ? "bg-red-100" : "bg-slate-100"
+          milestone.isBlocked ? "bg-amber-100" : milestone.isCritical ? "bg-red-100" : "bg-slate-100"
         }`}>
           <span className={`material-symbols-outlined text-sm ${
-            milestone.isCritical ? "text-red-500" : "text-slate-400"
+            milestone.isBlocked ? "text-amber-600" : milestone.isCritical ? "text-red-500" : "text-slate-400"
           }`}>
-            {milestone.status === "Completed" ? "check_circle" : "flag"}
+            {milestone.isBlocked ? "lock" : milestone.status === "Completed" ? "check_circle" : "flag"}
           </span>
         </div>
         <span className="font-semibold text-sm text-slate-800 leading-tight">
           {milestone.name}
+          
         </span>
+        
       </div>
 
       {/* Row 2: Status, progress bar and progress percent */}
@@ -85,12 +89,13 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
             </span>
           )}
           {milestone.isCritical && (
-            <span className="text-[10px] font-bold text-red-500 uppercase bg-red-50 px-1.5 py-0.5 rounded">
+            <span className="text-[8px] font-bold text-red-500 uppercase bg-red-50 px-1.5 py-0.5 rounded">
               Critical
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
+         
           {onViewMilestone && (
             <button
               title="View milestone"
@@ -121,7 +126,16 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
             </button>
           )}
         </div>
+      
       </div>
+        <div>
+         {milestone.isBlocked && milestone.blockedByMessage && (
+            <div className="flex items-center gap-1 " title={milestone.blockedByMessage}>
+              <span className="material-symbols-outlined text-xs text-amber-500 shrink-0">warning</span>
+              <span className="text-[9px] text-amber-600 ">{milestone.blockedByMessage}</span>
+            </div>
+          )}
+          </div>
     </div>
   );
 }

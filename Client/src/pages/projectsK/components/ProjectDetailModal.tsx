@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { Milestone, Project, User } from "../../../types";
+import type { Milestone, MilestoneDependency, Project, User } from "../../../types";
 import { api } from "../../../api";
 import { ModalOverlay } from "../../shared";
 import { formatMoney } from "../../../ui";
@@ -17,6 +17,7 @@ interface ProjectDetailModalProps {
   authToken?: string | null;
   users?: User[];
   milestones?: Milestone[];
+  dependencies?: MilestoneDependency[];
 }
 
 export function ProjectDetailModal({
@@ -29,12 +30,13 @@ export function ProjectDetailModal({
   authToken,
   users = [],
   milestones = [],
+  dependencies = [],
 }: ProjectDetailModalProps) {
   const [pendingWarning, setPendingWarning] = useState<{
     incompleteCount: number;
     totalCount: number;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<"ai" | "documents">("documents");
+  const [activeTab, setActiveTab] = useState<"ai" | "dependencies" | "documents">("documents");
 
   const handleStatusChange = useCallback((status: string) => {
     if (status === "Completed" && milestones.length > 0) {
@@ -110,6 +112,22 @@ export function ProjectDetailModal({
                 </span>
               </button>
               <button
+                onClick={() => setActiveTab("dependencies")}
+                className={`
+                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  ${
+                    activeTab === "dependencies"
+                      ? "border-indigo-500 text-indigo-600"
+                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                  }
+                `}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">account_tree</span>
+                  Dependencies
+                </span>
+              </button>
+              <button
                 onClick={() => setActiveTab("documents")}
                 className={`
                   whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
@@ -142,6 +160,8 @@ export function ProjectDetailModal({
                 manager={manager}
                 formatMoney={formatMoney}
               />
+            ) : activeTab === "dependencies" ? (
+              <DependenciesSection dependencies={dependencies} milestones={milestones} />
             ) : (
               <DocumentsSection
                 projectId={project.id}
@@ -152,6 +172,73 @@ export function ProjectDetailModal({
         </div>
       </div>
     </ModalOverlay>
+  );
+}
+
+function DependenciesSection({ dependencies, milestones }: { dependencies: MilestoneDependency[]; milestones: Milestone[] }) {
+  if (dependencies.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[250px] text-slate-400">
+        <span className="material-symbols-outlined text-5xl mb-3">account_tree</span>
+        <p className="text-sm font-medium text-slate-500">No dependencies defined</p>
+        <p className="text-xs mt-1">Go to the Dependencies page to add milestone dependency rules.</p>
+      </div>
+    );
+  }
+
+  const metCount = dependencies.filter((d) => d.isMet).length;
+  const unmetCount = dependencies.filter((d) => !d.isMet).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold">
+          <span className="material-symbols-outlined text-base">account_tree</span>
+          {dependencies.length} total
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">
+          <span className="material-symbols-outlined text-base">check_circle</span>
+          {metCount} met
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold">
+          <span className="material-symbols-outlined text-base">block</span>
+          {unmetCount} unmet
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {dependencies.map((dep) => {
+          const prereqName = dep.prerequisiteMilestoneName || milestones.find((m) => m.id === dep.prerequisiteMilestoneId)?.name || "Unknown";
+          const depName = dep.dependentMilestoneName || milestones.find((m) => m.id === dep.dependentMilestoneId)?.name || "Unknown";
+          return (
+            <div key={dep.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100 bg-slate-50">
+              <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${
+                dep.isMet ? "bg-emerald-100" : "bg-amber-100"
+              }`}>
+                <span className={`material-symbols-outlined text-sm ${
+                  dep.isMet ? "text-emerald-600" : "text-amber-600"
+                }`}>
+                  {dep.isMet ? "check_circle" : "block"}
+                </span>
+              </div>
+              <div className="text-xs flex-1">
+                <span className="font-medium text-slate-700">{prereqName}</span>
+                <span className="material-symbols-outlined text-sm text-slate-400 mx-1">arrow_forward</span>
+                <span className="font-medium text-slate-700">{depName}</span>
+                <span className="ml-2 text-[10px] text-slate-400">
+                  {dep.type === "CompletionBased" ? "(must complete)" : `(reach ${dep.thresholdPercentage}%)`}
+                </span>
+              </div>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                dep.isMet ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+              }`}>
+                {dep.isMet ? "Met" : "Unmet"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

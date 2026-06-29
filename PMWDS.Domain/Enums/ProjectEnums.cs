@@ -23,3 +23,8 @@ public enum MilestoneStatus
     Completed = 2,
     Delayed = 3
 }
+public enum MilestoneDependencyType
+{
+    CompletionBased = 0,
+    ProgressThreshold = 1
+}

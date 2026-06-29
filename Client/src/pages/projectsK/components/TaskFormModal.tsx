@@ -187,6 +187,24 @@ export function TaskFormModal({
               options={[{ value: "", label: "None" }, ...projectMilestones.map((m) => ({ value: m.id, label: m.name }))]}
             />
           )}
+          {form.milestoneId && (() => {
+            const selectedMilestone = milestones.find((m) => m.id === form.milestoneId);
+            if (selectedMilestone?.isBlocked) {
+              return (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0">warning</span>
+                  <div className="text-xs text-amber-800">
+                    <span className="font-semibold">Milestone is blocked:</span>
+                    <p>{selectedMilestone.blockedByMessage}</p>
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      Tasks can still be created but the milestone cannot progress until dependencies are met.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
           {assignedUsers.length > 0 && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs w-fit">
               <AvatarStack people={assignedUsers} size="xs" />

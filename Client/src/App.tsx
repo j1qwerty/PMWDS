@@ -16,6 +16,7 @@ import { NotificationsPage } from "./pages/notifications/notifications";
 // Project-nested views
 import { ProjectTasksPage } from "./pages/nested/ProjectTasksPage";
 import { ProjectMilestonesPage } from "./pages/nested/ProjectMilestonesPage";
+import { ProjectDependenciesPage } from "./pages/nested/ProjectDependenciesPage";
 import { ProjectNotFound } from "./pages/nested/ProjectNotFound";
 
 // Team
@@ -94,6 +95,10 @@ function AppRoutes() {
                 <Route
                   path="/projects/:projectId/milestones"
                   element={<ProjectMilestonesPage />}
+                />
+                <Route
+                  path="/projects/:projectId/dependencies"
+                  element={<ProjectDependenciesPage />}
                 />
                 <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
 

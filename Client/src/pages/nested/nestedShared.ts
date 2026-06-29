@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, Project, Task, User } from "../../types";
+import type { Milestone, MilestoneDependency, Project, Task, User } from "../../types";
 import { projectBelongsToAnyDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 
@@ -12,6 +12,7 @@ export interface ProjectWorkspaceData {
   milestones: Milestone[];
   tasks: Task[];
   users: User[];
+  dependencies: MilestoneDependency[];
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
@@ -29,6 +30,7 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const [project, setProject] = useState<Project | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,16 +53,18 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     setLoading(true);
     setError("");
     try {
-      const [projectData, milestoneData, taskData] = await Promise.all([
+      const [projectData, milestoneData, taskData, dependencyData] = await Promise.all([
         api.getProject(auth.token, projectId).catch(() => {
           return data.projects.find((p) => p.id === projectId) ?? null;
         }),
         api.getMilestonesByProject(auth.token, projectId),
         api.getTasksByProject(auth.token, projectId),
+        api.getMilestoneDependencies(auth.token, projectId),
       ]);
       setProject(projectData);
       setMilestones(milestoneData);
       setTasks(taskData);
+      setDependencies(dependencyData);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load project data.");
     } finally {
@@ -79,6 +83,7 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     milestones,
     tasks,
     users: data.users,
+    dependencies,
     loading,
     error,
     refresh: load,

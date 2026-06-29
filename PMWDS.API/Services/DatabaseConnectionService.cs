@@ -240,7 +240,8 @@ public static class DatabaseConnectionService
             "ActivityLogs",
             "AIProviderCredentials",
             "UserDepartments",
-            "ProjectDepartments"
+            "ProjectDepartments",
+            "MilestoneDependencies"
         };
 
         var connection = db.Database.GetDbConnection();

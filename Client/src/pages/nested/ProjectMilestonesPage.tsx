@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, Project, Task } from "../../types";
+import type { Milestone, MilestoneDependency, Project, Task } from "../../types";
 import { classNames, formatDate } from "../../ui";
 import {
-  AnimatedBackground,
   GlassCard,
   LoadingPage,
   useNavHeader,
@@ -14,8 +13,6 @@ import {
   usePermission,
   useToast,
   getStatusColor,
-  GradientButton,
-  BgRenderer,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
@@ -29,6 +26,8 @@ import {
   TaskFormModal,
   MilestoneFormModal,
   ConfirmDeleteModal,
+  DependencyFormModal,
+  DependenciesPanel,
 } from "../projectsK/components";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
@@ -90,6 +89,9 @@ export function ProjectMilestonesPage() {
 
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
+
+  const [depModalOpen, setDepModalOpen] = useState(false);
+  const [editDep, setEditDep] = useState<MilestoneDependency | null>(null);
 
   const { setNavHeader } = useNavHeader();
 
@@ -234,6 +236,42 @@ export function ProjectMilestonesPage() {
       await ws.refresh();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to delete milestone", "error");
+    }
+  };
+
+  const handleAddDependency = async (payload: Record<string, unknown>) => {
+    if (!auth || !ws.project) return;
+    try {
+      await api.createMilestoneDependency(auth.token, { ...payload, projectId: ws.project.id });
+      addToast("Dependency created");
+      await ws.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to create dependency", "error");
+      throw e;
+    }
+  };
+
+  const handleUpdateDependency = async (id: string, payload: Record<string, unknown>) => {
+    if (!auth) return;
+    try {
+      await api.updateMilestoneDependency(auth.token, id, payload);
+      addToast("Dependency updated");
+      await ws.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to update dependency", "error");
+      throw e;
+    }
+  };
+
+  const handleDeleteDependency = async (id: string) => {
+    if (!auth) return;
+    try {
+      await api.deleteMilestoneDependency(auth.token, id);
+      addToast("Dependency deleted");
+      await ws.refresh();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to delete dependency", "error");
+      throw e;
     }
   };
 
@@ -394,7 +432,7 @@ export function ProjectMilestonesPage() {
         />
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_240px] gap-4">
         {/* Left: Milestone list */}
         <MilestonesPanel
           milestones={ws.milestones}
@@ -416,9 +454,18 @@ export function ProjectMilestonesPage() {
           onViewDetail={setViewMilestone}
         />
 
-
         {/* Center: Tasks */}
         <div ref={tasksContainerRef} className="space-y-3 min-w-0">
+          {selectedMilestone?.isBlocked && selectedMilestone.blockedByMessage && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-2">
+              <span className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0">warning</span>
+              <div className="text-xs text-amber-800">
+                <span className="font-semibold">Milestone blocked:</span> {selectedMilestone.blockedByMessage}
+                <p className="text-[10px] text-amber-600 mt-0.5">Tasks can still be created but the milestone cannot be marked complete until prerequisites are met.</p>
+              </div>
+            </div>
+          )}
+
           {selectedMilestone && canManageTasks && milestoneTasks.length > 0 && (
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -485,34 +532,17 @@ export function ProjectMilestonesPage() {
           )}
         </div>
 
-        {/* Right: Milestone details */}
-        {/* <div className="min-w-0">
-          {selectedMilestone ? (
-            <div className="sticky top-4">
-              <MilestoneHeader
-                milestone={selectedMilestone}
-                tasks={milestoneTasks}
-                isAdmin={canManageMilestones}
-                onComplete={() => handleCompleteMilestone(selectedMilestone.id)}
-                onStatusChange={(status) => handleMilestoneStatus(selectedMilestone.id, status)}
-                onEdit={() => setMilestoneModal({ open: true, edit: selectedMilestone })}
-                onDelete={() => setDeleteMilestone(selectedMilestone)}
-                onAddTask={() => setTaskModal({ open: true, milestoneId: selectedMilestone.id })}
-                onViewMilestone={setViewMilestone}
-              />
-            </div>
-          ) : (
-            <GlassCard className="p-8 flex flex-col items-center justify-center h-full min-h-[300px]">
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-3xl text-slate-400">flag</span>
-              </div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-1">Select a Milestone</h3>
-              <p className="text-xs text-slate-400 text-center">
-                Choose from the left panel to see details
-              </p>
-            </GlassCard>
-          )}
-        </div> */}
+        {/* Right: Dependencies panel */}
+        <div className="space-y-3">
+          <DependenciesPanel
+            dependencies={ws.dependencies}
+            milestones={ws.milestones}
+            canManage={canManageMilestones}
+            onNew={() => { setEditDep(null); setDepModalOpen(true); }}
+            onEdit={(dep) => { setEditDep(dep); setDepModalOpen(true); }}
+            onDelete={handleDeleteDependency}
+          />
+        </div>
       </div>
 
       <MilestoneFormModal
@@ -570,6 +600,8 @@ export function ProjectMilestonesPage() {
         project={ws.project}
         users={ws.users}
         isAdmin={canManageMilestones}
+        dependencies={ws.dependencies}
+        allMilestones={ws.milestones}
         onClose={() => setViewMilestone(null)}
         onComplete={() => {
           if (viewMilestone) handleCompleteMilestone(viewMilestone.id);
@@ -586,6 +618,15 @@ export function ProjectMilestonesPage() {
           if (viewMilestone) setDeleteMilestone(viewMilestone);
           setViewMilestone(null);
         }}
+      />
+
+      <DependencyFormModal
+        open={depModalOpen}
+        editDep={editDep}
+        milestones={ws.milestones}
+        onAdd={handleAddDependency}
+        onUpdate={handleUpdateDependency}
+        onClose={() => { setDepModalOpen(false); setEditDep(null); }}
       />
 
       <TaskSubtaskDetailsModal

@@ -21,6 +21,12 @@ public class Milestone : AuditableEntity
     public IReadOnlyCollection<ProjectTask> Tasks =>
     _tasks.AsReadOnly();
     private readonly List<ProjectTask> _tasks = new();
+    public IReadOnlyCollection<MilestoneDependency> PrerequisiteDependencies =>
+    _prerequisiteDependencies.AsReadOnly();
+    private readonly List<MilestoneDependency> _prerequisiteDependencies = new();
+    public IReadOnlyCollection<MilestoneDependency> DependentDependencies =>
+    _dependentDependencies.AsReadOnly();
+    private readonly List<MilestoneDependency> _dependentDependencies = new();
     protected Milestone() { }
     public static Milestone Create(
     Guid projectId, string name,
@@ -125,4 +131,36 @@ public class Milestone : AuditableEntity
     && DateTime.UtcNow > DueDate;
     public int GetDaysRemaining()
     => (int)(DueDate - DateTime.UtcNow).TotalDays;
+
+    public bool IsBlocked
+    {
+        get
+        {
+            if (_dependentDependencies.Count == 0) return false;
+            return _dependentDependencies.Any(dep => !dep.IsMet(
+                dep.PrerequisiteMilestone ?? throw new InvalidOperationException("Prerequisite milestone not loaded")));
+        }
+    }
+
+    public string? BlockedByMessage
+    {
+        get
+        {
+            if (!IsBlocked) return null;
+            var blockers = _dependentDependencies
+                .Where(dep => !dep.IsMet(
+                    dep.PrerequisiteMilestone ?? throw new InvalidOperationException("Prerequisite milestone not loaded")))
+                .Select(dep =>
+                {
+                    var name = dep.PrerequisiteMilestone?.Name ?? "Unknown";
+                    return dep.Type switch
+                    {
+                        MilestoneDependencyType.CompletionBased => $"\"{name}\" (must be completed)",
+                        MilestoneDependencyType.ProgressThreshold => $"\"{name}\" (must reach {dep.ThresholdPercentage}% progress)",
+                        _ => $"\"{name}\""
+                    };
+                });
+            return $"Blocked by: {string.Join(", ", blockers)}";
+        }
+    }
 }

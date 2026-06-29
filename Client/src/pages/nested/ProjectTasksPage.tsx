@@ -101,12 +101,17 @@ export function ProjectTasksPage() {
         icon: "add_task",
       });
     }
+    actions.push({
+      label: "Dependencies",
+      onClick: () => navigate(`/projects/${ws.project.id}/dependencies`),
+      icon: "account_tree",
+    });
     setNavHeader({
       title: `Tasks · ${ws.project.name}`,
       description: "Tasks grouped by milestone",
       actions,
     });
-  }, [setNavHeader, ws.project, canManageTasks]);
+  }, [setNavHeader, ws.project, canManageTasks, navigate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -565,6 +570,8 @@ export function ProjectTasksPage() {
         project={ws.project}
         users={ws.users}
         isAdmin={canManageTasks}
+        dependencies={ws.dependencies}
+        allMilestones={ws.milestones}
         onClose={() => setViewMilestone(null)}
         onComplete={() => {
           if (viewMilestone) api.completeMilestone(auth!.token, viewMilestone.id).then(() => ws.refresh());

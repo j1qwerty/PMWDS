@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Milestone, Project, Task, User } from "../../../types";
+import type { Milestone, MilestoneDependency, Project, Task, User } from "../../../types";
 import { formatDate } from "../../../ui";
 import { ModalOverlay, getStatusColor } from "../../shared";
 import { TaskCard } from "./TaskCard";
@@ -16,6 +16,8 @@ interface MilestoneDetailModalProps {
   onEdit: () => void;
   onDelete: () => void;
   isAdmin: boolean;
+  dependencies?: MilestoneDependency[];
+  allMilestones?: Milestone[];
 }
 
 export function MilestoneDetailModal({
@@ -29,6 +31,8 @@ export function MilestoneDetailModal({
   onEdit,
   onDelete,
   isAdmin,
+  dependencies,
+  allMilestones,
 }: MilestoneDetailModalProps) {
   const milestoneTasks = useMemo(
     () => (milestone ? tasks.filter((t) => t.milestoneId === milestone.id && !t.parentTaskId) : []),
@@ -168,8 +172,58 @@ export function MilestoneDetailModal({
             </div>
           )}
 
-          {/* Divider */}
-          <div className="border-t border-slate-100" />
+          {/* Dependencies Section */}
+          {dependencies && dependencies.length > 0 && (
+            <>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 mb-3">
+                  {milestone.isBlocked ? "🔒" : "✓"} Dependencies
+                  {milestone.isBlocked && (
+                    <span className="ml-2 text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Blocked</span>
+                  )}
+                </h3>
+                {milestone.blockedByMessage && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 mb-3 flex items-start gap-2">
+                    <span className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0">warning</span>
+                    <span>{milestone.blockedByMessage}</span>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {dependencies.map((dep) => {
+                    const prereqName = dep.prerequisiteMilestoneName || allMilestones?.find((m) => m.id === dep.prerequisiteMilestoneId)?.name || "Unknown";
+                    const depName = dep.dependentMilestoneName || allMilestones?.find((m) => m.id === dep.dependentMilestoneId)?.name || "Unknown";
+                    return (
+                      <div key={dep.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100 bg-slate-50">
+                        <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${
+                          dep.isMet ? "bg-emerald-100" : "bg-amber-100"
+                        }`}>
+                          <span className={`material-symbols-outlined text-sm ${
+                            dep.isMet ? "text-emerald-600" : "text-amber-600"
+                          }`}>
+                            {dep.isMet ? "check_circle" : "block"}
+                          </span>
+                        </div>
+                        <div className="text-xs flex-1">
+                          <span className="font-medium text-slate-700">{prereqName}</span>
+                          <span className="material-symbols-outlined text-sm text-slate-400 mx-1">arrow_forward</span>
+                          <span className="font-medium text-slate-700">{depName}</span>
+                          <span className="ml-2 text-[10px] text-slate-400">
+                            {dep.type === "CompletionBased" ? "(must complete)" : `(reach ${dep.thresholdPercentage}%)`}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          dep.isMet ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {dep.isMet ? "Met" : "Unmet"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="border-t border-slate-100" />
+            </>
+          )}
 
           {/* Tasks Section */}
           <div>

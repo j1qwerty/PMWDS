@@ -26,6 +26,14 @@ public class MilestoneConfiguration
         .WithMany()
         .HasForeignKey(e => e.DepartmentId)
         .OnDelete(DeleteBehavior.SetNull);
+        b.HasMany(e => e.PrerequisiteDependencies)
+        .WithOne(d => d.PrerequisiteMilestone)
+        .HasForeignKey(d => d.PrerequisiteMilestoneId)
+        .OnDelete(DeleteBehavior.Restrict);
+        b.HasMany(e => e.DependentDependencies)
+        .WithOne(d => d.DependentMilestone)
+        .HasForeignKey(d => d.DependentMilestoneId)
+        .OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(e => e.DepartmentId);
         b.HasIndex(e => e.ProjectId);
         b.HasIndex(e => e.Status);

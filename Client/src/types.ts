@@ -111,6 +111,24 @@ export interface ProjectSummary {
   aiDelayRiskScore: number;
 }
 
+export interface MilestoneDependency {
+  id: string;
+  projectId: string;
+  prerequisiteMilestoneId: string;
+  prerequisiteMilestoneName?: string;
+  dependentMilestoneId: string;
+  dependentMilestoneName?: string;
+  type: "CompletionBased" | "ProgressThreshold";
+  thresholdPercentage?: number;
+  isMet: boolean;
+}
+
+export interface DependencyStatus {
+  isBlocked: boolean;
+  blockedByMessage?: string;
+  dependencies: MilestoneDependency[];
+}
+
 export interface Milestone {
   id: string;
   projectId: string;
@@ -125,6 +143,8 @@ export interface Milestone {
   isCritical: boolean;
   progressPercentage: number;
   hasTasks?: boolean;
+  isBlocked?: boolean;
+  blockedByMessage?: string;
 }
 
 export interface Project {

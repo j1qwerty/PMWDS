@@ -16,11 +16,13 @@ import type {
   DelayPrediction,
   DelayPredictionRecord,
   Department,
+  DependencyStatus,
   IntegrationDetailRecord,
   IntegrationRecord,
   KnowledgeArticleRecord,
   LessonLearnedRecord,
   Milestone,
+  MilestoneDependency,
   NotificationItem,
   NotificationTemplateRecord,
   AlertRuleRecord,
@@ -231,6 +233,21 @@ export const api = {
   },
   deleteMilestone(token: string, id: string) {
     return request<void>(`milestones/${id}`, { token, method: "DELETE" });
+  },
+  getMilestoneDependencies(token: string, projectId: string) {
+    return request<MilestoneDependency[]>(`milestones/by-project/${projectId}/dependencies`, { token });
+  },
+  createMilestoneDependency(token: string, payload: Record<string, unknown>) {
+    return request<MilestoneDependency>("milestones/dependencies", { token, method: "POST", body: payload });
+  },
+  updateMilestoneDependency(token: string, id: string, payload: Record<string, unknown>) {
+    return request<MilestoneDependency>(`milestones/dependencies/${id}`, { token, method: "PUT", body: payload });
+  },
+  deleteMilestoneDependency(token: string, id: string) {
+    return request<void>(`milestones/dependencies/${id}`, { token, method: "DELETE" });
+  },
+  checkMilestoneDependencyStatus(token: string, milestoneId: string) {
+    return request<DependencyStatus>(`milestones/${milestoneId}/dependency-status`, { token });
   },
   getTasksByProject(token: string, projectId: string) {
     return requestList<Task>(`tasks/by-project/${projectId}`, { token });

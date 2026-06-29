@@ -1161,6 +1161,68 @@ namespace PMWDS.Persistence.Migrations
                     b.ToTable("Milestones", (string)null);
                 });
 
+            modelBuilder.Entity("PMWDS.Domain.Entities.MilestoneDependency", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DependentMilestoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("PrerequisiteMilestoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("ThresholdPercentage")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("RowVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DependentMilestoneId");
+
+                    b.HasIndex("PrerequisiteMilestoneId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("MilestoneDependencies", (string)null);
+                });
+
             modelBuilder.Entity("PMWDS.Domain.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2943,7 +3005,44 @@ namespace PMWDS.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasMany("PMWDS.Domain.Entities.MilestoneDependency", "DependentDependencies")
+                        .WithOne("DependentMilestone")
+                        .HasForeignKey("DependentMilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasMany("PMWDS.Domain.Entities.MilestoneDependency", "PrerequisiteDependencies")
+                        .WithOne("PrerequisiteMilestone")
+                        .HasForeignKey("PrerequisiteMilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Department");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("PMWDS.Domain.Entities.MilestoneDependency", b =>
+                {
+                    b.HasOne("PMWDS.Domain.Entities.Milestone", "DependentMilestone")
+                        .WithMany("DependentDependencies")
+                        .HasForeignKey("DependentMilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PMWDS.Domain.Entities.Milestone", "PrerequisiteMilestone")
+                        .WithMany("PrerequisiteDependencies")
+                        .HasForeignKey("PrerequisiteMilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PMWDS.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DependentMilestone");
+
+                    b.Navigation("PrerequisiteMilestone");
 
                     b.Navigation("Project");
                 });
@@ -3228,7 +3327,18 @@ namespace PMWDS.Persistence.Migrations
                 {
                     b.Navigation("Department");
 
+                    b.Navigation("DependentDependencies");
+
+                    b.Navigation("PrerequisiteDependencies");
+
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("PMWDS.Domain.Entities.MilestoneDependency", b =>
+                {
+                    b.Navigation("DependentMilestone");
+
+                    b.Navigation("PrerequisiteMilestone");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Organization", b =>

@@ -13,7 +13,9 @@ public record MilestoneDto(
  string Status,
  bool IsCritical,
  double ProgressPercentage,
- bool HasTasks)
+ bool HasTasks,
+ bool IsBlocked,
+ string? BlockedByMessage)
 {
  public static MilestoneDto FromEntity(Milestone m)
  {
@@ -34,6 +36,8 @@ public record MilestoneDto(
      m.Status.ToString(),
      m.IsCritical,
      progress,
-     hasTasks);
+     hasTasks,
+     m.IsBlocked,
+     m.BlockedByMessage);
  }
 }

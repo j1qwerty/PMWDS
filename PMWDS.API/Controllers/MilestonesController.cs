@@ -27,6 +27,155 @@ public class MilestonesController : BaseApiController
         _notifications = notifications;
     }
 
+    // ── Milestone Dependency Endpoints ──────────────────────────────────
+
+    [HttpGet("by-project/{projectId:guid}/dependencies")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetDependenciesByProject(Guid projectId, CancellationToken ct)
+    {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+            return Forbid();
+
+        var deps = await _db.MilestoneDependencies
+            .Include(d => d.PrerequisiteMilestone)
+            .Include(d => d.DependentMilestone)
+            .Where(d => d.ProjectId == projectId)
+            .ToListAsync(ct);
+
+        return Ok(deps.Select(MilestoneDependencyDto.FromEntity));
+    }
+
+    [HttpPost("dependencies")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> CreateDependency([FromBody] CreateMilestoneDependencyDto dto, CancellationToken ct)
+    {
+        var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
+        if (project == null)
+            return NotFound(new { message = "Project not found" });
+
+        if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
+            return Forbid();
+
+        if (dto.PrerequisiteMilestoneId == dto.DependentMilestoneId)
+            return BadRequest(new { message = "A milestone cannot depend on itself" });
+
+        var prerequisiteExists = await _db.Milestones.AnyAsync(m => m.Id == dto.PrerequisiteMilestoneId && m.ProjectId == dto.ProjectId, ct);
+        if (!prerequisiteExists)
+            return BadRequest(new { message = "Prerequisite milestone not found in this project" });
+
+        var dependentExists = await _db.Milestones.AnyAsync(m => m.Id == dto.DependentMilestoneId && m.ProjectId == dto.ProjectId, ct);
+        if (!dependentExists)
+            return BadRequest(new { message = "Dependent milestone not found in this project" });
+
+        var duplicate = await _db.MilestoneDependencies.AnyAsync(d =>
+            d.PrerequisiteMilestoneId == dto.PrerequisiteMilestoneId &&
+            d.DependentMilestoneId == dto.DependentMilestoneId &&
+            d.ProjectId == dto.ProjectId, ct);
+        if (duplicate)
+            return BadRequest(new { message = "This dependency already exists" });
+
+        // Circular dependency check: if B depends on A, A cannot depend on B
+        var reverseExists = await _db.MilestoneDependencies.AnyAsync(d =>
+            d.PrerequisiteMilestoneId == dto.DependentMilestoneId &&
+            d.DependentMilestoneId == dto.PrerequisiteMilestoneId &&
+            d.ProjectId == dto.ProjectId, ct);
+        if (reverseExists)
+            return BadRequest(new { message = "Circular dependency detected" });
+
+        if (!Enum.TryParse<MilestoneDependencyType>(dto.Type, ignoreCase: true, out var depType))
+            return BadRequest(new { message = "Invalid dependency type. Valid values: CompletionBased, ProgressThreshold" });
+
+        if (depType == MilestoneDependencyType.ProgressThreshold && (dto.ThresholdPercentage == null || dto.ThresholdPercentage < 0 || dto.ThresholdPercentage > 100))
+            return BadRequest(new { message = "Threshold percentage must be between 0 and 100 for ProgressThreshold type" });
+
+        var dep = MilestoneDependency.Create(
+            dto.ProjectId,
+            dto.PrerequisiteMilestoneId,
+            dto.DependentMilestoneId,
+            depType,
+            dto.ThresholdPercentage);
+        dep.SetCreatedBy("system");
+
+        await _uow.MilestoneDependencies.AddAsync(dep, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        var loaded = await _db.MilestoneDependencies
+            .Include(d => d.PrerequisiteMilestone)
+            .Include(d => d.DependentMilestone)
+            .FirstAsync(d => d.Id == dep.Id, ct);
+
+        return Ok(MilestoneDependencyDto.FromEntity(loaded));
+    }
+
+    [HttpPut("dependencies/{id:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> UpdateDependency(Guid id, [FromBody] UpdateMilestoneDependencyDto dto, CancellationToken ct)
+    {
+        var dep = await _db.MilestoneDependencies
+            .Include(d => d.PrerequisiteMilestone)
+            .Include(d => d.DependentMilestone)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (dep == null)
+            return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(dep.ProjectId, ct))
+            return Forbid();
+
+        if (!Enum.TryParse<MilestoneDependencyType>(dto.Type, ignoreCase: true, out var depType))
+            return BadRequest(new { message = "Invalid dependency type" });
+
+        if (depType == MilestoneDependencyType.ProgressThreshold && (dto.ThresholdPercentage == null || dto.ThresholdPercentage < 0 || dto.ThresholdPercentage > 100))
+            return BadRequest(new { message = "Threshold percentage must be between 0 and 100" });
+
+        dep.Update(depType, dto.ThresholdPercentage);
+        dep.SetModified("system");
+
+        await _uow.MilestoneDependencies.UpdateAsync(dep, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        return Ok(MilestoneDependencyDto.FromEntity(dep));
+    }
+
+    [HttpDelete("dependencies/{id:guid}")]
+    [Authorize(Policy = "Manager")]
+    public async Task<IActionResult> DeleteDependency(Guid id, CancellationToken ct)
+    {
+        var dep = await _db.MilestoneDependencies.FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (dep == null)
+            return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(dep.ProjectId, ct))
+            return Forbid();
+
+        await _uow.MilestoneDependencies.DeleteAsync(id, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/dependency-status")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> GetDependencyStatus(Guid id, CancellationToken ct)
+    {
+        var milestone = await _db.Milestones
+            .Include(m => m.DependentDependencies)
+                .ThenInclude(d => d.PrerequisiteMilestone)
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (milestone == null)
+            return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(milestone.ProjectId, ct))
+            return Forbid();
+
+        var deps = milestone.DependentDependencies.Select(MilestoneDependencyDto.FromEntity).ToList();
+        return Ok(new
+        {
+            isBlocked = milestone.IsBlocked,
+            blockedByMessage = milestone.BlockedByMessage,
+            dependencies = deps
+        });
+    }
+
     [HttpGet("by-project/{projectId:guid}")]
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
@@ -39,6 +188,8 @@ public class MilestonesController : BaseApiController
         var milestones = await _db.Milestones
             .Include(m => m.Tasks)
             .Include(m => m.Department)
+            .Include(m => m.DependentDependencies)
+                .ThenInclude(d => d.PrerequisiteMilestone)
             .Where(m => m.ProjectId == projectId)
             .ToListAsync(ct);
         milestones = await ScopeMilestonesForCurrentUserAsync(milestones, ct);
@@ -398,3 +549,14 @@ public record UpdateMilestoneDto(
     bool IsCritical,
     Guid? DepartmentId,
     double ProgressPercentage);
+
+public record CreateMilestoneDependencyDto(
+    Guid ProjectId,
+    Guid PrerequisiteMilestoneId,
+    Guid DependentMilestoneId,
+    string Type,
+    double? ThresholdPercentage = null);
+
+public record UpdateMilestoneDependencyDto(
+    string Type,
+    double? ThresholdPercentage = null);

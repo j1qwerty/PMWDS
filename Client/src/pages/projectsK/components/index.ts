@@ -13,3 +13,6 @@ export { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 export { AIInsightsSection } from "./AIInsightsSection";
 export { DocumentsSection } from "./DocumentsSection";
 export { ProjectDetailk } from "./ProjectDetailk";
+export { MilestoneDependencyPanel } from "./MilestoneDependencyPanel";
+export { DependencyFormModal } from "./DependencyFormModal";
+export { DependenciesPanel } from "./DependenciesPanel";

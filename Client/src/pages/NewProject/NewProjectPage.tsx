@@ -13,6 +13,7 @@ import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
 import { MilestonesStep } from "./steps/MilestonesStep";
 import { MilestoneDepartmentsStep } from "./steps/MilestoneDepartmentsStep";
+import { DependenciesStep } from "./steps/DependenciesStep";
 import { TasksStep } from "./steps/TasksStep";
 import { UsersStep } from "./steps/UsersStep";
 
@@ -23,6 +24,14 @@ interface MilestoneEntry {
   description: string;
   dueDate: string;
   isCritical: boolean;
+}
+
+interface DependencyEntry {
+  id: string;
+  prerequisiteMilestoneId: string;
+  dependentMilestoneId: string;
+  type: "CompletionBased" | "ProgressThreshold";
+  thresholdPercentage: number;
 }
 
 interface TaskEntry {
@@ -48,6 +57,7 @@ const LEGACY_STEPS: StepConfig[] = [
   { key: "departments", label: "Departments", icon: "groups" },
   { key: "users", label: "Users", icon: "person" },
   { key: "milestones", label: "Milestones", icon: "flag" },
+  { key: "dependencies", label: "Dependencies", icon: "account_tree" },
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
@@ -55,6 +65,7 @@ const EXECUTIVE_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "milestones", label: "Milestones", icon: "flag" },
   { key: "milestoneDepartments", label: "Assign Departments", icon: "account_tree" },
+  { key: "dependencies", label: "Dependencies", icon: "account_tree" },
   { key: "departments", label: "Departments", icon: "groups" },
   { key: "users", label: "Users", icon: "person" },
   { key: "tasks", label: "Tasks", icon: "task_alt" },
@@ -84,7 +95,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 3: Milestones
   const [milestones, setMilestones] = useState<MilestoneEntry[]>([]);
 
-  // Step 4: Tasks
+  // Step 4: Dependencies
+  const [dependencies, setDependencies] = useState<DependencyEntry[]>([]);
+
+  // Step 5: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
   const isSuperAdmin = auth?.roles?.includes("SuperAdmin") ?? false;
@@ -92,8 +106,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const usesExecutiveFlow = isSuperAdmin || isDirector;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
-  const earlyFinishStepIndex = steps.findIndex((step) => step.key === "milestoneDepartments");
+  const earlyFinishStepIndex = steps.findIndex((step) => step.key === "dependencies");
   const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
+
+  const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
+  const visibleSteps = usesExecutiveFlow && !isSuperAdmin
+    ? steps.slice(0, dependenciesStepIndex + 1)
+    : steps;
 
   const handleDetailsChange = (field: string, value: string | number) => {
     switch (field) {
@@ -112,6 +131,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       case "departments": return selectedDepartmentIds.length > 0;
       case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
       case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
+      case "dependencies": return true;
       case "users": return true;
       case "tasks": return true;
       default: return true;
@@ -133,7 +153,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const showSkip = !usesExecutiveFlow && currentStepKey === "milestones" && milestones.length === 0;
+  const showSkip = !usesExecutiveFlow && currentStepKey === "milestones" && milestones.length === 0 && dependencies.length === 0;
 
   const handleSkip = () => {
     const tasksStepIndex = steps.findIndex((step) => step.key === "tasks");
@@ -187,6 +207,17 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           projectId,
         });
         createdMilestoneIds[ms.id] = created.id;
+      }
+
+      // Create milestone dependencies
+      for (const dep of dependencies) {
+        await api.createMilestoneDependency(auth.token, {
+          projectId,
+          prerequisiteMilestoneId: createdMilestoneIds[dep.prerequisiteMilestoneId],
+          dependentMilestoneId: createdMilestoneIds[dep.dependentMilestoneId],
+          type: dep.type,
+          thresholdPercentage: dep.type === "ProgressThreshold" ? dep.thresholdPercentage : null,
+        });
       }
 
       // Create tasks
@@ -248,8 +279,6 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       return belongsToDept;
     });
   }, [selectedDepartmentIds, milestones, data.users, usesExecutiveFlow]);
-
-  const visibleSteps = usesExecutiveFlow && !isSuperAdmin ? steps.slice(0, earlyFinishStepIndex + 1) : steps;
 
   return (
     <div className="max-w-full mx-auto ">
@@ -389,6 +418,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onChange={setMilestones}
             />
           )}
+          {currentStepKey === "dependencies" && (
+            <DependenciesStep
+              milestones={milestones}
+              dependencies={dependencies}
+              onChange={setDependencies}
+            />
+          )}
           {currentStepKey === "tasks" && (
             <TasksStep
               milestones={milestones}
@@ -423,7 +459,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 Skip
               </button>
             )}
-            {canEarlyFinish && (
+            {canEarlyFinish && currentStep < visibleSteps.length - 1 && (
               <button
                 type="button"
                 onClick={handleFinish}
@@ -446,7 +482,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 )}
               </button>
             )}
-            {currentStep < steps.length - 1 && !(canEarlyFinish && !isSuperAdmin) ? (
+            {currentStep < visibleSteps.length - 1 ? (
               <button
                 type="button"
                 onClick={handleNext}
@@ -456,7 +492,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 Next
                 <span className="material-symbols-outlined text-base">arrow_forward</span>
               </button>
-            ) : !canEarlyFinish ? (
+            ) : (
               <button
                 type="button"
                 onClick={handleFinish}
@@ -478,7 +514,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                   </>
                 )}
               </button>
-            ) : null}
+            )}
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Project> Projects { get; set; }
     public DbSet<ProjectDepartment> ProjectDepartments { get; set; }
     public DbSet<Milestone> Milestones { get; set; }
+    public DbSet<MilestoneDependency> MilestoneDependencies { get; set; }
     public DbSet<ProjectTask> Tasks { get; set; }
     public DbSet<TaskDependency> TaskDependencies { get; set; }
     public DbSet<TaskAssignment> TaskAssignments { get; set; }

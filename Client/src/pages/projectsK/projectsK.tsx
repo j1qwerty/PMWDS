@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Department, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
+import type { Department, Milestone, MilestoneDependency, OrganizationRecord, Project, ProjectHealth, User } from "../../types";
 import {
   AnimatedBackground,
   LoadingPage,
@@ -63,6 +63,8 @@ export function ProjectsKPage() {
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [insights, setInsights] = useState<string[]>([]);
   const [viewProject, setViewProject] = useState<Project | null>(null);
+  const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
+  const [projectDependencies, setProjectDependencies] = useState<MilestoneDependency[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
@@ -137,6 +139,12 @@ export function ProjectsKPage() {
       setSelectedOrgId(userOrganizationId);
     }
   }, [shouldFilterByOrg, userOrganizationId]);
+
+  useEffect(() => {
+    if (!auth || !viewProject) return;
+    api.getMilestonesByProject(auth.token, viewProject.id).then(setProjectMilestones).catch(() => {});
+    api.getMilestoneDependencies(auth.token, viewProject.id).then(setProjectDependencies).catch(() => {});
+  }, [auth, viewProject]);
 
   useEffect(() => {
     if (selectedProjectId) {
@@ -403,6 +411,8 @@ export function ProjectsKPage() {
         canManage={canManageProjects}
         onClose={() => setViewProject(null)}
         authToken={auth?.token}
+        milestones={projectMilestones}
+        dependencies={projectDependencies}
         onEdit={
           canManageProjects && viewProject
             ? () => {
