@@ -1,7 +1,7 @@
 // components/MilestonesTab.tsx
 import { useEffect, useState } from "react";
 import { api } from "../../api";
-import type { Milestone, Task, ProjectDocument } from "../../types";
+import type { Milestone, MilestoneDependency, Task, ProjectDocument } from "../../types";
 import { StatusBadge } from "./StatusBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { useToast } from "./Toast";
@@ -17,6 +17,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const { addToast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -31,7 +32,8 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       api.getMilestonesByProject(authToken, projectId),
       api.getTasksByProject(authToken, projectId),
       api.getProjectDocuments(authToken, projectId),
-    ]).then(([milestoneResult, taskResult, docResult]) => {
+      api.getMilestoneDependencies(authToken, projectId),
+    ]).then(([milestoneResult, taskResult, docResult, depResult]) => {
       if (milestoneResult.status === "fulfilled") {
         setMilestones(milestoneResult.value);
       }
@@ -40,6 +42,9 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       }
       if (docResult.status === "fulfilled") {
         setDocuments(docResult.value);
+      }
+      if (depResult.status === "fulfilled") {
+        setDependencies(depResult.value);
       }
       setLoading(false);
     });
@@ -218,6 +223,22 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
               <p className="text-xs text-slate-500">Create milestones to track project progress and organize tasks.</p>
             </div>
           ) : (
+            <>
+              {dependencies.length > 0 && (
+                <div className="flex items-center gap-3 mb-4 px-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">account_tree</span>
+                    Dependencies
+                  </span>
+                  <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{dependencies.length}</span>
+                  <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    {dependencies.filter(d => d.isMet).length} met
+                  </span>
+                  <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                    {dependencies.filter(d => !d.isMet).length} unmet
+                  </span>
+                </div>
+              )}
             <div className="relative pl-8 ml-4 border-l-2 border-slate-200">
               <div className="space-y-8">
                 {milestones.map((milestone) => {
@@ -265,7 +286,20 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                                 </span>
                                
                               </div>
-                              <h3 className="text-lg font-bold text-slate-900 mb-1">{milestone.name}</h3>
+                              <h3 className="text-lg font-bold text-slate-900 mb-1">
+                                {milestone.name}
+                                {milestone.isBlocked && (
+                                  <span className="ml-2 text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded" title={milestone.blockedByMessage || ""}>
+                                    🔒 Blocked
+                                  </span>
+                                )}
+                              </h3>
+                              {milestone.isBlocked && milestone.blockedByMessage && (
+                                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-sm">warning</span>
+                                  {milestone.blockedByMessage}
+                                </p>
+                              )}
                               {milestone.description && (
                                 <p className="text-sm text-slate-600 line-clamp-2">{milestone.description}</p>
                               )}
@@ -389,6 +423,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                 })}
               </div>
             </div>
+            </>
           )}
         </div>
       )}

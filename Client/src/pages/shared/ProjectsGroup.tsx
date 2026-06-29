@@ -11,7 +11,6 @@ import {
   HiOutlineClipboardList,
   HiOutlineFlag,
   HiOutlineChevronRight,
-  HiOutlineLink,
 } from "react-icons/hi";
 
 export interface ProjectsGroupTheme {
@@ -226,7 +225,6 @@ export function ProjectsGroup({
           const parentActive = isChildActive(project.id);
           const childTasksActive = isChildExactActive(project.id, "/tasks");
           const childMilestonesActive = isChildExactActive(project.id, "/milestones");
-          const childDependenciesActive = isChildExactActive(project.id, "/dependencies");
           const status = getStatusColor(project.status);
           const isNew = isNewProject(project);
           return (
@@ -283,17 +281,6 @@ export function ProjectsGroup({
                   >
                     <HiOutlineFlag className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
                     <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Milestones</span>
-                  </Link>
-                  <Link
-                    to={`/projects/${project.id}/dependencies`}
-                    className={`flex items-center gap-[clamp(6px,1vw,10px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(5px,0.8vw,7px)] rounded-md transition-all duration-200 ${
-                      childDependenciesActive
-                        ? `${theme.active}`
-                        : `${theme.textDefault} ${theme.hover}`
-                    }`}
-                  >
-                    <HiOutlineLink className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
-                    <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Dependencies</span>
                   </Link>
                   <Link
                     to={`/projects/${project.id}/tasks`}
