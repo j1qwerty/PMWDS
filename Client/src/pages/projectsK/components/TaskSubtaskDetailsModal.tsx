@@ -163,7 +163,7 @@ function TaskSubtaskDetailsModalInner({
       estimatedHours: 0,
     });
     setSubtasks(prev => [...prev, { ...newSubtask, hasSubTasks: false }]);
-    setSubtaskForm({ title: "", priority: "Medium", dueDate: "", assignedToUserId: "" });
+    setSubtaskForm({ title: "", priority: "Medium", dueDate: task.dueDate?.slice(0, 10) || "", assignedToUserId: "" });
     setShowSubtaskForm(false);
     addToast("Subtask created.");
     onMessage?.("Subtask created.");
@@ -332,9 +332,16 @@ function TaskSubtaskDetailsModalInner({
             onSubtaskFormChange={setSubtaskForm}
             onCancelSubtaskForm={() => {
               setShowSubtaskForm(false);
-              setSubtaskForm({ title: "", priority: "Medium", dueDate: "", assignedToUserId: "" });
+              setSubtaskForm({ title: "", priority: "Medium", dueDate: task.dueDate?.slice(0, 10) || "", assignedToUserId: "" });
             }}
-            onToggleShowForm={() => setShowSubtaskForm(true)}
+            onToggleShowForm={() => {
+              setSubtaskForm(prev => ({
+                ...prev,
+                dueDate: prev.dueDate || task.dueDate?.slice(0, 10) || "",
+              }));
+              setShowSubtaskForm(true);
+            }}
+            parentTaskDueDate={task.dueDate}
           />
 
           <TimerSection

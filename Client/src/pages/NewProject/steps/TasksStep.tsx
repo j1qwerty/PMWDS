@@ -43,8 +43,13 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
     dueDate: "",
   });
 
-  const resetForm = () => {
-    setForm({ title: "", description: "", priority: "Medium", assignedToUserIds: [], estimatedHours: 8, startDate: new Date().toISOString().split("T")[0], dueDate: "" });
+  const getMilestoneDueDate = (milestoneId: string) => {
+    const ms = milestones.find((m) => m.id === milestoneId);
+    return ms?.dueDate || "";
+  };
+
+  const resetForm = (defaultDueDate = "") => {
+    setForm({ title: "", description: "", priority: "Medium", assignedToUserIds: [], estimatedHours: 8, startDate: new Date().toISOString().split("T")[0], dueDate: defaultDueDate });
     setShowFormForMilestone(null);
     setEditTaskId(null);
   };
@@ -139,7 +144,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                 <button
                   type="button"
                   onClick={() => {
-                    resetForm();
+                    resetForm(getMilestoneDueDate(ms.id));
                     setShowFormForMilestone(ms.id);
                   }}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
@@ -263,6 +268,15 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                       onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                       className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
                     />
+                    {form.dueDate && showFormForMilestone && (() => {
+                      const msDue = getMilestoneDueDate(showFormForMilestone);
+                      return msDue && form.dueDate > msDue ? (
+                        <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                          <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                          <span>Due date exceeds milestone due date ({new Date(msDue).toLocaleDateString()})</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

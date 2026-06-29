@@ -621,6 +621,7 @@ export function ProjectTasksPage() {
         organizations={appData.organizations}
         isSuperAdmin={perm.isSuperAdmin}
         userOrganizationId={userOrganizationId}
+        projectEndDate={ws.project.plannedEndDate?.split("T")[0] ?? ""}
         onSubmit={handleMilestoneSubmit}
         onClose={() => { setMilestoneModal({ open: false }); setMilestoneError(""); }}
         serverError={milestoneError}

@@ -56,14 +56,21 @@ export function TaskFormModal({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const selectedMilestoneDueDate = useMemo(() => {
+    if (!form.milestoneId) return "";
+    const ms = milestones.find((m) => m.id === form.milestoneId);
+    return ms?.dueDate?.slice(0, 10) || "";
+  }, [form.milestoneId, milestones]);
+
   useEffect(() => {
     if (open) {
       setErrors({});
+      const editing = !!initialData;
       setForm({
         title: initialData?.title || "",
         description: initialData?.description || "",
         startDate: initialData?.startDate?.slice(0, 10) || getToday(),
-        dueDate: initialData?.dueDate?.slice(0, 10) || "",
+        dueDate: initialData?.dueDate?.slice(0, 10) || ((!editing && selectedMilestoneDueDate) ? selectedMilestoneDueDate : ""),
         estimatedHours: initialData?.estimatedHours || 8,
         projectId: initialData?.projectId || defaultProjectId,
         milestoneId: initialData?.milestoneId || defaultMilestoneId,
@@ -73,7 +80,7 @@ export function TaskFormModal({
         priority: initialData?.priority || "Medium",
       });
     }
-  }, [open, initialData, defaultProjectId, defaultMilestoneId]);
+  }, [open, initialData, defaultProjectId, defaultMilestoneId, selectedMilestoneDueDate]);
 
   const assignedUsers = useMemo(() => {
     return form.assignedToUserIds.map((id) => {
@@ -154,6 +161,12 @@ export function TaskFormModal({
             <div>
               <InputF label="Due" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
               {errors.dueDate && <span className="text-xs text-red-500 mt-1 block">{errors.dueDate}</span>}
+              {form.dueDate && selectedMilestoneDueDate && form.dueDate > selectedMilestoneDueDate && (
+                <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                  <span>Due date exceeds milestone due date ({new Date(selectedMilestoneDueDate).toLocaleDateString()})</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

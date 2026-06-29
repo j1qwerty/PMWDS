@@ -39,7 +39,7 @@
 - [x] Add escalate task button and mentions functionality
 - [x] Add more buttons to projects page top navigation
 - [x] Consistent toasts 
-- [ ] consistent stat cards design
+- [x] consistent stat cards design
 - [x] User assignment in departments page
 
 ### Task Management

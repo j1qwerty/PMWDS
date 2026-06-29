@@ -11,12 +11,13 @@ interface MilestoneFormModalProps {
   organizations: OrganizationRecord[];
   isSuperAdmin: boolean;
   userOrganizationId?: string | null;
+  projectEndDate: string;
   onSubmit: (data: Record<string, unknown>) => void;
   onClose: () => void;
   serverError?: string;
 }
 
-export function MilestoneFormModal({ open, projectId, initialData, departments, organizations, isSuperAdmin, userOrganizationId, onSubmit, onClose, serverError }: MilestoneFormModalProps) {
+export function MilestoneFormModal({ open, projectId, initialData, departments, organizations, isSuperAdmin, userOrganizationId, projectEndDate, onSubmit, onClose, serverError }: MilestoneFormModalProps) {
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -35,14 +36,14 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
       setForm({
         name: initialData?.name || "",
         description: initialData?.description || "",
-        dueDate: initialData?.dueDate?.slice(0, 10) || "",
+        dueDate: initialData?.dueDate?.slice(0, 10) || projectEndDate,
         progressPercentage: initialData?.progressPercentage || 0,
         isCritical: initialData?.isCritical || false,
         departmentId: initialData?.departmentId || "",
         organizationId: "",
       });
     }
-  }, [open, initialData]);
+  }, [open, initialData, projectEndDate]);
 
   const filteredDepartments = useMemo(() => {
     if (isSuperAdmin) {
@@ -111,6 +112,12 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
           <InputF label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
           <InputF label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           <InputF label="Due Date" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} required />
+          {form.dueDate && projectEndDate && form.dueDate > projectEndDate && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+              <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+              <span>Due date exceeds project end date ({new Date(projectEndDate).toLocaleDateString()})</span>
+            </div>
+          )}
 
     
           {isSuperAdmin && (

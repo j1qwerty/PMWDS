@@ -16,6 +16,7 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useToast,
+  StatCard,
   } from "../shared";
 
 import { NotificationInbox } from "./NotificationInbox";
@@ -281,29 +282,6 @@ export function NotificationsPage() {
 }
 
 // Helper Components
-function StatCard({ label, value, color, icon }: { label: string; value: string | number; color: string; icon: string }) {
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
-    violet: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-100" },
-    blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100" },
-  };
-  const colors = colorMap[color] || colorMap.indigo;
-
-  return (
-    <div className={`rounded-xl border p-4 ${colors.border} ${colors.bg}`}>
-      <div className="flex items-center gap-3">
-        <span className={`material-symbols-outlined text-xl ${colors.text}`}>{icon}</span>
-        <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-          <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TabButton({ active, onClick, icon, label, count, countColor }: {
   active: boolean;
   onClick: () => void;

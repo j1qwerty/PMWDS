@@ -13,15 +13,16 @@ interface MilestoneEntry {
 interface MilestonesStepProps {
   milestones: MilestoneEntry[];
   onChange: (milestones: MilestoneEntry[]) => void;
+  projectEndDate: string;
 }
 
-export function MilestonesStep({ milestones, onChange }: MilestonesStepProps) {
+export function MilestonesStep({ milestones, onChange, projectEndDate }: MilestonesStepProps) {
   const [showForm, setShowForm] = useState(false);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", description: "", dueDate: "", isCritical: false });
 
   const resetForm = () => {
-    setForm({ name: "", description: "", dueDate: "", isCritical: false });
+    setForm({ name: "", description: "", dueDate: projectEndDate, isCritical: false });
     setShowForm(false);
     setEditIdx(null);
   };
@@ -149,6 +150,12 @@ export function MilestonesStep({ milestones, onChange }: MilestonesStepProps) {
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                 className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
               />
+              {form.dueDate && projectEndDate && form.dueDate > projectEndDate && (
+                <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                  <span>Due date exceeds project end date ({new Date(projectEndDate).toLocaleDateString()})</span>
+                </div>
+              )}
             </div>
             <div className="flex items-end pb-2">
               <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">

@@ -21,6 +21,7 @@ interface SubtasksSectionProps {
   onSubtaskFormChange: (form: { title: string; priority: string; dueDate: string; assignedToUserId: string }) => void;
   onCancelSubtaskForm: () => void;
   onToggleShowForm: () => void;
+  parentTaskDueDate?: string;
 }
 
 export function SubtasksSection({
@@ -39,6 +40,7 @@ export function SubtasksSection({
   onSubtaskFormChange,
   onCancelSubtaskForm,
   onToggleShowForm,
+  parentTaskDueDate,
 }: SubtasksSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -157,19 +159,35 @@ export function SubtasksSection({
           })}
           {mayEdit && (
             showSubtaskForm ? (
-              <div className="flex gap-2 pt-1">
-                <input
-                  value={subtaskForm.title}
-                  onChange={(e) => onSubtaskFormChange({ ...subtaskForm, title: e.target.value })}
-                  placeholder="Subtask title"
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
-                />
-                <button onClick={onCreateSubtask} disabled={!subtaskForm.title} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
-                  Add
-                </button>
-                <button onClick={onCancelSubtaskForm} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 cursor-pointer">
-                  Cancel
-                </button>
+              <div className="pt-1 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={subtaskForm.title}
+                    onChange={(e) => onSubtaskFormChange({ ...subtaskForm, title: e.target.value })}
+                    placeholder="Subtask title"
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                  />
+                  <button onClick={onCreateSubtask} disabled={!subtaskForm.title} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
+                    Add
+                  </button>
+                  <button onClick={onCancelSubtaskForm} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 cursor-pointer">
+                    Cancel
+                  </button>
+                </div>
+                <div>
+                  <input
+                    type="date"
+                    value={subtaskForm.dueDate}
+                    onChange={(e) => onSubtaskFormChange({ ...subtaskForm, dueDate: e.target.value })}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                  />
+                  {subtaskForm.dueDate && parentTaskDueDate && subtaskForm.dueDate > parentTaskDueDate.slice(0, 10) && (
+                    <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                      <span>Due date exceeds parent task due date ({new Date(parentTaskDueDate).toLocaleDateString()})</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <button

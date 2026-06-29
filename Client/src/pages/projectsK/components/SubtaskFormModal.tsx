@@ -36,12 +36,12 @@ export function SubtaskFormModal({
       setForm({
         title: "",
         description: "",
-        dueDate: "",
+        dueDate: parentTask.dueDate?.slice(0, 10) || "",
         assignedToUserId: "",
         priority: "Medium",
       });
     }
-  }, [open]);
+  }, [open, parentTask.dueDate]);
 
   if (!open) return null;
 
@@ -81,7 +81,15 @@ export function SubtaskFormModal({
           <InputF label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
           <InputF label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           <div className="grid grid-cols-2 gap-4">
-            <InputF label="Due" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+            <div>
+              <InputF label="Due" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
+              {form.dueDate && parentTask.dueDate && form.dueDate > parentTask.dueDate.slice(0, 10) && (
+                <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                  <span>Due date exceeds parent task due date ({new Date(parentTask.dueDate).toLocaleDateString()})</span>
+                </div>
+              )}
+            </div>
             <SelectF
               label="Priority"
               value={form.priority}

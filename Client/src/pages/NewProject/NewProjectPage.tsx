@@ -409,6 +409,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             <MilestonesStep
               milestones={milestones}
               onChange={setMilestones}
+              projectEndDate={endDate}
             />
           )}
           {currentStepKey === "milestoneDepartments" && (
