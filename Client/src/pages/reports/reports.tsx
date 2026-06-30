@@ -88,6 +88,8 @@ export function ReportsPage() {
   }, [departments, filters.organizationId]);
 
   const visibleProjects = useMemo(() => {
+    if (perm.isSuperAdmin) return projects;
+
     if (filters.departmentId) {
       return projects.filter((project) => projectBelongsToDepartment(project, filters.departmentId));
     }
@@ -98,7 +100,7 @@ export function ReportsPage() {
     }
 
     return projects;
-  }, [filters.departmentId, filters.organizationId, projects, visibleDepartments]);
+  }, [filters.departmentId, filters.organizationId, projects, visibleDepartments, perm.isSuperAdmin]);
 
   useEffect(() => {
     if (filters.departmentId && !visibleDepartments.some((department) => department.id === filters.departmentId)) {

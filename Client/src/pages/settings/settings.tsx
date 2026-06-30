@@ -1,11 +1,10 @@
-import { useEffect, useState, useDeferredValue } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { AIModel, AIProvider, AISettingsResponse, DatabaseStatus } from "../../types";
+import type { DatabaseStatus } from "../../types";
 import {
   AnimatedBackground,
   BgControls,
-  LoadingPage,
   PERMISSION_GROUPS,
   usePermission,
   useNavHeader,
@@ -13,8 +12,7 @@ import {
   useToast,
 } from "../shared";
 import { ProfileSettings } from "./ProfileSettings";
-import { AIConfiguration } from "./AIConfiguration";
-import { ProviderMatrix } from "./ProviderMatrix";
+import { AISettings } from "./AISettings";
 import { DatabaseStatusSection } from "./DatabaseStatusSection";
 
 export function SettingsPage() {
@@ -23,56 +21,16 @@ export function SettingsPage() {
   const canManageSystem = perm.has(PERMISSION_GROUPS.system.manage);
 
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "matrix" | "database" | "background">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "database" | "background">("profile");
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
   const [databaseLoading, setDatabaseLoading] = useState(false);
   const [databaseError, setDatabaseError] = useState("");
-
-  // AI Settings State
-  const [aiSettings, setAiSettings] = useState<AISettingsResponse | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiSaving, setAiSaving] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const [testResults, setTestResults] = useState<{ [key: string]: { success: boolean; message: string } }>({});
-  const [testingProvider, setTestingProvider] = useState<string | null>(null);
-  const [customPrompt, setCustomPrompt] = useState<{ [key: string]: string }>({});
-  const [customResponse, setCustomResponse] = useState<{ [key: string]: string }>({});
-  const [testingCustom, setTestingCustom] = useState<string | null>(null);
-  const [openRouterModels, setOpenRouterModels] = useState<Array<{ id: string; name: string; free: boolean }>>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
 
   const { setNavHeader } = useNavHeader();
 
   useEffect(() => {
     setNavHeader({ title: "Settings", description: "Manage your profile, AI configuration, and provider settings" });
   }, [setNavHeader]);
-
-  // Provider Matrix State
-  const [matrixProviders, setMatrixProviders] = useState<AIProvider[]>([]);
-  const [matrixProvider, setMatrixProvider] = useState("OpenAI");
-  const [matrixModels, setMatrixModels] = useState<AIModel[]>([]);
-  const [modelSearch, setModelSearch] = useState("");
-  const deferredSearch = useDeferredValue(modelSearch);
-  const [selectedModel, setSelectedModel] = useState("");
-  const [testResult, setTestResult] = useState<{ provider: string; model: string; success: boolean; message: string; rawResponse?: string } | null>(null);
-
-  useEffect(() => {
-    if (!canManageSystem || !auth) return;
-    setAiLoading(true);
-    api.getAISettings(auth.token)
-      .then(settings => {
-        const providers = settings.providers.filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter");
-        const defaultProvider = providers.some(p => p.provider === settings.defaultProvider)
-          ? settings.defaultProvider
-          : "OpenAI";
-        setAiSettings({ ...settings, providers, defaultProvider });
-        if (settings.defaultProvider === "OpenRouter" && !openRouterModels.length) {
-          fetchOpenRouterModels();
-        }
-      })
-      .catch(e => setAiError(e instanceof Error ? e.message : "Failed to load AI settings"))
-      .finally(() => setAiLoading(false));
-  }, [auth, canManageSystem]);
 
   const fetchDatabaseStatus = async () => {
     if (!auth || !canManageSystem) return;
@@ -90,131 +48,6 @@ export function SettingsPage() {
   useEffect(() => {
     fetchDatabaseStatus();
   }, [auth, canManageSystem]);
-
-  useEffect(() => {
-    if (aiSettings?.defaultProvider === "OpenRouter" && !openRouterModels.length) {
-      fetchOpenRouterModels();
-    }
-  }, [aiSettings?.defaultProvider]);
-
-  useEffect(() => {
-    if (!auth) return;
-    api.getAiProviders(auth.token).then(setMatrixProviders);
-  }, [auth]);
-
-  useEffect(() => {
-    if (!auth || !matrixProvider) return;
-    api.searchAiModels(auth.token, matrixProvider, deferredSearch).then((data) => {
-      setMatrixModels(data);
-      if (data[0]) setSelectedModel(data[0].id);
-    });
-  }, [auth, matrixProvider, deferredSearch]);
-
-  const handleSaveAI = async () => {
-    if (!aiSettings || !auth) return;
-    setAiSaving(true);
-    setAiError("");
-    try {
-      const result = await api.saveAISettings(auth.token, {
-        defaultProvider: aiSettings.defaultProvider,
-        defaultModel: aiSettings.defaultModel,
-        riskThreshold: aiSettings.riskThreshold,
-        useLocalModel: aiSettings.useLocalModel,
-        mlModelPath: aiSettings.mlModelPath,
-        providers: aiSettings.providers
-          .filter(p => p.provider === "OpenAI" || p.provider === "OpenRouter")
-          .map(p => ({
-            provider: p.provider,
-            displayName: p.displayName,
-            enabled: p.enabled,
-            baseUrl: p.baseUrl,
-            apiKey: p.apiKey || "",
-            defaultModel: p.defaultModel,
-            useEnvironmentDefault: p.useEnvironmentDefault,
-          })),
-      });
-      addToast(result.message || "AI settings saved successfully.");
-    } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Failed to save AI settings");
-    } finally {
-      setAiSaving(false);
-    }
-  };
-
-  const testProvider = async (provider: string, apiKey: string, model?: string) => {
-    const providerConfig = aiSettings?.providers.find(p => p.provider === provider);
-    if (!providerConfig?.useEnvironmentDefault && !apiKey && !providerConfig?.hasStoredKey) {
-      setTestResults(prev => ({ ...prev, [provider]: { success: false, message: "API key required" } }));
-      return;
-    }
-    setTestingProvider(provider);
-    try {
-      const testModel = model || aiSettings?.providers.find(p => p.provider === provider)?.defaultModel;
-      const result = await api.testAiProvider(auth!.token, provider, testModel, "Hi");
-      setTestResults(prev => ({ ...prev, [provider]: { success: result.success, message: result.message } }));
-    } catch (e) {
-      setTestResults(prev => ({ ...prev, [provider]: { success: false, message: e instanceof Error ? e.message : "Connection failed" } }));
-    } finally {
-      setTestingProvider(null);
-    }
-  };
-
-  const testCustomPrompt = async (provider: string, _apiKey: string, selectedModel?: string) => {
-    const prompt = customPrompt[provider]?.trim();
-    if (!prompt) {
-      setCustomResponse(prev => ({ ...prev, [provider]: "Please enter a test prompt" }));
-      return;
-    }
-    setTestingCustom(provider);
-    try {
-      const model = selectedModel || aiSettings?.providers.find(p => p.provider === provider)?.defaultModel;
-      const result = await api.testAiProvider(auth!.token, provider, model, prompt);
-      setCustomResponse(prev => ({ ...prev, [provider]: result.rawResponse || result.message }));
-    } catch (e) {
-      setCustomResponse(prev => ({ ...prev, [provider]: e instanceof Error ? e.message : "Connection failed" }));
-    } finally {
-      setTestingCustom(null);
-    }
-  };
-
-  const fetchOpenRouterModels = async () => {
-    if (!auth) return;
-    setLoadingModels(true);
-    try {
-      const apiKey = aiSettings?.providers.find(p => p.provider === "OpenRouter")?.apiKey;
-      const response = await fetch("https://openrouter.ai/api/v1/models?limit=100", {
-        headers: apiKey ? { "Authorization": `Bearer ${apiKey}` } : {}
-      });
-      const data = await response.json();
-      const allModels = (data.data || [])
-        .map((m: { id: string }) => ({ 
-          id: m.id, 
-          name: m.id, 
-          free: m.id.toLowerCase().includes("free") || m.id.toLowerCase().includes("mini")
-        }));
-      const freeModels = allModels.filter((m: { free: boolean }) => m.free).slice(0, 15);
-      const otherModels = allModels.filter((m: { free: boolean }) => !m.free).slice(0, 15);
-      setOpenRouterModels([...freeModels, ...otherModels]);
-    } catch (e) {
-      console.error("Failed to fetch OpenRouter models:", e);
-      setAiError("Failed to fetch models from OpenRouter");
-    } finally {
-      setLoadingModels(false);
-    }
-  };
-
-  const updateProvider = (provider: string, field: string, value: unknown) => {
-    if (!aiSettings) return;
-    setAiSettings({
-      ...aiSettings,
-      providers: aiSettings.providers.map(p =>
-        p.provider === provider ? { ...p, [field]: value } : p
-      ),
-    });
-    setTestResults(prev => { const next = { ...prev }; delete next[provider]; return next; });
-  };
-
-  if (aiLoading && canManageSystem) return <LoadingPage label="Loading settings..." />;
 
   return (
     <div>
@@ -239,13 +72,7 @@ export function SettingsPage() {
                 active={activeTab === "ai"}
                 onClick={() => setActiveTab("ai")}
                 icon="smart_toy"
-                label="AI Configuration"
-              />
-              <TabButton
-                active={activeTab === "matrix"}
-                onClick={() => setActiveTab("matrix")}
-                icon="hub"
-                label="Provider Matrix"
+                label="AI Settings"
               />
               <TabButton
                 active={activeTab === "database"}
@@ -275,40 +102,9 @@ export function SettingsPage() {
         )}
 
         {activeTab === "ai" && canManageSystem && (
-          <AIConfiguration
-            aiSettings={aiSettings}
-            aiError={aiError}
-            aiSaving={aiSaving}
-            testResults={testResults}
-            testingProvider={testingProvider}
-            customPrompt={customPrompt}
-            customResponse={customResponse}
-            testingCustom={testingCustom}
-            openRouterModels={openRouterModels}
-            loadingModels={loadingModels}
-            onSaveAI={handleSaveAI}
-            onTestProvider={testProvider}
-            onTestCustomPrompt={testCustomPrompt}
-            onFetchModels={fetchOpenRouterModels}
-            onUpdateProvider={updateProvider}
-            onUpdateSettings={setAiSettings}
-            onSetCustomPrompt={setCustomPrompt}
-          />
-        )}
-
-        {activeTab === "matrix" && canManageSystem && (
-          <ProviderMatrix
-            matrixProviders={matrixProviders}
-            matrixProvider={matrixProvider}
-            matrixModels={matrixModels}
-            modelSearch={modelSearch}
-            selectedModel={selectedModel}
-            testResult={testResult}
+          <AISettings
             auth={auth}
-            onProviderChange={setMatrixProvider}
-            onModelSearchChange={setModelSearch}
-            onModelSelect={setSelectedModel}
-            onTestResult={setTestResult}
+            onSaveComplete={(msg) => addToast(msg)}
           />
         )}
 

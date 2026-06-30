@@ -23,7 +23,7 @@
 - [ ] Implement paginated results for documents and other sections (audit all sections, create list of sections/components for update)
 - [ ] Settings page for both roles (add create organizations button for superadmin)
 - [ ] All types of settings and settings API
-- [ ] new project creation flow - auto selected input feilds on each step
+- [x] new project creation flow - auto selected input feilds on each step
 
 ### Role & Access Management
 - [x] Role management for director with proper UI (hide superadmin features)
@@ -80,6 +80,7 @@
 - [ ] Add max height with "view more" options to all components
 - [ ] Animate bars and graphs (similar to AI page)
 - [ ] consistent icons for everything
+- [ ] stars for proficiency 
 - [x] Task performance table UI update (hover, view/edit modals, sort filters, cursor-pointer)
 
 ### Activity & Logging

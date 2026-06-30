@@ -42,14 +42,16 @@ public class AIController : BaseApiController
     {
         var stored = (await _db.AIProviderCredentials.AsNoTracking().ToListAsync(ct))
             .ToDictionary(p => p.Provider, StringComparer.OrdinalIgnoreCase);
-        
+
+        var global = await _db.AIGlobalSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+
         return Ok(new AISettingsDto
         {
-            DefaultProvider = _aiSettings.DefaultProvider,
-            DefaultModel = _aiSettings.DefaultModel,
-            RiskThreshold = _aiSettings.RiskThreshold,
-            UseLocalModel = _aiSettings.UseLocalModel,
-            MLModelPath = _aiSettings.MLModelPath,
+            DefaultProvider = global?.DefaultProvider ?? _aiSettings.DefaultProvider,
+            DefaultModel = global?.DefaultModel ?? _aiSettings.DefaultModel,
+            RiskThreshold = global?.RiskThreshold ?? _aiSettings.RiskThreshold,
+            UseLocalModel = global?.UseLocalModel ?? _aiSettings.UseLocalModel,
+            MLModelPath = global?.MLModelPath ?? _aiSettings.MLModelPath,
             Providers = new List<AIProviderSettingsDto>
             {
                 CreateProviderDto("OpenAI", "OpenAI", _aiSettings.OpenAI, stored),
@@ -109,9 +111,33 @@ public class AIController : BaseApiController
             }
         }
 
+        var global = await _db.AIGlobalSettings.FirstOrDefaultAsync(ct);
+        if (global == null)
+        {
+            global = new AIGlobalSetting
+            {
+                DefaultProvider = dto.DefaultProvider,
+                DefaultModel = dto.DefaultModel,
+                RiskThreshold = dto.RiskThreshold,
+                UseLocalModel = dto.UseLocalModel,
+                MLModelPath = dto.MLModelPath,
+            };
+            global.SetCreatedBy(User.Identity?.Name ?? "system");
+            await _db.AIGlobalSettings.AddAsync(global, ct);
+        }
+        else
+        {
+            global.DefaultProvider = dto.DefaultProvider;
+            global.DefaultModel = dto.DefaultModel;
+            global.RiskThreshold = dto.RiskThreshold;
+            global.UseLocalModel = dto.UseLocalModel;
+            global.MLModelPath = dto.MLModelPath;
+            global.SetModified(User.Identity?.Name ?? "system");
+        }
+
         await _db.SaveChangesAsync(ct);
 
-        return Ok(new { success = true, message = "AI provider settings saved to the database." });
+        return Ok(new { success = true, message = "AI settings saved to the database." });
     }
 
     private static AIProviderSettingsDto CreateProviderDto(

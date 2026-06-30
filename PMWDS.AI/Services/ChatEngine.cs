@@ -64,6 +64,10 @@ public class OpenAICompatibleChatEngine : IChatEngine
     // In-memory session history (production: use Redis)
     private static readonly Dictionary<string, List<ChatMessagePayload>> Sessions = new();
 
+    // Cached global DB defaults (refreshed per-resolve)
+    private string? _globalDefaultProvider;
+    private string? _globalDefaultModel;
+
     public OpenAICompatibleChatEngine(
         HttpClient httpClient,
         IOptions<AISettings> settings,
@@ -334,7 +338,17 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
     private async Task<ResolvedProviderConfig> ResolveProviderAsync(string? provider, CancellationToken ct)
     {
-        var environmentProvider = ResolveEnvironmentProvider(provider);
+        var global = await _db.AIGlobalSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        _globalDefaultProvider = global?.DefaultProvider;
+        _globalDefaultModel = global?.DefaultModel;
+
+        var effectiveProvider = provider;
+        if (string.IsNullOrWhiteSpace(effectiveProvider) && !string.IsNullOrWhiteSpace(_globalDefaultProvider))
+        {
+            effectiveProvider = _globalDefaultProvider;
+        }
+
+        var environmentProvider = ResolveEnvironmentProvider(effectiveProvider);
         var stored = await _db.AIProviderCredentials
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Provider == environmentProvider.ProviderId, ct);
@@ -411,10 +425,14 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? requestedModel,
         bool providerExplicitlySelected)
     {
+        var envDefault = !string.IsNullOrWhiteSpace(_globalDefaultModel)
+            ? _globalDefaultModel
+            : _settings.DefaultModel;
+
         var model = string.IsNullOrWhiteSpace(requestedModel)
-            ? (providerExplicitlySelected || string.IsNullOrWhiteSpace(_settings.DefaultModel)
+            ? (providerExplicitlySelected || string.IsNullOrWhiteSpace(envDefault)
                 ? provider.DefaultModel
-                : _settings.DefaultModel)
+                : envDefault)
             : requestedModel;
 
         if (string.IsNullOrWhiteSpace(model))

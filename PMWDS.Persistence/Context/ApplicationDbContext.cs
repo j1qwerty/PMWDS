@@ -48,6 +48,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ActivityLog> ActivityLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<AIProviderCredential> AIProviderCredentials { get; set; }
+    public DbSet<AIGlobalSetting> AIGlobalSettings { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)

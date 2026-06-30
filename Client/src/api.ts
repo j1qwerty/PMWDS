@@ -62,6 +62,7 @@ type ApiOptions = {
   body?: BodyInit | object | null;
   headers?: Record<string, string>;
   query?: Record<string, string | number | boolean | undefined | null>;
+  responseType?: 'json' | 'blob';
 };
 
 type PaginatedResponse<T> = {
@@ -113,6 +114,10 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       message = json.message || json.error || text;
     } catch {}
     throw new Error(message || `Request failed with status ${response.status}`);
+  }
+
+  if (options.responseType === 'blob') {
+    return (await response.blob()) as T;
   }
 
   const contentType = response.headers.get("content-type") ?? "";
@@ -639,10 +644,10 @@ export const api = {
   getAiProviders(token: string) {
     return request<AIProvider[]>("ai/providers", { token });
   },
-  searchAiModels(token: string, provider: string, search?: string) {
+  searchAiModels(token: string, provider: string, search?: string, limit?: number) {
     return request<AIModel[]>(`ai/providers/${provider}/models`, {
       token,
-      query: { search, limit: 30 },
+      query: { search, limit: limit ?? 30 },
     });
   },
   testAiProvider(token: string, provider: string, model?: string, prompt?: string) {
@@ -809,7 +814,7 @@ export const api = {
     return request<void>(`reports/stored/${id}`, { token, method: "DELETE" });
   },
   downloadStoredReport(token: string, id: string) {
-    return request<Blob>(`reports/stored/${id}/download`, { token });
+    return request<Blob>(`reports/stored/${id}/download`, { token, responseType: 'blob' });
   },
   getReportSchedules(token: string) {
     return request<ReportScheduleRecord[]>("reports/schedules", { token });
