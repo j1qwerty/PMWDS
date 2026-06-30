@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
@@ -14,12 +15,14 @@ public class DepartmentsController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
+    private readonly ICurrentUserService _currentUser;
 
-    public DepartmentsController(IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db)
+    public DepartmentsController(IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db, ICurrentUserService currentUser)
     {
         _uow = uow;
         _scope = scope;
         _db = db;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
@@ -149,6 +152,17 @@ public class DepartmentsController : BaseApiController
         await _uow.Departments.AddAsync(department, ct);
         await _uow.SaveChangesAsync(ct);
 
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Department Created",
+            Description: $"{_currentUser.FullName} created department \"{department.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["departmentId"] = department.Id,
+                ["departmentName"] = department.Name,
+                ["organizationId"] = organizationId
+            }
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = department.Id }, MapDepartment(department));
     }
 
@@ -224,6 +238,17 @@ public class DepartmentsController : BaseApiController
 
         await _uow.Departments.UpdateAsync(department, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Department Updated",
+            Description: $"{_currentUser.FullName} updated department \"{department.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["departmentId"] = department.Id,
+                ["departmentName"] = department.Name
+            }
+        );
+
         return Ok(MapDepartment(department));
     }
 
@@ -231,8 +256,21 @@ public class DepartmentsController : BaseApiController
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var department = await _uow.Departments.GetByIdAsync(id, ct);
+        var deptName = department?.Name ?? "Unknown";
+
         await _uow.Departments.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Department Deleted",
+            Description: $"{_currentUser.FullName} deleted department \"{deptName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["departmentName"] = deptName
+            }
+        );
+
         return NoContent();
     }
 

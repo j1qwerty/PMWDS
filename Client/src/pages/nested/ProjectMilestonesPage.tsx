@@ -564,9 +564,18 @@ export function ProjectMilestonesPage() {
         name={deleteMilestone?.name ?? ""}
         warning={
           deleteMilestone
-            ? ws.tasks.filter((t) => t.milestoneId === deleteMilestone.id).length > 0
-              ? "This milestone has linked tasks."
-              : undefined
+            ? (() => {
+                const taskCount = ws.tasks.filter((t) => t.milestoneId === deleteMilestone.id).length;
+                const depCount = ws.dependencies.filter(
+                  (d) => d.prerequisiteMilestoneId === deleteMilestone.id || d.dependentMilestoneId === deleteMilestone.id
+                ).length;
+                const parts: string[] = [];
+                if (taskCount > 0) parts.push(`${taskCount} linked task${taskCount > 1 ? "s" : ""}`);
+                if (depCount > 0) parts.push(`${depCount} linked milestone dependenc${depCount > 1 ? "ies" : "y"}`);
+                return parts.length > 0
+                  ? `This milestone has ${parts.join(" and ")}. It will be deleted along with its tasks, subtasks, and dependencies.`
+                  : undefined;
+              })()
             : undefined
         }
         onConfirm={handleDeleteMilestone}

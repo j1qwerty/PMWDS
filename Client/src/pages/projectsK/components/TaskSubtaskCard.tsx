@@ -235,6 +235,12 @@ export function TaskSubtaskCard({
     }
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (!auth) return;
+    await api.deleteTask(auth.token, taskId);
+    onParentRefresh?.();
+  };
+
   const handleTaskStartTimer = async (taskId: string, description: string) => {
     if (!auth) return;
     try {
@@ -534,7 +540,7 @@ export function TaskSubtaskCard({
           onClose={() => setShowEditModal(false)}
           onUpdate={handleTaskUpdate}
           onAddComment={handleTaskAddComment}
-          onDelete={async (taskId) => { handleDeleteSubtask(taskId); }}
+          onDelete={handleDeleteTask}
           onEscalate={handleTaskEscalate}
           onStartTimer={handleTaskStartTimer}
           onRefresh={async () => {

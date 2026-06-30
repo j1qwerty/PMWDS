@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
@@ -124,6 +125,16 @@ public class RolesController : BaseApiController
         await _uow.Roles.AddAsync(role, ct);
         await _uow.SaveChangesAsync(ct);
 
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Role Created",
+            Description: $"{_currentUser.FullName} created role \"{role.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["roleId"] = role.Id,
+                ["roleName"] = role.Name
+            }
+        );
+
         return CreatedAtAction(nameof(GetRoles), new { id = role.Id }, new RoleResponse(
             role.Id,
             role.Name,
@@ -167,6 +178,17 @@ public class RolesController : BaseApiController
 
         await _uow.Roles.UpdateAsync(role, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Role Updated",
+            Description: $"{_currentUser.FullName} updated role \"{role.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["roleId"] = role.Id,
+                ["roleName"] = role.Name
+            }
+        );
+
         return Ok(new RoleResponse(role.Id, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
@@ -186,8 +208,20 @@ public class RolesController : BaseApiController
             }
         }
 
+        var roleName = role.Name;
+
         await _uow.Roles.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Role Deleted",
+            Description: $"{_currentUser.FullName} deleted role \"{roleName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["roleName"] = roleName
+            }
+        );
+
         return NoContent();
     }
 
@@ -204,6 +238,18 @@ public class RolesController : BaseApiController
         permission.SetCreatedBy("system");
         await _uow.Permissions.AddAsync(permission, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Permission Created",
+            Description: $"{_currentUser.FullName} created permission \"{permission.Name}\" ({permission.Code})",
+            Metadata: new Dictionary<string, object>
+            {
+                ["permissionId"] = permission.Id,
+                ["permissionName"] = permission.Name,
+                ["permissionCode"] = permission.Code
+            }
+        );
+
         return CreatedAtAction(nameof(GetPermissions), new { id = permission.Id }, MapPermission(permission));
     }
 
@@ -220,6 +266,18 @@ public class RolesController : BaseApiController
         permission.Update(req.Name, req.Description, req.Module, req.IsGlobal);
         await _uow.Permissions.UpdateAsync(permission, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Permission Updated",
+            Description: $"{_currentUser.FullName} updated permission \"{permission.Name}\" ({permission.Code})",
+            Metadata: new Dictionary<string, object>
+            {
+                ["permissionId"] = permission.Id,
+                ["permissionName"] = permission.Name,
+                ["permissionCode"] = permission.Code
+            }
+        );
+
         return Ok(MapPermission(permission));
     }
 
@@ -227,8 +285,23 @@ public class RolesController : BaseApiController
     [Authorize(Policy = "Permissions.Delete")]
     public async Task<IActionResult> DeletePermission(Guid id, CancellationToken ct)
     {
+        var permission = await _uow.Permissions.GetByIdAsync(id, ct);
+        var permName = permission?.Name ?? "Unknown";
+        var permCode = permission?.Code ?? "";
+
         await _uow.Permissions.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Permission Deleted",
+            Description: $"{_currentUser.FullName} deleted permission \"{permName}\" ({permCode})",
+            Metadata: new Dictionary<string, object>
+            {
+                ["permissionName"] = permName,
+                ["permissionCode"] = permCode
+            }
+        );
+
         return NoContent();
     }
 

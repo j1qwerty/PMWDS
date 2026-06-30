@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Users;
@@ -223,6 +224,17 @@ public class UsersController : BaseApiController
 
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "User Updated",
+            Description: $"{_currentUser.FullName} updated user \"{user.FullName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["targetUserId"] = user.Id,
+                ["targetUserFullName"] = user.FullName
+            }
+        );
+
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
@@ -295,6 +307,17 @@ public class UsersController : BaseApiController
         await _uow.UserProfiles.AddAsync(profile, ct);
 
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "User Created",
+            Description: $"{_currentUser.FullName} registered user \"{user.FullName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["newUserId"] = user.Id,
+                ["newUserFullName"] = user.FullName,
+                ["newUserEmail"] = user.Email
+            }
+        );
 
         var created = await _uow.Users.GetByIdWithSkillsAsync(user.Id, ct);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(created!, UserRoleResolver.Resolve(created!)));
@@ -627,6 +650,17 @@ public class UsersController : BaseApiController
         user.Deactivate();
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "User Deactivated",
+            Description: $"{_currentUser.FullName} deactivated user \"{user.FullName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["targetUserId"] = user.Id,
+                ["targetUserFullName"] = user.FullName
+            }
+        );
+
         return Ok();
     }
 
@@ -653,6 +687,17 @@ public class UsersController : BaseApiController
         user.Activate();
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "User Reactivated",
+            Description: $"{_currentUser.FullName} reactivated user \"{user.FullName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["targetUserId"] = user.Id,
+                ["targetUserFullName"] = user.FullName
+            }
+        );
+
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 

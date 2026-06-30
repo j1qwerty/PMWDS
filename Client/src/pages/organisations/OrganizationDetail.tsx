@@ -100,7 +100,7 @@ export function OrganizationDetail({
             <Avatar person={organization.director} size="md" />
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Director</div>
-              <div className={`text-sm font-bold ${organization.director.isActive === false ? "text-red-500" : "text-slate-800"}`}>{organization.director.fullName}</div>
+              <div className="text-sm font-bold text-slate-800">{organization.director.fullName}</div>
               <div className="text-xs text-slate-500">{organization.director.email}</div>
             </div>
           </div>

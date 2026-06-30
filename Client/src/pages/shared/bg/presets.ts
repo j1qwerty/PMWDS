@@ -33,7 +33,10 @@ function mergeDiagonalConfig(base: BgDiagonalPatternConfig, patch?: Partial<BgDi
   return { ...base, ...(patch || {}) };
 }
 
-function c(base: BgConfig, patch: Partial<BgConfig>): BgConfig {
+type DeepPartialPatterns = {
+  [K in keyof BgConfig['patterns']]?: Partial<BgConfig['patterns'][K]>;
+};
+function c(base: BgConfig, patch: Omit<Partial<BgConfig>, 'patterns'> & { patterns?: DeepPartialPatterns }): BgConfig {
   return {
     gradient: { ...base.gradient, ...(patch.gradient || {}) },
     patterns: {

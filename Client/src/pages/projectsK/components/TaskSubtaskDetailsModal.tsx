@@ -315,6 +315,7 @@ function TaskSubtaskDetailsModalInner({
               onSubmit={handleProgressUpdate}
             />
           )}
+          
 
           <SubtasksSection
             subtasks={subtasks}

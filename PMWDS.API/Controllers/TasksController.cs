@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Tasks;
@@ -160,6 +161,22 @@ public class TasksController : BaseApiController
             var createdTask = await _uow.Tasks.GetByIdAsync(result.Id, ct);
             if (createdTask != null) await RecalculateTaskMilestoneAsync(createdTask, ct);
         }
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Created",
+            Description: $"{_currentUser.FullName} created task \"{result.Title}\" under milestone \"{result.MilestoneName}\" in project \"{result.ProjectName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = result.Id,
+                ["taskTitle"] = result.Title,
+                ["milestoneId"] = result.MilestoneId?.ToString(),
+                ["milestoneName"] = result.MilestoneName ?? "",
+                ["projectId"] = result.ProjectId,
+                ["projectName"] = result.ProjectName ?? ""
+            },
+            ProjectId: result.ProjectId
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -202,6 +219,19 @@ public class TasksController : BaseApiController
                 await _uow.SaveChangesAsync(ct);
             }
         }
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Updated",
+            Description: $"{_currentUser.FullName} updated task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(TaskDto.FromEntity(task));
     }
 
@@ -217,6 +247,20 @@ public class TasksController : BaseApiController
         var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Progress Updated",
+            Description: $"{_currentUser.FullName} updated progress of task \"{task?.Title}\" to {dto.ProgressPercentage}% in project \"{await ResolveProjectNameAsync(task?.ProjectId ?? Guid.Empty, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = id,
+                ["taskTitle"] = task?.Title ?? "",
+                ["projectId"] = task?.ProjectId ?? Guid.Empty,
+                ["progressPercentage"] = dto.ProgressPercentage
+            },
+            ProjectId: task?.ProjectId
+        );
+
         return Ok(result);
     }
 
@@ -233,9 +277,25 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        var oldStatus = task.Status;
         await ApplyStatusChangeAsync(task, req, ct);
         await RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Status Changed",
+            Description: $"{_currentUser.FullName} changed task \"{task.Title}\" status from \"{oldStatus}\" to \"{req.NewStatus}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId,
+                ["oldStatus"] = oldStatus.ToString(),
+                ["newStatus"] = req.NewStatus.ToString()
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
 
@@ -268,7 +328,24 @@ public class TasksController : BaseApiController
                 return BadRequest(new { message = "Assignee must belong to the selected project organization." });
             }
 
-            return Ok(await Mediator.Send(new AssignTaskCommand(id, assigneeId, req.UseAIRecommendation), ct));
+            var assignResult = await Mediator.Send(new AssignTaskCommand(id, assigneeId, req.UseAIRecommendation), ct);
+
+            HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+                ActivityType: "Task Assigned",
+                Description: $"{_currentUser.FullName} assigned task \"{assignResult.Title}\" to {assignResult.AssignedToUserName} in project \"{assignResult.ProjectName}\"",
+                Metadata: new Dictionary<string, object>
+                {
+                    ["taskId"] = assignResult.Id,
+                    ["taskTitle"] = assignResult.Title,
+                    ["assigneeId"] = assigneeId,
+                    ["assigneeName"] = assignResult.AssignedToUserName ?? "",
+                    ["projectId"] = assignResult.ProjectId,
+                    ["projectName"] = assignResult.ProjectName ?? ""
+                },
+                ProjectId: assignResult.ProjectId
+            );
+
+            return Ok(assignResult);
         }
 
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -300,16 +377,38 @@ public class TasksController : BaseApiController
         var assignedBy = _currentUser.UserId ?? "system";
         task.AssignTo(assigneeIds[0], assignedBy);
 
-        foreach (var userId in assigneeIds.Where(userId => task.Assignments.All(a => a.UserId != userId || !a.IsActive)))
+        foreach (var userId in assigneeIds)
         {
-            await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, userId), ct);
-            await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId, ct);
+            if (task.Assignments.All(a => a.UserId != userId || !a.IsActive))
+            {
+                await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, userId), ct);
+                await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId, ct);
+            }
         }
 
         task.SetModified(assignedBy);
         await _uow.SaveChangesAsync(ct);
 
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        var assigneeNames = await _db.Users
+            .Where(u => assigneeIds.Contains(u.Id.ToString()))
+            .Select(u => u.FullName)
+            .ToListAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Assigned",
+            Description: $"{_currentUser.FullName} assigned task \"{task.Title}\" to {string.Join(", ", assigneeNames)} in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["assigneeIds"] = string.Join(",", assigneeIds),
+                ["assigneeNames"] = string.Join(", ", assigneeNames),
+                ["projectId"] = task.ProjectId
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(TaskDto.FromEntity(refreshed!));
     }
 
@@ -361,6 +460,20 @@ public class TasksController : BaseApiController
             req.Comment);
         await _uow.TaskComments.AddAsync(comment, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Comment Added",
+            Description: $"{_currentUser.FullName} commented on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId,
+                ["commentPreview"] = (req.Comment?.Length > 100 ? req.Comment[..100] : req.Comment) ?? ""
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(new { Message = "Comment added.", Comment = comment.Content });
     }
 
@@ -389,6 +502,21 @@ public class TasksController : BaseApiController
             _currentUser.UserId ?? "system");
         await _uow.TaskAttachments.AddAsync(attachment, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Attachment Uploaded",
+            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId,
+                ["fileName"] = file.FileName,
+                ["fileSize"] = file.Length
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(new { Message = "Attachment uploaded.", FileName = file.FileName });
     }
 
@@ -413,6 +541,20 @@ public class TasksController : BaseApiController
             req.IsBillable);
         await _uow.TimeEntries.AddAsync(entry, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Timer Started",
+            Description: $"{_currentUser.FullName} started timer on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId,
+                ["entryId"] = entry.Id
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(new { Message = "Timer started.", EntryId = entry.Id });
     }
 
@@ -439,6 +581,21 @@ public class TasksController : BaseApiController
 
         entry.StopTimer();
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Timer Stopped",
+            Description: $"{_currentUser.FullName} stopped timer on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskId"] = task.Id,
+                ["taskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId,
+                ["entryId"] = entry.Id,
+                ["durationMinutes"] = entry.Duration.TotalMinutes
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(new { Message = "Timer stopped.", DurationMinutes = entry.Duration.TotalMinutes });
     }
 
@@ -539,6 +696,22 @@ public class TasksController : BaseApiController
             dto.AssignedToUserId,
             dto.Priority);
         var result = await Mediator.Send(new CreateTaskCommand(createDto), ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Subtask Created",
+            Description: $"{_currentUser.FullName} created subtask \"{result.Title}\" under task \"{parentTask.Title}\" in project \"{result.ProjectName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["subtaskId"] = result.Id,
+                ["subtaskTitle"] = result.Title,
+                ["parentTaskId"] = parentTask.Id,
+                ["parentTaskTitle"] = parentTask.Title,
+                ["projectId"] = result.ProjectId,
+                ["projectName"] = result.ProjectName ?? ""
+            },
+            ProjectId: result.ProjectId
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -576,6 +749,19 @@ public class TasksController : BaseApiController
             dto.MilestoneId);
         task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Subtask Updated",
+            Description: $"{_currentUser.FullName} updated subtask \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["subtaskId"] = task.Id,
+                ["subtaskTitle"] = task.Title,
+                ["projectId"] = task.ProjectId
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(TaskDto.FromEntity(task));
     }
 
@@ -650,6 +836,8 @@ public class TasksController : BaseApiController
         }
 
         var milestoneId = task.MilestoneId;
+        var subtaskTitle = task.Title;
+        var projectId = task.ProjectId;
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         if (milestoneId.HasValue)
@@ -666,6 +854,18 @@ public class TasksController : BaseApiController
                 await _uow.SaveChangesAsync(ct);
             }
         }
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Subtask Deleted",
+            Description: $"{_currentUser.FullName} deleted subtask \"{subtaskTitle}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["subtaskTitle"] = subtaskTitle,
+                ["projectId"] = projectId
+            },
+            ProjectId: projectId
+        );
+
         return NoContent();
     }
 
@@ -676,7 +876,9 @@ public class TasksController : BaseApiController
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null) return NotFound();
         var milestoneId = task.MilestoneId;
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct)) return Forbid();
+        var taskTitle = task.Title;
+        var projectId = task.ProjectId;
+        if (!await _scope.CanManageProjectAsync(projectId, ct)) return Forbid();
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         if (milestoneId.HasValue)
@@ -693,6 +895,18 @@ public class TasksController : BaseApiController
                 await _uow.SaveChangesAsync(ct);
             }
         }
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Deleted",
+            Description: $"{_currentUser.FullName} deleted task \"{taskTitle}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["taskTitle"] = taskTitle,
+                ["projectId"] = projectId
+            },
+            ProjectId: projectId
+        );
+
         return NoContent();
     }
 
@@ -746,6 +960,22 @@ public class TasksController : BaseApiController
         var dependency = TaskDependency.Create(dto.PredecessorTaskId, dto.SuccessorTaskId, dto.Type, dto.LagDays);
         await _uow.TaskDependencies.AddAsync(dependency, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Dependency Added",
+            Description: $"{_currentUser.FullName} added dependency: \"{predecessor.Title}\" must precede \"{successor.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["dependencyId"] = dependency.Id,
+                ["predecessorTaskId"] = predecessor.Id,
+                ["predecessorTaskTitle"] = predecessor.Title,
+                ["successorTaskId"] = successor.Id,
+                ["successorTaskTitle"] = successor.Title,
+                ["projectId"] = task.ProjectId
+            },
+            ProjectId: task.ProjectId
+        );
+
         return Ok(TaskDependencyDto.FromEntity(dependency));
     }
 
@@ -783,8 +1013,35 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        var predTitle = await _db.Tasks
+            .Where(t => t.Id == dependency.PredecessorTaskId)
+            .Select(t => t.Title)
+            .FirstOrDefaultAsync(ct) ?? "Unknown";
+        var succTitle = await _db.Tasks
+            .Where(t => t.Id == dependency.SuccessorTaskId)
+            .Select(t => t.Title)
+            .FirstOrDefaultAsync(ct) ?? "Unknown";
+        var projectId = await _db.Tasks
+            .Where(t => t.Id == dependency.PredecessorTaskId)
+            .Select(t => t.ProjectId)
+            .FirstOrDefaultAsync(ct);
+
         await _uow.TaskDependencies.DeleteAsync(depId, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Task Dependency Removed",
+            Description: $"{_currentUser.FullName} removed dependency between \"{predTitle}\" and \"{succTitle}\" in project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["dependencyId"] = depId,
+                ["predecessorTaskTitle"] = predTitle,
+                ["successorTaskTitle"] = succTitle,
+                ["projectId"] = projectId
+            },
+            ProjectId: projectId
+        );
+
         return NoContent();
     }
 
@@ -959,6 +1216,16 @@ public class TasksController : BaseApiController
                 user.Department.OrganizationId.HasValue &&
                 validOrganizationIds.Contains(user.Department.OrganizationId.Value)),
             ct);
+    }
+
+    private async Task<string> ResolveProjectNameAsync(Guid projectId, CancellationToken ct)
+    {
+        if (projectId == Guid.Empty) return "Unknown Project";
+        var name = await _db.Projects
+            .Where(p => p.Id == projectId)
+            .Select(p => p.Name)
+            .FirstOrDefaultAsync(ct);
+        return name ?? "Unknown Project";
     }
 }
 

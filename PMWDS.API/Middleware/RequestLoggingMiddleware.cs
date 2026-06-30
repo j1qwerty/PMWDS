@@ -34,19 +34,37 @@ public class RequestLoggingMiddleware
             && ctx.Response.StatusCode < 400
             && Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            var log = ActivityLog.Create(
-                userId,
-                $"{ctx.Request.Method} {ctx.Request.Path}",
-                BuildDescription(ctx.Request.Method, ctx.Request.Path),
-                new
-                {
-                    path = ctx.Request.Path.ToString(),
-                    method = ctx.Request.Method,
-                    statusCode = ctx.Response.StatusCode,
-                    elapsedMs = sw.ElapsedMilliseconds
-                });
-            await uow.ActivityLogs.AddAsync(log, ctx.RequestAborted);
-            await uow.SaveChangesAsync(ctx.RequestAborted);
+            // Check if the controller already prepared a rich activity log
+            if (ctx.Items["ActivityLog"] is ActivityLogContext logCtx)
+            {
+                var log = ActivityLog.Create(
+                    userId,
+                    logCtx.ActivityType,
+                    logCtx.Description,
+                    logCtx.Metadata,
+                    logCtx.ProjectId);
+                log.SetCreatedBy(userId.ToString());
+                await uow.ActivityLogs.AddAsync(log, ctx.RequestAborted);
+                await uow.SaveChangesAsync(ctx.RequestAborted);
+            }
+            else
+            {
+                // Fallback: generic request-level logging
+                var log = ActivityLog.Create(
+                    userId,
+                    $"{ctx.Request.Method} {ctx.Request.Path}",
+                    BuildDescription(ctx.Request.Method, ctx.Request.Path),
+                    new
+                    {
+                        path = ctx.Request.Path.ToString(),
+                        method = ctx.Request.Method,
+                        statusCode = ctx.Response.StatusCode,
+                        elapsedMs = sw.ElapsedMilliseconds
+                    });
+                log.SetCreatedBy(userId.ToString());
+                await uow.ActivityLogs.AddAsync(log, ctx.RequestAborted);
+                await uow.SaveChangesAsync(ctx.RequestAborted);
+            }
         }
     }
 

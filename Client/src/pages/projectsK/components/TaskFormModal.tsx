@@ -151,6 +151,7 @@ export function TaskFormModal({
           <div>
             <InputF label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
             {errors.title && <span className="text-xs text-red-500 mt-1 block">{errors.title}</span>}
+            
           </div>
           <InputF label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           <div className="grid grid-cols-2 gap-4">

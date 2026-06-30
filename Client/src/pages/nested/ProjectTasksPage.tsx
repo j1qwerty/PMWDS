@@ -629,6 +629,7 @@ export function ProjectTasksPage() {
 
       <DependencyFormModal
         open={depModalOpen}
+        editDep={null}
         milestones={ws.milestones}
         onAdd={handleAddDependency}
         onUpdate={handleUpdateDependency}

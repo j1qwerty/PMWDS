@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
 using System.Text.Json;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
@@ -11,7 +10,7 @@ using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
-public partial class ActivityLogsController : BaseApiController
+public class ActivityLogsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
@@ -173,7 +172,7 @@ public partial class ActivityLogsController : BaseApiController
     private async Task<List<ActivityLogResponse>> EnrichAsync(List<ActivityLog> logs, CancellationToken ct)
     {
         var ids = logs
-            .SelectMany(log => ExtractIds(log.MetadataJson).Append(log.UserId).Concat(log.ProjectId.HasValue ? new[] { log.ProjectId.Value } : Array.Empty<Guid>()))
+            .SelectMany(log => new[] { log.UserId }.Concat(log.ProjectId.HasValue ? new[] { log.ProjectId.Value } : Array.Empty<Guid>()))
             .Distinct()
             .ToList();
 
@@ -217,11 +216,8 @@ public partial class ActivityLogsController : BaseApiController
     private static ActivityLogResponse MapLog(ActivityLog log, IReadOnlyDictionary<Guid, EntitySummary> resolved)
     {
         var metadata = DeserializeMetadata(log.MetadataJson);
-        var ids = ExtractIds(log.MetadataJson).Append(log.UserId);
-        if (log.ProjectId.HasValue)
-        {
-            ids = ids.Append(log.ProjectId.Value);
-        }
+        var ids = new[] { log.UserId }
+            .Concat(log.ProjectId.HasValue ? new[] { log.ProjectId.Value } : Array.Empty<Guid>());
 
         metadata["resolvedEntities"] = ids
             .Distinct()
@@ -247,7 +243,7 @@ public partial class ActivityLogsController : BaseApiController
             log.ProjectId,
             projectName,
             log.ActivityType,
-            ReplaceIds(log.Description, resolved),
+            log.Description,
             log.Timestamp,
             metadata);
     }
@@ -268,25 +264,6 @@ public partial class ActivityLogsController : BaseApiController
             return new Dictionary<string, object>();
         }
     }
-
-    private static IEnumerable<Guid> ExtractIds(string value)
-        => GuidRegex().Matches(value)
-            .Select(match => Guid.TryParse(match.Value, out var id) ? id : Guid.Empty)
-            .Where(id => id != Guid.Empty);
-
-    private static string ReplaceIds(string value, IReadOnlyDictionary<Guid, EntitySummary> resolved)
-    {
-        var result = value;
-        foreach (var entity in resolved.Values)
-        {
-            result = result.Replace(entity.Id.ToString(), entity.Name, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return result;
-    }
-
-    [GeneratedRegex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")]
-    private static partial Regex GuidRegex();
 
     private sealed record EntitySummary(Guid Id, string Type, string Name);
 }

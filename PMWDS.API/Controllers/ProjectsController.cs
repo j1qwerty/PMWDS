@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Projects;
@@ -150,6 +151,18 @@ public class ProjectsController : BaseApiController
         }
 
         var result = await Mediator.Send(new CreateProjectCommand(dto), ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Project Created",
+            Description: $"{_currentUser.FullName} created project \"{result.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectId"] = result.Id,
+                ["projectName"] = result.Name
+            },
+            ProjectId: result.Id
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -174,7 +187,20 @@ public class ProjectsController : BaseApiController
             return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
 
-        return Ok(await Mediator.Send(new UpdateProjectCommand(id, dto), ct));
+        var updateResult = await Mediator.Send(new UpdateProjectCommand(id, dto), ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Project Updated",
+            Description: $"{_currentUser.FullName} updated project \"{updateResult.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectId"] = updateResult.Id,
+                ["projectName"] = updateResult.Name
+            },
+            ProjectId: updateResult.Id
+        );
+
+        return Ok(updateResult);
     }
 
     [HttpPatch("{id:guid}/status")]
@@ -186,7 +212,22 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        return Ok(await Mediator.Send(new UpdateProjectStatusCommand(id, req.NewStatus, req.Justification), ct));
+        var statusResult = await Mediator.Send(new UpdateProjectStatusCommand(id, req.NewStatus, req.Justification), ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Project Status Changed",
+            Description: $"{_currentUser.FullName} changed project \"{statusResult.Name}\" status to \"{req.NewStatus}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectId"] = statusResult.Id,
+                ["projectName"] = statusResult.Name,
+                ["newStatus"] = req.NewStatus.ToString(),
+                ["justification"] = req.Justification ?? ""
+            },
+            ProjectId: statusResult.Id
+        );
+
+        return Ok(statusResult);
     }
 
     [HttpGet("{id:guid}/progress")]
@@ -276,6 +317,21 @@ public class ProjectsController : BaseApiController
 
         await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Document Uploaded",
+            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to project \"{project.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectId"] = id,
+                ["projectName"] = project.Name,
+                ["documentId"] = doc.Id,
+                ["fileName"] = file.FileName,
+                ["fileSize"] = file.Length
+            },
+            ProjectId: id
+        );
+
         return Ok();
     }
 
@@ -341,9 +397,36 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        var projectName = project.Name;
+
+        var milestoneIds = await _db.Milestones
+            .Where(m => m.ProjectId == id)
+            .Select(m => m.Id)
+            .ToListAsync(ct);
+        if (milestoneIds.Count > 0)
+        {
+            var deps = await _db.MilestoneDependencies
+                .Where(d => milestoneIds.Contains(d.PrerequisiteMilestoneId) || milestoneIds.Contains(d.DependentMilestoneId))
+                .ToListAsync(ct);
+            if (deps.Count > 0)
+                _db.MilestoneDependencies.RemoveRange(deps);
+        }
+
         await _uow.Tasks.DeleteTasksByProjectAsync(id, ct);
         await _uow.Projects.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Project Deleted",
+            Description: $"{_currentUser.FullName} deleted project \"{projectName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectName"] = projectName,
+                ["projectId"] = id
+            },
+            ProjectId: id
+        );
+
         return NoContent();
     }
 

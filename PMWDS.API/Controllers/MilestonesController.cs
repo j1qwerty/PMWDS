@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Notifications;
 using PMWDS.Application.DTOs.Projects;
@@ -18,13 +19,15 @@ public class MilestonesController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly RoleScopeService _scope;
     private readonly INotificationService _notifications;
+    private readonly ICurrentUserService _currentUser;
 
-    public MilestonesController(IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications)
+    public MilestonesController(IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser)
     {
         _uow = uow;
         _db = db;
         _scope = scope;
         _notifications = notifications;
+        _currentUser = currentUser;
     }
 
     // ── Milestone Dependency Endpoints ──────────────────────────────────
@@ -104,6 +107,22 @@ public class MilestonesController : BaseApiController
             .Include(d => d.DependentMilestone)
             .FirstAsync(d => d.Id == dep.Id, ct);
 
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Dependency Added",
+            Description: $"{CurrentUserName} added dependency: \"{loaded.PrerequisiteMilestone?.Name}\" must precede \"{loaded.DependentMilestone?.Name}\" in project \"{loaded.Project?.Name ?? await ResolveProjectNameAsync(dto.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["dependencyId"] = dep.Id,
+                ["prerequisiteMilestoneId"] = dto.PrerequisiteMilestoneId,
+                ["prerequisiteMilestoneName"] = loaded.PrerequisiteMilestone?.Name ?? "",
+                ["dependentMilestoneId"] = dto.DependentMilestoneId,
+                ["dependentMilestoneName"] = loaded.DependentMilestone?.Name ?? "",
+                ["projectId"] = dto.ProjectId,
+                ["type"] = dto.Type
+            },
+            ProjectId: dto.ProjectId
+        );
+
         return Ok(MilestoneDependencyDto.FromEntity(loaded));
     }
 
@@ -133,6 +152,22 @@ public class MilestonesController : BaseApiController
         await _uow.MilestoneDependencies.UpdateAsync(dep, ct);
         await _uow.SaveChangesAsync(ct);
 
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Dependency Updated",
+            Description: $"{CurrentUserName} updated dependency between \"{dep.PrerequisiteMilestone?.Name}\" and \"{dep.DependentMilestone?.Name}\" in project \"{dep.Project?.Name ?? await ResolveProjectNameAsync(dep.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["dependencyId"] = id,
+                ["prerequisiteMilestoneId"] = dep.PrerequisiteMilestoneId,
+                ["prerequisiteMilestoneName"] = dep.PrerequisiteMilestone?.Name ?? "",
+                ["dependentMilestoneId"] = dep.DependentMilestoneId,
+                ["dependentMilestoneName"] = dep.DependentMilestone?.Name ?? "",
+                ["projectId"] = dep.ProjectId,
+                ["type"] = dto.Type
+            },
+            ProjectId: dep.ProjectId
+        );
+
         return Ok(MilestoneDependencyDto.FromEntity(dep));
     }
 
@@ -140,15 +175,35 @@ public class MilestonesController : BaseApiController
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> DeleteDependency(Guid id, CancellationToken ct)
     {
-        var dep = await _db.MilestoneDependencies.FirstOrDefaultAsync(d => d.Id == id, ct);
+        var dep = await _db.MilestoneDependencies
+            .Include(d => d.PrerequisiteMilestone)
+            .Include(d => d.DependentMilestone)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
         if (dep == null)
             return NotFound();
 
         if (!await _scope.CanManageProjectAsync(dep.ProjectId, ct))
             return Forbid();
 
+        var prereqName = dep.PrerequisiteMilestone?.Name ?? "Unknown";
+        var depName = dep.DependentMilestone?.Name ?? "Unknown";
+        var projectId = dep.ProjectId;
+
         await _uow.MilestoneDependencies.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Dependency Removed",
+            Description: $"{CurrentUserName} removed dependency between \"{prereqName}\" and \"{depName}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["dependencyId"] = id,
+                ["prerequisiteMilestoneName"] = prereqName,
+                ["dependentMilestoneName"] = depName,
+                ["projectId"] = projectId
+            },
+            ProjectId: projectId
+        );
 
         return NoContent();
     }
@@ -241,6 +296,19 @@ public class MilestonesController : BaseApiController
         await _uow.SaveChangesAsync(ct);
         await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
         await SendProjectAssignedNotificationAsync(milestone.ProjectId, dto.DepartmentId, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Created",
+            Description: $"{CurrentUserName} created milestone \"{milestone.Name}\" in project \"{await ResolveProjectNameAsync(milestone.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["milestoneId"] = milestone.Id,
+                ["milestoneName"] = milestone.Name,
+                ["projectId"] = milestone.ProjectId
+            },
+            ProjectId: milestone.ProjectId
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = milestone.Id }, MilestoneDto.FromEntity(milestone));
     }
 
@@ -291,6 +359,19 @@ public class MilestonesController : BaseApiController
             .Include(m => m.Tasks)
             .Include(m => m.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Updated",
+            Description: $"{CurrentUserName} updated milestone \"{milestone.Name}\" in project \"{await ResolveProjectNameAsync(milestone.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["milestoneId"] = milestone.Id,
+                ["milestoneName"] = milestone.Name,
+                ["projectId"] = milestone.ProjectId
+            },
+            ProjectId: milestone.ProjectId
+        );
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
@@ -344,6 +425,20 @@ public class MilestonesController : BaseApiController
             .Include(m => m.Tasks)
             .Include(m => m.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Status Changed",
+            Description: $"{CurrentUserName} completed milestone \"{milestone.Name}\" in project \"{await ResolveProjectNameAsync(milestone.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["milestoneId"] = milestone.Id,
+                ["milestoneName"] = milestone.Name,
+                ["projectId"] = milestone.ProjectId,
+                ["newStatus"] = "Completed"
+            },
+            ProjectId: milestone.ProjectId
+        );
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
@@ -408,6 +503,20 @@ public class MilestonesController : BaseApiController
             .Include(m => m.Tasks)
             .Include(m => m.Department)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Status Changed",
+            Description: $"{CurrentUserName} set milestone \"{milestone.Name}\" to \"{dto.Status}\" in project \"{await ResolveProjectNameAsync(milestone.ProjectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["milestoneId"] = milestone.Id,
+                ["milestoneName"] = milestone.Name,
+                ["projectId"] = milestone.ProjectId,
+                ["newStatus"] = dto.Status
+            },
+            ProjectId: milestone.ProjectId
+        );
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
@@ -432,10 +541,30 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
+        var milestoneName = milestone.Name;
+
+        var deps = await _db.MilestoneDependencies
+            .Where(d => d.PrerequisiteMilestoneId == id || d.DependentMilestoneId == id)
+            .ToListAsync(ct);
+        if (deps.Count > 0)
+            _db.MilestoneDependencies.RemoveRange(deps);
+
         await _uow.Tasks.DeleteTasksByMilestoneAsync(id, ct);
         await _uow.Milestones.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         await RecalculateProjectFromMilestonesAsync(projectId, ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Milestone Deleted",
+            Description: $"{CurrentUserName} deleted milestone \"{milestoneName}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["milestoneName"] = milestoneName,
+                ["projectId"] = projectId
+            },
+            ProjectId: projectId
+        );
+
         return NoContent();
     }
 
@@ -527,6 +656,16 @@ public class MilestonesController : BaseApiController
                 RelatedEntityType: "Project"),
                 ct);
         }
+    }
+    private string CurrentUserName => _currentUser.FullName ?? "System";
+
+    private async Task<string> ResolveProjectNameAsync(Guid projectId, CancellationToken ct)
+    {
+        var project = await _db.Projects
+            .Where(p => p.Id == projectId)
+            .Select(p => p.Name)
+            .FirstOrDefaultAsync(ct);
+        return project ?? "Unknown Project";
     }
 }
 

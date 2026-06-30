@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Interfaces.Services;
@@ -67,6 +68,15 @@ public class AuthController : BaseApiController
 
         var token = GenerateToken(user, roles, permissions);
 
+        var log = ActivityLog.Create(
+            user.Id,
+            "Login",
+            $"{user.FullName} logged in",
+            new Dictionary<string, object>());
+        log.SetCreatedBy(user.Id.ToString());
+        await _uow.ActivityLogs.AddAsync(log, ct);
+        await _uow.SaveChangesAsync(ct);
+
         return Ok(new
         {
             Token = token,
@@ -112,6 +122,19 @@ public class AuthController : BaseApiController
         user.SetPassword(HashPassword(user, req.Password));
 
         await _uow.Users.AddAsync(user, ct);
+        await _uow.SaveChangesAsync(ct);
+
+        var log = ActivityLog.Create(
+            user.Id,
+            "Signup",
+            $"{user.FullName} signed up",
+            new Dictionary<string, object>
+            {
+                ["newUserId"] = user.Id,
+                ["newUserEmail"] = user.Email
+            });
+        log.SetCreatedBy(user.Id.ToString());
+        await _uow.ActivityLogs.AddAsync(log, ct);
         await _uow.SaveChangesAsync(ct);
 
         return Ok(UserDto.FromEntity(user, new List<string> { "Viewer" }));
@@ -192,6 +215,15 @@ public class AuthController : BaseApiController
         user.SetPassword(newHash);
 
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Password Changed",
+            Description: $"{user.FullName} changed their password",
+            Metadata: new Dictionary<string, object>
+            {
+                ["userId"] = user.Id
+            }
+        );
 
         return Ok(new { message = "Password changed successfully." });
     }

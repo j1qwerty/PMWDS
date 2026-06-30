@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
@@ -11,11 +14,15 @@ public class OrganizationsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly RoleScopeService _scope;
+    private readonly ICurrentUserService _currentUser;
+    private readonly ApplicationDbContext _db;
 
-    public OrganizationsController(IUnitOfWork uow, RoleScopeService scope)
+    public OrganizationsController(IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db)
     {
         _uow = uow;
         _scope = scope;
+        _currentUser = currentUser;
+        _db = db;
     }
 
     [HttpGet]
@@ -73,6 +80,17 @@ public class OrganizationsController : BaseApiController
         organization.SetCreatedBy("system");
         await _uow.Organizations.AddAsync(organization, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Organization Created",
+            Description: $"{_currentUser.FullName} created organization \"{organization.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["organizationId"] = organization.Id,
+                ["organizationName"] = organization.Name
+            }
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = organization.Id }, MapOrganization(organization, new List<Department>(), null));
     }
 
@@ -95,6 +113,16 @@ public class OrganizationsController : BaseApiController
         await _uow.Organizations.UpdateAsync(organization, ct);
         await _uow.SaveChangesAsync(ct);
 
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Organization Updated",
+            Description: $"{_currentUser.FullName} updated organization \"{organization.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["organizationId"] = organization.Id,
+                ["organizationName"] = organization.Name
+            }
+        );
+
         var departments = (await _uow.Departments.FindAsync(d => d.OrganizationId == id, ct)).ToList();
         var directors = await GetDirectorSummariesAsync(new HashSet<Guid> { id }, ct);
         return Ok(MapOrganization(organization, departments, directors.GetValueOrDefault(id)));
@@ -114,6 +142,19 @@ public class OrganizationsController : BaseApiController
         department.AssignToOrganization(id);
         await _uow.Departments.UpdateAsync(department, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Department Assigned",
+            Description: $"{_currentUser.FullName} assigned department \"{department.Name}\" to organization \"{organization.Name}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["organizationId"] = id,
+                ["organizationName"] = organization.Name,
+                ["departmentId"] = departmentId,
+                ["departmentName"] = department.Name
+            }
+        );
+
         return NoContent();
     }
 
@@ -127,9 +168,26 @@ public class OrganizationsController : BaseApiController
             return NotFound();
         }
 
+        var deptName = department.Name;
+        var org = await _uow.Organizations.GetByIdAsync(id, ct);
+        var orgName = org?.Name ?? "Unknown";
+
         department.AssignToOrganization(null);
         await _uow.Departments.UpdateAsync(department, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Department Removed",
+            Description: $"{_currentUser.FullName} removed department \"{deptName}\" from organization \"{orgName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["organizationId"] = id,
+                ["organizationName"] = orgName,
+                ["departmentId"] = departmentId,
+                ["departmentName"] = deptName
+            }
+        );
+
         return NoContent();
     }
 
@@ -137,8 +195,21 @@ public class OrganizationsController : BaseApiController
     [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var org = await _uow.Organizations.GetByIdAsync(id, ct);
+        var orgName = org?.Name ?? "Unknown";
+
         await _uow.Organizations.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Organization Deleted",
+            Description: $"{_currentUser.FullName} deleted organization \"{orgName}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["organizationName"] = orgName
+            }
+        );
+
         return NoContent();
     }
 

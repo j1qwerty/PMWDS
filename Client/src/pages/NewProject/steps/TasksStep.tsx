@@ -324,7 +324,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                 <div className="flex justify-end gap-2 pt-2 border-t border-indigo-100">
                   <button
                     type="button"
-                    onClick={resetForm}
+                    onClick={() => resetForm()}
                     className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     Cancel

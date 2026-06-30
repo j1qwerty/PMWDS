@@ -9,14 +9,18 @@
 - [x] frontend : multiple task creation , idempotency for all modals creation and edit
 - [x] deactivated users do not show up anywhere(in assignment lists ) but show up on existing tasks or proejcts but with visible hint for deactivated, but show in users page
 - [x] deactivated users cant even login
-- [ ] due date cant be more than that of parent component and by default select the parent's date in modals for creation
+- [x] due date cant be more than that of parent component and by default select the parent's date in modals for creation
 
 
 
 ## 🔴 High Priority
 
 ### feature
+- [ ] test all roles: create a flow project add 3 milestones assign departmets, crete milestone dependencies, upload document (root readme.md) create 3 tasks inside each milestone , two tasks have subtasks , change progress for each task (for tasks with subtasks progress calculates automatically so should fail direct progress update), same for milestones progress depends on tasks (avg of tasks) , create edit workflow also for each , for tasks and subtasks assign users from their own department , fetch first , also create a delete workflow for all like the project, milestone, documents , tasks subtasks etc
 - [x] milestone dependencies 
+- [ ] director / dept head project creator - whoever creates project others at same role but different departments can not edit it, can only manage tasks and subtasks etc, can uplaod documents
+- [ ] redis cache and indexing for database
+- [ ] if mssql is not working , setup postgres ? or mysql
 - [ ] Implement paginated results for documents and other sections (audit all sections, create list of sections/components for update)
 - [ ] Settings page for both roles (add create organizations button for superadmin)
 - [ ] All types of settings and settings API
@@ -57,6 +61,7 @@
 
 ### Layout & Navigation
 - [x] Refactor layout.tsx with more features and organized structure (home, project, departments at top)
+- [ ] check n+1 calls for api front he client while loading any page
 - [ ] Reorganize and refactor navigation and sidebar
 
 ### User Management
@@ -71,6 +76,7 @@
 
 ### UI Styling & Responsiveness
 - [ ] Responsive design for all elements
+- [ ] text wrap such that things never go out of bounds for any element
 - [ ] Hover and shadow effects matching color scheme for all components
 - [ ] Add max height with "view more" options to all components
 - [ ] Animate bars and graphs (similar to AI page)
@@ -89,6 +95,8 @@
 - [ ] Remove any UI elements using pagedata API, use manual API instead / or fix pagedata to send role specific data only
 - [ ] Test page and pages API restricted to superadmin only (clean up if unnecessary)
 - [ ] backend idempotency
+- [ ] implement plan soft delete 
+- [ ] rate limiting , sys architecture design etc, cqrs , security and scalability plan
 
 
 ```
