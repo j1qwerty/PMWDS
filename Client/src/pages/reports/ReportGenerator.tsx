@@ -8,11 +8,12 @@ interface ReportGeneratorProps {
     endDate: string;
     status: string;
   };
-  onDownloadProjectStatus: () => void;
-  onDownloadBudgetVariance: () => void;
-  onDownloadTaskCompletion: () => void;
-  onDownloadDepartmentWorkload: () => void;
-  onDownloadDelayAnalysis: () => void;
+  generating: boolean;
+  onGenerateProjectStatus: () => void;
+  onGenerateBudgetVariance: () => void;
+  onGenerateTaskCompletion: () => void;
+  onGenerateDepartmentWorkload: () => void;
+  onGenerateDelayAnalysis: () => void;
 }
 
 const REPORT_TYPES = [
@@ -22,7 +23,7 @@ const REPORT_TYPES = [
     description: "Overall project health, progress, and milestone tracking",
     icon: "monitoring",
     color: "indigo",
-    onClick: "onDownloadProjectStatus" as const,
+    onClick: "onGenerateProjectStatus" as const,
     requiresProject: true,
   },
   {
@@ -31,7 +32,7 @@ const REPORT_TYPES = [
     description: "Budget allocation, spending analysis, and variance tracking",
     icon: "account_balance",
     color: "emerald",
-    onClick: "onDownloadBudgetVariance" as const,
+    onClick: "onGenerateBudgetVariance" as const,
     requiresProject: true,
   },
   {
@@ -40,7 +41,7 @@ const REPORT_TYPES = [
     description: "Task progress, completion rates, and productivity metrics",
     icon: "task_alt",
     color: "violet",
-    onClick: "onDownloadTaskCompletion" as const,
+    onClick: "onGenerateTaskCompletion" as const,
     requiresProject: false,
   },
   {
@@ -49,7 +50,7 @@ const REPORT_TYPES = [
     description: "Team capacity, workload distribution, and resource allocation",
     icon: "groups",
     color: "amber",
-    onClick: "onDownloadDepartmentWorkload" as const,
+    onClick: "onGenerateDepartmentWorkload" as const,
     requiresProject: false,
   },
   {
@@ -58,7 +59,7 @@ const REPORT_TYPES = [
     description: "Task delays, bottleneck identification, and timeline impact",
     icon: "speed",
     color: "red",
-    onClick: "onDownloadDelayAnalysis" as const,
+    onClick: "onGenerateDelayAnalysis" as const,
     requiresProject: false,
   },
 ];
@@ -71,7 +72,7 @@ const colorMap: Record<string, { bg: string; text: string; border: string; hover
   red: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", hover: "hover:bg-red-100" },
 };
 
-export function ReportGenerator({ filters, ...handlers }: ReportGeneratorProps) {
+export function ReportGenerator({ filters, generating, ...handlers }: ReportGeneratorProps) {
   return (
     <GlassCard className="p-6">
       <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -79,13 +80,20 @@ export function ReportGenerator({ filters, ...handlers }: ReportGeneratorProps) 
         Generate Reports
       </h3>
       <p className="text-xs text-slate-500 mb-5">
-        Select a report type to generate and download. Some reports require a project to be selected.
+        Select a report type to generate an AI-powered report. Reports can be viewed inline or downloaded as PDF.
       </p>
+
+      {generating && (
+        <div className="mb-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-indigo-700 font-medium">Generating report with AI...</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {REPORT_TYPES.map((report) => {
           const colors = colorMap[report.color];
-          const isDisabled = report.requiresProject && !filters.projectId;
+          const isDisabled = (report.requiresProject && !filters.projectId) || generating;
           const handler = handlers[report.onClick];
 
           return (
@@ -116,17 +124,17 @@ export function ReportGenerator({ filters, ...handlers }: ReportGeneratorProps) 
               <p className="text-[11px] text-slate-500 leading-relaxed">
                 {report.description}
               </p>
-              {isDisabled && (
+              {report.requiresProject && !filters.projectId && (
                 <p className="text-[10px] text-amber-500 mt-2 font-medium">
                   Requires project selection
                 </p>
               )}
               <div className="flex items-center gap-1.5 mt-3">
                 <span className={`material-symbols-outlined text-sm ${isDisabled ? "text-slate-400" : colors.text}`}>
-                  download
+                  auto_awesome
                 </span>
                 <span className={`text-xs font-semibold ${isDisabled ? "text-slate-400" : colors.text}`}>
-                  Download PDF
+                  Generate & View
                 </span>
               </div>
             </button>

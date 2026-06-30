@@ -96,6 +96,11 @@ public interface IAIService
    string? provider = null,
    string? model = null,
    CancellationToken ct = default);
-   Task TrainModelsAsync(
-   CancellationToken ct = default);
+    Task TrainModelsAsync(
+    CancellationToken ct = default);
+
+    Task<string> GenerateStructuredReportAsync(
+        string systemPrompt,
+        string userContext,
+        CancellationToken ct = default);
 }

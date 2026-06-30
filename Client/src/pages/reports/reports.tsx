@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { Department, OrganizationRecord, Project } from "../../types";
+import type {
+  AiReportResponse,
+  Department,
+  OrganizationRecord,
+  Project,
+  StoredReportRecord,
+} from "../../types";
 import {
   AnimatedBackground,
   LoadingPage,
@@ -15,7 +21,8 @@ import {
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
-import { RecentExports } from "./RecentExports";
+import { ReportViewer } from "./ReportViewer";
+import { GeneratedReports } from "./GeneratedReports";
 
 export function ReportsPage() {
   const { auth } = useAuth();
@@ -24,16 +31,19 @@ export function ReportsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
-  const [downloads, setDownloads] = useState<string[]>([]);
+  const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
+  const [storedReportsLoading, setStoredReportsLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [viewingReport, setViewingReport] = useState<AiReportResponse | null>(null);
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ 
+  const [filters, setFilters] = useState({
     organizationId: "",
-    projectId: "", 
-    departmentId: "", 
-    startDate: "", 
-    endDate: "", 
-    status: "" 
+    projectId: "",
+    departmentId: "",
+    startDate: "",
+    endDate: "",
+    status: "",
   });
 
   const { setNavHeader } = useNavHeader();
@@ -46,7 +56,7 @@ export function ReportsPage() {
     if (!auth) return;
     setLoading(true);
     Promise.all([
-      api.getProjects(auth.token), 
+      api.getProjects(auth.token),
       api.getDepartments(auth.token),
       canViewOrganizations ? api.getOrganizations(auth.token) : Promise.resolve([]),
     ]).then(([projectData, departmentData, organizationData]) => {
@@ -57,6 +67,19 @@ export function ReportsPage() {
       if (departmentData[0]) setFilters((current) => ({ ...current, departmentId: departmentData[0].id }));
     }).finally(() => setLoading(false));
   }, [auth, canViewOrganizations]);
+
+  const loadStoredReports = useCallback(() => {
+    if (!auth) return;
+    setStoredReportsLoading(true);
+    api.getStoredReports(auth.token)
+      .then((reports) => setStoredReports(reports))
+      .catch(() => { /* ignore */ })
+      .finally(() => setStoredReportsLoading(false));
+  }, [auth]);
+
+  useEffect(() => {
+    loadStoredReports();
+  }, [loadStoredReports]);
 
   const visibleDepartments = useMemo(() => {
     return filters.organizationId
@@ -96,72 +119,124 @@ export function ReportsPage() {
     status: filters.status || null,
   });
 
-  const handleDownload = async (label: string, action: () => Promise<Blob>) => {
+  const handleGenerate = async (label: string, reportType: string, body: Record<string, unknown>) => {
+    if (!auth) return;
+    setGenerating(true);
     try {
-      const blob = await action();
+      const report = await api.generateReport(auth.token, reportType, body);
+      setViewingReport(report);
+      loadStoredReports();
+      addToast(`${label} report generated successfully.`);
+    } catch (e) {
+      addToast(`Error: ${e instanceof Error ? e.message : "Generation failed"}`, "error");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDownloadPdf = async (reportType: string) => {
+    if (!auth) return;
+    try {
+      const needsProject = reportType === "project-status" || reportType === "budget-variance";
+      const path = needsProject && filters.projectId
+        ? `reports/${reportType}/${filters.projectId}`
+        : `reports/${reportType}`;
+      const body = needsProject
+        ? null
+        : reportType === "department-workload"
+          ? { departmentId: filters.departmentId, startDate: filters.startDate || new Date().toISOString(), endDate: filters.endDate || new Date().toISOString() }
+          : reportFilterPayload();
+      const blob = await api.downloadReport(auth.token, path, {
+        method: needsProject ? "GET" : "POST",
+        body: body as Record<string, unknown> | undefined,
+      });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${label}.pdf`;
+      anchor.download = `${reportType}.pdf`;
       anchor.click();
       URL.revokeObjectURL(url);
-      setDownloads((current) => [label, ...current].slice(0, 5));
-      addToast(`${label} report downloaded successfully.`);
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Download failed"}`, "error");
     }
   };
 
-  const downloadProjectStatus = () => {
-    if (!auth || !filters.projectId) return;
-    handleDownload("project-status", () => 
-      api.downloadReport(auth.token, `reports/project-status/${filters.projectId}`)
-    );
-  };
-
-  const downloadBudgetVariance = () => {
-    if (!auth || !filters.projectId) return;
-    handleDownload("budget-variance", () => 
-      api.downloadReport(auth.token, `reports/budget-variance/${filters.projectId}`)
-    );
-  };
-
-  const downloadTaskCompletion = () => {
+  const handleViewStoredReport = async (report: StoredReportRecord) => {
     if (!auth) return;
-    handleDownload("task-completion", () =>
-      api.downloadReport(auth.token, "reports/task-completion", {
-        method: "POST",
-        body: reportFilterPayload()
-      })
-    );
+    try {
+      const blob = await api.downloadStoredReport(auth.token, report.id);
+      const text = await blob.text();
+      const parsed: AiReportResponse = JSON.parse(text);
+      setViewingReport(parsed);
+    } catch {
+      addToast("Could not load this report for viewing.", "error");
+    }
   };
 
-  const downloadDepartmentWorkload = () => {
+  const handleDownloadStoredReport = async (report: StoredReportRecord) => {
     if (!auth) return;
-    if (!filters.departmentId) {
-      addToast("Select a department before downloading the department workload report.", "error");
+    try {
+      const blob = await api.downloadStoredReport(auth.token, report.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${report.name}.${report.format}`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      addToast(`Error: ${e instanceof Error ? e.message : "Download failed"}`, "error");
+    }
+  };
+
+  const handleDeleteStoredReport = async (id: string) => {
+    if (!auth) return;
+    try {
+      await api.deleteStoredReport(auth.token, id);
+      setStoredReports((prev) => prev.filter((r) => r.id !== id));
+      addToast("Report deleted.");
+    } catch (e) {
+      addToast(`Error: ${e instanceof Error ? e.message : "Delete failed"}`, "error");
+    }
+  };
+
+  const handleGenerateProjectStatus = () => {
+    if (!filters.projectId) {
+      addToast("Select a project first.", "error");
       return;
     }
-    handleDownload("department-workload", () =>
-      api.downloadReport(auth.token, "reports/department-workload", {
-        method: "POST",
-        body: {
-          departmentId: filters.departmentId,
-          startDate: filters.startDate || new Date().toISOString(),
-          endDate: filters.endDate || new Date().toISOString()
-        }
-      })
-    );
+    handleGenerate("Project Status", "project-status", {
+      projectId: filters.projectId,
+    });
   };
 
-  const downloadDelayAnalysis = () => {
-    if (!auth) return;
-    handleDownload("delay-analysis", () =>
-      api.downloadReport(auth.token, "reports/delay-analysis", {
-        method: "POST",
-        body: reportFilterPayload()
-      })
-    );
+  const handleGenerateBudgetVariance = () => {
+    if (!filters.projectId) {
+      addToast("Select a project first.", "error");
+      return;
+    }
+    handleGenerate("Budget Variance", "budget-variance", {
+      projectId: filters.projectId,
+    });
+  };
+
+  const handleGenerateTaskCompletion = () => {
+    handleGenerate("Task Completion", "task-completion", reportFilterPayload());
+  };
+
+  const handleGenerateDepartmentWorkload = () => {
+    if (!filters.departmentId) {
+      addToast("Select a department first.", "error");
+      return;
+    }
+    handleGenerate("Department Workload", "department-workload", {
+      departmentId: filters.departmentId,
+      startDate: filters.startDate || new Date().toISOString(),
+      endDate: filters.endDate || new Date().toISOString(),
+    });
+  };
+
+  const handleGenerateDelayAnalysis = () => {
+    handleGenerate("Delay Analysis", "delay-analysis", reportFilterPayload());
   };
 
   if (loading) return <LoadingPage label="Loading reports..." />;
@@ -170,15 +245,9 @@ export function ReportsPage() {
     <div>
       <AnimatedBackground />
 
-
-
-
-
-      {/* Main Content */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         {/* Left: Filters & Report Generation */}
         <div className="flex flex-col gap-6">
-          {/* Filters */}
           <OrganizationDepartmentFilter
             organizations={organizations}
             departments={departments}
@@ -203,22 +272,37 @@ export function ReportsPage() {
             onFilterChange={setFilters}
           />
 
-          {/* Report Generator */}
           <ReportGenerator
             filters={filters}
-            onDownloadProjectStatus={downloadProjectStatus}
-            onDownloadBudgetVariance={downloadBudgetVariance}
-            onDownloadTaskCompletion={downloadTaskCompletion}
-            onDownloadDepartmentWorkload={downloadDepartmentWorkload}
-            onDownloadDelayAnalysis={downloadDelayAnalysis}
+            generating={generating}
+            onGenerateProjectStatus={handleGenerateProjectStatus}
+            onGenerateBudgetVariance={handleGenerateBudgetVariance}
+            onGenerateTaskCompletion={handleGenerateTaskCompletion}
+            onGenerateDepartmentWorkload={handleGenerateDepartmentWorkload}
+            onGenerateDelayAnalysis={handleGenerateDelayAnalysis}
           />
         </div>
 
-        {/* Right: Recent Exports */}
+        {/* Right: Generated Reports */}
         <div className="lg:sticky lg:top-7 h-fit">
-          <RecentExports downloads={downloads} />
+          <GeneratedReports
+            reports={storedReports}
+            loading={storedReportsLoading}
+            onView={handleViewStoredReport}
+            onDownload={handleDownloadStoredReport}
+            onDelete={handleDeleteStoredReport}
+          />
         </div>
       </div>
+
+      {/* Report Viewer Modal */}
+      {viewingReport && (
+        <ReportViewer
+          report={viewingReport}
+          onClose={() => setViewingReport(null)}
+          onDownloadPdf={handleDownloadPdf}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type {
+  AiReportResponse,
   AIModel,
   AIModelRecord,
   AIProvider,
@@ -772,6 +773,13 @@ export const api = {
   },
   getModelPerformance(token: string) {
     return request<Record<string, number>>("ai/performance", { token });
+  },
+  generateReport(token: string, reportType: string, body: Record<string, unknown>) {
+    return request<AiReportResponse>(`reports/${reportType}/generate`, {
+      token,
+      method: "POST",
+      body,
+    });
   },
   downloadReport(
     token: string,

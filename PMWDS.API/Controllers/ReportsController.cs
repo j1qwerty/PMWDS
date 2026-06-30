@@ -28,101 +28,162 @@ public class ReportsController : BaseApiController
         _scope = scope;
     }
 
+    // ──────────────────────────────────────────────
+    //  JSON generation endpoints (inline viewing)
+    // ──────────────────────────────────────────────
+
+    [HttpPost("project-status/generate")]
+    [Authorize(Policy = "Manager")]
+    public async Task<ActionResult<AiReportResponse>> GenerateProjectStatus(
+        [FromBody] ReportGenerateRequest req,
+        CancellationToken ct = default)
+    {
+        if (!req.ProjectId.HasValue)
+            return BadRequest(new { message = "ProjectId is required." });
+        if (!await _scope.CanAccessProjectAsync(req.ProjectId.Value, ct))
+            return Forbid();
+
+        var report = await _reports.GenerateProjectStatusReportJsonAsync(req.ProjectId.Value, ct);
+        return Ok(report);
+    }
+
+    [HttpPost("budget-variance/generate")]
+    [Authorize(Policy = "Manager")]
+    public async Task<ActionResult<AiReportResponse>> GenerateBudgetVariance(
+        [FromBody] ReportGenerateRequest req,
+        CancellationToken ct = default)
+    {
+        if (!req.ProjectId.HasValue)
+            return BadRequest(new { message = "ProjectId is required." });
+        if (!await _scope.CanAccessProjectAsync(req.ProjectId.Value, ct))
+            return Forbid();
+
+        var report = await _reports.GenerateBudgetVarianceReportJsonAsync(req.ProjectId.Value, ct);
+        return Ok(report);
+    }
+
+    [HttpPost("task-completion/generate")]
+    [Authorize(Policy = "Manager")]
+    public async Task<ActionResult<AiReportResponse>> GenerateTaskCompletion(
+        [FromBody] ReportGenerateRequest req,
+        CancellationToken ct = default)
+    {
+        if (req.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(req.ProjectId.Value, ct))
+            return Forbid();
+        if (req.DepartmentId.HasValue && !await _scope.CanAccessDepartmentAsync(req.DepartmentId.Value, ct))
+            return Forbid();
+
+        var report = await _reports.GenerateTaskCompletionReportJsonAsync(req, ct);
+        return Ok(report);
+    }
+
+    [HttpPost("department-workload/generate")]
+    [Authorize(Policy = "Manager")]
+    public async Task<ActionResult<AiReportResponse>> GenerateDepartmentWorkload(
+        [FromBody] DepartmentWorkloadRequest req,
+        CancellationToken ct = default)
+    {
+        if (!await _scope.CanAccessDepartmentAsync(req.DepartmentId, ct))
+            return Forbid();
+
+        var report = await _reports.GenerateDepartmentWorkloadReportJsonAsync(
+            req.DepartmentId, new DateRange(req.StartDate, req.EndDate), ct);
+        return Ok(report);
+    }
+
+    [HttpPost("delay-analysis/generate")]
+    [Authorize(Policy = "Manager")]
+    public async Task<ActionResult<AiReportResponse>> GenerateDelayAnalysis(
+        [FromBody] ReportGenerateRequest req,
+        CancellationToken ct = default)
+    {
+        if (req.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(req.ProjectId.Value, ct))
+            return Forbid();
+        if (req.DepartmentId.HasValue && !await _scope.CanAccessDepartmentAsync(req.DepartmentId.Value, ct))
+            return Forbid();
+
+        var report = await _reports.GenerateDelayAnalysisReportJsonAsync(req, ct);
+        return Ok(report);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Binary download endpoints (PDF/Excel/CSV)
+    // ──────────────────────────────────────────────
+
     [HttpGet("project-status/{projectId:guid}")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> ProjectStatus(
+    public async Task<IActionResult> DownloadProjectStatus(
         Guid projectId,
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
-        {
             return Forbid();
-        }
 
-        var bytes = await _reports.GenerateProjectStatusReportAsync(projectId, format, ct);
+        var bytes = await _reports.DownloadProjectStatusReportAsync(projectId, format, ct);
         return File(bytes, GetContentType(format), $"project-status.{format}");
     }
 
     [HttpPost("task-completion")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> TaskCompletion(
+    public async Task<IActionResult> DownloadTaskCompletion(
         [FromBody] ReportFilterDto filter,
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
         if (!await CanAccessReportFilterAsync(filter, ct))
-        {
             return Forbid();
-        }
 
-        var bytes = await _reports.GenerateTaskCompletionReportAsync(filter, format, ct);
+        var bytes = await _reports.DownloadTaskCompletionReportAsync(filter, format, ct);
         return File(bytes, GetContentType(format), $"task-completion.{format}");
     }
 
     [HttpPost("department-workload")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> DepartmentWorkload(
+    public async Task<IActionResult> DownloadDepartmentWorkload(
         [FromBody] DepartmentWorkloadRequest req,
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
         if (!await _scope.CanAccessDepartmentAsync(req.DepartmentId, ct))
-        {
             return Forbid();
-        }
 
-        var bytes = await _reports.GenerateDepartmentWorkloadReportAsync(req.DepartmentId, new DateRange(req.StartDate, req.EndDate), format, ct);
+        var bytes = await _reports.DownloadDepartmentWorkloadReportAsync(
+            req.DepartmentId, new DateRange(req.StartDate, req.EndDate), format, ct);
         return File(bytes, GetContentType(format), $"department-workload.{format}");
     }
 
     [HttpGet("budget-variance/{projectId:guid}")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> BudgetVariance(
+    public async Task<IActionResult> DownloadBudgetVariance(
         Guid projectId,
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
-        {
             return Forbid();
-        }
 
-        var bytes = await _reports.GenerateBudgetVarianceReportAsync(projectId, format, ct);
+        var bytes = await _reports.DownloadBudgetVarianceReportAsync(projectId, format, ct);
         return File(bytes, GetContentType(format), $"budget-variance.{format}");
     }
 
     [HttpPost("delay-analysis")]
     [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> DelayAnalysis(
+    public async Task<IActionResult> DownloadDelayAnalysis(
         [FromBody] ReportFilterDto filter,
         [FromQuery] string format = "pdf",
         CancellationToken ct = default)
     {
         if (!await CanAccessReportFilterAsync(filter, ct))
-        {
             return Forbid();
-        }
 
-        var bytes = await _reports.GenerateDelayAnalysisReportAsync(filter, format, ct);
+        var bytes = await _reports.DownloadDelayAnalysisReportAsync(filter, format, ct);
         return File(bytes, GetContentType(format), $"delay-analysis.{format}");
     }
 
-    [HttpPost("resource-utilization")]
-    [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> ResourceUtilization(
-        [FromBody] DepartmentWorkloadRequest req,
-        [FromQuery] string format = "pdf",
-        CancellationToken ct = default)
-        => StatusCode(StatusCodes.Status501NotImplemented);
-
-    [HttpGet("ai-insights/{projectId:guid}")]
-    [Authorize(Policy = "Manager")]
-    public async Task<IActionResult> AIInsights(
-        Guid projectId,
-        [FromQuery] string format = "pdf",
-        CancellationToken ct = default)
-        => StatusCode(StatusCodes.Status501NotImplemented);
+    // ──────────────────────────────────────────────
+    //  Stored reports CRUD
+    // ──────────────────────────────────────────────
 
     [HttpGet("stored")]
     [Authorize(Policy = "Authenticated")]
@@ -135,11 +196,10 @@ public class ReportsController : BaseApiController
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
         if (report == null)
-        {
             return NotFound();
-        }
 
-        var schedules = (await _uow.ReportSchedules.FindAsync(s => s.ReportId == id, ct)).Select(MapSchedule).ToList();
+        var schedules = (await _uow.ReportSchedules.FindAsync(s => s.ReportId == id, ct))
+            .Select(MapSchedule).ToList();
         return Ok(new StoredReportDetailResponse(MapReport(report), schedules));
     }
 
@@ -158,9 +218,7 @@ public class ReportsController : BaseApiController
     public async Task<IActionResult> CreateStoredReport([FromBody] UpsertStoredReportRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
-        {
             return Unauthorized();
-        }
 
         var data = string.IsNullOrWhiteSpace(req.ContentBase64)
             ? Encoding.UTF8.GetBytes(JsonSerializer.Serialize(req.Parameters))
@@ -179,15 +237,11 @@ public class ReportsController : BaseApiController
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
         if (report == null)
-        {
             return NotFound();
-        }
 
         report.UpdateMetadata(req.Name, req.ReportType, req.Parameters, req.Format);
         if (!string.IsNullOrWhiteSpace(req.ContentBase64))
-        {
             report.ReplaceData(Convert.FromBase64String(req.ContentBase64));
-        }
 
         await _uow.Reports.UpdateAsync(report, ct);
         await _uow.SaveChangesAsync(ct);
@@ -203,6 +257,10 @@ public class ReportsController : BaseApiController
         return NoContent();
     }
 
+    // ──────────────────────────────────────────────
+    //  Schedules
+    // ──────────────────────────────────────────────
+
     [HttpGet("schedules")]
     [Authorize(Policy = "Manager")]
     public async Task<IActionResult> GetSchedules(CancellationToken ct)
@@ -214,9 +272,7 @@ public class ReportsController : BaseApiController
     {
         var report = await _uow.Reports.GetByIdAsync(req.ReportId, ct);
         if (report == null)
-        {
             return NotFound(new { message = "Report not found." });
-        }
 
         var schedule = ReportSchedule.Create(req.ReportId, req.Frequency, req.NextRun, req.Recipients, req.DeliveryOptions, req.IsActive);
         schedule.SetCreatedBy(_currentUser.UserId ?? "system");
@@ -231,9 +287,7 @@ public class ReportsController : BaseApiController
     {
         var schedule = await _uow.ReportSchedules.GetByIdAsync(id, ct);
         if (schedule == null)
-        {
             return NotFound();
-        }
 
         schedule.Update(req.Frequency, req.NextRun, req.Recipients, req.DeliveryOptions, req.IsActive);
         await _uow.ReportSchedules.UpdateAsync(schedule, ct);
@@ -250,6 +304,10 @@ public class ReportsController : BaseApiController
         return NoContent();
     }
 
+    // ──────────────────────────────────────────────
+    //  Mappers & helpers
+    // ──────────────────────────────────────────────
+
     private static StoredReportResponse MapReport(Report report)
         => new(
             report.Id,
@@ -264,14 +322,10 @@ public class ReportsController : BaseApiController
     private async Task<bool> CanAccessReportFilterAsync(ReportFilterDto filter, CancellationToken ct)
     {
         if (filter.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(filter.ProjectId.Value, ct))
-        {
             return false;
-        }
 
         if (filter.DepartmentId.HasValue && !await _scope.CanAccessDepartmentAsync(filter.DepartmentId.Value, ct))
-        {
             return false;
-        }
 
         return true;
     }

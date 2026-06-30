@@ -304,6 +304,39 @@ export interface DashboardRecord {
   widgets: DashboardWidgetRecord[];
 }
 
+export interface AiReportResponse {
+  id: string;
+  reportType: string;
+  title: string;
+  summary: string;
+  metrics: ReportMetric[];
+  tables: ReportTable[];
+  sections: ReportSection[];
+  insights: string[];
+  recommendations: string[];
+  generatedAt: string;
+}
+
+export interface ReportMetric {
+  label: string;
+  value: string;
+  trend: "up" | "down" | "neutral";
+  icon: string;
+  color: string;
+}
+
+export interface ReportTable {
+  title: string;
+  columns: string[];
+  rows: string[][];
+}
+
+export interface ReportSection {
+  title: string;
+  content: string;
+  type: string;
+}
+
 export interface StoredReportRecord {
   id: string;
   name: string;

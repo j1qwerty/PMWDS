@@ -101,6 +101,8 @@ builder.Services.AddScoped<PMWDS.Infrastructure.Services.AuditService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IAuditService>(sp =>
     sp.GetRequiredService<PMWDS.Infrastructure.Services.AuditService>());
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IReportService, ReportService>();
+builder.Services.AddSingleton<PMWDS.Infrastructure.Services.IReportPdfRenderer, PMWDS.Infrastructure.Services.ReportPdfRenderer>();
+builder.Services.AddSingleton<PMWDS.Infrastructure.Services.IReportExcelRenderer, PMWDS.Infrastructure.Services.ReportExcelRenderer>();
 builder.Services.AddSingleton<PMWDS.Infrastructure.Services.RedisCacheService>();
 builder.Services.AddSingleton<PMWDS.Application.Interfaces.Services.ICacheService>(sp =>
     sp.GetRequiredService<PMWDS.Infrastructure.Services.RedisCacheService>());

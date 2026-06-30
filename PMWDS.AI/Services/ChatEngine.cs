@@ -42,6 +42,11 @@ public interface IChatEngine
         CancellationToken ct = default);
 
     bool IsConfigured(string? provider = null);
+
+    Task<string> GenerateStructuredReportAsync(
+        string systemPrompt,
+        string userContext,
+        CancellationToken ct = default);
 }
 
 public class OpenAICompatibleChatEngine : IChatEngine
@@ -244,6 +249,30 @@ public class OpenAICompatibleChatEngine : IChatEngine
                     "system",
                     "You are a concise project management analyst. Generate a brief 2-3 sentence summary."),
                 new ChatMessagePayload("user", context)
+            ],
+            ct);
+    }
+
+    public async Task<string> GenerateStructuredReportAsync(
+        string systemPrompt,
+        string userContext,
+        CancellationToken ct = default)
+    {
+        if (!IsConfigured())
+        {
+            throw new InvalidOperationException(
+                "AI provider is not configured. Please configure AI settings first.");
+        }
+
+        var resolvedProvider = await ResolveProviderAsync(null, ct);
+        var resolvedModel = ResolveModel(resolvedProvider, null, false);
+
+        return await CompleteChatAsync(
+            resolvedProvider,
+            resolvedModel,
+            [
+                new ChatMessagePayload("system", systemPrompt),
+                new ChatMessagePayload("user", userContext)
             ],
             ct);
     }

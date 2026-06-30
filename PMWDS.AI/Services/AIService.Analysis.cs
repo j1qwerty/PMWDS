@@ -166,4 +166,18 @@ public partial class AIService
 
     public Task<ChatResponseDto> ProcessChatMessageAsync(string userId, string message, string? provider = null, string? model = null, CancellationToken ct = default)
         => _chat.ProcessAsync(userId, message, provider, model, ct);
+
+    public async Task<string> GenerateStructuredReportAsync(
+        string systemPrompt,
+        string userContext,
+        CancellationToken ct = default)
+    {
+        if (!_chat.IsConfigured())
+        {
+            throw new InvalidOperationException(
+                "AI provider is not configured. Please configure AI settings first.");
+        }
+
+        return await _chat.GenerateStructuredReportAsync(systemPrompt, userContext, ct);
+    }
 }

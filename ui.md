@@ -16,7 +16,6 @@
 ## 🔴 High Priority
 
 ### feature
-- [ ] test all roles: create a flow project add 3 milestones assign departmets, crete milestone dependencies, upload document (root readme.md) create 3 tasks inside each milestone , two tasks have subtasks , change progress for each task (for tasks with subtasks progress calculates automatically so should fail direct progress update), same for milestones progress depends on tasks (avg of tasks) , create edit workflow also for each , for tasks and subtasks assign users from their own department , fetch first , also create a delete workflow for all like the project, milestone, documents , tasks subtasks etc
 - [x] milestone dependencies 
 - [ ] director / dept head project creator - whoever creates project others at same role but different departments can not edit it, can only manage tasks and subtasks etc, can uplaod documents
 - [ ] redis cache and indexing for database
@@ -80,7 +79,7 @@
 - [ ] Hover and shadow effects matching color scheme for all components
 - [ ] Add max height with "view more" options to all components
 - [ ] Animate bars and graphs (similar to AI page)
-- [ ] Optimize space utilization and update headers
+- [ ] consistent icons for everything
 - [x] Task performance table UI update (hover, view/edit modals, sort filters, cursor-pointer)
 
 ### Activity & Logging
@@ -92,11 +91,11 @@
 - [x] Remove old/unused components and pages
 
 ## MISC 
-- [ ] Remove any UI elements using pagedata API, use manual API instead / or fix pagedata to send role specific data only
-- [ ] Test page and pages API restricted to superadmin only (clean up if unnecessary)
+- [ ] analyse pages api usage and manual API usage ( accordingle replace one with another depending on context)
 - [ ] backend idempotency
 - [ ] implement plan soft delete 
 - [ ] rate limiting , sys architecture design etc, cqrs , security and scalability plan
+- [ ] test all roles: create a flow project add 3 milestones assign departmets, crete milestone dependencies, upload document (root readme.md) create 3 tasks inside each milestone , two tasks have subtasks , change progress for each task (for tasks with subtasks progress calculates automatically so should fail direct progress update), same for milestones progress depends on tasks (avg of tasks) , create edit workflow also for each , for tasks and subtasks assign users from their own department , fetch first , also create a delete workflow for all like the project, milestone, documents , tasks subtasks etc
 
 
 ```

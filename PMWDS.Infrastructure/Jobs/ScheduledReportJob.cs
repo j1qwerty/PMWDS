@@ -41,7 +41,7 @@ public class ScheduledReportJob : IScheduledReportJob
                     var reportBytes = await _reports
 
 
-                    .GenerateProjectStatusReportAsync(
+                    .DownloadProjectStatusReportAsync(
                     project.Id, "pdf", ct);
                     await _email.SendEmailWithAttachmentAsync(
                     manager.Email!,
