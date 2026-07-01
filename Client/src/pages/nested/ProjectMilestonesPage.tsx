@@ -33,6 +33,7 @@ import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
 import { TaskSubCard } from "../projectsK/components/Tasksubcard";
+import { Icon } from "../../components/ui/Icon";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -374,7 +375,7 @@ export function ProjectMilestonesPage() {
       {pendingForceComplete && (
         <div className="relative z-10 mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm">
           <div className="flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-amber-600 mt-0.5 shrink-0">warning</span>
+            <Icon name="warning" size={18} className="text-amber-600 mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-800">Incomplete tasks detected</p>
               <p className="text-xs text-amber-700 mt-1">
@@ -458,7 +459,7 @@ export function ProjectMilestonesPage() {
         <div ref={tasksContainerRef} className="space-y-3 min-w-0">
           {selectedMilestone?.isBlocked && selectedMilestone.blockedByMessage && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-start gap-2">
-              <span className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0">warning</span>
+              <Icon name="warning" size={16} className="text-amber-600 mt-0.5 shrink-0" />
               <div className="text-xs text-amber-800">
                 <span className="font-semibold">Milestone blocked:</span> {selectedMilestone.blockedByMessage}
                 <p className="text-[10px] text-amber-600 mt-0.5">Tasks can still be created but the milestone cannot be marked complete until prerequisites are met.</p>
@@ -476,7 +477,7 @@ export function ProjectMilestonesPage() {
                 onClick={() => setTaskModal({ open: true, milestoneId: selectedMilestoneId })}
                 className="text-xs text-indigo-600 font-semibold flex items-center gap-1 hover:text-indigo-800"
               >
-                <span className="material-symbols-outlined text-base">add</span>
+                <Icon name="add" size={16} />
                 New task
               </button>
             </div>
@@ -485,7 +486,7 @@ export function ProjectMilestonesPage() {
           {selectedMilestone && milestoneTasks.length === 0 ? (
             <GlassCard className="p-8">
               <div className="text-center text-slate-400">
-                <span className="material-symbols-outlined text-5xl mb-3 block">task_alt</span>
+                <Icon name="task_alt" size={32} className="mb-3 block" />
                 <p className="text-sm font-medium text-slate-600">No tasks yet</p>
                 <p className="text-xs mt-1">
                   {canManageTasks
@@ -524,7 +525,7 @@ export function ProjectMilestonesPage() {
           ) : (
             <GlassCard className="p-8 flex items-center justify-center h-full min-h-[300px]">
               <div className="text-center text-slate-400">
-                <span className="material-symbols-outlined text-5xl mb-3 block">task_alt</span>
+                <Icon name="task_alt" size={32} className="mb-3 block" />
                 <p className="text-sm font-medium text-slate-600">Select a milestone</p>
                 <p className="text-xs mt-1">Tasks will appear here once a milestone is selected.</p>
               </div>
@@ -746,9 +747,11 @@ function MilestoneHeader({
             className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0 ${milestone.isCritical ? "bg-red-500 shadow-red-500/25" : "bg-indigo-600 shadow-indigo-500/25"
               }`}
           >
-            <span className="material-symbols-outlined text-xl text-white">
-              {milestone.status === "Completed" ? "check_circle" : "flag"}
-            </span>
+            <Icon
+              name={milestone.status === "Completed" ? "check_circle" : "hi-flag"}
+              size={20}
+              className="text-white"
+            />
           </div>
           <div className="min-w-0">
             <h3 className="text-base font-bold text-slate-900 truncate">{milestone.name}</h3>
@@ -765,10 +768,7 @@ function MilestoneHeader({
               className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 transition-colors"
               onClick={() => onViewMilestone?.(milestone)}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
+              <Icon name="view" size={16} />
             </button>
           )}
           {isAdmin && (
@@ -777,9 +777,7 @@ function MilestoneHeader({
               className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
               title="Edit milestone"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
+              <Icon name="edit" size={16} />
             </button>
           )}
         </div>
@@ -796,11 +794,11 @@ function MilestoneHeader({
 
       <div className="flex flex-wrap gap-4 text-xs mb-3">
         <div className="flex items-center gap-1.5 text-slate-500">
-          <span className="material-symbols-outlined text-sm text-slate-400">calendar_today</span>
+          <Icon name="calendar_today" size={15} className="text-slate-400" />
           <span>{milestone.dueDate ? formatDate(milestone.dueDate) : "No due date"}</span>
         </div>
         <div className="flex items-center gap-1.5 text-slate-500">
-          <span className="material-symbols-outlined text-sm text-slate-400">task_alt</span>
+          <Icon name="task_alt" size={15} className="text-slate-400" />
           <span>{completedTasks}/{tasks.length} completed</span>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord } from "../../types";
 import { GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface RegisterUserFormProps {
   departments: Department[];
@@ -56,7 +57,7 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
   return (
     <GlassCard className="p-6">
       <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-indigo-500">person_add</span>
+        <Icon name="person_add" size={18} className="text-indigo-500" />
         Register New User
       </h3>
 

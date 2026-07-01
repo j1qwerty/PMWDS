@@ -1,6 +1,7 @@
 import type { BurnoutRiskRecord } from "../../types";
 import { formatPercent } from "../../ui";
 import { Avatar, GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface BurnoutPanelProps {
   burnout: BurnoutRiskRecord[];
@@ -16,7 +17,7 @@ export function BurnoutPanel({ burnout }: BurnoutPanelProps) {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-red-500">psychology</span>
+        <Icon name="psychology" size={18} className="text-red-500" />
         <h4 className="text-sm font-bold text-slate-800">Burnout Risk</h4>
       </div>
 
@@ -69,7 +70,7 @@ export function BurnoutPanel({ burnout }: BurnoutPanelProps) {
 
       {burnout.length === 0 && (
         <div className="text-center py-8 text-slate-400">
-          <span className="material-symbols-outlined text-2xl mb-2 block">sentiment_satisfied</span>
+          <Icon name="sentiment_satisfied" size={22} className="mb-2 block" />
           <p className="text-xs">No burnout risks detected</p>
         </div>
       )}

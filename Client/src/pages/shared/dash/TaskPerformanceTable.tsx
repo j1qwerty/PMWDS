@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import type { Task } from "../../../types";
 import { getStatusColor, getPriorityColor } from "../colors";
+import { Icon } from "../../../components/ui/Icon";
 
 type TaskPerformanceProps = {
   tasks?: Task[];
@@ -186,20 +187,12 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return (
-        <svg className="w-3 h-3 text-slate-300 group-hover:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      );
+      return <Icon name="hi-selector" size={12} className="text-slate-300 group-hover:text-slate-400" />;
     }
     return sortDirection === "asc" ? (
-      <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
-      </svg>
+      <Icon name="chevron-up" size={12} className="text-slate-600" />
     ) : (
-      <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-      </svg>
+      <Icon name="chevron-down" size={12} className="text-slate-600" />
     );
   };
 
@@ -218,9 +211,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
               }}
               className="text-xs text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="close" size={12} />
               Clear filters
             </button>
           )}
@@ -270,9 +261,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
                     className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
                   >
                     Status
-                    <svg className={`w-3 h-3 transition-transform ${showStatusDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <Icon name="chevron-down" size={12} className={`transition-transform ${showStatusDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} />
                     {statusFilter.length > 0 && (
                       <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
                     )}
@@ -315,9 +304,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
                     className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
                   >
                     Priority
-                    <svg className={`w-3 h-3 transition-transform ${showPriorityDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <Icon name="chevron-down" size={12} className={`transition-transform ${showPriorityDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} />
                     {priorityFilter.length > 0 && (
                       <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
                     )}
@@ -406,10 +393,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
                         title="View task"
                         onClick={() => onViewTask?.(task)}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <Icon name="view" size={16} />
                       </button>
 
                       {canEdit && (
@@ -419,9 +403,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
                           title="Edit task"
                           onClick={() => onEditTask?.(task)}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg> 
+                          <Icon name="edit" size={16} /> 
                         </button>
                       )}
 
@@ -447,9 +429,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
       {filteredAndSortedTasks.length === 0 && (
         <div className="text-center py-12">
           <div className="text-slate-400 mb-2">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <Icon name="hi-emoji-sad" size={48} className="mx-auto" />
           </div>
           <p className="text-slate-500 text-sm font-medium">No tasks found</p>
           <p className="text-slate-400 text-xs mt-1">Try adjusting your search or filters</p>
@@ -469,9 +449,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(currentPage - 1)}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
+            <Icon name="chevron-left" size={16} />
             Previous
           </button>
 
@@ -494,9 +472,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
             onClick={() => setCurrentPage(currentPage + 1)}
           >
             Next
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
+            <Icon name="chevron-right" size={16} />
           </button>
         </div>
       </div>

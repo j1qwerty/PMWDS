@@ -2,6 +2,7 @@
 import type { User, UserProfileRecord } from "../../types";
 import { Avatar, GlassCard, GradientButton } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
+import { Icon } from "../../components/ui/Icon";
 
 interface ProfileDetailProps {
   user: User;
@@ -99,13 +100,13 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {jobTitle && (
                       <span className="text-base text-slate-600 font-medium flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-indigo-500">work</span>
+                        <Icon name="work" size={16} className="text-indigo-500" />
                         {jobTitle}
                       </span>
                     )}
                     {jobTitle && <span className="w-1 h-1 rounded-full bg-slate-300 hidden sm:block"></span>}
                     <span className="text-sm text-slate-500 flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-sm">badge</span>
+                      <Icon name="badge" size={14} />
                       ID: {user.id}
                     </span>
                   </div>
@@ -129,7 +130,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
                  
                   {canEdit && (
                     <GradientButton onClick={onEdit} className="shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all">
-                      <span className="material-symbols-outlined text-base">edit</span>
+                      <Icon name="edit" size={16} />
                       Edit Profile
                     </GradientButton>
                   )}
@@ -177,7 +178,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
             </div>
             <div className="relative flex justify-center">
               <span className="bg-white px-4">
-                <span className="material-symbols-outlined text-slate-300 text-xl">unfold_more</span>
+                <Icon name="unfold_more" size={20} className="text-slate-300" />
               </span>
             </div>
           </div>
@@ -186,7 +187,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
           <div className="mb-8">
             {/* <div className="flex items-center gap-2 mb-4">
               <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100">
-                <span className="material-symbols-outlined text-indigo-600 text-lg">description</span>
+                <Icon name="description" size={18} className="text-indigo-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900">About</h3>
             </div>
@@ -205,9 +206,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
                       key={skill}
                       className="group/skill inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-700 border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all shadow-sm"
                     >
-                      <span className="material-symbols-outlined text-xs text-slate-400 group-hover/skill:text-indigo-500 transition-colors">
-                        check_circle
-                      </span>
+                      <Icon name="check_circle" size={12} className="text-slate-400 group-hover/skill:text-indigo-500 transition-colors" />
                       {skill}
                     </span>
                   ))}
@@ -220,7 +219,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100">
-                <span className="material-symbols-outlined text-blue-600 text-lg">person</span>
+                <Icon name="person" size={18} className="text-blue-600" />
               </div>
               <h3 className="text-base font-bold text-slate-900">Personal & Account Details</h3>
             </div>
@@ -263,7 +262,7 @@ function StatCard({
     <div className="group relative p-4 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-200">
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2 rounded-lg bg-gradient-to-br ${iconBg} shadow-md`}>
-          <span className="material-symbols-outlined text-white text-base">{icon}</span>
+          <Icon name={icon} size={16} className="text-white" />
         </div>
       </div>
       <div>
@@ -298,9 +297,7 @@ function DetailItem({
     >
       <div className="flex items-start gap-3">
         <div className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-indigo-50 transition-colors shrink-0">
-          <span className="material-symbols-outlined text-slate-400 group-hover:text-indigo-500 text-base transition-colors">
-            {icon}
-          </span>
+          <Icon name={icon} size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</div>
@@ -313,7 +310,7 @@ function DetailItem({
                 className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:underline decoration-indigo-300 decoration-2 underline-offset-2 transition-colors"
               >
                 <span className="truncate">{value}</span>
-                <span className="material-symbols-outlined text-sm shrink-0">open_in_new</span>
+                <Icon name="open_in_new" size={14} className="shrink-0" />
               </a>
             ) : statusColor ? (
               <span

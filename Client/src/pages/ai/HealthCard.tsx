@@ -1,6 +1,7 @@
 import type { Project, ProjectHealth } from "../../types";
 import { formatPercent } from "../../ui";
 import { GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface HealthCardProps {
   project: Project | null;
@@ -22,7 +23,7 @@ export function HealthCard({ project, health }: HealthCardProps) {
     <GlassCard className="p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-indigo-500 text-xl">monitoring</span>
+          <Icon name="monitoring" size={20} className="text-indigo-500" />
           <h3 className="text-sm font-bold text-slate-800">
             {project?.name || "Project"} Health
           </h3>

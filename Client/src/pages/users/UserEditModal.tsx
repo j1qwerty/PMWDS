@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, Role, User } from "../../types";
 import { Avatar } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 const roleOptions: Role[] = ["Viewer", "TeamMember", "DepartmentHead", "ProjectManager", "Director", "SuperAdmin"];
 const availabilityOptions = ["Available", "Busy", "Away", "InMeeting", "Offline", "DeepWork"];
@@ -108,7 +109,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
-            <span className="material-symbols-outlined text-xl">close</span>
+            <Icon name="close" size={20} />
           </button>
         </div>
 

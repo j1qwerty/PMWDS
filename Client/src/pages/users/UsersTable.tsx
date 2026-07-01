@@ -4,6 +4,7 @@ import { formatPercent } from "../../ui";
 import { api } from "../../api";
 import { Avatar, GlassCard } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
+import { Icon } from "../../components/ui/Icon";
 
 interface UsersTableProps {
   users: User[];
@@ -69,9 +70,7 @@ export function UsersTable({
       {/* Filters */}
       <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
-            search
-          </span>
+          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Search users..."
@@ -81,7 +80,7 @@ export function UsersTable({
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <span className="material-symbols-outlined text-lg">close</span>
+              <Icon name="close" size={18} />
             </button>
           )}
         </div>
@@ -212,7 +211,7 @@ export function UsersTable({
                           className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"
                           title="Edit user"
                         >
-                          <span className="material-symbols-outlined text-lg">edit</span>
+                          <Icon name="edit" size={18} />
                         </button>
                         <button
                           type="button"
@@ -224,9 +223,7 @@ export function UsersTable({
                           }`}
                           title={user.isActive !== false ? "Deactivate user" : "Reactivate user"}
                         >
-                          <span className="material-symbols-outlined text-lg">
-                            {user.isActive !== false ? "person_off" : "restart_alt"}
-                          </span>
+                          <Icon name={user.isActive !== false ? "person_off" : "restart-alt"} size={18} />
                         </button>
                       </div>
                     </td>
@@ -240,7 +237,7 @@ export function UsersTable({
         {filteredUsers.length === 0 && (
           <div className="py-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl text-slate-400">person_off</span>
+              <Icon name="person_off" size={24} className="text-slate-400" />
             </div>
             <p className="text-sm font-medium text-slate-500">No users found</p>
           </div>

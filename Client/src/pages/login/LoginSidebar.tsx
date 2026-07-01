@@ -1,3 +1,5 @@
+import { Icon } from "../../components/ui/Icon";
+
 const features = [
   {
     icon: "analytics",
@@ -43,7 +45,7 @@ export function LoginSidebar() {
         <div className="mb-12">
           <div className="inline-flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl text-white">rocket_launch</span>
+              <Icon name="rocket_launch" size={24} className="text-white" />
             </div>
             <div>
               <h1 className="text-3xl xl:text-4xl font-bold text-white tracking-tight">

@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import type { NotificationTemplateRecord } from "../../types";
+import { Icon } from "../../components/ui/Icon";
 
 interface TemplateFormModalProps {
   initialData?: NotificationTemplateRecord;
@@ -46,9 +47,7 @@ export function TemplateFormModal({ initialData, onSubmit, onCancel }: TemplateF
     <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-          <span className="material-symbols-outlined text-indigo-600 text-2xl">
-            {initialData ? "edit" : "description"}
-          </span>
+          <Icon name={initialData ? "edit" : "description"} size={22} className="text-indigo-600" />
         </div>
         <div>
           <h2 className="text-xl font-bold text-slate-900">

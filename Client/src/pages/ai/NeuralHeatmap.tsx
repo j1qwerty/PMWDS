@@ -1,5 +1,6 @@
 import type { Project } from "../../types";
 import { GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface NeuralHeatmapProps {
   project: Project | null;
@@ -50,7 +51,7 @@ export function NeuralHeatmap({ project }: NeuralHeatmapProps) {
     <GlassCard className="p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-violet-500 text-xl">hub</span>
+          <Icon name="hub" size={20} className="text-violet-500" />
           <h3 className="text-sm font-bold text-slate-800">
             Neural Heatmap {project ? `· ${project.name}` : ""}
           </h3>
@@ -144,7 +145,7 @@ export function NeuralHeatmap({ project }: NeuralHeatmapProps) {
       {/* Alert for high risk */}
       {highRiskDept && (
         <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-100 flex items-start gap-2">
-          <span className="material-symbols-outlined text-red-500 text-lg shrink-0">warning</span>
+          <Icon name="warning" size={18} className="text-red-500 shrink-0" />
           <div>
             <span className="text-xs font-semibold text-red-700 block">
               {highRiskDept.name} requires attention

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { priorities } from "../../constants";
 import { GlassCard, Avatar } from "../../shared";
 import type { User } from "../../../types";
+import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneEntry {
   id: string;
@@ -108,7 +109,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
     return (
       <GlassCard className="p-10 text-center">
         <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl text-amber-400">task_alt</span>
+          <Icon name="task_alt" size={24} className="text-amber-400" />
         </div>
         <p className="text-sm font-semibold text-slate-600">Add milestones first</p>
         <p className="text-xs text-slate-400 mt-1">Go back to the Milestones step to create milestones before adding tasks.</p>
@@ -149,7 +150,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                   }}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm">add</span>
+                  <Icon name="add" size={15} />
                   Task
                 </button>
               )}
@@ -205,16 +206,14 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                         onClick={() => handleEdit(task)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                        <Icon name="edit" size={14} />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(task.id)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                       >
-                        <span className="material-symbols-outlined text-base">delete</span>
+                        <Icon name="delete" size={16} />
                       </button>
                     </div>
                   </div>
@@ -272,7 +271,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                       const msDue = getMilestoneDueDate(showFormForMilestone);
                       return msDue && form.dueDate > msDue ? (
                         <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                          <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                          <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
                           <span>Due date exceeds milestone due date ({new Date(msDue).toLocaleDateString()})</span>
                         </div>
                       ) : null;

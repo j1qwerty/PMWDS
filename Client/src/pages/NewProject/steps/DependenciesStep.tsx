@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GlassCard } from "../../shared";
+import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneEntry {
   id: string;
@@ -164,7 +165,7 @@ export function DependenciesStep({ milestones, dependencies, onChange }: Depende
                       className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                       title="Remove dependency"
                     >
-                      <span className="material-symbols-outlined text-base">delete</span>
+                      <Icon name="delete" size={16} />
                     </button>
                   </div>
                 </div>
@@ -260,7 +261,7 @@ export function DependenciesStep({ milestones, dependencies, onChange }: Depende
 
               {formError && (
                 <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2">
-                  <span className="material-symbols-outlined text-base mt-0.5">error</span>
+                  <Icon name="error" size={16} className="mt-0.5" />
                   <span>{formError}</span>
                 </div>
               )}
@@ -288,7 +289,7 @@ export function DependenciesStep({ milestones, dependencies, onChange }: Depende
               onClick={() => setShowForm(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-medium text-slate-500 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/50 transition-all w-full justify-center"
             >
-              <span className="material-symbols-outlined text-base">add</span>
+              <Icon name="add" size={16} />
               Add Dependency
             </button>
           )}

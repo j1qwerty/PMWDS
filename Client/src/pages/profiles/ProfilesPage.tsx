@@ -16,6 +16,7 @@ import {
 import { ProfileList } from "./ProfileList";
 import { ProfileDetail } from "./ProfileDetail";
 import { ProfileFormModal } from "./ProfileFormModal";
+import { Icon } from "../../components/ui/Icon";
 
 
 export function ProfilesPage() {
@@ -155,7 +156,7 @@ export function ProfilesPage() {
         ) : (
           <GlassCard className="p-16 text-center flex flex-col items-center justify-center flex-1 min-h-[600px]">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center mb-6 shadow-inner">
-              <span className="material-symbols-outlined text-5xl text-indigo-400">person_search</span>
+              <Icon name="person_search" size={32} className="text-indigo-400" />
             </div>
             <h3 className="text-xl font-semibold text-slate-700 mb-2">Select a Profile</h3>
             <p className="text-sm text-slate-500 max-w-md">

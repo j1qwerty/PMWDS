@@ -8,6 +8,7 @@ import {
   HiOutlineClipboardList,
   HiOutlineChevronDown,
 } from "react-icons/hi";
+import { Icon } from "../../../components/ui/Icon";
 import { useEffect, useState, useMemo, useCallback } from "react";
 
 interface ProjectBasicDetailsProps {
@@ -199,9 +200,7 @@ export function ProjectBasicDetails({
                       <span className={`w-1.5 h-1.5 rounded-full ${st.dot || 'bg-current'}`} />
                       {status}
                       {isActive && (
-                        <svg className="w-3 h-3 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
+                        <Icon name="check-circle" size={12} className="ml-auto" />
                       )}
                     </button>
                   );
@@ -258,9 +257,7 @@ export function ProjectBasicDetails({
 
           {/* Budget */}
           <div className="flex items-center gap-2 text-slate-600">
-            <svg className="size-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <Icon name="hi-currency-dollar" size={16} className="shrink-0 text-slate-400" />
             <span className="text-xs font-semibold">
               ₹{project.plannedBudget.toLocaleString("en-IN")}
             </span>
@@ -290,7 +287,7 @@ export function ProjectBasicDetails({
   const warningBanner = pendingWarning && (
     <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm">
       <div className="flex items-start gap-2.5">
-        <span className="material-symbols-outlined text-amber-600 mt-0.5 shrink-0">warning</span>
+        <Icon name="warning" size={20} className="text-amber-600 mt-0.5 shrink-0" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-amber-800">Incomplete milestones detected</p>
           <p className="text-xs text-amber-700 mt-1">

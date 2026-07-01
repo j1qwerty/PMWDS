@@ -1,3 +1,4 @@
+import { Icon } from "./components/ui/Icon";
 import type { Project, User } from "./types";
 
 // ============================================================
@@ -137,12 +138,7 @@ export function StatCard({
       <div className="flex justify-between items-start">
         <span className="text-label-caps text-on-surface-variant">{label}</span>
         <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center group-hover:bg-primary-fixed transition-colors">
-          <span
-            className="material-symbols-outlined text-xl text-on-surface-variant group-hover:text-primary transition-colors"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            {iconMap[tone] || "analytics"}
-          </span>
+          <Icon name={iconMap[tone] || "analytics"} size={20} className="text-on-surface-variant group-hover:text-primary transition-colors" />
         </div>
       </div>
       <strong className={classNames("text-display text-on-surface", toneClass[tone] ?? "text-on-surface")}>

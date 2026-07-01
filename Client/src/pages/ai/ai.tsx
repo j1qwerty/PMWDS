@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import type { BurnoutRiskRecord, Department, OrganizationRecord, Project, ProjectHealth } from "../../types";
 import { formatPercent, formatDate } from "../../ui";
 import { AnimatedBackground, useNavHeader, GlassCard, LoadingPage, OrganizationDepartmentFilter, PERMISSION_GROUPS, getProjectDepartmentIds, projectBelongsToDepartment, usePermission, BgRenderer } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -179,7 +180,7 @@ export function AIPage() {
           {/* System Load Card */}
           <GlassCard className="p-4 border border-indigo-100/30">
             <div className="flex items-center gap-2 mb-3 text-indigo-600">
-              <span className="material-symbols-outlined text-lg">bolt</span>
+              <Icon name="bolt" size={18} />
               <span className="text-[11px] font-bold uppercase tracking-wider">System Load</span>
             </div>
             <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
@@ -236,7 +237,7 @@ export function AIPage() {
           {delay && (
             <GlassCard className="p-5 border border-amber-100/50">
               <div className="flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-amber-500">speed</span>
+                <Icon name="speed" size={18} className="text-amber-500" />
                 <h4 className="text-sm font-bold text-slate-800">Delay Prediction</h4>
               </div>
               <div className="space-y-3">

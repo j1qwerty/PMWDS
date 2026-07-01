@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, SkillRecord, User } from "../../types";
+import { Icon } from "../../components/ui/Icon";
 import {
   AnimatedBackground,
   GlassCard,
@@ -271,9 +272,7 @@ export function SkillsPage() {
           <GlassCard className="overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[160px]">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
-                  search
-                </span>
+                <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search skills..."
@@ -286,7 +285,7 @@ export function SkillsPage() {
                     onClick={() => setSearchTerm("")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <span className="material-symbols-outlined text-base">close</span>
+                        <Icon name="close" size={16} />
                   </button>
                 )}
               </div>
@@ -306,9 +305,7 @@ export function SkillsPage() {
               {filteredSkills.length === 0 ? (
                 <div className="py-12 text-center">
                   <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                    <span className="material-symbols-outlined text-2xl text-slate-400">
-                      {searchTerm ? "search_off" : "school"}
-                    </span>
+                    <Icon name={searchTerm ? "search_off" : "school"} size={22} className="text-slate-400" />
                   </div>
                   <p className="text-xs text-slate-500">
                     {searchTerm ? "No matching skills" : "No skills yet"}
@@ -318,7 +315,7 @@ export function SkillsPage() {
                       onClick={() => setSkillModal({ open: true })}
                       className="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-1.5"
                     >
-                      <span className="material-symbols-outlined text-sm">add</span>
+                      <Icon name="add" size={15} />
                       Create Skill
                     </button>
                   )}
@@ -349,7 +346,7 @@ export function SkillsPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
                               <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <span className="material-symbols-outlined text-sm text-indigo-600">school</span>
+                                <Icon name="school" size={15} className="text-indigo-600" />
                               </div>
                               <div>
                                 <p className="text-xs font-semibold text-slate-700">{skill.name}</p>
@@ -379,7 +376,7 @@ export function SkillsPage() {
                                   className="size-7 rounded-md border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors"
                                   title="Edit skill"
                                 >
-                                  <span className="material-symbols-outlined text-xs text-slate-500">edit</span>
+                                  <Icon name="edit" size={14} className="text-slate-500" />
                                 </button>
                                 {canDeleteSkill(skill) && (
                                   <button
@@ -387,7 +384,7 @@ export function SkillsPage() {
                                     className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
                                     title="Delete skill"
                                   >
-                                    <span className="material-symbols-outlined text-xs text-red-500">delete</span>
+                                    <Icon name="delete" size={14} className="text-red-500" />
                                   </button>
                                 )}
                               </div>
@@ -415,7 +412,7 @@ export function SkillsPage() {
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              <span className="material-symbols-outlined text-sm align-text-bottom mr-1">school</span>
+              <Icon name="school" size={15} className="align-text-bottom mr-1" />
               By Skill
             </button>
             <button
@@ -426,7 +423,7 @@ export function SkillsPage() {
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              <span className="material-symbols-outlined text-sm align-text-bottom mr-1">people</span>
+              <Icon name="people" size={15} className="align-text-bottom mr-1" />
               By User
             </button>
           </div>
@@ -436,7 +433,7 @@ export function SkillsPage() {
             <GlassCard className="h-full">
               {!selectedSkill ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-300">
-                  <span className="material-symbols-outlined text-5xl mb-3">touch_app</span>
+                  <Icon name="touch_app" size={32} className="mb-3" />
                   <p className="text-sm font-medium text-slate-400">Select a skill from the list</p>
                   <p className="text-xs text-slate-300 mt-1">Manage user assignments and proficiency levels</p>
                 </div>
@@ -444,7 +441,7 @@ export function SkillsPage() {
                 <div className="p-5 md:p-6 space-y-6">
                   <div className="flex items-start gap-4 pb-5 border-b border-slate-100">
                     <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-2xl text-indigo-600">school</span>
+                      <Icon name="school" size={22} className="text-indigo-600" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-base font-bold text-slate-800">{selectedSkill.name}</h3>
@@ -472,7 +469,7 @@ export function SkillsPage() {
 
                     {assignedUsers.length === 0 ? (
                       <div className="py-8 text-center border border-dashed border-slate-200 rounded-xl">
-                        <span className="material-symbols-outlined text-3xl text-slate-300 mb-2">person_off</span>
+                        <Icon name="person_off" size={24} className="text-slate-300 mb-2" />
                         <p className="text-xs text-slate-400">No users assigned to this skill yet</p>
                       </div>
                     ) : (
@@ -519,7 +516,7 @@ export function SkillsPage() {
                                       }}
                                       className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                                     >
-                                      <span className="material-symbols-outlined text-[11px]">remove</span>
+                                      <Icon name="remove" size={11} />
                                     </button>
                                     <input
                                       type="number"
@@ -538,7 +535,7 @@ export function SkillsPage() {
                                       }}
                                       className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                                     >
-                                      <span className="material-symbols-outlined text-[11px]">add</span>
+                                      <Icon name="add" size={11} />
                                     </button>
                                   </div>
 
@@ -548,7 +545,7 @@ export function SkillsPage() {
                                     className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0"
                                     title="Remove skill from user"
                                   >
-                                    <span className="material-symbols-outlined text-xs text-red-500">close</span>
+                                    <Icon name="close" size={14} className="text-red-500" />
                                   </button>
                                 </>
                               ) : (
@@ -582,9 +579,7 @@ export function SkillsPage() {
                               <option key={u.id} value={u.id}>{u.fullName}</option>
                             ))}
                           </select>
-                          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">
-                            expand_more
-                          </span>
+                          <Icon name="expand_more" size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -608,7 +603,7 @@ export function SkillsPage() {
                             onClick={() => setNewExperience(Math.max(0, newExperience - 1))}
                             className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                           >
-                            <span className="material-symbols-outlined text-[11px]">remove</span>
+                            <Icon name="remove" size={11} />
                           </button>
                           <input
                             type="number"
@@ -623,7 +618,7 @@ export function SkillsPage() {
                             onClick={() => setNewExperience(Math.min(600, newExperience + 1))}
                             className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                           >
-                            <span className="material-symbols-outlined text-[11px]">add</span>
+                            <Icon name="add" size={11} />
                           </button>
                         </div>
 
@@ -633,7 +628,7 @@ export function SkillsPage() {
                           onClick={handleAssignSkill}
                           className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
                         >
-                          <span className="material-symbols-outlined text-sm">add</span>
+                          <Icon name="add" size={15} />
                           Assign
                         </button>
                       </div>
@@ -649,9 +644,7 @@ export function SkillsPage() {
                 {/* User Filters */}
                 <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
                   <div className="relative flex-1 min-w-[180px]">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none">
-                      search
-                    </span>
+                    <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
                       type="text"
                       placeholder="Search users..."
@@ -661,7 +654,7 @@ export function SkillsPage() {
                     />
                     {userSearch && (
                       <button onClick={() => setUserSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <span className="material-symbols-outlined text-base">close</span>
+                    <Icon name="close" size={16} />
                       </button>
                     )}
                   </div>
@@ -698,7 +691,7 @@ export function SkillsPage() {
                   <div className="lg:col-span-1 max-h-[500px] overflow-y-auto space-y-1">
                     {filteredUsers.length === 0 ? (
                       <div className="py-8 text-center text-slate-400">
-                        <span className="material-symbols-outlined text-3xl mb-2">search_off</span>
+                        <Icon name="search_off" size={24} className="mb-2" />
                         <p className="text-xs">No users found</p>
                       </div>
                     ) : (
@@ -729,7 +722,7 @@ export function SkillsPage() {
                   <div className="lg:col-span-2">
                     {!selectedUser ? (
                       <div className="flex flex-col items-center justify-center py-16 text-slate-300">
-                        <span className="material-symbols-outlined text-4xl mb-2">touch_app</span>
+                        <Icon name="touch_app" size={28} className="mb-2" />
                         <p className="text-xs text-slate-400">Select a user to manage their skills</p>
                       </div>
                     ) : (
@@ -746,7 +739,7 @@ export function SkillsPage() {
 
                         {(!selectedUser.skillDetails || selectedUser.skillDetails.length === 0) ? (
                           <div className="py-6 text-center border border-dashed border-slate-200 rounded-xl">
-                            <span className="material-symbols-outlined text-2xl text-slate-300 mb-1">school</span>
+                            <Icon name="school" size={22} className="text-slate-300 mb-1" />
                             <p className="text-xs text-slate-400">No skills assigned</p>
                           </div>
                         ) : (
@@ -757,7 +750,7 @@ export function SkillsPage() {
                                 className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white"
                               >
                                 <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                  <span className="material-symbols-outlined text-xs text-indigo-600">school</span>
+                                  <Icon name="school" size={14} className="text-indigo-600" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-semibold text-slate-700">{skill.skillName}</p>
@@ -791,7 +784,7 @@ export function SkillsPage() {
                                         }}
                                         className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                                       >
-                                        <span className="material-symbols-outlined text-[11px]">remove</span>
+                                        <Icon name="remove" size={11} />
                                       </button>
                                       <input
                                         type="number"
@@ -810,7 +803,7 @@ export function SkillsPage() {
                                         }}
                                         className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                                       >
-                                        <span className="material-symbols-outlined text-[11px]">add</span>
+                                        <Icon name="add" size={11} />
                                       </button>
                                     </div>
 
@@ -820,7 +813,7 @@ export function SkillsPage() {
                                       className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0"
                                       title="Remove skill from user"
                                     >
-                                      <span className="material-symbols-outlined text-xs text-red-500">close</span>
+                                      <Icon name="close" size={14} className="text-red-500" />
                                     </button>
                                   </>
                                 ) : (
@@ -852,9 +845,7 @@ export function SkillsPage() {
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                   ))}
                                 </select>
-                                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">
-                                  expand_more
-                                </span>
+                                <Icon name="expand_more" size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                               </div>
 
                               <div className="flex items-center gap-2">
@@ -878,7 +869,7 @@ export function SkillsPage() {
                                   onClick={() => setNewUserSkillExp(Math.max(0, newUserSkillExp - 1))}
                                   className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                                 >
-                                  <span className="material-symbols-outlined text-[11px]">remove</span>
+                                  <Icon name="remove" size={11} />
                                 </button>
                                 <input
                                   type="number"
@@ -893,7 +884,7 @@ export function SkillsPage() {
                                   onClick={() => setNewUserSkillExp(Math.min(600, newUserSkillExp + 1))}
                                   className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
                                 >
-                                  <span className="material-symbols-outlined text-[11px]">add</span>
+                                  <Icon name="add" size={11} />
                                 </button>
                               </div>
 
@@ -903,7 +894,7 @@ export function SkillsPage() {
                                 onClick={handleAssignSkillToUser}
                                 className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
                               >
-                                <span className="material-symbols-outlined text-sm">add</span>
+                                <Icon name="add" size={15} />
                                 Assign
                               </button>
                             </div>

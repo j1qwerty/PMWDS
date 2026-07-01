@@ -3,6 +3,7 @@ import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
+import { Icon } from "../../components/ui/Icon";
 import {
     AnimatedBackground,
     GlassCard,
@@ -215,7 +216,7 @@ export function DepartmentsPage() {
                     ) : (
                         <GlassCard className="p-16 text-center flex flex-col items-center justify-center flex-1 min-h-96">
                             <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-6">
-                                <span className="material-symbols-outlined text-4xl text-slate-400">groups</span>
+                                <Icon name="groups" size={28} className="text-slate-400" />
                             </div>
                             <h3 className="text-lg font-semibold text-slate-700 mb-2">Select a Department</h3>
                             <p className="text-sm text-slate-400 ">

@@ -8,6 +8,7 @@ import { AvatarStackk } from "../../shared/Avatark";
 import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
 import { FiAlertTriangle } from "react-icons/fi";
 import { TaskEditModal } from "../../shared/modals/TaskEditModal";
+import { Icon } from "../../../components/ui/Icon";
 
 interface TaskSubCardProps {
   task: Task;
@@ -352,15 +353,11 @@ export function TaskSubCard({
               className="shrink-0 pr-2"
               aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
             >
-              <svg
-                className={`w-4 h-4 transition-transform duration-200 text-slate-500 ${expanded ? "rotate-90 text-indigo-600" : ""
-                  }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
+              <Icon
+                name="chevron-right"
+                size={16}
+                className={`transition-transform duration-200 text-slate-500 ${expanded ? "rotate-90 text-indigo-600" : ""}`}
+              />
             </button>
           </div>
         )}
@@ -407,14 +404,7 @@ export function TaskSubCard({
                       className="p-1 text-slate-400 hover:text-red-500"
                       title="Delete subtask"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
-                        />
-                      </svg>
+                      <Icon name="delete" size={14} />
                     </button>
                   )}
                 </div>
@@ -455,14 +445,7 @@ export function TaskSubCard({
                 }}
                 className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="add" size={16} />
               </button>
             ) : (
               <button
@@ -474,14 +457,7 @@ export function TaskSubCard({
                 }}
                 className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="add" size={16} />
               </button>
             ))}
 
@@ -492,9 +468,7 @@ export function TaskSubCard({
               onClick={() => onEditTask(task)}
               className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
+              <Icon name="edit" size={16} />
             </button>
           )}
 

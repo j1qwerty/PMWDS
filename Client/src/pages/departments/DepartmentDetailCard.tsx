@@ -6,6 +6,7 @@ import { useAuth } from "../../auth";
 import { api } from "../../api";
 import { DepartmentUsersModal } from "../NewProject/components/DepartmentUsersModal";
 import { UserFormModal } from "../NewProject/components/UserFormModal";
+import { Icon } from "../../components/ui/Icon";
 
 interface DepartmentDetailCardProps {
   department: Department;
@@ -75,7 +76,7 @@ export function DepartmentDetailCard({
       <div className="mb-6 flex items-start justify-between">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-            <span className="material-symbols-outlined text-3xl text-white">groups</span>
+            <Icon name="groups" size={24} className="text-white" />
           </div>
           <div>
             <h3 className="text-xl font-bold text-slate-900">{department.name}</h3>
@@ -94,13 +95,13 @@ export function DepartmentDetailCard({
         <div className="flex items-center gap-2 shrink-0">
           {canEdit && onEdit && (
             <GradientButton variant="ghost" onClick={onEdit}>
-              <span className="material-symbols-outlined text-base">edit</span>
+              <Icon name="edit" size={16} />
               Edit
             </GradientButton>
           )}
           {canDelete && onDelete && (
             <GradientButton variant="danger" onClick={onDelete}>
-              <span className="material-symbols-outlined text-base">delete</span>
+              <Icon name="delete" size={16} />
               Delete
             </GradientButton>
           )}
@@ -137,7 +138,7 @@ export function DepartmentDetailCard({
                   onClick={() => setShowUserModal(true)}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm">edit</span>
+                  <Icon name="edit" size={15} />
                   Users
                 </button>
                 <button
@@ -145,7 +146,7 @@ export function DepartmentDetailCard({
                   onClick={() => setShowCreateUserModal(true)}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm">person_add</span>
+                  <Icon name="person_add" size={15} />
                   New User
                 </button>
               </>
@@ -225,7 +226,7 @@ function DetailItem({ icon, label, value, avatar }: {
 }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-      <span className="material-symbols-outlined text-slate-400 text-lg">{icon}</span>
+      <Icon name={icon} size={18} className="text-slate-400" />
       <div className="min-w-0">
         <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
         <div className="text-sm font-medium text-slate-700 flex items-center gap-2 mt-0.5">

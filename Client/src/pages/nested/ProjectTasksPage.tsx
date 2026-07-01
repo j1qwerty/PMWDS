@@ -22,6 +22,7 @@ import { MilestoneDetailModal, MilestoneFormModal, ProjectDetailModal, ProjectFo
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
+import { Icon } from "../../components/ui/Icon";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -330,10 +331,7 @@ export function ProjectTasksPage() {
               }`}
             title="Board Settings"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <Icon name="settings" size={20} />
           </button>
 
           {showBoardSettings && (
@@ -394,12 +392,11 @@ export function ProjectTasksPage() {
                   className={`w-9 h-9 rounded-lg flex items-center justify-center ${milestone.isCritical ? "bg-red-100" : "bg-indigo-100"
                     }`}
                 >
-                  <span
-                    className={`material-symbols-outlined text-lg ${milestone.isCritical ? "text-red-500" : "text-indigo-600"
-                      }`}
-                  >
-                    {milestone.status === "Completed" ? "check_circle" : "flag"}
-                  </span>
+                  <Icon
+                    name={milestone.status === "Completed" ? "check_circle" : "hi-flag"}
+                    size={18}
+                    className={milestone.isCritical ? "text-red-500" : "text-indigo-600"}
+                  />
                 </div>
 
                 {/* Title and Meta */}
@@ -425,13 +422,13 @@ export function ProjectTasksPage() {
 
                     {milestone.dueDate && (
                       <span className="flex items-center gap-0.5">
-                        <span className="material-symbols-outlined ">calendar_today</span>
+                        <Icon name="calendar_today" size={18} />
                         Due {formatDate(milestone.dueDate)}
                       </span>
                     )}
 
                     <span className="flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[10px]">task_alt</span>
+                      <Icon name="task_alt" size={10} />
                       {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
                     </span>
 
@@ -469,7 +466,7 @@ export function ProjectTasksPage() {
                         title="Add task to this milestone"
                         aria-label="Add task to this milestone"
                       >
-                        <span className="material-symbols-outlined text-sm" aria-hidden="true">add</span>
+                        <Icon name="add" size={15} />
 
                       </button>
                     )}
@@ -481,10 +478,7 @@ export function ProjectTasksPage() {
                     className="p-1.5 rounded-lg text-slate-400 bg-blue-50 cursor-pointer hover:text-cyan-500 hover:bg-cyan-50 transition-colors"
                     onClick={(e) => { e.stopPropagation(); setViewMilestone(milestone); }}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <Icon name="view" size={16} />
                   </button>
 
                   {canManageTasks && (
@@ -494,9 +488,7 @@ export function ProjectTasksPage() {
                       className="p-1.5 rounded-lg text-slate-400 bg-amber-50 cursor-pointer hover:text-amber-500 hover:bg-amber-50 transition-colors"
                       onClick={(e) => { e.stopPropagation(); setMilestoneModal({ open: true, edit: milestone }); }}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
+                      <Icon name="edit" size={16} />
                     </button>
                   )}
                 </div>
@@ -510,9 +502,7 @@ export function ProjectTasksPage() {
           <section>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-lg text-slate-400">
-                  inventory_2
-                </span>
+                <Icon name="hi-cube" size={18} className="text-slate-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-bold text-slate-800">Unassigned</h3>
@@ -528,9 +518,7 @@ export function ProjectTasksPage() {
         {ws.tasks.length === 0 && (
           <GlassCard className="p-8">
             <div className="text-center text-slate-400">
-              <span className="material-symbols-outlined text-5xl mb-3 block">
-                task_alt
-              </span>
+              <Icon name="task_alt" size={32} className="mb-3 block" />
               <p className="text-sm font-medium text-slate-600">No tasks yet</p>
               <p className="text-xs mt-1">
                 {canManageTasks

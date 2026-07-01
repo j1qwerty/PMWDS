@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../../../api';
 import type { Task } from '../../../types';
+import { Icon } from "../../../components/ui/Icon";
 
 interface TimerProps {
   tasks: Task[];
@@ -234,9 +235,7 @@ const Timer: React.FC<TimerProps> = ({ tasks, token }) => {
               className="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition"
               title="View Records"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-              </svg>
+              <Icon name="hi-clipboard" size={16} />
             </button>
           </div>
         </div>
@@ -256,7 +255,7 @@ const Timer: React.FC<TimerProps> = ({ tasks, token }) => {
                     disabled={!selectedTaskId}
                     className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                        <Icon name="play" size={14} />
                   </button>
                 ) : (
                   <>
@@ -265,21 +264,21 @@ const Timer: React.FC<TimerProps> = ({ tasks, token }) => {
                         onClick={() => pauseTimer()}
                         className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition"
                       >
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                        <Icon name="pause" size={14} />
                       </button>
                     ) : (
                       <button
                         onClick={resumeTimer}
                         className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition"
                       >
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    <Icon name="play" size={14} />
                       </button>
                     )}
                     <button
                       onClick={stopTimer}
                       className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition"
                     >
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z" /></svg>
+                      <Icon name="stop" size={14} />
                     </button>
                   </>
                 )}
@@ -303,14 +302,7 @@ const Timer: React.FC<TimerProps> = ({ tasks, token }) => {
               <option key={task.id} value={task.id} className="text-slate-700 bg-white">{task.title}</option>
             ))}
           </select>
-          <svg
-            className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
-          </svg>
+          <Icon name="chevron-down" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none" />
         </div>
       </div>
 
@@ -326,18 +318,14 @@ const Timer: React.FC<TimerProps> = ({ tasks, token }) => {
               onClick={() => setShowRecords(false)}
               className="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+              <Icon name="close" size={14} />
             </button>
           </div>
           
           <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
             {statEntries.length === 0 ? (
               <div className="text-center py-6 text-white/50">
-                <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
+                <Icon name="clock" size={40} className="mx-auto mb-2 opacity-50" />
                 <p className="text-xs">No records yet</p>
               </div>
             ) : (

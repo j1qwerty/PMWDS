@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Icon } from "../../components/ui/Icon";
 
 interface CustomDropdownProps {
   value: string;
@@ -40,14 +41,7 @@ export function CustomDropdown({
         className="flex items-center justify-between gap-2 h-10 px-3 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors min-w-[160px] w-full"
       >
         <span className="truncate">{displayText}</span>
-        <svg
-          className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <Icon name="chevron-down" size={16} className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (

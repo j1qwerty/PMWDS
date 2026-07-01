@@ -1,5 +1,6 @@
 import type { User } from "../../types";
 import { Avatar, GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface ProfileListProps {
   users: User[];
@@ -20,9 +21,7 @@ export function ProfileList({ users, selectedUserId, onSelect, searchTerm, onSea
 
       {/* Search */}
       <div className="mb-3 relative">
-        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">
-          search
-        </span>
+        <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         <input
           type="text"
           placeholder="Search users..."
@@ -35,7 +34,7 @@ export function ProfileList({ users, selectedUserId, onSelect, searchTerm, onSea
             onClick={() => onSearchChange("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <Icon name="close" size={18} />
           </button>
         )}
       </div>
@@ -91,9 +90,7 @@ export function ProfileList({ users, selectedUserId, onSelect, searchTerm, onSea
 
         {users.length === 0 && (
           <div className="text-center py-12 text-slate-400">
-            <span className="material-symbols-outlined text-4xl mb-3 block">
-              {searchTerm ? "search_off" : "person_off"}
-            </span>
+            <Icon name={searchTerm ? "search_off" : "person_off"} size={28} className="mb-3 block" />
             <p className="text-sm font-medium">
               {searchTerm ? "No users found" : "No users available"}
             </p>

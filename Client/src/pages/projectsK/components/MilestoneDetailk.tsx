@@ -2,6 +2,7 @@ import type { Milestone, Project, Task, User } from "../../../types";
 import { formatDate } from "../../../ui";
 import { GlassCard, GradientButton, getStatusColor } from "../../shared";
 import { TaskCard } from "./TaskCard";
+import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneDetailProps {
   milestone: Milestone;
@@ -79,14 +80,14 @@ export function MilestoneDetailk({
                   className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                   title="Edit milestone"
                 >
-                  <span className="material-symbols-outlined text-base">edit</span>
+                  <Icon name="edit" size={16} />
                 </button>
                 <button
                   onClick={onDelete}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   title="Delete milestone"
                 >
-                  <span className="material-symbols-outlined text-base">delete</span>
+                  <Icon name="delete" size={16} />
                 </button>
               </div>
             )}
@@ -128,11 +129,11 @@ export function MilestoneDetailk({
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span className="material-symbols-outlined text-sm text-slate-400">calendar_today</span>
+                <Icon name="calendar_today" size={14} className="text-slate-400" />
                 <span>{milestone.dueDate ? formatDate(milestone.dueDate) : "No due date"}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span className="material-symbols-outlined text-sm text-slate-400">task_alt</span>
+                <Icon name="task_alt" size={14} className="text-slate-400" />
                 <span>{completedTasks}/{tasks.length} completed</span>
               </div>
               {hasTasks && (
@@ -195,7 +196,7 @@ export function MilestoneDetailk({
             </div>
             {isAdmin && (
               <GradientButton variant="ghost" onClick={onAddTask}>
-                <span className="material-symbols-outlined text-base">add</span>
+                <Icon name="add" size={16} />
                 Add Task
               </GradientButton>
             )}
@@ -229,7 +230,7 @@ export function MilestoneDetailk({
               <p className="text-xs text-slate-400 mb-4">Tasks for this milestone will appear here.</p>
               {isAdmin && (
                 <GradientButton variant="ghost" onClick={onAddTask}>
-                  <span className="material-symbols-outlined">add</span>
+                  <Icon name="add" />
                   Create First Task
                 </GradientButton>
               )}

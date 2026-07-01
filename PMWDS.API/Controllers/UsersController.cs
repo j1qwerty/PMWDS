@@ -361,6 +361,7 @@ public class UsersController : BaseApiController
     [HttpPost("{id}/profile-picture")]
     [Authorize(Policy = "Authenticated")]
     [RequestSizeLimit(2_000_000)]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadProfilePicture(
         string id,
         [FromForm] IFormFile file,

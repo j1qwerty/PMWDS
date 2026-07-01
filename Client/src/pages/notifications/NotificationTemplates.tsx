@@ -1,5 +1,6 @@
 import type { NotificationTemplateRecord } from "../../types";
 import { GlassCard, GradientButton } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface NotificationTemplatesProps {
   templates: NotificationTemplateRecord[];
@@ -19,7 +20,7 @@ export function NotificationTemplates({ templates, onEdit, onDelete, onCreate, c
         </div>
         {canWrite && (
           <GradientButton onClick={onCreate}>
-            <span className="material-symbols-outlined text-sm">add</span>
+            <Icon name="add" size={15} />
             Create Template
           </GradientButton>
         )}
@@ -29,7 +30,7 @@ export function NotificationTemplates({ templates, onEdit, onDelete, onCreate, c
         {templates.length === 0 ? (
           <div className="py-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl text-slate-400">description</span>
+              <Icon name="description" size={24} className="text-slate-400" />
             </div>
             <h4 className="text-sm font-semibold text-slate-700 mb-2">No templates</h4>
             <p className="text-xs text-slate-400">Create notification templates for consistent messaging</p>

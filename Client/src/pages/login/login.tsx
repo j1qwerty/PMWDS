@@ -3,6 +3,7 @@ import { z } from "zod";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { LoginSidebar } from "./LoginSidebar";
+import { Icon } from "../../components/ui/Icon";
 
 type LoginMode = "signin" | "signup" | "forgot" | "reset";
 
@@ -159,7 +160,7 @@ export function LoginPage() {
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl text-white">rocket_launch</span>
+                <Icon name="rocket_launch" size={22} className="text-white" />
               </div>
               <span className="text-2xl font-bold text-indigo-600">PMWDS</span>
             </div>
@@ -173,9 +174,7 @@ export function LoginPage() {
             {/* Error Banner */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3 animate-shake">
-                <span className="material-symbols-outlined text-red-500 text-xl shrink-0 mt-0.5">
-                  error
-                </span>
+                <Icon name="error" size={20} className="text-red-500 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-red-700 mb-0.5">
                     Authentication Failed
@@ -188,7 +187,7 @@ export function LoginPage() {
                   onClick={() => setError("")}
                   className="text-red-400 hover:text-red-600 transition-colors shrink-0"
                 >
-                  <span className="material-symbols-outlined text-lg">close</span>
+                  <Icon name="close" size={18} />
                 </button>
               </div>
             )}
@@ -196,9 +195,7 @@ export function LoginPage() {
             {/* Success Banner */}
             {success && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-                <span className="material-symbols-outlined text-emerald-500 text-xl shrink-0 mt-0.5">
-                  check_circle
-                </span>
+                <Icon name="check_circle" size={20} className="text-emerald-500 shrink-0 mt-0.5" />
                 <p className="text-sm text-emerald-700 leading-relaxed">
                   {success}
                 </p>
@@ -243,7 +240,7 @@ export function LoginPage() {
                     />
                     {fieldErrors.firstName && (
                       <p className="text-xs text-red-500 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">error</span>
+                        <Icon name="error" size={15} />
                         {fieldErrors.firstName}
                       </p>
                     )}
@@ -265,7 +262,7 @@ export function LoginPage() {
                     />
                     {fieldErrors.lastName && (
                       <p className="text-xs text-red-500 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">error</span>
+                        <Icon name="error" size={15} />
                         {fieldErrors.lastName}
                       </p>
                     )}
@@ -279,9 +276,7 @@ export function LoginPage() {
                   Email Address
                 </label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xl pointer-events-none">
-                    mail
-                  </span>
+                  <Icon name="mail" size={20} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
                     type="email"
                     value={email}
@@ -302,7 +297,7 @@ export function LoginPage() {
                 </div>
                 {fieldErrors.email && (
                   <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">error</span>
+                    <Icon name="error" size={15} />
                     {fieldErrors.email}
                   </p>
                 )}
@@ -326,7 +321,7 @@ export function LoginPage() {
                   />
                   {fieldErrors.resetToken && (
                     <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">error</span>
+                      <Icon name="error" size={15} />
                       {fieldErrors.resetToken}
                     </p>
                   )}
@@ -386,7 +381,7 @@ export function LoginPage() {
                   </div>
                   {fieldErrors.password && (
                     <p className="text-xs text-red-500 ml-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">error</span>
+                      <Icon name="error" size={15} />
                       {fieldErrors.password}
                     </p>
                   )}
@@ -424,7 +419,7 @@ export function LoginPage() {
                   }}
                   className="w-full h-11 border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-indigo-50/50 flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-lg">person_add</span>
+                  <Icon name="person_add" size={18} />
                   Create New Account
                 </button>
               )}

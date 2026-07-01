@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"; // Add this import
 import type { Project } from "../../../types";
 import { GlassCard } from "../../shared";
 import { ProjectCard } from "./ProjectCard";
+import { Icon } from "../../../components/ui/Icon";
 
 const PAGE_SIZE = 10;
 const PIN_THRESHOLD = 5;
@@ -145,9 +146,7 @@ export function ProjectSidebar({
         {filteredProjects.length === 0 && (
           <div className="text-center py-8">
             <div className="text-slate-400 mb-2">
-              <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
+              <Icon name="hi-inbox" size={32} className="mx-auto" />
             </div>
             <p className="text-xs text-slate-400">No projects match filters</p>
           </div>
@@ -183,9 +182,7 @@ export function ProjectSidebar({
     }}
     title="Back to previous position"
   >
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-    </svg>
+    <Icon name="arrow-up" size={16} />
     <style>{`
       @keyframes bounce-glow {
         0%, 100% { 

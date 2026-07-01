@@ -8,6 +8,7 @@ import {
   useToast,
   LoadingPage,
 } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
@@ -319,7 +320,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                       title={step.label}
                     >
                       {completed ? (
-                        <span className="material-symbols-outlined text-xl">check</span>
+                        <Icon name="check-circle" size={20} />
                       ) : (
                         <span className="material-symbols-outlined text-xl">{step.icon}</span>
                       )}
@@ -445,7 +446,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 onClick={handleBack}
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                <span className="material-symbols-outlined text-base">arrow_back</span>
+                <Icon name="arrow-left" size={16} />
                 Back
               </button>
             )}
@@ -477,7 +478,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    <Icon name="check-circle" size={16} />
                     Finish
                   </>
                 )}
@@ -491,7 +492,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                 className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
-                <span className="material-symbols-outlined text-base">arrow_forward</span>
+                <Icon name="arrow-right" size={16} />
               </button>
             ) : (
               <button
@@ -510,7 +511,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    <Icon name="check-circle" size={16} />
                     Finish
                   </>
                 )}

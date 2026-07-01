@@ -28,6 +28,7 @@ import {
   ProjectSidebar,
 } from "./components";
 import { CustomDropdown } from "../shared/customDropdown";
+import { Icon } from "../../components/ui/Icon";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -346,9 +347,7 @@ export function ProjectsKPage() {
                 className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200"
                 title="Delete project"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                <Icon name="delete" size={20} />
               </button>
             )}
           </div>
@@ -371,7 +370,7 @@ export function ProjectsKPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-24 text-slate-400 rounded-2xl border border-dashed border-slate-200 bg-white/50">
-              <span className="material-symbols-outlined text-5xl mb-3">folder_open</span>
+              <Icon name="folder_open" size={48} className="mb-3" />
               <p className="text-sm font-medium">Select or create a project</p>
             </div>
           )}

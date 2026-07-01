@@ -2,6 +2,7 @@ import { useCallback, type JSX } from 'react';
 import { getStatusColor } from '../colors';
 import type { Task, User } from '../../../types';
 import { TaskSubtaskCard } from '../../projectsK/components/TaskSubtaskCard';
+import { Icon } from "../../../components/ui/Icon";
 
 interface TaskBoardProps {
     tasks?: Task[];
@@ -25,46 +26,22 @@ export interface BoardConfig {
 
 export const allBoards: BoardConfig[] = [
     {
-        status: 'NotStarted', title: 'Not Started', icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-        )
+        status: 'NotStarted', title: 'Not Started', icon: <Icon name="add" size={16} />
     },
     {
-        status: 'InProgress', title: 'In Progress', icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        )
+        status: 'InProgress', title: 'In Progress', icon: <Icon name="clock" size={16} />
     },
     {
-        status: 'Completed', title: 'Completed', icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            </svg>
-        )
+        status: 'Completed', title: 'Completed', icon: <Icon name="check-circle" size={16} />
     },
     {
-        status: 'Delayed', title: 'Delayed', icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        )
+        status: 'Delayed', title: 'Delayed', icon: <Icon name="alert-circle" size={16} />
     },
     {
-        status: 'OnHold', title: 'On Hold', icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        )
+        status: 'OnHold', title: 'On Hold', icon: <Icon name="pause" size={16} />
     },
     {
-        status: 'Cancelled', title: 'Cancelled', icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        )
+        status: 'Cancelled', title: 'Cancelled', icon: <Icon name="close" size={16} />
     },
 ].map(board => {
     const colors = getStatusColor(board.status);
@@ -148,9 +125,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                                 {boardTasks.length === 0 && (
                                     <div className="text-center py-8">
                                         <div className="text-slate-400 mb-2">
-                                            <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                            </svg>
+                                            <Icon name="hi-inbox" size={32} className="mx-auto" />
                                         </div>
                                         <p className="text-xs text-slate-400">No tasks</p>
                                     </div>

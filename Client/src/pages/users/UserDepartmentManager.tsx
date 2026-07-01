@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { GlassCard, GradientButton } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface UserDepartmentManagerProps {
   users: User[];
@@ -48,7 +49,7 @@ export function UserDepartmentManager({
   return (
     <GlassCard className="p-6">
       <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-indigo-500">groups</span>
+        <Icon name="groups" size={18} className="text-indigo-500" />
         Department Assignments
       </h3>
 

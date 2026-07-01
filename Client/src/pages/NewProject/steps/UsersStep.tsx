@@ -6,6 +6,7 @@ import { api } from "../../../api";
 import { DepartmentUsersModal } from "../components/DepartmentUsersModal";
 import { UserFormModal } from "../components/UserFormModal";
 import { GlassCard } from "../../shared";
+import { Icon } from "../../../components/ui/Icon";
 
 interface UsersStepProps {
   selectedDepartmentIds: string[];
@@ -50,7 +51,7 @@ export function UsersStep({ selectedDepartmentIds, departments, users, organizat
     return (
       <GlassCard className="p-10 text-center">
         <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl text-indigo-400">group</span>
+          <Icon name="group" size={24} className="text-indigo-400" />
         </div>
         <p className="text-sm font-semibold text-slate-600">Select departments first</p>
         <p className="text-xs text-slate-400 mt-1">Go back to the Departments step to select departments.</p>
@@ -67,7 +68,7 @@ export function UsersStep({ selectedDepartmentIds, departments, users, organizat
           onClick={() => setShowCreateUser(true)}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
         >
-          <span className="material-symbols-outlined text-base">person_add</span>
+          <Icon name="person_add" size={16} />
           New User
         </button>
       </div>
@@ -79,7 +80,7 @@ export function UsersStep({ selectedDepartmentIds, departments, users, organizat
           <div key={dept.id} className="rounded-xl border border-slate-200 bg-white/80 overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">
               <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-base text-indigo-600">groups</span>
+                <Icon name="groups" size={16} className="text-indigo-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-sm text-slate-800">{dept.name}</span>
@@ -91,7 +92,7 @@ export function UsersStep({ selectedDepartmentIds, departments, users, organizat
                 onClick={() => setEditDeptId(dept.id)}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
               >
-                <span className="material-symbols-outlined text-sm">edit</span>
+                <Icon name="edit" size={15} />
                 Users
               </button>
             </div>

@@ -1,5 +1,6 @@
 import type { Project } from "../../types";
 import { GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface ProjectListProps {
   projects: Project[];
@@ -48,7 +49,7 @@ export function ProjectList({ projects, selectedProjectId, onSelectProject }: Pr
 
         {projects.length === 0 && (
           <div className="text-center py-8 text-slate-400">
-            <span className="material-symbols-outlined text-2xl mb-2 block">rocket_launch</span>
+            <Icon name="rocket_launch" size={22} className="mb-2 block" />
             <p className="text-xs">No projects loaded</p>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Icon } from "../../components/ui/Icon";
 import { Link, useParams } from "react-router-dom";
 import { GlassCard, useNavHeader } from "../shared";
 import { useAppData } from "../../appData";
@@ -18,7 +19,7 @@ export function ProjectNotFound() {
     <div className="flex items-center justify-center py-16">
       <GlassCard className="p-8  w-full text-center">
         <div className="w-16 h-16 rounded-2xl bg-slate-100 mx-auto mb-4 flex items-center justify-center">
-          <span className="material-symbols-outlined text-4xl text-slate-400">error</span>
+          <Icon name="error" size={36} className="text-slate-400" />
         </div>
         <h2 className="text-lg font-bold text-slate-800 mb-2">Project not found</h2>
         <p className="text-sm text-slate-500 mb-4">

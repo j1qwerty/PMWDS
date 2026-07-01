@@ -1,4 +1,5 @@
 import { GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface AIChatPanelProps {
   chatPrompt: string;
@@ -11,7 +12,7 @@ export function AIChatPanel({ chatPrompt, setChatPrompt, chatResult, onChat }: A
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-indigo-500 text-xl">auto_awesome</span>
+        <Icon name="auto_awesome" size={20} className="text-indigo-500" />
         <h3 className="text-sm font-bold text-slate-800">AI Assistant</h3>
       </div>
 

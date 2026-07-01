@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GlassCard } from "../../shared";
+import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneEntry {
   id: string;
@@ -100,7 +101,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
                   className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                   title="Remove milestone"
                 >
-                  <span className="material-symbols-outlined text-base">delete</span>
+                  <Icon name="delete" size={16} />
                 </button>
               </div>
             </div>
@@ -152,7 +153,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
               />
               {form.dueDate && projectEndDate && form.dueDate > projectEndDate && (
                 <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                  <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
                   <span>Due date exceeds project end date ({new Date(projectEndDate).toLocaleDateString()})</span>
                 </div>
               )}
@@ -193,7 +194,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
           onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all w-full justify-center"
         >
-          <span className="material-symbols-outlined text-base">add</span>
+          <Icon name="add" size={16} />
           Add Milestone
         </button>
       )}

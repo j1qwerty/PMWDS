@@ -111,3 +111,7 @@ dist/
 **/dist/
 status
 status\api-build
+
+# Docker
+.env
+docker-compose.yml

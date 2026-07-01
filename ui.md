@@ -17,7 +17,7 @@
 
 ### feature
 - [x] milestone dependencies 
-- [ ] director / dept head project creator - whoever creates project others at same role but different departments can not edit it, can only manage tasks and subtasks etc, can uplaod documents
+- [.] director / dept head project creator - whoever creates project others at same role but different departments can not edit it, can only manage tasks and subtasks etc, can uplaod documents
 - [ ] redis cache and indexing for database
 - [ ] if mssql is not working , setup postgres ? or mysql
 - [ ] Implement paginated results for documents and other sections (audit all sections, create list of sections/components for update)
@@ -27,7 +27,7 @@
 
 ### Role & Access Management
 - [x] Role management for director with proper UI (hide superadmin features)
-- [ ] Hide organization-related info from director and other users (all elements)
+- [ ] Hide organization-related info from director and other tasusers (all elements)
 - [ ] Hide manual activity creation for director
 
 ### Modals & Overlays

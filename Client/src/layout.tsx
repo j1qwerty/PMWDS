@@ -27,6 +27,7 @@ import {
   HiOutlineMenu,
   HiOutlineX,
 } from "react-icons/hi";
+import { Icon } from "./components/ui/Icon";
 
 import { VscSymbolProperty } from "react-icons/vsc";
 
@@ -596,19 +597,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                   />
                   {/* Logout icon overlay on hover */}
                   <div className="absolute inset-0 flex items-center justify-center bg-error/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <svg
-                      className="h-[clamp(10px,1.5vw,14px)] w-[clamp(10px,1.5vw,14px)] text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                      />
-                    </svg>
+                    <Icon name="logout" size={14} className="text-white" />
                   </div>
                 </div>
 
@@ -624,19 +613,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 )}
 
                 {!sidebarCompact && (
-                  <svg
-                    className="h-[clamp(14px,2vw,16px)] w-[clamp(14px,2vw,16px)] shrink-0 text-outline group-hover:text-error ml-auto transition-colors"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    />
-                  </svg>
+                  <Icon name="logout" size={16} className="shrink-0 text-outline group-hover:text-error ml-auto transition-colors" />
                 )}
               </div>
             </button>

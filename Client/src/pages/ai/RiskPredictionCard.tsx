@@ -1,5 +1,6 @@
 import type { ProjectHealth } from "../../types";
 import { GlassCard } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface RiskPredictionCardProps {
   health: ProjectHealth | null;
@@ -31,7 +32,7 @@ export function RiskPredictionCard({ health }: RiskPredictionCardProps) {
     <GlassCard className="p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-red-500 text-xl">speed</span>
+          <Icon name="speed" size={20} className="text-red-500" />
           <h3 className="text-sm font-bold text-slate-800">Risk Prediction</h3>
         </div>
         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.4)]"></span>

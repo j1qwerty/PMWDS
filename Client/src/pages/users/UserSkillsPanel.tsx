@@ -3,6 +3,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { User } from "../../types";
 import { Avatar, GlassCard, GradientButton, PERMISSION_GROUPS, usePermission } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface UserSkillsPanelProps {
   users: User[];
@@ -58,7 +59,7 @@ export function UserSkillsPanel({ users, onMessage, onUpdate }: UserSkillsPanelP
   return (
     <GlassCard className="p-4 md:p-6">
       <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-        <span className="material-symbols-outlined text-indigo-500">settings</span>
+        <Icon name="settings" size={18} className="text-indigo-500" />
         User Management
       </h3>
 
@@ -80,9 +81,7 @@ export function UserSkillsPanel({ users, onMessage, onUpdate }: UserSkillsPanelP
                 </option>
               ))}
             </select>
-            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-lg">
-              expand_more
-            </span>
+            <Icon name="expand_more" size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
@@ -132,9 +131,7 @@ export function UserSkillsPanel({ users, onMessage, onUpdate }: UserSkillsPanelP
               <option>Deep Work</option>
               <option>Offline</option>
             </select>
-            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-lg">
-              expand_more
-            </span>
+            <Icon name="expand_more" size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
 

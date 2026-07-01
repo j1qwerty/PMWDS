@@ -1,4 +1,5 @@
 import type { OrganizationRecord } from "../../types";
+import { Icon } from "../../components/ui/Icon";
 
 interface OrganizationListProps {
   organizations: OrganizationRecord[];
@@ -87,14 +88,7 @@ export function OrganizationList({ organizations, selectedOrgId, onSelect, searc
             shrink-0 transition-all duration-300
             ${isSelected ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'}
           `}>
-            <svg 
-              className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`}
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <Icon name="chevron-right" size={16} className={isSelected ? 'text-blue-500' : 'text-slate-400'} />
           </div>
         </div>
       </button>
