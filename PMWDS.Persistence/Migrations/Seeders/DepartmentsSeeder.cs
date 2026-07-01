@@ -11,11 +11,11 @@ internal static class DepartmentsSeeder
         var orgs = await context.Organizations.ToDictionaryAsync(o => o.Name, ct);
         var specs = new[]
         {
-            new SeedConstants.DepartmentSpec("PMWDS Global", "Engineering", "ENG", "Product engineering and platform delivery", 38),
-            new SeedConstants.DepartmentSpec("PMWDS Global", "Program Management", "PMO", "Portfolio governance and execution health", 14),
-            new SeedConstants.DepartmentSpec("Northwind Delivery Labs", "Client Engineering", "CENG", "Client-specific implementation and integration squads", 24),
-            new SeedConstants.DepartmentSpec("Northwind Delivery Labs", "Operations", "OPS", "Service operations and support", 18),
-            new SeedConstants.DepartmentSpec("Contoso Transformation Office", "Business Strategy", "BSTR", "Transformation strategy, organizational design, and change management", 12)
+            new SeedConstants.DepartmentSpec("org1", "Engineering", "ENG", "Product engineering and platform delivery", 38),
+            new SeedConstants.DepartmentSpec("org1", "Program Management", "PMO", "Portfolio governance and execution health", 14),
+            new SeedConstants.DepartmentSpec("org1", "Operations", "OPS", "Service operations and support", 18),
+            new SeedConstants.DepartmentSpec("org1", "Business Strategy", "BSTR", "Transformation strategy, organizational design, and change management", 12),
+            new SeedConstants.DepartmentSpec("org1", "Client Services", "CSV", "Client-specific implementation and support", 24)
         };
 
         foreach (var spec in specs)
@@ -39,14 +39,21 @@ internal static class DepartmentsSeeder
 
     private static async Task AssignDepartmentHeadsAsync(ApplicationDbContext context, CancellationToken ct)
     {
-        var head = await context.Users.FirstOrDefaultAsync(u => u.Email == "head@pmwds.com", ct);
-        var lead = await context.Users.FirstOrDefaultAsync(u => u.Email == "vikram.singh@northwind-labs.example", ct);
+        var users = await context.Users.ToListAsync(ct);
         var departments = await context.Departments.ToListAsync(ct);
+
+        var headMap = new Dictionary<string, string>
+        {
+            ["ENG"] = users.FirstOrDefault(u => u.Email == "head.eng@org1.com")?.Id.ToString() ?? "",
+            ["PMO"] = users.FirstOrDefault(u => u.Email == "head.pmo@org1.com")?.Id.ToString() ?? "",
+            ["OPS"] = users.FirstOrDefault(u => u.Email == "head.ops@org1.com")?.Id.ToString() ?? "",
+            ["BSTR"] = users.FirstOrDefault(u => u.Email == "head.bstr@org1.com")?.Id.ToString() ?? "",
+            ["CSV"] = users.FirstOrDefault(u => u.Email == "head.csv@org1.com")?.Id.ToString() ?? "",
+        };
 
         foreach (var department in departments)
         {
-            var userId = department.Code == "OPS" ? lead?.Id.ToString() : head?.Id.ToString();
-            if (!string.IsNullOrWhiteSpace(userId))
+            if (headMap.TryGetValue(department.Code, out var userId) && !string.IsNullOrWhiteSpace(userId))
                 department.AssignHead(userId);
         }
 

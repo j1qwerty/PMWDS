@@ -123,9 +123,29 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddAutoMapper(cfg =>
     cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    try
+    {
+        using var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString);
+        if (redis.IsConnected)
+        {
+            Console.WriteLine($"[PMWDS] Redis connected ({redisConnectionString}).");
+        }
+        else
+        {
+            Console.WriteLine($"[PMWDS] WARNING: Redis at {redisConnectionString} is not reachable. Caching will fall back to in-memory.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PMWDS] WARNING: Redis connection failed ({redisConnectionString}): {ex.Message}. Caching will fall back to in-memory.");
+    }
+}
 builder.Services.AddStackExchangeRedisCache(opt =>
 {
-    opt.Configuration = builder.Configuration.GetConnectionString("Redis");
+    opt.Configuration = redisConnectionString;
     opt.InstanceName = "PMWDS:";
 });
 

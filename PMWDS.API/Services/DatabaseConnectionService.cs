@@ -55,12 +55,18 @@ public static class DatabaseConnectionService
                 default:
                     throw new InvalidOperationException($"Unsupported database provider {selected.Provider}.");
             }
+            opt.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         Console.WriteLine($"[PMWDS] Using {selected.ProviderName} database ({selected.DisplayDataSource}).");
         foreach (var attempt in attempts)
         {
             Console.WriteLine($"[PMWDS] Database selection: {attempt}");
+        }
+
+        if (selected.Provider == ActiveDatabaseProvider.SqlServer)
+        {
+            EnsureDatabasesExist(configuration, sqlServerConnection);
         }
 
         return selected;
@@ -87,7 +93,8 @@ public static class DatabaseConnectionService
             return;
         }
 
-        await db.Database.MigrateAsync(ct);
+        Console.WriteLine("[PMWDS] Ensuring database schema...");
+        await db.Database.EnsureCreatedAsync(ct);
     }
 
     private static DatabaseConnectionStatus SelectProvider(
@@ -145,11 +152,71 @@ public static class DatabaseConnectionService
             attempts.ToArray());
 
     private static bool CanConnectToSqlServer(string? connectionString)
-        => CanConnect(connectionString, cs =>
+    {
+        // Use 'master' for the connectivity probe — the target database may not exist yet
+        var probeCs = connectionString;
+        if (!string.IsNullOrWhiteSpace(probeCs))
         {
-            var builder = new SqlConnectionStringBuilder(cs) { ConnectTimeout = 2 };
-            return new SqlConnection(builder.ConnectionString);
-        });
+            var builder = new SqlConnectionStringBuilder(probeCs) { InitialCatalog = "master", ConnectTimeout = 3 };
+            probeCs = builder.ConnectionString;
+        }
+
+        var maxRetries = 5;
+        for (var i = 0; i < maxRetries; i++)
+        {
+            if (CanConnect(probeCs, cs =>
+            {
+                var b = new SqlConnectionStringBuilder(cs) { ConnectTimeout = 3 };
+                return new SqlConnection(b.ConnectionString);
+            }))
+            {
+                return true;
+            }
+            if (i < maxRetries - 1)
+            {
+                Console.WriteLine($"[PMWDS] SQL Server not ready yet, retrying ({i + 1}/{maxRetries})...");
+                Thread.Sleep(3000);
+            }
+        }
+        return false;
+    }
+
+    private static void EnsureDatabasesExist(IConfiguration configuration, string? sqlServerConnection)
+    {
+        if (string.IsNullOrWhiteSpace(sqlServerConnection))
+            return;
+
+        var databases = new[]
+        {
+            new SqlConnectionStringBuilder(sqlServerConnection).InitialCatalog,
+            configuration.GetConnectionString("Hangfire") is { } hg
+                ? new SqlConnectionStringBuilder(hg).InitialCatalog
+                : null
+        }.Where(db => !string.IsNullOrWhiteSpace(db)).Distinct();
+
+        foreach (var dbName in databases)
+        {
+            try
+            {
+                var masterBuilder = new SqlConnectionStringBuilder(sqlServerConnection)
+                {
+                    InitialCatalog = "master",
+                    ConnectTimeout = 5
+                };
+                using var conn = new SqlConnection(masterBuilder.ConnectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = @db) CREATE DATABASE [{dbName}]";
+                cmd.Parameters.AddWithValue("@db", dbName);
+                cmd.ExecuteNonQuery();
+                Console.WriteLine($"[PMWDS] Database '{dbName}' ensured.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PMWDS] WARNING: Could not ensure database '{dbName}' exists: {ex.Message}");
+            }
+        }
+    }
 
     private static bool CanConnectToMySql(string? connectionString)
         => CanConnect(connectionString, cs =>

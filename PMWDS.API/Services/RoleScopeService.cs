@@ -61,6 +61,18 @@ public class RoleScopeService
             return query;
         }
 
+        if (IsDepartmentHead && !IsDirector)
+        {
+            var departmentIds = await GetDepartmentIdsAsync(ct);
+            return query.Where(project =>
+                departmentIds.Contains(project.DepartmentId) ||
+                project.ProjectDepartments.Any(pd =>
+                    departmentIds.Contains(pd.DepartmentId)) ||
+                project.Milestones.Any(m =>
+                    m.DepartmentId.HasValue &&
+                    departmentIds.Contains(m.DepartmentId.Value)));
+        }
+
         var organizationIds = await GetOrganizationIdsAsync(ct);
         return query.Where(project =>
             (project.Department != null &&
@@ -126,6 +138,15 @@ public class RoleScopeService
         if (IsSuperAdmin)
         {
             return true;
+        }
+
+        if (IsDepartmentHead && CurrentUserId is not null)
+        {
+            var deptHeadUserId = await _db.Departments
+                .Where(d => d.Id == departmentId)
+                .Select(d => d.DepartmentHeadUserId)
+                .FirstOrDefaultAsync(ct);
+            if (deptHeadUserId == CurrentUserId.ToString()) return true;
         }
 
         var department = await _db.Departments

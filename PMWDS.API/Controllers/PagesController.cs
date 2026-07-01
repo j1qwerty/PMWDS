@@ -121,7 +121,13 @@ public class PagesController : BaseApiController
         if (_scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            milestoneQuery = milestoneQuery.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
+            var primaryDeptProjectIds = await projectsQuery
+                .Where(p => departmentIds.Contains(p.DepartmentId))
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+            milestoneQuery = milestoneQuery.Where(m =>
+                primaryDeptProjectIds.Contains(m.ProjectId) ||
+                (m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value)));
             visibleMilestoneIds = await milestoneQuery.Select(m => m.Id).ToListAsync(ct);
         }
 

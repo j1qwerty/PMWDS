@@ -40,7 +40,7 @@ internal static class ProjectsSeeder
         return new[]
         {
             new SeedConstants.ProjectSpec("AI Delivery Control Tower", "Operational cockpit for project health and risk signals", "Platform", ProjectPriority.Critical, Dept("ENG"), Manager(0), today.AddDays(-20), today.AddDays(80), 185000, 72000, "PMWDS Internal", 44, 82, 0.31, 0.22, "Health is stable with capacity watchpoints."),
-            new SeedConstants.ProjectSpec("Northwind Client Portal", "Self-service portal for delivery stakeholders", "Client", ProjectPriority.High, Dept("CENG"), Manager(1), today.AddDays(-35), today.AddDays(65), 140000, 61000, "Northwind", 52, 76, 0.38, 0.29, "Milestone dependencies need active follow-up."),
+            new SeedConstants.ProjectSpec("Northwind Client Portal", "Self-service portal for delivery stakeholders", "Client", ProjectPriority.High, Dept("CSV"), Manager(1), today.AddDays(-35), today.AddDays(65), 140000, 61000, "Northwind", 52, 76, 0.38, 0.29, "Milestone dependencies need active follow-up."),
             new SeedConstants.ProjectSpec("Contoso Transformation Hub", "Knowledge and reporting workspace for transformation office", "Transformation", ProjectPriority.Medium, Dept("BSTR"), Manager(2), today.AddDays(-10), today.AddDays(100), 98000, 22000, "Contoso", 25, 88, 0.18, 0.14, "Early delivery is on track."),
             new SeedConstants.ProjectSpec("Service Operations Automation", "Automated incident intake and escalation workflow", "Operations", ProjectPriority.High, Dept("OPS"), Manager(1), today.AddDays(-28), today.AddDays(50), 76000, 41000, "Northwind", 58, 71, 0.46, 0.35, "Reviewer load is the main risk.")
         };

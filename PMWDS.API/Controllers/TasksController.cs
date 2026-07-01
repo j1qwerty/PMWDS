@@ -51,10 +51,9 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        var tasks = (await _uow.Tasks.GetByProjectAsync(projectId, ct))
-            .OrderByDescending(task => task.CreatedDate)
-            .ToList();
-        if (_scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin)
+        var tasksQuery = _db.Tasks.Where(task => task.ProjectId == projectId);
+
+        if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
             var visibleMilestoneIds = await _db.Milestones
@@ -64,10 +63,13 @@ public class TasksController : BaseApiController
                     departmentIds.Contains(milestone.DepartmentId.Value))
                 .Select(milestone => milestone.Id)
                 .ToListAsync(ct);
-            tasks = tasks
-                .Where(task => task.MilestoneId.HasValue && visibleMilestoneIds.Contains(task.MilestoneId.Value))
-                .ToList();
+            tasksQuery = tasksQuery.Where(task =>
+                task.MilestoneId.HasValue && visibleMilestoneIds.Contains(task.MilestoneId.Value));
         }
+
+        var tasks = await tasksQuery
+            .OrderByDescending(task => task.CreatedDate)
+            .ToListAsync(ct);
         var items = tasks
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
@@ -188,7 +190,13 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
+            task.AssignedToUserId != (_scope.CurrentUserId?.ToString()))
         {
             return Forbid();
         }
@@ -449,7 +457,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        if (!await CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -485,7 +493,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        if (!await CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -734,7 +742,13 @@ public class TasksController : BaseApiController
         if (task == null || task.ParentTaskId == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
+        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
+            task.AssignedToUserId != (_scope.CurrentUserId?.ToString()))
         {
             return Forbid();
         }
@@ -788,7 +802,7 @@ public class TasksController : BaseApiController
         if (task == null || task.ParentTaskId == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
         }

@@ -77,6 +77,12 @@ export function ProjectInfoCard({
               {project.priority}
             </span>
             <span className="text-[11px] text-slate-500">₹{project.plannedBudget.toLocaleString("en-IN")}</span>
+            {project.departmentName && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                <Icon name="hi-office-building" size={14} />
+                {project.departmentName}
+              </span>
+            )}
             {project.projectManagerId && (
               <div className="flex items-center gap-1.5" title="Project Manager">
                 <Avatark person={manager} name={project.projectManagerName} size="xs" />

@@ -21,6 +21,6 @@ public class ProjectDepartmentConfiguration : IEntityTypeConfiguration<ProjectDe
         b.HasOne(e => e.Department)
             .WithMany(d => d.ProjectDepartments)
             .HasForeignKey(e => e.DepartmentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

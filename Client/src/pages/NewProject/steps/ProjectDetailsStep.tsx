@@ -1,5 +1,7 @@
 import { priorities } from "../../constants";
 
+import type { Department } from "../../../types";
+
 interface ProjectDetailsStepProps {
   name: string;
   description: string;
@@ -8,9 +10,12 @@ interface ProjectDetailsStepProps {
   startDate: string;
   endDate: string;
   onChange: (field: string, value: string | number) => void;
+  primaryDepartmentId?: string;
+  departments?: Department[];
+  onPrimaryDepartmentChange?: (id: string) => void;
 }
 
-export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange }: ProjectDetailsStepProps) {
+export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange }: ProjectDetailsStepProps) {
   return (
     <div className="space-y-5">
       <div>
@@ -25,6 +30,24 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
           required
         />
       </div>
+
+        {departments && onPrimaryDepartmentChange && (
+        <div>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Primary Department <span className="text-slate-300 font-normal">(creator)</span>
+          </label>
+          <select
+            value={primaryDepartmentId ?? ""}
+            onChange={(e) => onPrimaryDepartmentChange(e.target.value)}
+            className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+          >
+            <option value="">-- None --</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
@@ -87,6 +110,8 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
           />
         </div>
       </div>
+
+    
     </div>
   );
 }

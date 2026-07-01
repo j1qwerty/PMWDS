@@ -30,17 +30,36 @@ const authSchemas = {
   }),
 };
 
-const demoAccounts = [
-  { email: "admin@pmwds.com", label: "Admin", icon: "shield_person", color: "bg-red-500" },
-  { email: "director@pmwds.com", label: "Director", icon: "account_balance", color: "bg-purple-500" },
-  { email: "manager@pmwds.com", label: "Manager", icon: "supervisor_account", color: "bg-blue-500" },
-  { email: "head@pmwds.com", label: "Head", icon: "engineering", color: "bg-teal-500" },
-  { email: "member@pmwds.com", label: "Member", icon: "person", color: "bg-green-500" },
-  { email: "viewer@pmwds.com", label: "Viewer", icon: "visibility", color: "bg-orange-500" },
+const demoAccountGroups = [
+  {
+    label: "Executive",
+    accounts: [
+      { email: "admin@org1.com", label: "Admin", icon: "shield_person", color: "bg-red-500" },
+      { email: "director@org1.com", label: "Director", icon: "account_balance", color: "bg-purple-500" },
+      { email: "manager@org1.com", label: "Manager", icon: "supervisor_account", color: "bg-blue-500" },
+    ]
+  },
+  {
+    label: "Department Heads",
+    accounts: [
+      { email: "head.eng@org1.com", label: "Engineering", icon: "code", color: "bg-teal-500" },
+      { email: "head.pmo@org1.com", label: "Program Mgmt", icon: "account_tree", color: "bg-cyan-500" },
+      { email: "head.ops@org1.com", label: "Operations", icon: "settings", color: "bg-amber-500" },
+      { email: "head.bstr@org1.com", label: "Strategy", icon: "insights", color: "bg-rose-500" },
+      { email: "head.csv@org1.com", label: "Client Services", icon: "support_agent", color: "bg-violet-500" },
+    ]
+  },
+  {
+    label: "Staff",
+    accounts: [
+      { email: "member@org1.com", label: "Team Member", icon: "person", color: "bg-green-500" },
+      { email: "viewer@org1.com", label: "Viewer", icon: "visibility", color: "bg-orange-500" },
+    ]
+  }
 ];
 
 export function LoginPage() {
-  const [email, setEmail] = useState("admin@pmwds.com");
+  const [email, setEmail] = useState("admin@org1.com");
   const [password, setPassword] = useState("Pmwds@123");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -428,43 +447,53 @@ export function LoginPage() {
 
           {/* Demo Accounts Section */}
           {mode === "signin" && (
-            <div className="mt-6">
+            <div className="mt-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Demo Accounts
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm">science</span>
+                  Dev Quick Login
                 </span>
                 <div className="flex-1 h-px bg-slate-200" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {demoAccounts.map((account) => (
-                  <button
-                    key={account.email}
-                    onClick={() => handleDemoLogin(account.email)}
-                    disabled={loading}
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <div className={`w-8 h-8 rounded-lg ${account.color} flex items-center justify-center shrink-0`}>
-                      <span className="material-symbols-outlined text-white text-sm">
-                        {account.icon}
-                      </span>
+              <div className="space-y-2.5">
+                {demoAccountGroups.map((group) => (
+                  <div key={group.label}>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">
+                      {group.label}
                     </div>
-                    <div className="text-left">
-                      <div className="text-xs font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors">
-                        {account.label}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {account.email}
-                      </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {group.accounts.map((account) => (
+                        <button
+                          key={account.email}
+                          onClick={() => handleDemoLogin(account.email)}
+                          disabled={loading}
+                          className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <div className={`w-7 h-7 rounded-md ${account.color} flex items-center justify-center shrink-0`}>
+                            <span className="material-symbols-outlined text-white text-[13px]">
+                              {account.icon}
+                            </span>
+                          </div>
+                          <div className="text-left min-w-0">
+                            <div className="text-[11px] font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors truncate">
+                              {account.label}
+                            </div>
+                            <div className="text-[9px] text-slate-400 truncate">
+                              {account.email}
+                            </div>
+                          </div>
+                          <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-500 text-[14px] ml-auto shrink-0 transition-colors opacity-0 group-hover:opacity-100">
+                            arrow_forward
+                          </span>
+                        </button>
+                      ))}
                     </div>
-                    <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-500 text-sm ml-auto shrink-0 transition-colors">
-                      arrow_forward
-                    </span>
-                  </button>
+                  </div>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 text-center mt-3">
-                Password for all accounts: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">Pmwds@123</code>
+              <p className="text-[9px] text-slate-400 text-center mt-2.5">
+                Password: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-mono text-[9px]">Pmwds@123</code>
               </p>
             </div>
           )}

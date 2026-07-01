@@ -144,6 +144,16 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        if (!_scope.IsSuperAdmin && !_scope.IsDirector && _scope.IsDepartmentHead && _currentUser.UserId is not null)
+        {
+            var userHeadedDepts = await _db.Departments
+                .Where(d => d.DepartmentHeadUserId == _currentUser.UserId)
+                .Select(d => d.Id)
+                .ToListAsync(ct);
+            if (userHeadedDepts.Count > 0 && !departmentIds.Any(id => userHeadedDepts.Contains(id)))
+                return Forbid();
+        }
+
         if (!string.IsNullOrEmpty(dto.ProjectManagerId) &&
             !await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
         {

@@ -3,7 +3,8 @@
 
 
 ## 🚨 Immediate Fixes
-- [ ] directors for each departments ( if needed lets rename director to departmnetadmin) 
+- [ ] for mssql EF does not support multiple cascade to same table. E:\saturday\PMWDS.S\status\issue-sql-cascade-paths.md
+- [.] api returnig all data for tasks and milestone even for other roles in the response and then frontend is managing whether to show or not
 - [x] Fix deptFormModal - select none to unassign head functionality
 - [x] Role management for director - manage specific permissions and roles
 - [x] frontend : multiple task creation , idempotency for all modals creation and edit

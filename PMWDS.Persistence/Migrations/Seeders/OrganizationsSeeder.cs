@@ -10,9 +10,7 @@ internal static class OrganizationsSeeder
     {
         var organizations = new[]
         {
-            Organization.Create("PMWDS Global", "PMWDS-001", "12 Delivery Avenue, Bengaluru", "contact@pmwds.com", "+91-080-5555-0101", DateTime.UtcNow.Date.AddYears(-8)),
-            Organization.Create("Northwind Delivery Labs", "NDL-2026", "400 Lakeview Drive, Austin", "ops@northwind-labs.example", "+1-512-555-0198", DateTime.UtcNow.Date.AddYears(-5)),
-            Organization.Create("Contoso Transformation Office", "CTO-7781", "9 Market Street, London", "hello@contoso-transform.example", "+44-20-5555-0142", DateTime.UtcNow.Date.AddYears(-3))
+            Organization.Create("org1", "ORG-001", "Main Office", "admin@org1.com", "+1-555-0100", DateTime.UtcNow.Date.AddYears(-3)),
         };
 
         foreach (var organization in organizations)

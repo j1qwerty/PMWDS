@@ -43,7 +43,7 @@ public class ProjectConfiguration
         b.HasMany(e => e.Milestones)
         .WithOne(m => m.Project)
         .HasForeignKey(m => m.ProjectId)
-        .OnDelete(DeleteBehavior.Cascade);
+        .OnDelete(DeleteBehavior.NoAction);
         b.HasMany(e => e.Tasks)
         .WithOne(t => t.Project)
         .HasForeignKey(t => t.ProjectId)

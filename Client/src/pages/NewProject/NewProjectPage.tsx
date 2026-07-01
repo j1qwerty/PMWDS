@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -90,6 +90,9 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
 
+  // Primary department (creator) - for exec flow
+  const [primaryDepartmentId, setPrimaryDepartmentId] = useState("");
+
   // Step 2: Departments
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
 
@@ -104,7 +107,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const isSuperAdmin = auth?.roles?.includes("SuperAdmin") ?? false;
   const isDirector = auth?.roles?.includes("Director") ?? false;
-  const usesExecutiveFlow = isSuperAdmin || isDirector;
+  const isDepartmentHead = auth?.roles?.includes("DepartmentHead") ?? false;
+  const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
   const earlyFinishStepIndex = steps.findIndex((step) => step.key === "dependencies");
@@ -114,6 +118,14 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const visibleSteps = usesExecutiveFlow && !isSuperAdmin
     ? steps.slice(0, dependenciesStepIndex + 1)
     : steps;
+
+  // Auto-default primary department for DepartmentHead to their own department
+  useEffect(() => {
+    if (isDepartmentHead && auth && !primaryDepartmentId) {
+      const dept = data.departments.find(d => d.departmentHeadUserId === auth.userId);
+      if (dept) setPrimaryDepartmentId(dept.id);
+    }
+  }, [isDepartmentHead, auth, data.departments, primaryDepartmentId]);
 
   const handleDetailsChange = (field: string, value: string | number) => {
     switch (field) {
@@ -163,9 +175,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const handleFinish = async () => {
     if (!auth) return;
+    const milestoneDeptIds = Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]));
     const assignedDepartmentIds = usesExecutiveFlow
-      ? Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]))
+      ? milestoneDeptIds
       : selectedDepartmentIds;
+    const execPrimaryDeptId = usesExecutiveFlow && primaryDepartmentId
+      ? primaryDepartmentId
+      : (assignedDepartmentIds[0] || "");
     if (assignedDepartmentIds.length === 0) {
       addToast("Assign at least one department before finishing.", "error");
       return;
@@ -188,7 +204,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         plannedEndDate: endDate || "",
         plannedBudget: budget,
         organizationId: "",
-        departmentId: assignedDepartmentIds[0] || "",
+        departmentId: execPrimaryDeptId,
         departmentIds: assignedDepartmentIds,
         projectManagerId: "",
         priority,
@@ -385,6 +401,9 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               startDate={startDate}
               endDate={endDate}
               onChange={handleDetailsChange}
+              primaryDepartmentId={primaryDepartmentId}
+              departments={isSuperAdmin || isDirector ? scopedDepartments : undefined}
+              onPrimaryDepartmentChange={isSuperAdmin || isDirector ? setPrimaryDepartmentId : undefined}
             />
           )}
           {currentStepKey === "departments" && (

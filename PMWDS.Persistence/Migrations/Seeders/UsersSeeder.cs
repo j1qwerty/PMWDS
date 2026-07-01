@@ -116,15 +116,16 @@ internal static class UsersSeeder
         Guid Dept(string code) => departments.FirstOrDefault(d => d.Code == code)?.Id ?? departments.First().Id;
         return new[]
         {
-            new SeedConstants.UserSpec("admin@pmwds.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
-            new SeedConstants.UserSpec("director@pmwds.com", "Priya", "Menon", "DIR001", "Director", "Director", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
-            new SeedConstants.UserSpec("manager@pmwds.com", "Dev", "Kapoor", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
-            new SeedConstants.UserSpec("head@pmwds.com", "Rohan", "Iyer", "DH001", "DepartmentHead", "DepartmentHead", Dept("ENG"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
-            new SeedConstants.UserSpec("member@pmwds.com", "Karan", "Verma", "TM001", "TeamMember", "TeamMember", Dept("ENG"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
-            new SeedConstants.UserSpec("viewer@pmwds.com", "Meera", "Nair", "VW001", "Viewer", "Viewer", Dept("BSTR"), AvailabilityStatus.Available, 100, 60, 18, 0.05),
-            new SeedConstants.UserSpec("ananya.patel@pmwds.com", "Ananya", "Patel", "ENG101", "Senior Engineer", "TeamMember", Dept("ENG"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
-            new SeedConstants.UserSpec("vikram.singh@northwind-labs.example", "Vikram", "Singh", "NDL201", "Director", "Director", Dept("OPS"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
-            new SeedConstants.UserSpec("sneha.kulkarni@contoso-transform.example", "Sneha", "Kulkarni", "CTO301", "Strategy Analyst", "TeamMember", Dept("BSTR"), AvailabilityStatus.Available, 92, 76, 35, 0.11)
+            new SeedConstants.UserSpec("admin@org1.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
+            new SeedConstants.UserSpec("director@org1.com", "Priya", "Menon", "DIR001", "Director", "Director", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new SeedConstants.UserSpec("manager@org1.com", "Dev", "Kapoor", "PM001", "ProjectManager", "ProjectManager", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new SeedConstants.UserSpec("head.eng@org1.com", "Rohan", "Iyer", "DH001", "Engineering Head", "DepartmentHead", Dept("ENG"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
+            new SeedConstants.UserSpec("head.pmo@org1.com", "Sita", "Rao", "DH002", "PMO Head", "DepartmentHead", Dept("PMO"), AvailabilityStatus.PartiallyBusy, 70, 88, 54, 0.20),
+            new SeedConstants.UserSpec("head.ops@org1.com", "Vikram", "Singh", "DH003", "Operations Head", "DepartmentHead", Dept("OPS"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
+            new SeedConstants.UserSpec("head.bstr@org1.com", "Meera", "Nair", "DH004", "Strategy Head", "DepartmentHead", Dept("BSTR"), AvailabilityStatus.Available, 100, 76, 35, 0.11),
+            new SeedConstants.UserSpec("head.csv@org1.com", "Karan", "Verma", "DH005", "Client Services Head", "DepartmentHead", Dept("CSV"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
+            new SeedConstants.UserSpec("member@org1.com", "Ananya", "Patel", "TM001", "TeamMember", "TeamMember", Dept("ENG"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
+            new SeedConstants.UserSpec("viewer@org1.com", "Sneha", "Kulkarni", "VW001", "Viewer", "Viewer", Dept("BSTR"), AvailabilityStatus.Available, 92, 60, 18, 0.05)
         };
     }
 }
