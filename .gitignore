@@ -32,6 +32,9 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+**/Debug/**
+PMWDS.AI\obj\Debug
+
 
 # Visual Studio
 .vs/
