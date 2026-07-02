@@ -24,6 +24,7 @@ export function ActivityLogsPage() {
   const isAdmin = perm.isAdmin;
   const isManager = perm.has(PERMISSION_GROUPS.activityLog.view);
   const canViewAll = perm.has(PERMISSION_GROUPS.activityLog.view);
+  const canCreateActivity = perm.has(PERMISSION_GROUPS.activityLog.create);
 
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLogRecord[]>([]);
@@ -141,10 +142,6 @@ export function ActivityLogsPage() {
     <div>
       <AnimatedBackground />
 
-
-
-
-
       {/* Stats Row */}
       <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Activities" value={filteredLogs.length} color="indigo" icon="receipt_long" />
@@ -154,7 +151,9 @@ export function ActivityLogsPage() {
       </div>
 
       {/* Main Layout */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
+      <div className={`relative z-10 grid grid-cols-1 gap-5 ${
+        canCreateActivity ? 'lg:grid-cols-[1fr_380px]' : 'lg:grid-cols-1'
+      }`}>
         {/* Left: Activity List */}
         <div className="flex flex-col gap-5">
           {/* Filters */}
@@ -177,14 +176,12 @@ export function ActivityLogsPage() {
         </div>
 
         {/* Right: Log Activity Form */}
-        <div className="lg:sticky lg:top-7 h-fit">
-          <Can permission={PERMISSION_GROUPS.activityLog.create}>
+        {canCreateActivity && (
+          <div className="lg:sticky lg:top-7 h-fit">
             <ActivityForm onSubmit={handleCreateLog} />
-          </Can>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-

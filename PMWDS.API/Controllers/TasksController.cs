@@ -44,7 +44,7 @@ public class TasksController : BaseApiController
 
     [HttpGet("by-project/{projectId:guid}")]
     [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetByProject(Guid projectId, [FromQuery] PaginationQuery pagination, CancellationToken ct)
+    public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
         {
@@ -70,12 +70,7 @@ public class TasksController : BaseApiController
         var tasks = await tasksQuery
             .OrderByDescending(task => task.CreatedDate)
             .ToListAsync(ct);
-        var items = tasks
-            .Skip(pagination.Skip)
-            .Take(pagination.NormalizedPageSize)
-            .Select(TaskDto.FromEntity)
-            .ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+        return Ok(tasks.Select(TaskDto.FromEntity).ToList());
     }
 
     [HttpGet("my-tasks")]

@@ -24,6 +24,9 @@ using Serilog;
 using System.Text;
 using Scalar.AspNetCore;
 
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+
 var builder = WebApplication.CreateBuilder(args);
 EnvFileLoader.Load(builder.Environment.ContentRootPath);
 builder.Configuration.AddEnvironmentVariables();

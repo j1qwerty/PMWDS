@@ -1,8 +1,14 @@
 # responsive.md 
 # Development Tasks & Improvements
 
+## final
+- [ ] migrations consolidation
+- [ ] api test all after deploy and caching test
+
 
 ## 🚨 Immediate Fixes
+- [ ] PDF generation 
+- [ ] feat- Ai chant interface without sessions 
 - [ ] for mssql EF does not support multiple cascade to same table. E:\saturday\PMWDS.S\status\issue-sql-cascade-paths.md
 - [.] api returnig all data for tasks and milestone even for other roles in the response and then frontend is managing whether to show or not
 - [x] Fix deptFormModal - select none to unassign head functionality
@@ -20,15 +26,13 @@
 - [x] milestone dependencies 
 - [x] director / dept head project creator - whoever creates project others at same role but different departments can not edit it, can only manage tasks and subtasks etc, can uplaod documents
 - [ ] redis cache and indexing for database
-- [ ] if mssql is not working , setup postgres ? or mysql
 - [ ] Implement paginated results for documents and other sections (audit all sections, create list of sections/components for update)
-- [ ] Settings page for both roles (add create organizations button for superadmin)
-- [ ] All types of settings and settings API
-- [x] new project creation flow - auto selected input feilds on each step
+- [ ] All types of settings and settings API, Settings page for both roles (add create organizations button for superadmin)
+- [ ] new project creation flow - auto selected input feilds on each step
 
 ### Role & Access Management
 - [x] Role management for director with proper UI (hide superadmin features)
-- [ ] Hide organization-related info from director and other tasusers (all elements)
+- [x] Hide organization-related info from director and other users (all elements)
 - [ ] Hide manual activity creation for director
 
 ### Modals & Overlays
@@ -60,8 +64,7 @@
 
 ### Layout & Navigation
 - [x] Refactor layout.tsx with more features and organized structure (home, project, departments at top)
-- [ ] check n+1 calls for api front he client while loading any page
-- [ ] Reorganize and refactor navigation and sidebar
+- [ ] check n+1 calls for api frontend client while loading any page
 
 ### User Management
 - [x] Add workload column to users table (fix inconsistencies)
@@ -75,6 +78,7 @@
 
 ### UI Styling & Responsiveness
 - [ ] screensize determined layouts
+- [ ] Reorganize and refactor navigation and sidebar
 - [ ] Responsive design for all elements
 - [ ] text wrap such that things never go out of bounds for any element
 - [ ] Hover and shadow effects matching color scheme for all components
@@ -85,8 +89,8 @@
 - [x] Task performance table UI update (hover, view/edit modals, sort filters, cursor-pointer)
 
 ### Activity & Logging
-- [ ] Refine activity logs for better readability with metadata
-- [ ] Make activity logs more user-friendly
+- [x] Refine activity logs for better readability with metadata
+- [x] Make activity logs more user-friendly
 
 ### Code Organization
 - [ ] Rearrange file locations and rename components logically

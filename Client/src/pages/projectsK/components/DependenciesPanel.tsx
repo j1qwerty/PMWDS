@@ -57,7 +57,7 @@ export function DependenciesPanel({
       </div>
 
       {/* Dependency list */}
-      <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+      <div className="space-y-1.5  overflow-y-auto custom-scrollbar">
         {dependencies.length === 0 && (
           <div className="text-center py-6 text-slate-400">
             <span className="material-symbols-outlined text-2xl mb-1 block">account_tree</span>

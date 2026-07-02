@@ -231,7 +231,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="">
         <table className="w-full min-w-[680px]">
           <thead>
             <tr className="border-b border-slate-100">
@@ -437,7 +437,7 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
       )}
 
       <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
-        <div className="text-sm text-slate-500">
+        <div className="text-sm min-w-50 text-slate-500">
           {filteredAndSortedTasks.length === 0
             ? 'No Results'
             : `Showing ${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredAndSortedTasks.length)} of ${filteredAndSortedTasks.length} Results`
@@ -453,18 +453,32 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
             Previous
           </button>
 
-          {totalPages > 1 && Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${currentPage === page
-                  ? 'text-white bg-primary border border-primary'
-                  : 'text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
-            >
-              {page}
-            </button>
-          ))}
+          {totalPages > 1 && (() => {
+            const pages: (number | "...")[] = [];
+            pages.push(1);
+            if (currentPage > 3) pages.push("...");
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(totalPages - 1, currentPage + 1);
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (currentPage < totalPages - 2) pages.push("...");
+            if (totalPages > 1) pages.push(totalPages);
+            return pages.map((page, idx) =>
+              page === "..." ? (
+                <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-sm text-slate-400">...</span>
+              ) : (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${currentPage === page
+                      ? 'text-white bg-primary border border-primary'
+                      : 'text-slate-700 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                >
+                  {page}
+                </button>
+              )
+            );
+          })()}
 
           <button
             className="px-3 py-1.5 text-sm text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
