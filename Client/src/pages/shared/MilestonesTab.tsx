@@ -1,5 +1,5 @@
 // components/MilestonesTab.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import type { Milestone, MilestoneDependency, Task, ProjectDocument } from "../../types";
 import { StatusBadge } from "./StatusBadge";
@@ -61,6 +61,42 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     acc[key].push(task);
     return acc;
   }, {} as Record<string, Task[]>);
+
+  const sortedMilestones = useMemo(() => {
+    if (dependencies.length === 0) return milestones;
+    const deps = dependencies;
+    const mils = milestones;
+    const milestoneSet = new Set(mils.map(m => m.id));
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    for (const m of mils) {
+      adj.set(m.id, []);
+      inDegree.set(m.id, 0);
+    }
+    for (const dep of deps) {
+      const from = dep.prerequisiteMilestoneId;
+      const to = dep.dependentMilestoneId;
+      if (milestoneSet.has(from) && milestoneSet.has(to)) {
+        adj.get(from)!.push(to);
+        inDegree.set(to, (inDegree.get(to) || 0) + 1);
+      }
+    }
+    const roots = mils.filter(m => inDegree.get(m.id) === 0);
+    const visited = new Set<string>();
+    const orderedIds: string[] = [];
+    const dfs = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      orderedIds.push(id);
+      for (const neighbor of adj.get(id) || []) {
+        if (!visited.has(neighbor)) dfs(neighbor);
+      }
+    };
+    for (const root of roots) dfs(root.id);
+    for (const m of mils) if (!visited.has(m.id)) orderedIds.push(m.id);
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+    return [...mils].sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
+  }, [milestones, dependencies]);
 
   const getMilestoneProgress = (milestoneId: string) => {
     const milestoneTasks = tasksByMilestone[milestoneId] || [];
@@ -241,7 +277,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
               )}
             <div className="relative pl-8 ml-4 border-l-2 border-slate-200">
               <div className="space-y-8">
-                {milestones.map((milestone) => {
+                {sortedMilestones.map((milestone) => {
                   const milestoneTasks = tasksByMilestone[milestone.id] || [];
                   const isCompleted = milestone.status === "Completed";
                   const progress = getMilestoneProgress(milestone.id);
