@@ -5,6 +5,7 @@ export { MilestonesPanel } from "./MilestonesPanel";
 export { MilestoneDetailModal } from "./MilestoneDetailModal";
 export { TaskSubtaskDetailsModal } from "./TaskSubtaskDetailsModal";
 export { TaskSubtaskCard } from "./TaskSubtaskCard";
+export { ProjectTaskCardk } from "./ProjectTaskCardk";
 export { SubtaskFormModal } from "./SubtaskFormModal";
 export { ProjectFormModal, type ProjectFormState } from "./ProjectFormModal";
 export { MilestoneFormModal } from "./MilestoneFormModal";

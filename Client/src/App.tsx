@@ -29,6 +29,7 @@ import { SkillsPage } from "./pages/skills/SkillsPage";
 // Tools
 import { AIPage as CoreAIPage } from "./pages/ai/ai";
 import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
+import { ReportViewPage } from "./pages/reports/ReportViewPage";
 
 // System
 import { RolesPage } from "./pages/roles/RolesPage";
@@ -121,6 +122,7 @@ function AppRoutes() {
                 {/* Tools (open to all authenticated users) */}
                 <Route path="/ai" element={<Guarded permission={ROUTE_GUARDS.ai}><CoreAIPage /></Guarded>} />
                 <Route path="/reports" element={<Guarded permission={ROUTE_GUARDS.reports}><CoreReportsPage /></Guarded>} />
+                <Route path="/reports/view" element={<Guarded permission={ROUTE_GUARDS.reports}><ReportViewPage /></Guarded>} />
 
                 {/* System */}
                 <Route

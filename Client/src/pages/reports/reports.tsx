@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type {
@@ -21,10 +22,10 @@ import {
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
-import { ReportViewer } from "./ReportViewer";
 import { GeneratedReports } from "./GeneratedReports";
 
 export function ReportsPage() {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const perm = usePermission();
   const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
@@ -34,7 +35,6 @@ export function ReportsPage() {
   const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
   const [storedReportsLoading, setStoredReportsLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [viewingReport, setViewingReport] = useState<AiReportResponse | null>(null);
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -126,7 +126,7 @@ export function ReportsPage() {
     setGenerating(true);
     try {
       const report = await api.generateReport(auth.token, reportType, body);
-      setViewingReport(report);
+      navigate("/reports/view", { state: { report, exportParams: reportFilterPayload() } });
       loadStoredReports();
       addToast(`${label} report generated successfully.`);
     } catch (e) {
@@ -163,13 +163,13 @@ export function ReportsPage() {
     }
   };
 
-  const handleViewStoredReport = async (report: StoredReportRecord) => {
+  const handleViewStoredReport = async (record: StoredReportRecord) => {
     if (!auth) return;
     try {
-      const blob = await api.downloadStoredReport(auth.token, report.id);
+      const blob = await api.downloadStoredReport(auth.token, record.id);
       const text = await blob.text();
-      const parsed: AiReportResponse = JSON.parse(text);
-      setViewingReport(parsed);
+      const parsed = JSON.parse(text) as AiReportResponse;
+      navigate("/reports/view", { state: { report: parsed, exportParams: reportFilterPayload() } });
     } catch {
       addToast("Could not load this report for viewing.", "error");
     }
@@ -297,14 +297,6 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {/* Report Viewer Modal */}
-      {viewingReport && (
-        <ReportViewer
-          report={viewingReport}
-          onClose={() => setViewingReport(null)}
-          onDownloadPdf={handleDownloadPdf}
-        />
-      )}
     </div>
   );
 }
