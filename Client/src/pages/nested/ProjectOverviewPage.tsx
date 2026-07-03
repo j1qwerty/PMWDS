@@ -71,7 +71,7 @@ export function ProjectOverviewPage() {
 
   const [projectDocs, setProjectDocs] = useState<ProjectDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 15;
   const PIN_THRESHOLD = 5;
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -160,8 +160,8 @@ export function ProjectOverviewPage() {
 
   const budgetColor =
     budgetUtilPct > 100 ? "bg-red-500" :
-    budgetUtilPct > 85 ? "bg-amber-500" :
-    "bg-emerald-500";
+      budgetUtilPct > 85 ? "bg-amber-500" :
+        "bg-emerald-500";
 
   const cMilestones = ws.milestones.filter((m) => m.status === "Completed").length;
   const criticalMilestones = ws.milestones.filter((m) => m.isCritical).length;
@@ -260,7 +260,7 @@ export function ProjectOverviewPage() {
   if (!ws.project) return <ProjectNotFound />;
 
   return (
-    <div>
+    <div className="mb-15">
       <div className="relative z-10 mb-5">
         <ProjectInfoCard
           project={ws.project}
@@ -298,130 +298,237 @@ export function ProjectOverviewPage() {
               />
             </div>
 
-            <div ref={listRef} className="flex flex-col gap-1 flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {pinnedMilestone && (
-                <div className="shrink-0">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/projects/${ws.project!.id}/milestones`)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors group rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusColor(pinnedMilestone.status).dot} ${pinnedMilestone.status !== "Completed" && new Date(pinnedMilestone.dueDate).getTime() < Date.now() ? "animate-pulse" : ""}`} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-slate-700 truncate group-hover:text-indigo-600 transition-colors">
-                              {pinnedMilestone.name}
-                            </span>
-                            {pinnedMilestone.isCritical && (
-                              <Icon name="priority_high" size={10} className="text-rose-500 shrink-0" />
-                            )}
-                            {pinnedMilestone.isBlocked && (
-                              <Icon name="hi-ban" size={10} className="text-amber-500 shrink-0" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${getStatusColor(pinnedMilestone.status).bg}`}
-                                style={{ width: `${pinnedMilestone.progressPercentage}%` }}
-                              />
+            <div ref={listRef} className="flex flex-col gap-0 flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {/* Timeline track */}
+              <div className="relative ml-[11px]">
+                {/* Vertical timeline line */}
+                <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-200 via-slate-200 to-slate-200" />
+
+                {/* Pinned milestone */}
+                {pinnedMilestone && (
+                  <div className="relative pb-3">
+                    {/* Checkpoint dot */}
+                    <div className={`absolute left-0 top-3 -translate-x-1/2 z-10 w-3 h-3 rounded-full border-2 border-white shadow-sm ${pinnedMilestone.status === "Completed"
+                        ? "bg-emerald-500"
+                        : pinnedMilestone.status === "In Progress"
+                          ? "bg-blue-500 ring-2 ring-blue-200"
+                          : "bg-slate-300"
+                      } ${pinnedMilestone.status !== "Completed" && new Date(pinnedMilestone.dueDate).getTime() < Date.now() ? "animate-pulse ring-2 ring-red-200" : ""}`} />
+
+                    <div className="ml-5 relative">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/projects/${ws.project!.id}/milestones`)}
+                        className="w-full text-left p-2.5 hover:bg-slate-50 transition-colors group rounded-lg border border-indigo-100 bg-indigo-50/50"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                                {pinnedMilestone.name}
+                              </span>
+                              {pinnedMilestone.isCritical && (
+                                <span className="text-[8px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">CRITICAL</span>
+                              )}
+                              {pinnedMilestone.isBlocked && (
+                                <Icon name="hi-ban" size={10} className="text-amber-500 shrink-0" />
+                              )}
                             </div>
-                            <span className="text-[9px] text-slate-400 font-medium">{pinnedMilestone.progressPercentage}%</span>
+
+                            {/* Progress bar with checkpoints */}
+                            <div className="mt-2 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${pinnedMilestone.status === "Completed"
+                                        ? "bg-emerald-500"
+                                        : pinnedMilestone.status === "In Progress"
+                                          ? "bg-blue-500"
+                                          : "bg-slate-400"
+                                      }`}
+                                    style={{ width: `${pinnedMilestone.progressPercentage}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-500">{pinnedMilestone.progressPercentage}%</span>
+                              </div>
+
+                              {/* Mini checkpoints */}
+                              {/* <div className="flex gap-1">
+                        {[25, 50, 75, 100].map((checkpoint) => (
+                          <div
+                            key={checkpoint}
+                            className={`flex-1 h-0.5 rounded-full ${
+                              pinnedMilestone.progressPercentage >= checkpoint 
+                                ? "bg-indigo-400" 
+                                : "bg-slate-200"
+                            }`}
+                          />
+                        ))}
+                      </div> */}
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="text-[9px] text-slate-500">
+                                {new Date(pinnedMilestone.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </span>
+                              {pinnedMilestone.status !== "Completed" && new Date(pinnedMilestone.dueDate).getTime() < Date.now() && (
+                                <span className="text-[8px] font-bold text-red-500 animate-pulse">OVERDUE</span>
+                              )}
+                            </div>
                           </div>
+                          <Icon name="chevron-right" size={14} className="text-slate-400 group-hover:text-indigo-500 transition-colors shrink-0 mt-0.5" />
                         </div>
-                        <Icon name="chevron-right" size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-                      </div>
-                    </button>
-                    <span className="absolute -top-1.5 -right-1.5 text-[9px] font-semibold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-200 shadow-sm">
-                      Pinned
-                    </span>
+                      </button>
+                      <span className="absolute -top-1 -right-1 text-[8px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full border border-indigo-200">
+                        PINNED
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {visibleSortedMilestones.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
-                  <Icon name="flag" size={24} className="mx-auto mb-2" />
-                  <p className="text-xs font-medium">No milestones match filters</p>
-                </div>
-              ) : (
-                visibleSortedMilestones.map((m) => {
-                  const color = getStatusColor(m.status);
-                  const due = new Date(m.dueDate).getTime();
-                  const overdue = m.status !== "Completed" && due < Date.now();
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => handleMilestoneClick(m)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors group rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${color.dot} ${overdue ? "animate-pulse" : ""}`} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-slate-700 truncate group-hover:text-indigo-600 transition-colors">
-                              {m.name}
-                            </span>
-                            {m.isCritical && (
-                              <Icon name="priority_high" size={10} className="text-rose-500 shrink-0" />
-                            )}
-                            {m.isBlocked && (
-                              <Icon name="hi-ban" size={10} className="text-amber-500 shrink-0" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${color.bg}`}
-                                style={{ width: `${m.progressPercentage}%` }}
-                              />
-                            </div>
-                            <span className="text-[9px] text-slate-400 font-medium">{m.progressPercentage}%</span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[9px] text-slate-400">
-                              {new Date(m.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                            </span>
-                            {overdue && (
-                              <span className="text-[8px] font-bold text-red-500">OVERDUE</span>
-                            )}
-                          </div>
+                {/* Other milestones */}
+                {visibleSortedMilestones.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 ml-5">
+                    <Icon name="flag" size={24} className="mx-auto mb-2" />
+                    <p className="text-xs font-medium">No milestones match filters</p>
+                  </div>
+                ) : (
+                  visibleSortedMilestones.map((m, index) => {
+                    const color = getStatusColor(m.status);
+                    const due = new Date(m.dueDate).getTime();
+                    const overdue = m.status !== "Completed" && due < Date.now();
+                    const isLast = index === visibleSortedMilestones.length - 1 && remaining === 0;
+
+                    return (
+                      <div key={m.id} className={`relative ${!isLast ? "pb-2" : ""}`}>
+                        {/* Checkpoint dot with connector */}
+                        <div className="absolute left-0 top-3 -translate-x-1/2 z-10">
+                          <div className={`w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm transition-all ${m.status === "Completed"
+                              ? "bg-emerald-500"
+                              : m.status === "In Progress"
+                                ? "bg-blue-500 ring-2 ring-blue-200"
+                                : "bg-slate-300"
+                            } ${overdue ? "animate-pulse ring-2 ring-red-200 bg-red-400" : ""}`} />
                         </div>
-                        <Icon name="chevron-right" size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+
+                        <div className="ml-5">
+                          <button
+                            type="button"
+                            onClick={() => handleMilestoneClick(m)}
+                            className="w-full text-left p-2 hover:bg-slate-50 transition-colors group rounded-lg"
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-slate-700 truncate group-hover:text-indigo-600 transition-colors">
+                                    {m.name}
+                                  </span>
+                                  {m.isCritical && (
+                                    <span className="text-[8px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">!</span>
+                                  )}
+                                  {m.isBlocked && (
+                                    <Icon name="hi-ban" size={10} className="text-amber-500 shrink-0" />
+                                  )}
+                                </div>
+
+                                <div className="mt-1.5 space-y-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${m.status === "Completed"
+                                            ? "bg-emerald-500"
+                                            : m.status === "In Progress"
+                                              ? "bg-blue-500"
+                                              : "bg-slate-400"
+                                          }`}
+                                        style={{ width: `${m.progressPercentage}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[9px] font-medium text-slate-500">{m.progressPercentage}%</span>
+                                  </div>
+
+                                  {/* Mini checkpoint indicators */}
+                                  {/* <div className="flex gap-0.5">
+                            {[25, 50, 75, 100].map((checkpoint) => (
+                              <div
+                                key={checkpoint}
+                                className={`flex-1 h-0.5 rounded-full transition-colors ${
+                                  m.progressPercentage >= checkpoint 
+                                    ? "bg-indigo-400" 
+                                    : "bg-slate-200"
+                                }`}
+                                title={`${checkpoint}% checkpoint`}
+                              />
+                            ))}
+                          </div> */}
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] text-slate-400">
+                                    {new Date(m.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                  </span>
+                                  {overdue && (
+                                    <span className="text-[8px] font-bold text-red-500">OVERDUE</span>
+                                  )}
+                                </div>
+                              </div>
+                              <Icon name="chevron-right" size={14} className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0 mt-0.5" />
+                            </div>
+                          </button>
+                        </div>
                       </div>
+                    );
+                  })
+                )}
+
+                {/* Load more button */}
+                {remaining > 0 && (
+                  <div className="relative pt-1 ml-5">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="w-full text-[10px] font-medium text-indigo-500 hover:text-indigo-700 py-1.5 px-2 rounded-md hover:bg-indigo-50 transition-colors border border-dashed border-indigo-200"
+                    >
+                      Show {Math.min(remaining, PAGE_SIZE)} more milestones ({remaining} remaining)
                     </button>
-                  );
-                })
-              )}
+                  </div>
+                )}
 
-              {remaining > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                  className="text-xs text-indigo-500 hover:text-indigo-700 font-medium py-1.5 text-center transition-colors"
-                >
-                  Show {Math.min(remaining, PAGE_SIZE)} more ({remaining} remaining)
-                </button>
-              )}
-              {visibleCount > PAGE_SIZE && (
-                <button
-                  type="button"
-                  onClick={() => setVisibleCount(PAGE_SIZE)}
-                  className="text-[11px] text-indigo-500 hover:text-indigo-700 font-medium py-1 text-center transition-colors"
-                >
-                  Show less
-                </button>
-              )}
+                {visibleCount > PAGE_SIZE && (
+                  <div className="relative ml-5">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount(PAGE_SIZE)}
+                      className="w-full text-[10px] font-medium text-slate-400 hover:text-slate-600 py-1.5 px-2 rounded-md hover:bg-slate-50 transition-colors"
+                    >
+                      Show less
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="shrink-0 mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-              <span>{cMilestones} / {sortedMilestones.length} completed</span>
-              {criticalMilestones > 0 && <span className="text-rose-500 font-medium">{criticalMilestones} critical</span>}
+            {/* Footer stats */}
+            <div className="shrink-0 mt-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                <span>{cMilestones} / {sortedMilestones.length} completed</span>
+                {criticalMilestones > 0 && (
+                  <span className="text-rose-500 font-medium flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-rose-400" />
+                    {criticalMilestones} critical
+                  </span>
+                )}
+              </div>
+              {/* Overall progress */}
+              <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-400 to-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${sortedMilestones.length > 0 ? (cMilestones / sortedMilestones.length) * 100 : 0}%` }}
+                />
+              </div>
             </div>
 
+            {/* Jump back button */}
             {savedScrollPos > 0 && createPortal(
               <button
                 type="button"
@@ -434,17 +541,17 @@ export function ProjectOverviewPage() {
               >
                 <Icon name="arrow-down" size={16} />
                 <style>{`
-                  @keyframes bounce-glow {
-                    0%, 100% { 
-                      transform: translateY(0);
-                      box-shadow: 0 2px 8px rgba(59,130,246,0.15), 0 1px 3px rgba(0,0,0,0.08);
-                    }
-                    50% { 
-                      transform: translateY(-6px);
-                      box-shadow: 0 8px 25px rgba(59,130,246,0.35), 0 2px 8px rgba(59,130,246,0.2);
-                    }
-                  }
-                `}</style>
+          @keyframes bounce-glow {
+            0%, 100% { 
+              transform: translateY(0);
+              box-shadow: 0 2px 8px rgba(59,130,246,0.15), 0 1px 3px rgba(0,0,0,0.08);
+            }
+            50% { 
+              transform: translateY(-6px);
+              box-shadow: 0 8px 25px rgba(59,130,246,0.35), 0 2px 8px rgba(59,130,246,0.2);
+            }
+          }
+        `}</style>
               </button>,
               document.body
             )}
@@ -491,9 +598,8 @@ export function ProjectOverviewPage() {
                     <Icon name="hi-cash" size={16} className="text-emerald-500" />
                     Budget Overview
                   </h3>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    ws.project.budgetVariance >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                  }`}>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ws.project.budgetVariance >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                    }`}>
                     {ws.project.budgetVariance >= 0 ? "Under" : "Over"} budget
                   </span>
                 </div>
@@ -528,8 +634,8 @@ export function ProjectOverviewPage() {
           </div>
 
           {/* Milestone Timeline + Dependencies */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <GlassCard className="p-0 overflow-hidden h-full flex flex-col">
+          <div className="max-h-150 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <GlassCard className="p-0 overflow-hidden  max-h-150 flex flex-col">
               <div className="px-5 py-3.5 border-b border-slate-100 shrink-0">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
@@ -546,7 +652,7 @@ export function ProjectOverviewPage() {
                   </button>
                 </div>
               </div>
-              <div className="p-5 flex-1">
+              <div className="p-5 flex-1 overflow-y-auto min-h-0">
                 <MilestoneTimeline
                   milestones={sortedMilestones}
                   startDate={ws.project.plannedStartDate}
@@ -556,7 +662,7 @@ export function ProjectOverviewPage() {
               </div>
             </GlassCard>
 
-            <GlassCard className="p-0 overflow-hidden h-full flex flex-col">
+            <GlassCard className="p-0 overflow-hidden max-h-150  flex flex-col">
               <div className="px-5 py-3.5 border-b border-slate-100 shrink-0">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
@@ -572,7 +678,7 @@ export function ProjectOverviewPage() {
                     <p className="text-lg font-bold text-emerald-600">{depsMet}</p>
                     <p className="text-[10px] text-emerald-700">Met</p>
                   </div>
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
+                  <div className="rounded-xl  p-3 text-center">
                     <p className="text-lg font-bold text-amber-600">{ws.dependencies.length - depsMet}</p>
                     <p className="text-[10px] text-amber-700">Unmet</p>
                   </div>
@@ -590,9 +696,8 @@ export function ProjectOverviewPage() {
                       return (
                         <div
                           key={dep.id}
-                          className={`p-2.5 rounded-lg border ${
-                            dep.isMet ? "border-emerald-200 bg-emerald-50/40" : "border-amber-200 bg-amber-50/40"
-                          }`}
+                          className={`p-2.5 rounded-lg border ${dep.isMet ? "border-emerald-200 bg-emerald-50/40" : "border-amber-200 bg-amber-50/40"
+                            }`}
                         >
                           <div className="flex items-start gap-2">
                             <Icon
@@ -612,15 +717,13 @@ export function ProjectOverviewPage() {
                               </div>
                               <div className="flex items-center gap-1 mt-1">
                                 {dep.type === "CompletionBased" ? (
-                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-                                    prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                                  }`}>
+                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                                    }`}>
                                     Must complete{prereqStatus === "Completed" ? " ✓" : ""}
                                   </span>
                                 ) : (
-                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-                                    prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
-                                  }`}>
+                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+                                    }`}>
                                     {prereqProgress}% / {dep.thresholdPercentage}%
                                   </span>
                                 )}

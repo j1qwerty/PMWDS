@@ -69,7 +69,7 @@ function AIGauge({
   );
 }
 
-export function OverviewAIInsights({ ws }: { ws: { project?: { aiHealthScore?: number; aiDelayRiskScore?: number; aiBudgetRiskScore?: number; aiInsightsSummary?: string } } }) {
+export function OverviewAIInsights({ ws }: { ws: { project: { aiHealthScore?: number; aiDelayRiskScore?: number; aiBudgetRiskScore?: number; aiInsightsSummary?: string } | null } }) {
   if (!ws?.project) return null;
 
   return (
