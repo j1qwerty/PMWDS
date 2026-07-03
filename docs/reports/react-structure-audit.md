@@ -9,11 +9,11 @@
 
 ## 🚨 Critical Issues
 
-### C1. Monolithic API Layer — pi.ts (996 lines)
+### C1. Monolithic API Layer — api.ts (996 lines)
 
 **File:** src/api.ts  
 **Severity:** 🔴 High  
-**Description:** A single file exports a single pi object containing ~120 API methods covering auth, projects, tasks, milestones, users, departments, roles, notifications, organizations, dashboards, AI, reports, integrations, webhooks, skills, knowledge, lessons, activity logs, settings, and more. This violates Single Responsibility Principle and makes the file impossible to navigate, test, or maintain.  
+**Description:** A single file exports a single api object containing ~120 API methods covering auth, projects, tasks, milestones, users, departments, roles, notifications, organizations, dashboards, AI, reports, integrations, webhooks, skills, knowledge, lessons, activity logs, settings, and more. This violates Single Responsibility Principle and makes the file impossible to navigate, test, or maintain.  
 **Refactoring:** Split into domain-specific API modules:
 `
 src/api/

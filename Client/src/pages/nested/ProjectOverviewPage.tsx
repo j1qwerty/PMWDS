@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type { Milestone, ProjectDocument, TaskAttachment } from "../../types";
+import type { Milestone, MilestoneDependency, ProjectDocument, TaskAttachment } from "../../types";
 import {
   GlassCard,
   getStatusColor,
@@ -78,6 +78,10 @@ export function ProjectOverviewPage() {
   const [savedScrollPos, setSavedScrollPos] = useState(0);
   const [pinnedMilestone, setPinnedMilestone] = useState<Milestone | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const currentUser = ws.users.find((u) => u.id === auth?.userId);
+  const isPrimaryDept = currentUser?.departmentId === ws.project?.departmentId;
+  const canUploadProjectDocs = perm.isSuperAdmin || perm.roles.includes("Director") || isPrimaryDept;
 
   useEffect(() => {
     if (!ws.project || !auth) return;
@@ -226,6 +230,31 @@ export function ProjectOverviewPage() {
     if (savedScrollPos > 0) window.scrollTo({ top: savedScrollPos, behavior: "smooth" });
     setSavedScrollPos(0);
   }, [savedScrollPos]);
+
+  const handleDocUpload = async () => {
+    if (!auth || !uploadFile || !ws.project) return;
+    try {
+      await api.uploadProjectDocument(auth.token, ws.project.id, uploadFile);
+      setUploadFile(null);
+      addToast("Document uploaded");
+      const docs = await api.getProjectDocuments(auth.token, ws.project.id);
+      setProjectDocs(docs);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Upload failed", "error");
+    }
+  };
+
+  const getMilestoneName = (id: string) => ws.milestones.find((m) => m.id === id)?.name || "Unknown";
+  const getMilestoneProgress = (id: string) => ws.milestones.find((m) => m.id === id)?.progressPercentage || 0;
+  const getMilestoneStatus = (id: string) => ws.milestones.find((m) => m.id === id)?.status || "";
+
+  const sortedDeps = useMemo(() => {
+    return [...ws.dependencies].sort((a, b) => {
+      if (a.isMet !== b.isMet) return a.isMet ? 1 : -1;
+      if (a.type !== b.type) return a.type === "CompletionBased" ? -1 : 1;
+      return 0;
+    });
+  }, [ws.dependencies]);
 
   if (ws.loading) return <LoadingPage label="Loading project overview..." />;
   if (!ws.project) return <ProjectNotFound />;
@@ -498,35 +527,116 @@ export function ProjectOverviewPage() {
             </GlassCard>
           </div>
 
-          {/* Milestone Timeline */}
-          <GlassCard className="p-0 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                  <Icon name="timeline" size={16} className="text-amber-500" />
-                  Milestone Timeline
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/projects/${ws.project!.id}/milestones`)}
-                  className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
-                >
-                  View all
-                  <Icon name="chevron-right" size={12} />
-                </button>
+          {/* Milestone Timeline + Dependencies */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <GlassCard className="p-0 overflow-hidden h-full flex flex-col">
+              <div className="px-5 py-3.5 border-b border-slate-100 shrink-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Icon name="timeline" size={16} className="text-amber-500" />
+                    Milestone Timeline
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/projects/${ws.project!.id}/milestones`)}
+                    className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                  >
+                    View all
+                    <Icon name="chevron-right" size={12} />
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-5">
-              <MilestoneTimeline
-                milestones={sortedMilestones}
-                startDate={ws.project.plannedStartDate}
-                endDate={ws.project.plannedEndDate}
-                onNavigate={(id) => navigate(`/projects/${ws.project!.id}/milestones`)}
-              />
-            </div>
-          </GlassCard>
+              <div className="p-5 flex-1">
+                <MilestoneTimeline
+                  milestones={sortedMilestones}
+                  startDate={ws.project.plannedStartDate}
+                  endDate={ws.project.plannedEndDate}
+                  onNavigate={(id) => navigate(`/projects/${ws.project!.id}/milestones`)}
+                />
+              </div>
+            </GlassCard>
 
-          {/* Team + Dependencies */}
+            <GlassCard className="p-0 overflow-hidden h-full flex flex-col">
+              <div className="px-5 py-3.5 border-b border-slate-100 shrink-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Icon name="account_tree" size={16} className="text-cyan-500" />
+                    Dependencies
+                  </h3>
+                  <span className="text-[10px] text-slate-400">{ws.dependencies.length} total</span>
+                </div>
+              </div>
+              <div className="p-5 flex-1 flex flex-col min-h-0">
+                <div className="grid grid-cols-2 gap-3 mb-3 shrink-0">
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+                    <p className="text-lg font-bold text-emerald-600">{depsMet}</p>
+                    <p className="text-[10px] text-emerald-700">Met</p>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
+                    <p className="text-lg font-bold text-amber-600">{ws.dependencies.length - depsMet}</p>
+                    <p className="text-[10px] text-amber-700">Unmet</p>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto min-h-0 space-y-1.5 sidebar-scrollbar">
+                  {sortedDeps.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                      <Icon name="account_tree" size={24} className="mx-auto mb-2" />
+                      <p className="text-xs text-slate-500">No dependencies</p>
+                    </div>
+                  ) : (
+                    sortedDeps.map((dep: MilestoneDependency) => {
+                      const prereqProgress = getMilestoneProgress(dep.prerequisiteMilestoneId);
+                      const prereqStatus = getMilestoneStatus(dep.prerequisiteMilestoneId);
+                      return (
+                        <div
+                          key={dep.id}
+                          className={`p-2.5 rounded-lg border ${
+                            dep.isMet ? "border-emerald-200 bg-emerald-50/40" : "border-amber-200 bg-amber-50/40"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <Icon
+                              name={dep.isMet ? "check-circle" : "warning"}
+                              size={14}
+                              className={`mt-0.5 shrink-0 ${dep.isMet ? "text-emerald-500" : "text-amber-500"}`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] font-semibold text-amber-700 truncate max-w-[130px]">
+                                  {getMilestoneName(dep.prerequisiteMilestoneId)}
+                                </span>
+                                <span className="text-[9px] text-slate-400 shrink-0">blocks</span>
+                                <span className="text-[11px] font-semibold text-slate-700 truncate max-w-[130px]">
+                                  {getMilestoneName(dep.dependentMilestoneId)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-1">
+                                {dep.type === "CompletionBased" ? (
+                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                                    prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                                  }`}>
+                                    Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                                  </span>
+                                ) : (
+                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                                    prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+                                  }`}>
+                                    {prereqProgress}% / {dep.thresholdPercentage}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* Team Assignment + Documents */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-5 py-3.5 border-b border-slate-100">
@@ -573,139 +683,134 @@ export function ProjectOverviewPage() {
               </div>
             </GlassCard>
 
-            <GlassCard className="p-0 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-slate-100">
+            <GlassCard className="p-0 overflow-hidden flex flex-col">
+              <div className="px-5 py-3.5 border-b border-slate-100 shrink-0">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                    <Icon name="account_tree" size={16} className="text-cyan-500" />
-                    Dependencies
+                    <Icon name="description" size={16} className="text-slate-500" />
+                    Documents
                   </h3>
-                  <span className="text-[10px] text-slate-400">{ws.dependencies.length} total</span>
+                  <span className="text-[10px] text-slate-400">
+                    {totalDocs} project · {totalTaskAttachments} task
+                  </span>
                 </div>
               </div>
-              <div className="p-5 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
-                    <p className="text-lg font-bold text-emerald-600">{depsMet}</p>
-                    <p className="text-[10px] text-emerald-700">Met</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
-                    <p className="text-lg font-bold text-slate-600">{ws.dependencies.length - depsMet}</p>
-                    <p className="text-[10px] text-slate-500">Unmet</p>
-                  </div>
-                </div>
-                {blockedMilestones > 0 && (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
-                    <Icon name="warning" size={14} className="text-amber-600 shrink-0" />
-                    <span className="text-xs text-amber-700">
-                      <strong>{blockedMilestones}</strong> milestone{blockedMilestones > 1 ? "s" : ""} currently blocked
-                    </span>
+              <div className="p-5 flex-1 overflow-y-auto min-h-0 space-y-4">
+                {canUploadProjectDocs && (
+                  <div className="flex items-center justify-end">
+                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold cursor-pointer hover:bg-indigo-100 transition-colors border border-indigo-200">
+                      <Icon name="upload" size={14} />
+                      Upload Document
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Completion-based</span>
-                  <span className="font-semibold text-slate-600">
-                    {ws.dependencies.filter((d) => d.type === "CompletionBased").length}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Progress threshold</span>
-                  <span className="font-semibold text-slate-600">
-                    {ws.dependencies.filter((d) => d.type === "ProgressThreshold").length}
-                  </span>
-                </div>
+
+                {uploadFile && (
+                  <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="size-9 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                        <Icon name="file" size={16} className="text-indigo-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-slate-800 truncate">{uploadFile.name}</p>
+                        <p className="text-[10px] text-slate-500">{(uploadFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setUploadFile(null)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDocUpload}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                      >
+                        Upload
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {loadingDocs ? (
+                  <div className="text-center text-xs text-slate-400 py-4">Loading documents...</div>
+                ) : projectDocs.length > 0 ? (
+                  <div>
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <Icon name="hi-folder-open" size={12} />
+                      Project Documents
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-medium">Title</th>
+                            <th className="text-left px-3 py-2 font-medium">Type</th>
+                            <th className="text-right px-3 py-2 font-medium">Size</th>
+                            <th className="text-right px-3 py-2 font-medium">Version</th>
+                            <th className="text-right px-3 py-2 font-medium">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {projectDocs.slice(0, 5).map((doc) => (
+                            <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-3 py-2 font-medium text-slate-700">{doc.title}</td>
+                              <td className="px-3 py-2 text-slate-500">{doc.contentType?.split("/").pop() || "—"}</td>
+                              <td className="px-3 py-2 text-right text-slate-500">
+                                {(doc.fileSizeBytes / 1024).toFixed(0)} KB
+                              </td>
+                              <td className="px-3 py-2 text-right text-slate-500">v{doc.version}</td>
+                              <td className="px-3 py-2 text-right text-slate-500">
+                                {new Date(doc.createdDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {projectDocs.length > 5 && (
+                        <div className="text-center pt-2">
+                          <span className="text-[10px] text-indigo-500 font-semibold">+{projectDocs.length - 5} more</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-xs text-slate-400 py-2">No project documents</div>
+                )}
+
+                {totalTaskAttachments > 0 && (
+                  <div>
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <Icon name="hi-paper-clip" size={12} />
+                      Task Attachments
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {ws.tasks.slice(0, 10).map((task) =>
+                        (task.attachments || []).map((att) => (
+                          <div
+                            key={att.id}
+                            className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] text-slate-600 flex items-center gap-1.5"
+                          >
+                            <Icon name="file" size={12} className="text-slate-400" />
+                            <span className="truncate max-w-[120px]">{att.fileName}</span>
+                          </div>
+                        ))
+                      )}
+                      {totalTaskAttachments > 10 && (
+                        <span className="text-[10px] text-slate-400 self-center">+{totalTaskAttachments - 10} more</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </GlassCard>
           </div>
-
-          {/* Documents Section */}
-          <GlassCard className="p-0 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                  <Icon name="description" size={16} className="text-slate-500" />
-                  Documents
-                </h3>
-                <span className="text-[10px] text-slate-400">
-                  {totalDocs} project · {totalTaskAttachments} task
-                </span>
-              </div>
-            </div>
-            <div className="p-5 space-y-4">
-              {/* Project Documents */}
-              {loadingDocs ? (
-                <div className="text-center text-xs text-slate-400 py-4">Loading documents...</div>
-              ) : projectDocs.length > 0 ? (
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <Icon name="hi-folder-open" size={12} />
-                    Project Documents
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-medium">Title</th>
-                          <th className="text-left px-3 py-2 font-medium">Type</th>
-                          <th className="text-right px-3 py-2 font-medium">Size</th>
-                          <th className="text-right px-3 py-2 font-medium">Version</th>
-                          <th className="text-right px-3 py-2 font-medium">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {projectDocs.slice(0, 5).map((doc) => (
-                          <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-3 py-2 font-medium text-slate-700">{doc.title}</td>
-                            <td className="px-3 py-2 text-slate-500">{doc.contentType?.split("/").pop() || "—"}</td>
-                            <td className="px-3 py-2 text-right text-slate-500">
-                              {(doc.fileSizeBytes / 1024).toFixed(0)} KB
-                            </td>
-                            <td className="px-3 py-2 text-right text-slate-500">v{doc.version}</td>
-                            <td className="px-3 py-2 text-right text-slate-500">
-                              {new Date(doc.createdDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {projectDocs.length > 5 && (
-                      <div className="text-center pt-2">
-                        <span className="text-[10px] text-indigo-500 font-semibold">+{projectDocs.length - 5} more</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center text-xs text-slate-400 py-2">No project documents</div>
-              )}
-
-              {/* Task Attachments */}
-              {totalTaskAttachments > 0 && (
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <Icon name="hi-paper-clip" size={12} />
-                    Task Attachments
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {ws.tasks.slice(0, 10).map((task) =>
-                      (task.attachments || []).map((att) => (
-                        <div
-                          key={att.id}
-                          className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] text-slate-600 flex items-center gap-1.5"
-                        >
-                          <Icon name="file" size={12} className="text-slate-400" />
-                          <span className="truncate max-w-[120px]">{att.fileName}</span>
-                        </div>
-                      ))
-                    )}
-                    {totalTaskAttachments > 10 && (
-                      <span className="text-[10px] text-slate-400 self-center">+{totalTaskAttachments - 10} more</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </GlassCard>
 
           {/* Escalated Tasks Alert */}
           {escalatedCount > 0 && (
