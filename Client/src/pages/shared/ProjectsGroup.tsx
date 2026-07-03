@@ -7,6 +7,7 @@ import { PERMISSION_GROUPS, usePermission } from "../shared/RoleGate";
 import { getStatusColor } from "../shared/colors";
 import { projectBelongsToAnyDepartment } from "../shared/projectDepartments";
 import {
+  HiOutlineHome,
   HiOutlineFolder,
   HiOutlineClipboardList,
   HiOutlineFlag,
@@ -223,6 +224,7 @@ export function ProjectsGroup({
         {displayedProjects.map((project) => {
           const expanded = expandedIds.includes(project.id);
           const parentActive = isChildActive(project.id);
+          const childOverviewActive = isChildExactActive(project.id, "/overview");
           const childTasksActive = isChildExactActive(project.id, "/tasks");
           const childMilestonesActive = isChildExactActive(project.id, "/milestones");
           const status = getStatusColor(project.status);
@@ -271,7 +273,18 @@ export function ProjectsGroup({
 
               {expanded && (
                 <div className="flex flex-col ml-[clamp(16px,2.5vw,20px)] border-l border-surface-variant/60 pl-1">
-                   <Link
+                  <Link
+                    to={`/projects/${project.id}/overview`}
+                    className={`flex items-center gap-[clamp(6px,1vw,10px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(5px,0.8vw,7px)] rounded-md transition-all duration-200 ${
+                      childOverviewActive
+                        ? `${theme.active}`
+                        : `${theme.textDefault} ${theme.hover}`
+                    }`}
+                  >
+                    <HiOutlineHome className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
+                    <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Overview</span>
+                  </Link>
+                  <Link
                     to={`/projects/${project.id}/milestones`}
                     className={`flex items-center gap-[clamp(6px,1vw,10px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(5px,0.8vw,7px)] rounded-md transition-all duration-200 ${
                       childMilestonesActive
@@ -293,7 +306,6 @@ export function ProjectsGroup({
                     <HiOutlineClipboardList className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
                     <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Tasks</span>
                   </Link>
-                 
                 </div>
               )}
             </div>

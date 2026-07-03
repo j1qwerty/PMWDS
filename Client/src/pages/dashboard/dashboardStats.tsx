@@ -14,14 +14,14 @@ const StatCard: React.FC<StatCardProps> = ({ icon, value, label, statusKey }) =>
   const colors = getStatusColor(statusKey);
 
   return (
-    <div className={`shadow-sm group relative overflow-hidden ${colors.shadowHoverColor} rounded-2xl p-4 hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between border-0 bg-white`}>
-      <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${colors.bg} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
+    <div className={`shadow-sm grouprelative ${colors.badgeBg} overflow-hidden ${colors.shadowHoverColor} rounded-2xl p-4 hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between border-0`}>
+      {/* <div className={`absolute bottom-1/2 right-0 w-24 h-24 bg-red-600 rounded-full  group-hover:opacity-80 transition-all pointer-events-none `} /> */}
 
       <div className="relative flex items-center gap-3 mb-2">
         <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
           {icon}
         </div>
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+        <span className={`text-xs font-medium ${[colors.badgeText]} uppercase tracking-wider`}>
           {label}
         </span>
       </div>
@@ -74,7 +74,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
   ];
 
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="grid grid-cols-5 gap-4 ">
       {stats.map((stat) => (
         <StatCard key={stat.label} {...stat} />
       ))}

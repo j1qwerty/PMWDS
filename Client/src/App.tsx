@@ -14,6 +14,7 @@ import { ProjectsKPage } from "./pages/projectsK/projectsK";
 import { NotificationsPage } from "./pages/notifications/notifications";
 
 // Project-nested views
+import { ProjectOverviewPage } from "./pages/nested/ProjectOverviewPage";
 import { ProjectTasksPage } from "./pages/nested/ProjectTasksPage";
 import { ProjectMilestonesPage } from "./pages/nested/ProjectMilestonesPage";
 import { ProjectDependenciesPage } from "./pages/nested/ProjectDependenciesPage";
@@ -92,6 +93,7 @@ function AppRoutes() {
                 />
 
                 {/* Project-nested deep links */}
+                <Route path="/projects/:projectId/overview" element={<ProjectOverviewPage />} />
                 <Route path="/projects/:projectId/tasks" element={<ProjectTasksPage />} />
                 <Route
                   path="/projects/:projectId/milestones"

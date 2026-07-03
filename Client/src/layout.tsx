@@ -655,12 +655,14 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Content */}
           <main
-            className="flex flex-1 flex-col relative font-sans w-full"
+            className="flex flex-1 flex-col relative font-sans w-full "
             style={{
               padding: 'clamp(4px,2vw,16px)',
               gap: 'clamp(4px,2.5vw,16px)',
             }}
           >
+    
+
             {children}
           </main>
         </div>

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>PMWDS - Project Overview</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(70, 72, 212, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(70, 72, 212, 0.4); }
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        .animate-slide-in-left {
+            animation: slideInLeft 0.5s ease-out forwards;
+        }
+        
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        .hover-lift {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-border {
+            position: relative;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(135deg, #4648d4, #8127cf) border-box;
+            border: 2px solid transparent;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c7c4d7;
+            border-radius: 3px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #767586;
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 8px;
+            background: #2d3133;
+            color: white;
+            font-size: 12px;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 50;
+            margin-bottom: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#eceef0",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-container": "#fffbff",
+                        "inverse-surface": "#2d3133",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#494bd6",
+                        "on-primary-container": "#fffbff",
+                        "on-primary": "#ffffff",
+                        "on-background": "#191c1e",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-primary-fixed": "#07006c",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "surface": "#f7f9fb",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline": "#767586",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary": "#8127cf",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#6063ee",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#fefcff",
+                        "on-secondary-fixed-variant": "#6900b3",
+                        "inverse-primary": "#c0c1ff",
+                        "secondary-fixed": "#f0dbff",
+                        "tertiary": "#545c72",
+                        "primary-fixed": "#e1e0ff",
+                        "on-surface": "#191c1e",
+                        "on-tertiary-fixed": "#131b2e",
+                        "on-secondary-fixed": "#2c0051",
+                        "surface-dim": "#d8dadc",
+                        "on-surface-variant": "#464554",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c7c4d7",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#ddb7ff",
+                        "tertiary-fixed": "#dae2fd",
+                        "primary": "#4648d4",
+                        "surface-bright": "#f7f9fb",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "tertiary-container": "#6c748b",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-container": "#9c48ea"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-margin": "32px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "column-gutter": "20px",
+                        "xl": "40px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h1": ["Inter"],
+                        "display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "numeric": ["Inter"],
+                        "h2": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["15px", { "lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600" }],
+                        "h1": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "numeric": ["14px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "h2": ["24px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen font-sans flex flex-col md:flex-row">
+    <!-- TopAppBar (Mobile & Shared Desktop) -->
+    <header class="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-lg h-16 bg-surface-container-lowest/70 backdrop-blur-xl border-b border-white/40 shadow-sm shadow-primary/5">
+        <div class="flex items-center gap-md">
+            <button class="md:hidden p-2 text-on-surface-variant hover:bg-primary-container/10 transition-colors rounded-full" onclick="toggleMobileMenu()">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+            <span class="font-h2 text-h2 font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">PMWDS</span>
+        </div>
+        <div class="flex items-center gap-sm">
+            <button class="p-2 text-on-surface-variant hover:bg-primary-container/10 transition-colors rounded-full scale-95 duration-200 tooltip" data-tooltip="Notifications">
+                <span class="material-symbols-outlined">notifications</span>
+                <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+            </button>
+            <button class="p-2 text-on-surface-variant hover:bg-primary-container/10 transition-colors rounded-full scale-95 duration-200 tooltip" data-tooltip="Settings">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+            <button class="p-2 text-on-surface-variant hover:bg-primary-container/10 transition-colors rounded-full scale-95 duration-200 tooltip" data-tooltip="Help">
+                <span class="material-symbols-outlined">help</span>
+            </button>
+            <img alt="User Profile" class="w-8 h-8 rounded-full object-cover ml-2 border-2 border-primary/20 hover:border-primary/50 transition-all cursor-pointer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5CKmVh-hZMM1ck5Aw_HS50aQdJ3naJvBEyQcf_yjv9WQImGQVN0Qg0NHVjgj2t6BlTqedgTQJQJJ3wX1_AVhJeUS4xnIBGBRux1XsaHl623A6Cp4z88HJJx-ytaCX07EYcvRNLFfKwd1rbyc7kK9U0ixAEo9c4J6AHpoIpJY5xWOuiO0kykPMDpOk3ZqSu8SrJNV_nVgs2r3sHMXmT1oUbqnW71a3k1hkEtM_ygVTM9d_5XpZdv3_"/>
+        </div>
+    </header>
+
+    <!-- SideNavBar (Desktop) -->
+    <nav class="hidden md:flex flex-col py-md bg-surface-container-low docked left-0 h-screen w-64 fixed top-16 h-[calc(100vh-64px)] z-40 border-r border-white/20" id="sidebar">
+        <div class="px-lg pb-md mb-md border-b border-outline-variant/30">
+            <h2 class="font-h2 text-h2 font-black text-primary">PMWDS</h2>
+            <p class="font-label-caps text-label-caps text-on-surface-variant mt-xs">Project Management</p>
+        </div>
+        <ul class="flex-1 px-sm space-y-1">
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary font-bold border-r-2 border-primary bg-primary/5 font-body-md text-body-md hover:bg-surface-container-high transition-all translate-x-1 duration-150 hover-lift" href="#">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                    Overview
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high transition-all translate-x-1 duration-150 hover-lift" href="#">
+                    <span class="material-symbols-outlined">event_upcoming</span>
+                    Milestones
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high transition-all translate-x-1 duration-150 hover-lift" href="#">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Operations
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high transition-all translate-x-1 duration-150 hover-lift" href="#">
+                    <span class="material-symbols-outlined">payments</span>
+                    Budget
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-body-md text-body-md hover:bg-surface-container-high transition-all translate-x-1 duration-150 hover-lift" href="#">
+                    <span class="material-symbols-outlined">group</span>
+                    Team
+                </a>
+            </li>
+        </ul>
+        <div class="p-4 mt-auto">
+            <button class="w-full py-2 px-4 bg-gradient-to-br from-primary to-secondary text-white rounded-lg font-label-caps text-label-caps tracking-wide hover:shadow-lg transition-all duration-300 hover-lift animate-pulse-glow">
+                New Project
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="fixed inset-0 bg-black/50 z-30 hidden" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
+    
+    <!-- Mobile Sidebar -->
+    <nav class="fixed top-16 left-0 h-[calc(100vh-64px)] w-64 bg-surface-container-lowest z-40 transform -translate-x-full transition-transform duration-300 md:hidden shadow-xl" id="mobileSidebar">
+        <!-- Same content as desktop sidebar -->
+        <div class="px-lg pb-md mb-md border-b border-outline-variant/30 pt-4">
+            <h2 class="font-h2 text-h2 font-black text-primary">PMWDS</h2>
+            <p class="font-label-caps text-label-caps text-on-surface-variant mt-xs">Project Management</p>
+        </div>
+        <ul class="flex-1 px-sm space-y-1">
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary font-bold bg-primary/5" href="#">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                    Overview
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+                    <span class="material-symbols-outlined">event_upcoming</span>
+                    Milestones
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Operations
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+                    <span class="material-symbols-outlined">payments</span>
+                    Budget
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+                    <span class="material-symbols-outlined">group</span>
+                    Team
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 mt-16 md:ml-64 flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden bg-background">
+        <!-- Left Narrow Panel (Milestones Quick View) -->
+        <aside class="w-full md:w-72 bg-surface-container-lowest/80 backdrop-blur-md border-r border-outline-variant/30 flex flex-col overflow-y-auto shrink-0 z-10 shadow-[4px_0_24px_rgba(70,72,212,0.03)] scrollbar-thin">
+            <div class="p-lg pb-sm border-b border-outline-variant/20 sticky top-0 bg-surface-container-lowest/90 backdrop-blur z-20">
+                <h3 class="font-h2 text-h2 text-on-background flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">flag</span>
+                    Milestones
+                </h3>
+            </div>
+            <div class="p-sm flex flex-col gap-2">
+                <!-- Milestone Item 1 -->
+                <div class="bg-surface p-3 rounded-xl border border-white/60 shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer hover-lift animate-fade-in-up" style="animation-delay: 0.1s;">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-xl transition-all group-hover:w-1.5"></div>
+                    <div class="flex justify-between items-start mb-1 ml-2">
+                        <h4 class="font-body-md text-body-md font-semibold text-on-surface truncate pr-2">Phase 1: Discovery</h4>
+                        <span class="px-2 py-0.5 bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded-full text-[10px]">Active</span>
+                    </div>
+                    <div class="ml-2 flex items-center justify-between text-on-surface-variant text-xs mb-2">
+                        <div class="flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                            <span class="font-numeric text-numeric">Oct 24</span>
+                        </div>
+                        <div class="font-numeric text-numeric text-primary font-medium">8/12</div>
+                    </div>
+                    <div class="ml-2 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                        <div class="h-full bg-primary w-2/3 rounded-full transition-all duration-1000"></div>
+                    </div>
+                </div>
+                
+                <!-- Milestone Item 2 -->
+                <div class="bg-surface p-3 rounded-xl border border-white/60 shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer hover-lift animate-fade-in-up" style="animation-delay: 0.2s;">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-error rounded-l-xl transition-all group-hover:w-1.5"></div>
+                    <div class="flex justify-between items-start mb-1 ml-2">
+                        <h4 class="font-body-md text-body-md font-semibold text-on-surface truncate pr-2 flex items-center gap-1">
+                            Core Dev
+                            <span class="material-symbols-outlined text-error text-[16px] animate-pulse" title="Critical Path">warning</span>
+                        </h4>
+                        <span class="px-2 py-0.5 bg-error-container text-on-error-container font-label-caps text-label-caps rounded-full text-[10px]">Delayed</span>
+                    </div>
+                    <div class="ml-2 flex items-center justify-between text-on-surface-variant text-xs mb-2">
+                        <div class="flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                            <span class="font-numeric text-numeric text-error">Oct 18</span>
+                        </div>
+                        <div class="font-numeric text-numeric font-medium">4/20</div>
+                    </div>
+                    <div class="ml-2 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                        <div class="h-full bg-error w-1/5 rounded-full transition-all duration-1000"></div>
+                    </div>
+                </div>
+                
+                <!-- Milestone Item 3 -->
+                <div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/30 opacity-70 relative overflow-hidden group hover:opacity-100 transition-opacity cursor-pointer hover-lift animate-fade-in-up" style="animation-delay: 0.3s;">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-tertiary rounded-l-xl transition-all group-hover:w-1.5"></div>
+                    <div class="flex justify-between items-start mb-1 ml-2">
+                        <h4 class="font-body-md text-body-md font-semibold text-on-surface truncate pr-2">UAT Testing</h4>
+                        <span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant font-label-caps text-label-caps rounded-full text-[10px]">Pending</span>
+                    </div>
+                    <div class="ml-2 flex items-center justify-between text-on-surface-variant text-xs mb-2">
+                        <div class="flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                            <span class="font-numeric text-numeric">Nov 15</span>
+                        </div>
+                        <div class="font-numeric text-numeric font-medium">0/8</div>
+                    </div>
+                    <div class="ml-2 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                        <div class="h-full bg-tertiary w-0 rounded-full transition-all duration-1000"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Main Panel -->
+        <section class="flex-1 overflow-y-auto p-lg lg:p-xl space-y-lg relative scrollbar-thin">
+            <!-- Ambient Background Texture -->
+            <div class="absolute inset-0 pointer-events-none opacity-[0.02]" style="background-image: radial-gradient(circle at 1px 1px, black 1px, transparent 0); background-size: 24px 24px;"></div>
+            
+            <div class="max-w-7xl mx-auto space-y-lg relative z-10">
+                <!-- 1. Header & High-Level KPIs -->
+                <div class="bg-surface-container-lowest/70 backdrop-blur-xl rounded-2xl p-lg border border-white/60 shadow-[0_8px_32px_rgba(70,72,212,0.04)] flex flex-col xl:flex-row gap-lg items-start xl:items-center animate-fade-in-up">
+                    <div class="flex-1 space-y-4">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <h1 class="font-display text-display text-on-background tracking-tight">Project Phoenix</h1>
+                            <span class="px-3 py-1 bg-primary/10 text-primary font-label-caps text-label-caps rounded-full border border-primary/20">Active</span>
+                            <span class="px-3 py-1 bg-error/10 text-error font-label-caps text-label-caps rounded-full border border-error/20 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">bolt</span> High Priority
+                            </span>
+                        </div>
+                        <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+                            Enterprise migration to AWS infrastructure encompassing 400+ virtual machines and complete database refactoring. Managed by <span class="font-semibold text-on-surface">Arjun Desai</span>.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-lg shrink-0">
+                        <!-- Circular Progress with Animation -->
+                        <div class="relative w-24 h-24 flex items-center justify-center group cursor-pointer">
+                            <svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+                                <path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+                                <path class="text-primary transition-all duration-1000" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="64, 100" stroke-linecap="round" stroke-width="3"></path>
+                            </svg>
+                            <div class="absolute flex flex-col items-center">
+                                <span class="font-display text-h2 text-on-surface group-hover:scale-110 transition-transform">64%</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="bg-surface p-4 rounded-xl border border-white/50 min-w-[120px] hover-lift cursor-pointer">
+                                <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Tasks</div>
+                                <div class="font-numeric text-h1 text-on-surface">142</div>
+                                <div class="text-xs text-on-surface-variant mt-1"><span class="text-primary font-medium">84</span> Done • <span class="text-error font-medium">12</span> Overdue</div>
+                            </div>
+                            <div class="bg-surface p-4 rounded-xl border border-white/50 min-w-[120px] hover-lift cursor-pointer">
+                                <div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Budget Burn</div>
+                                <div class="font-numeric text-h1 text-on-surface">$42K</div>
+                                <div class="text-xs text-on-surface-variant mt-1">of $75K Planned</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Grid Layout for Details -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-lg">
+                    <!-- 2. AI Insights Section (Spans 8 cols) -->
+                    <div class="md:col-span-8 bg-surface-container-lowest/70 backdrop-blur-xl rounded-2xl p-lg border border-white/60 shadow-sm relative overflow-hidden animate-fade-in-up" style="animation-delay: 0.2s;">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                        <h3 class="font-h2 text-h2 text-on-background flex items-center gap-2 mb-lg relative z-10">
+                            <span class="material-symbols-outlined text-secondary">psychology</span>
+                            AI Predictive Insights
+                        </h3>
+                        <div class="grid grid-cols-3 gap-md relative z-10">
+                            <!-- Gauge 1 -->
+                            <div class="flex flex-col items-center p-4 bg-surface rounded-xl border border-white/40 shadow-sm hover-lift cursor-pointer group">
+                                <div class="relative w-32 h-20 overflow-hidden flex items-end justify-center mb-2">
+                                    <svg class="w-full h-full" viewbox="0 0 100 50">
+                                        <path class="text-surface-container-highest" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="12"></path>
+                                        <path class="text-primary transition-all duration-1000" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-dasharray="125" stroke-dashoffset="25" stroke-linecap="round" stroke-width="12"></path>
+                                    </svg>
+                                    <div class="absolute bottom-0 font-numeric text-h2 text-on-surface group-hover:scale-110 transition-transform">85</div>
+                                </div>
+                                <div class="font-label-caps text-label-caps text-on-surface-variant text-center">Overall Health</div>
+                            </div>
+                            
+                            <!-- Gauge 2 -->
+                            <div class="flex flex-col items-center p-4 bg-surface rounded-xl border border-white/40 shadow-sm hover-lift cursor-pointer group">
+                                <div class="relative w-32 h-20 overflow-hidden flex items-end justify-center mb-2">
+                                    <svg class="w-full h-full" viewbox="0 0 100 50">
+                                        <path class="text-surface-container-highest" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="12"></path>
+                                        <path class="text-error transition-all duration-1000" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-dasharray="125" stroke-dashoffset="90" stroke-linecap="round" stroke-width="12"></path>
+                                    </svg>
+                                    <div class="absolute bottom-0 font-numeric text-h2 text-on-surface group-hover:scale-110 transition-transform">24%</div>
+                                </div>
+                                <div class="font-label-caps text-label-caps text-on-surface-variant text-center">Delay Risk</div>
+                            </div>
+                            
+                            <!-- Gauge 3 -->
+                            <div class="flex flex-col items-center p-4 bg-surface rounded-xl border border-white/40 shadow-sm hover-lift cursor-pointer group">
+                                <div class="relative w-32 h-20 overflow-hidden flex items-end justify-center mb-2">
+                                    <svg class="w-full h-full" viewbox="0 0 100 50">
+                                        <path class="text-surface-container-highest" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="12"></path>
+                                        <path class="text-tertiary transition-all duration-1000" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-dasharray="125" stroke-dashoffset="100" stroke-linecap="round" stroke-width="12"></path>
+                                    </svg>
+                                    <div class="absolute bottom-0 font-numeric text-h2 text-on-surface group-hover:scale-110 transition-transform">12%</div>
+                                </div>
+                                <div class="font-label-caps text-label-caps text-on-surface-variant text-center">Budget Risk</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Task Distribution (Spans 4 cols) -->
+                    <div class="md:col-span-4 bg-surface-container-lowest/70 backdrop-blur-xl rounded-2xl p-lg border border-white/60 shadow-sm flex flex-col animate-fade-in-up" style="animation-delay: 0.3s;">
+                        <h3 class="font-h2 text-h2 text-on-background flex items-center gap-2 mb-md">
+                            <span class="material-symbols-outlined text-primary">donut_large</span>
+                            Status
+                        </h3>
+                        <div class="flex-1 flex flex-col items-center justify-center relative">
+                            <div class="w-40 h-40 rounded-full border-[16px] border-surface-container-highest relative flex items-center justify-center mb-4 group cursor-pointer hover:scale-105 transition-transform">
+                                <div class="absolute inset-0 rounded-full border-[16px] border-primary border-t-transparent border-r-transparent rotate-45"></div>
+                                <div class="absolute inset-0 rounded-full border-[16px] border-secondary border-b-transparent border-l-transparent rotate-12"></div>
+                                <div class="font-numeric text-h2 text-on-surface">142</div>
+                            </div>
+                            <div class="w-full flex flex-wrap gap-2 justify-center mt-4">
+                                <span class="px-2 py-1 rounded bg-surface border border-outline-variant/30 text-xs flex items-center gap-1 hover:border-primary/50 transition-all cursor-pointer">
+                                    <div class="w-2 h-2 rounded-full bg-primary"></div> In Progress
+                                </span>
+                                <span class="px-2 py-1 rounded bg-surface border border-outline-variant/30 text-xs flex items-center gap-1 hover:border-secondary/50 transition-all cursor-pointer">
+                                    <div class="w-2 h-2 rounded-full bg-secondary"></div> Done
+                                </span>
+                                <span class="px-2 py-1 rounded bg-surface border border-outline-variant/30 text-xs flex items-center gap-1 hover:border-outline/50 transition-all cursor-pointer">
+                                    <div class="w-2 h-2 rounded-full bg-surface-container-highest"></div> To Do
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Team Table (Spans 12 cols) -->
+                    <div class="md:col-span-12 bg-surface-container-lowest/70 backdrop-blur-xl rounded-2xl border border-white/60 shadow-sm overflow-hidden animate-fade-in-up" style="animation-delay: 0.4s;">
+                        <div class="p-lg border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-lowest/90">
+                            <h3 class="font-h2 text-h2 text-on-background flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">group</span>
+                                Core Team Activity
+                            </h3>
+                            <button class="text-primary hover:bg-primary/5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:scale-105 transform">
+                                View All
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-surface/50 font-label-caps text-label-caps text-on-surface-variant">
+                                        <th class="p-4 font-semibold">Member</th>
+                                        <th class="p-4 font-semibold">Role</th>
+                                        <th class="p-4 font-semibold">Active Tasks</th>
+                                        <th class="p-4 font-semibold">Completion %</th>
+                                        <th class="p-4 font-semibold">AI Burnout Risk</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="font-body-md text-body-md text-on-surface divide-y divide-outline-variant/10">
+                                    <tr class="hover:bg-surface-container-lowest/80 transition-colors bg-[#FDFDFD] cursor-pointer">
+                                        <td class="p-4 flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shadow-sm">AD</div>
+                                            <span class="font-medium">Arjun Desai</span>
+                                        </td>
+                                        <td class="p-4 text-on-surface-variant">Project Manager</td>
+                                        <td class="p-4 font-numeric">12</td>
+                                        <td class="p-4">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden max-w-[100px]">
+                                                    <div class="h-full bg-primary w-[85%] rounded-full transition-all duration-1000"></div>
+                                                </div>
+                                                <span class="font-numeric text-xs">85%</span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded-md text-xs font-medium border border-outline-variant/30 flex items-center gap-1 w-max">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-tertiary"></div> Low
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-surface-container-lowest/80 transition-colors bg-[#F8FAFC] cursor-pointer">
+                                        <td class="p-4 flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-sm shadow-sm">NP</div>
+                                            <span class="font-medium">Nisha Patel</span>
+                                        </td>
+                                        <td class="p-4 text-on-surface-variant">Lead Developer</td>
+                                        <td class="p-4 font-numeric">24</td>
+                                        <td class="p-4">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden max-w-[100px]">
+                                                    <div class="h-full bg-primary w-[60%] rounded-full transition-all duration-1000"></div>
+                                                </div>
+                                                <span class="font-numeric text-xs">60%</span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 bg-error-container/30 text-on-error-container rounded-md text-xs font-medium border border-error/20 flex items-center gap-1 w-max animate-pulse">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-error" style="box-shadow: 0 0 0 4px rgba(186, 26, 26, 0.4);"></div> High
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        // Smooth scroll animation for progress bars
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressBars = document.querySelectorAll('.h-full.bg-primary, .h-full.bg-error, .h-full.bg-tertiary');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.transition = 'width 1.5s ease-in-out';
+                        const currentWidth = entry.target.style.width;
+                        entry.target.style.width = '0%';
+                        setTimeout(() => {
+                            entry.target.style.width = currentWidth;
+                        }, 100);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            progressBars.forEach(bar => observer.observe(bar));
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const sidebar = document.getElementById('mobileSidebar');
+                const overlay = document.getElementById('mobileOverlay');
+                if (!sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                }
+            }
+        });
+
+        // Add ripple effect to buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                const rect = button.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.cssText = `
+                    position: absolute;
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${x}px;
+                    top: ${y}px;
+                    background: rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    transform: scale(0);
+                    animation: ripple 0.6s ease-out;
+                `;
+                
+                button.style.position = button.style.position || 'relative';
+                button.style.overflow = 'hidden';
+                button.appendChild(ripple);
+                
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+
+        // Add ripple animation style
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

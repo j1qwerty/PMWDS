@@ -1,0 +1,727 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../api";
+import { useAuth } from "../../auth";
+import type { Milestone, ProjectDocument, TaskAttachment } from "../../types";
+import {
+  GlassCard,
+  getStatusColor,
+  getPriorityColor,
+  LoadingPage,
+  useNavHeader,
+  PERMISSION_GROUPS,
+  usePermission,
+  useToast,
+} from "../shared";
+import { useProjectWorkspace } from "./nestedShared";
+import { ProjectNotFound } from "./ProjectNotFound";
+import { ProjectInfoCard } from "./ProjectInfoCard";
+import { Icon } from "../../components/ui/Icon";
+import { Avatark } from "../shared/Avatark";
+import { TaskStatusDonut, MilestoneTimeline, BudgetBar } from "./components/OverviewCharts";
+import { OverviewAIInsights } from "./components/OverviewAIInsights";
+
+function KpiCard({
+  label,
+  value,
+  color,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  color: string;
+  icon: string;
+}) {
+  const colorMap: Record<string, { bg: string; text: string; iconBg: string }> = {
+    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", iconBg: "bg-indigo-100" },
+    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", iconBg: "bg-emerald-100" },
+    amber: { bg: "bg-amber-50", text: "text-amber-600", iconBg: "bg-amber-100" },
+    rose: { bg: "bg-rose-50", text: "text-rose-600", iconBg: "bg-rose-100" },
+    violet: { bg: "bg-violet-50", text: "text-violet-600", iconBg: "bg-violet-100" },
+    cyan: { bg: "bg-cyan-50", text: "text-cyan-600", iconBg: "bg-cyan-100" },
+    slate: { bg: "bg-slate-50", text: "text-slate-600", iconBg: "bg-slate-100" },
+  };
+  const c = colorMap[color] || colorMap.slate;
+
+  return (
+    <div className={`rounded-2xl border border-slate-100 bg-white p-4 transition-all hover:shadow-md ${c.bg}/30`}>
+      <div className="flex items-start justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+          <p className={`text-xl font-bold mt-1 ${c.text}`}>{value}</p>
+        </div>
+        <div className={`w-9 h-9 rounded-xl ${c.iconBg} flex items-center justify-center shrink-0 ml-2`}>
+          <Icon name={icon} size={16} className={c.text} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ProjectOverviewPage() {
+  const navigate = useNavigate();
+  const ws = useProjectWorkspace();
+  const { auth } = useAuth();
+  const { addToast } = useToast();
+  const perm = usePermission();
+  const { setNavHeader } = useNavHeader();
+
+  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+
+  const [projectDocs, setProjectDocs] = useState<ProjectDocument[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const PAGE_SIZE = 10;
+  const PIN_THRESHOLD = 5;
+  const [sidebarSearch, setSidebarSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [savedScrollPos, setSavedScrollPos] = useState(0);
+  const [pinnedMilestone, setPinnedMilestone] = useState<Milestone | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ws.project || !auth) return;
+    setLoadingDocs(true);
+    api
+      .getProjectDocuments(auth.token, ws.project.id)
+      .then(setProjectDocs)
+      .catch(() => setProjectDocs([]))
+      .finally(() => setLoadingDocs(false));
+  }, [ws.project?.id, auth]);
+
+  useEffect(() => {
+    if (!ws.project) {
+      setNavHeader({ title: "Overview", description: "" });
+      return;
+    }
+    setNavHeader({
+      title: `Overview · ${ws.project.name}`,
+      description: "Project summary with stats, charts, and insights",
+    });
+  }, [setNavHeader, ws.project]);
+
+  const taskStatusData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of ws.tasks) {
+      const key = t.status || "Unknown";
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const order = ["Todo", "InProgress", "OnHold", "Completed", "Delayed", "Cancelled", "Unknown"];
+    return order.filter((s) => counts[s]).map((s) => ({ status: s, count: counts[s] }));
+  }, [ws.tasks]);
+
+  const priorityData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of ws.tasks) {
+      const p = t.priority || "Medium";
+      counts[p] = (counts[p] || 0) + 1;
+    }
+    return Object.entries(counts).map(([priority, count]) => ({ priority, count }));
+  }, [ws.tasks]);
+
+  const teamTaskCounts = useMemo(() => {
+    const map: Record<string, { user: typeof ws.users[0]; active: number; completed: number; total: number }> = {};
+    for (const t of ws.tasks) {
+      const uid = t.assignedToUserId;
+      if (!uid) continue;
+      if (!map[uid]) {
+        const user = ws.users.find((u) => u.id === uid);
+        map[uid] = { user: user!, active: 0, completed: 0, total: 0 };
+      }
+      map[uid].total++;
+      if (t.status === "Completed") map[uid].completed++;
+      else if (t.status !== "Cancelled") map[uid].active++;
+    }
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [ws.tasks, ws.users]);
+
+  const overdueCount = ws.tasks.filter((t) => t.isOverdue).length;
+  const escalatedCount = ws.tasks.filter((t) => t.isEscalated).length;
+  const completedCount = ws.tasks.filter((t) => t.status === "Completed").length;
+  const inProgressCount = ws.tasks.filter((t) => t.status === "InProgress").length;
+
+  const avgProgress = ws.tasks.length
+    ? Math.round(ws.tasks.reduce((s, t) => s + (t.progressPercentage || 0), 0) / ws.tasks.length)
+    : 0;
+
+  const totalDocs = projectDocs.length;
+  const totalTaskAttachments = ws.tasks.reduce((s, t) => s + (t.attachments?.length || 0), 0);
+
+  const uniqueAssignees = new Set(ws.tasks.filter((t) => t.assignedToUserId).map((t) => t.assignedToUserId));
+  const totalTeamMembers = ws.users.filter((u) => uniqueAssignees.has(u.id)).length;
+
+  const budgetUtilPct = ws.project?.plannedBudget
+    ? Math.min(Math.round(((ws.project?.actualCost || 0) / ws.project.plannedBudget) * 100), 100)
+    : 0;
+
+  const budgetColor =
+    budgetUtilPct > 100 ? "bg-red-500" :
+    budgetUtilPct > 85 ? "bg-amber-500" :
+    "bg-emerald-500";
+
+  const cMilestones = ws.milestones.filter((m) => m.status === "Completed").length;
+  const criticalMilestones = ws.milestones.filter((m) => m.isCritical).length;
+  const blockedMilestones = ws.milestones.filter((m) => m.isBlocked).length;
+  const depsMet = ws.dependencies.filter((d) => d.isMet).length;
+
+  const sortedMilestones = useMemo(() => {
+    if (ws.dependencies.length === 0) return ws.milestones;
+    const deps = ws.dependencies;
+    const mils = ws.milestones;
+    const milestoneSet = new Set(mils.map(m => m.id));
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    for (const m of mils) { adj.set(m.id, []); inDegree.set(m.id, 0); }
+    for (const dep of deps) {
+      const from = dep.prerequisiteMilestoneId;
+      const to = dep.dependentMilestoneId;
+      if (milestoneSet.has(from) && milestoneSet.has(to)) {
+        adj.get(from)!.push(to);
+        inDegree.set(to, (inDegree.get(to) || 0) + 1);
+      }
+    }
+    const roots = mils.filter(m => inDegree.get(m.id) === 0);
+    const visited = new Set<string>();
+    const orderedIds: string[] = [];
+    const dfs = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      orderedIds.push(id);
+      for (const neighbor of adj.get(id) || []) { if (!visited.has(neighbor)) dfs(neighbor); }
+    };
+    for (const root of roots) dfs(root.id);
+    for (const m of mils) if (!visited.has(m.id)) orderedIds.push(m.id);
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+    return [...mils].sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
+  }, [ws.milestones, ws.dependencies]);
+
+  const filteredSortedMilestones = useMemo(
+    () => sortedMilestones.filter((m) => m.name.toLowerCase().includes(sidebarSearch.toLowerCase())),
+    [sortedMilestones, sidebarSearch]
+  );
+
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [sidebarSearch]);
+
+  const visibleSortedMilestones = useMemo(
+    () => filteredSortedMilestones.slice(0, visibleCount),
+    [filteredSortedMilestones, visibleCount]
+  );
+
+  const remaining = filteredSortedMilestones.length - visibleCount;
+
+  const handleMilestoneClick = useCallback((m: Milestone) => {
+    const idx = filteredSortedMilestones.findIndex((ms) => ms.id === m.id);
+    if (idx >= PIN_THRESHOLD) {
+      setSavedScrollPos(window.scrollY);
+      setPinnedMilestone(m);
+    } else {
+      setPinnedMilestone(null);
+      setSavedScrollPos(0);
+    }
+    navigate(`/projects/${ws.project!.id}/milestones`);
+  }, [filteredSortedMilestones, navigate, ws.project]);
+
+  const handleJumpBack = useCallback(() => {
+    setPinnedMilestone(null);
+    if (savedScrollPos > 0) window.scrollTo({ top: savedScrollPos, behavior: "smooth" });
+    setSavedScrollPos(0);
+  }, [savedScrollPos]);
+
+  if (ws.loading) return <LoadingPage label="Loading project overview..." />;
+  if (!ws.project) return <ProjectNotFound />;
+
+  return (
+    <div>
+      <div className="relative z-10 mb-5">
+        <ProjectInfoCard
+          project={ws.project}
+          milestonesCount={ws.milestones.length}
+          milestones={ws.milestones}
+          dependencies={ws.dependencies}
+          canManageProjects={canManageProjects}
+          users={ws.users}
+          onProjectUpdated={() => ws.refresh()}
+        />
+      </div>
+
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+        {/* ── Left Panel: Milestones Sidebar ── */}
+        <aside className="space-y-3">
+          <GlassCard className="p-4 flex flex-col relative">
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                <Icon name="hi-flag" size={14} />
+                Milestones
+              </h3>
+              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                {sortedMilestones.length}
+              </span>
+            </div>
+
+            <div className="relative mb-3 shrink-0">
+              <Icon name="search" size={14} className="absolute left-2.5 top-1.5 text-slate-400" />
+              <input
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 pl-8 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow outline-none shadow-sm"
+                placeholder="Filter milestones..."
+                type="text"
+                value={sidebarSearch}
+                onChange={(e) => setSidebarSearch(e.target.value)}
+              />
+            </div>
+
+            <div ref={listRef} className="flex flex-col gap-1 flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {pinnedMilestone && (
+                <div className="shrink-0">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/projects/${ws.project!.id}/milestones`)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors group rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${getStatusColor(pinnedMilestone.status).dot} ${pinnedMilestone.status !== "Completed" && new Date(pinnedMilestone.dueDate).getTime() < Date.now() ? "animate-pulse" : ""}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-slate-700 truncate group-hover:text-indigo-600 transition-colors">
+                              {pinnedMilestone.name}
+                            </span>
+                            {pinnedMilestone.isCritical && (
+                              <Icon name="priority_high" size={10} className="text-rose-500 shrink-0" />
+                            )}
+                            {pinnedMilestone.isBlocked && (
+                              <Icon name="hi-ban" size={10} className="text-amber-500 shrink-0" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${getStatusColor(pinnedMilestone.status).bg}`}
+                                style={{ width: `${pinnedMilestone.progressPercentage}%` }}
+                              />
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-medium">{pinnedMilestone.progressPercentage}%</span>
+                          </div>
+                        </div>
+                        <Icon name="chevron-right" size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                      </div>
+                    </button>
+                    <span className="absolute -top-1.5 -right-1.5 text-[9px] font-semibold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-200 shadow-sm">
+                      Pinned
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {visibleSortedMilestones.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <Icon name="flag" size={24} className="mx-auto mb-2" />
+                  <p className="text-xs font-medium">No milestones match filters</p>
+                </div>
+              ) : (
+                visibleSortedMilestones.map((m) => {
+                  const color = getStatusColor(m.status);
+                  const due = new Date(m.dueDate).getTime();
+                  const overdue = m.status !== "Completed" && due < Date.now();
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => handleMilestoneClick(m)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors group rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${color.dot} ${overdue ? "animate-pulse" : ""}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-slate-700 truncate group-hover:text-indigo-600 transition-colors">
+                              {m.name}
+                            </span>
+                            {m.isCritical && (
+                              <Icon name="priority_high" size={10} className="text-rose-500 shrink-0" />
+                            )}
+                            {m.isBlocked && (
+                              <Icon name="hi-ban" size={10} className="text-amber-500 shrink-0" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${color.bg}`}
+                                style={{ width: `${m.progressPercentage}%` }}
+                              />
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-medium">{m.progressPercentage}%</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] text-slate-400">
+                              {new Date(m.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                            {overdue && (
+                              <span className="text-[8px] font-bold text-red-500">OVERDUE</span>
+                            )}
+                          </div>
+                        </div>
+                        <Icon name="chevron-right" size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+
+              {remaining > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="text-xs text-indigo-500 hover:text-indigo-700 font-medium py-1.5 text-center transition-colors"
+                >
+                  Show {Math.min(remaining, PAGE_SIZE)} more ({remaining} remaining)
+                </button>
+              )}
+              {visibleCount > PAGE_SIZE && (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount(PAGE_SIZE)}
+                  className="text-[11px] text-indigo-500 hover:text-indigo-700 font-medium py-1 text-center transition-colors"
+                >
+                  Show less
+                </button>
+              )}
+            </div>
+
+            <div className="shrink-0 mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+              <span>{cMilestones} / {sortedMilestones.length} completed</span>
+              {criticalMilestones > 0 && <span className="text-rose-500 font-medium">{criticalMilestones} critical</span>}
+            </div>
+
+            {savedScrollPos > 0 && createPortal(
+              <button
+                type="button"
+                onClick={handleJumpBack}
+                className="fixed bottom-4 z-50 size-9 flex items-center justify-center rounded-full bg-white border border-blue-200 shadow-lg text-blue-500 transition-all max-md:!left-auto max-md:right-4 animate-[bounce-glow_2.5s_ease-in-out_infinite]"
+                style={{
+                  left: 'calc(clamp(200px,25vw,240px) + 280px)',
+                }}
+                title="Back to previous position"
+              >
+                <Icon name="arrow-down" size={16} />
+                <style>{`
+                  @keyframes bounce-glow {
+                    0%, 100% { 
+                      transform: translateY(0);
+                      box-shadow: 0 2px 8px rgba(59,130,246,0.15), 0 1px 3px rgba(0,0,0,0.08);
+                    }
+                    50% { 
+                      transform: translateY(-6px);
+                      box-shadow: 0 8px 25px rgba(59,130,246,0.35), 0 2px 8px rgba(59,130,246,0.2);
+                    }
+                  }
+                `}</style>
+              </button>,
+              document.body
+            )}
+          </GlassCard>
+        </aside>
+
+        {/* ── Right Panel: Main Content ── */}
+        <div className="space-y-5 min-w-0">
+
+          {/* KPI Cards Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <KpiCard label="Total Tasks" value={ws.tasks.length} color="indigo" icon="hi-clipboard" />
+            <KpiCard label="In Progress" value={inProgressCount} color="cyan" icon="clock" />
+            <KpiCard label="Completed" value={completedCount} color="emerald" icon="check-circle" />
+            <KpiCard label="Overdue" value={overdueCount} color="rose" icon="alert-circle" />
+          </div>
+
+          <OverviewAIInsights ws={ws} />
+
+          {/* Task Distribution + Budget */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Icon name="hi-chart-bar" size={16} className="text-indigo-500" />
+                    Task Status
+                  </h3>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <span className="text-slate-400">Avg progress</span>
+                    <span className="font-semibold text-slate-600">{avgProgress}%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="p-5">
+                <TaskStatusDonut data={taskStatusData} />
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Icon name="hi-cash" size={16} className="text-emerald-500" />
+                    Budget Overview
+                  </h3>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    ws.project.budgetVariance >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                  }`}>
+                    {ws.project.budgetVariance >= 0 ? "Under" : "Over"} budget
+                  </span>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                <BudgetBar
+                  label="Planned Budget"
+                  value={ws.project.plannedBudget}
+                  max={ws.project.plannedBudget}
+                  color="bg-indigo-500"
+                />
+                <BudgetBar
+                  label="Actual Cost"
+                  value={ws.project.actualCost}
+                  max={ws.project.plannedBudget}
+                  color={budgetColor}
+                />
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Budget Variance</span>
+                    <span className={`font-bold ${ws.project.budgetVariance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {ws.project.budgetVariance >= 0 ? "+" : ""}₹{ws.project.budgetVariance.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-slate-500">Utilization</span>
+                    <span className="font-semibold text-slate-700">{budgetUtilPct}%</span>
+                  </div>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* Milestone Timeline */}
+          <GlassCard className="p-0 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                  <Icon name="timeline" size={16} className="text-amber-500" />
+                  Milestone Timeline
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/projects/${ws.project!.id}/milestones`)}
+                  className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                >
+                  View all
+                  <Icon name="chevron-right" size={12} />
+                </button>
+              </div>
+            </div>
+            <div className="p-5">
+              <MilestoneTimeline
+                milestones={sortedMilestones}
+                startDate={ws.project.plannedStartDate}
+                endDate={ws.project.plannedEndDate}
+                onNavigate={(id) => navigate(`/projects/${ws.project!.id}/milestones`)}
+              />
+            </div>
+          </GlassCard>
+
+          {/* Team + Dependencies */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Icon name="hi-user-group" size={16} className="text-violet-500" />
+                    Team Assignment
+                  </h3>
+                  <span className="text-[10px] text-slate-400">{totalTeamMembers} members</span>
+                </div>
+              </div>
+              <div className="max-h-[320px] overflow-y-auto sidebar-scrollbar">
+                {teamTaskCounts.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-xs">No assigned tasks</div>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">Member</th>
+                        <th className="text-center px-2 py-2 font-medium">Active</th>
+                        <th className="text-center px-2 py-2 font-medium">Done</th>
+                        <th className="text-center px-2 py-2 font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {teamTaskCounts.map(({ user, active, completed, total }) => (
+                        <tr key={user?.id || "unknown"} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-2">
+                              <Avatark person={user} name={user?.fullName} size="xs" />
+                              <span className="font-medium text-slate-700 truncate max-w-[120px]">
+                                {user?.fullName || "Unassigned"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="text-center px-2 py-2 text-cyan-600 font-semibold">{active}</td>
+                          <td className="text-center px-2 py-2 text-emerald-600 font-semibold">{completed}</td>
+                          <td className="text-center px-2 py-2 text-slate-700 font-semibold">{total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Icon name="account_tree" size={16} className="text-cyan-500" />
+                    Dependencies
+                  </h3>
+                  <span className="text-[10px] text-slate-400">{ws.dependencies.length} total</span>
+                </div>
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+                    <p className="text-lg font-bold text-emerald-600">{depsMet}</p>
+                    <p className="text-[10px] text-emerald-700">Met</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
+                    <p className="text-lg font-bold text-slate-600">{ws.dependencies.length - depsMet}</p>
+                    <p className="text-[10px] text-slate-500">Unmet</p>
+                  </div>
+                </div>
+                {blockedMilestones > 0 && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
+                    <Icon name="warning" size={14} className="text-amber-600 shrink-0" />
+                    <span className="text-xs text-amber-700">
+                      <strong>{blockedMilestones}</strong> milestone{blockedMilestones > 1 ? "s" : ""} currently blocked
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Completion-based</span>
+                  <span className="font-semibold text-slate-600">
+                    {ws.dependencies.filter((d) => d.type === "CompletionBased").length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Progress threshold</span>
+                  <span className="font-semibold text-slate-600">
+                    {ws.dependencies.filter((d) => d.type === "ProgressThreshold").length}
+                  </span>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* Documents Section */}
+          <GlassCard className="p-0 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                  <Icon name="description" size={16} className="text-slate-500" />
+                  Documents
+                </h3>
+                <span className="text-[10px] text-slate-400">
+                  {totalDocs} project · {totalTaskAttachments} task
+                </span>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Project Documents */}
+              {loadingDocs ? (
+                <div className="text-center text-xs text-slate-400 py-4">Loading documents...</div>
+              ) : projectDocs.length > 0 ? (
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Icon name="hi-folder-open" size={12} />
+                    Project Documents
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium">Title</th>
+                          <th className="text-left px-3 py-2 font-medium">Type</th>
+                          <th className="text-right px-3 py-2 font-medium">Size</th>
+                          <th className="text-right px-3 py-2 font-medium">Version</th>
+                          <th className="text-right px-3 py-2 font-medium">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {projectDocs.slice(0, 5).map((doc) => (
+                          <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-3 py-2 font-medium text-slate-700">{doc.title}</td>
+                            <td className="px-3 py-2 text-slate-500">{doc.contentType?.split("/").pop() || "—"}</td>
+                            <td className="px-3 py-2 text-right text-slate-500">
+                              {(doc.fileSizeBytes / 1024).toFixed(0)} KB
+                            </td>
+                            <td className="px-3 py-2 text-right text-slate-500">v{doc.version}</td>
+                            <td className="px-3 py-2 text-right text-slate-500">
+                              {new Date(doc.createdDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {projectDocs.length > 5 && (
+                      <div className="text-center pt-2">
+                        <span className="text-[10px] text-indigo-500 font-semibold">+{projectDocs.length - 5} more</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-xs text-slate-400 py-2">No project documents</div>
+              )}
+
+              {/* Task Attachments */}
+              {totalTaskAttachments > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Icon name="hi-paper-clip" size={12} />
+                    Task Attachments
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {ws.tasks.slice(0, 10).map((task) =>
+                      (task.attachments || []).map((att) => (
+                        <div
+                          key={att.id}
+                          className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] text-slate-600 flex items-center gap-1.5"
+                        >
+                          <Icon name="file" size={12} className="text-slate-400" />
+                          <span className="truncate max-w-[120px]">{att.fileName}</span>
+                        </div>
+                      ))
+                    )}
+                    {totalTaskAttachments > 10 && (
+                      <span className="text-[10px] text-slate-400 self-center">+{totalTaskAttachments - 10} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </GlassCard>
+
+          {/* Escalated Tasks Alert */}
+          {escalatedCount > 0 && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3">
+              <Icon name="emergency" size={18} className="text-rose-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-rose-800">{escalatedCount} Escalated Task{escalatedCount > 1 ? "s" : ""}</p>
+                <p className="text-xs text-rose-600 mt-0.5">
+                  {ws.tasks.filter((t) => t.isEscalated).slice(0, 3).map((t) => t.title).join(", ")}
+                  {escalatedCount > 3 && ` +${escalatedCount - 3} more`}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
