@@ -4,7 +4,7 @@ import { FiEdit, FiTrash2, FiAlertTriangle, FiCalendar, FiFlag, FiNavigation, Fi
 import type { Milestone, Project, Task, User } from "../../../types";
 import { formatDate } from "../../../ui";
 import { AvatarStack } from "../../shared";
-import { StatusBadgeMinimal } from "../../shared/StatusBadgeMininmal";
+import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
 import { PriorityBadge } from "../../shared";
 import { StatusDropdown } from "../../nested/components/StatusDropdown";
 import { InfoChip } from "../../nested/components/InfoChip";

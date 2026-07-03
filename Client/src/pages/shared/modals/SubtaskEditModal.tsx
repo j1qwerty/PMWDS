@@ -103,6 +103,7 @@ export function SubtaskEditModal({
                 disabled={isDeleting}
                 className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                 title="Delete subtask"
+                aria-label="Delete subtask"
               >
                 <FiTrash2 className="w-4 h-4" />
               </button>

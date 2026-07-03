@@ -21,7 +21,6 @@ import {
   HiOutlineChatAlt2,
   HiOutlineSearch,
   HiOutlineBell,
-  HiChat,
   HiOutlineChevronDoubleLeft,
   HiOutlineChevronDoubleRight,
   HiOutlineMenu,
@@ -297,6 +296,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             {/* Hide toggle on mobile (sidebar closes via overlay click) */}
             <button
               onClick={() => setSidebarCompact(!sidebarCompact)}
+              aria-label="Toggle sidebar"
               className="hidden md:flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
               style={{
                 height: 'clamp(28px,4vw,32px)',
@@ -312,6 +312,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             {/* Mobile close button */}
             <button
               onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close sidebar"
               className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary"
               style={{
                 height: 'clamp(28px,4vw,32px)',
@@ -455,43 +456,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 );
               })()}
 
-              {/* Chat */}
-              {/* {(() => {
-                const theme = sectionThemes.Overview;
-                const active = isActive("/chat");
-                return (
-                  <Link
-                    to="/chat"
-                    onClick={() => setMobileSidebarOpen(false)}
-                    className={classNames(
-                      "relative flex items-center rounded-md transition-all duration-200 group",
-                      sidebarCompact
-                        ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
-                        : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
-                      active
-                        ? `${theme.active} ${theme.borderActive}`
-                        : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-                    )}
-                    title={sidebarCompact ? "Chats" : undefined}
-                  >
-                    <span
-                      className={classNames(
-                        "transition-all duration-300 shrink-0",
-                        active
-                          ? `${theme.iconActive} scale-110`
-                          : `${theme.iconDefault} group-hover:scale-110`
-                      )}
-                    >
-                      {iconMap.chat}
-                    </span>
-                    {!sidebarCompact && (
-                      <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
-                        Chats
-                      </span>
-                    )}
-                  </Link>
-                );
-              })()} */}
+
             </div>
 
             {/* Projects Group (Dynamic) */}
@@ -643,6 +608,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 {/* Mobile hamburger */}
                 <button
                   onClick={() => setMobileSidebarOpen(true)}
+                  aria-label="Open sidebar"
                   className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
                   style={{ height: 'clamp(28px,4vw,32px)', width: 'clamp(28px,4vw,32px)' }}
                 >

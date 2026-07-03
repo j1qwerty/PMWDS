@@ -75,8 +75,8 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
 
   return (
     <div className="grid grid-cols-5 gap-4">
-      {stats.map((stat, index) => (
-        <StatCard key={index} {...stat} />
+      {stats.map((stat) => (
+        <StatCard key={stat.label} {...stat} />
       ))}
     </div>
   );

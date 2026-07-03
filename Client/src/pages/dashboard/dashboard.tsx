@@ -15,7 +15,7 @@ import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
-import DashboardStats from "./dashbaordStats";
+import DashboardStats from "./dashboardStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
 import Timer from "../shared/dash/Timer";

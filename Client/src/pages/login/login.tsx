@@ -388,6 +388,7 @@ export function LoginPage() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                      aria-label="Toggle password visibility"
                     >
                       <span className="material-symbols-outlined text-xl">
                         {showPassword ? "visibility_off" : "visibility"}

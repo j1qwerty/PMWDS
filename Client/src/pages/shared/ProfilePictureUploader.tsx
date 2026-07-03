@@ -158,6 +158,7 @@ function ProfilePictureEditorModal({ editor, busy, onClose, onSave, onEditorChan
             onClick={onClose}
             disabled={busy}
             className="rounded-xl p-2 text-green-600 hover:bg-green-300 hover:text-green-800 transition-colors disabled:opacity-50"
+            aria-label="Close"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>

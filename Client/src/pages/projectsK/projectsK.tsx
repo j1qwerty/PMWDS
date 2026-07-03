@@ -18,7 +18,7 @@ import {
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { formatMoney } from "../../ui";
-import DashboardStats from "../dashboard/dashbaordStats";
+import DashboardStats from "../dashboard/dashboardStats";
 import {
   ConfirmDeleteModal,
   ProjectFormModal,

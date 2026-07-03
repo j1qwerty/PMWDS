@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, MilestoneDependency, Project, Task } from "../../types";
-import { classNames, formatDate } from "../../ui";
+import type { Milestone, MilestoneDependency, Task } from "../../types";
+import { classNames } from "../../ui";
 import {
   GlassCard,
   LoadingPage,
@@ -12,15 +11,11 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useToast,
-  getStatusColor,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
   MilestonesPanel,
   MilestoneDetailModal,
-  ProjectDetailModal,
-  ProjectFormModal,
-  type ProjectFormState,
   TaskSubtaskCard,
   TaskSubtaskDetailsModal,
   TaskFormModal,
@@ -35,25 +30,9 @@ import { ProjectInfoCard } from "./ProjectInfoCard";
 import { TaskSubCard } from "../projectsK/components/Tasksubcard";
 import { Icon } from "../../components/ui/Icon";
 
-const emptyProjectForm = (): ProjectFormState => ({
-  projectCode: "",
-  name: "",
-  description: "",
-  category: "Monitoring",
-  plannedStartDate: new Date().toISOString().split("T")[0],
-  plannedEndDate: "",
-  plannedBudget: 25000,
-  organizationId: "",
-  departmentId: "",
-  departmentIds: [],
-  projectManagerId: "",
-  priority: "Medium",
-});
-
 export function ProjectMilestonesPage() {
   const ws = useProjectWorkspace();
   const { data: appData } = useAppData();
-  const navigate = useNavigate();
   const { auth } = useAuth();
   const { addToast } = useToast();
   const perm = usePermission();
@@ -77,9 +56,6 @@ export function ProjectMilestonesPage() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [viewTask, setViewTask] = useState<Task | null>(null);
   const [viewMilestone, setViewMilestone] = useState<Milestone | null>(null);
-  const [viewProject, setViewProject] = useState(false);
-  const [editProjectOpen, setEditProjectOpen] = useState(false);
-  const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
   const [milestoneError, setMilestoneError] = useState("");
   const [pendingForceComplete, setPendingForceComplete] = useState<{
     milestoneId: string;
@@ -87,9 +63,6 @@ export function ProjectMilestonesPage() {
     incompleteCount: number;
     totalCount: number;
   } | null>(null);
-
-  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
-  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
 
   const [depModalOpen, setDepModalOpen] = useState(false);
   const [editDep, setEditDep] = useState<MilestoneDependency | null>(null);
@@ -368,25 +341,6 @@ export function ProjectMilestonesPage() {
     return [...mils].sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
   }, [ws.milestones, ws.dependencies]);
 
-  const handleEditProject = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!auth || !ws.project) return;
-    await api.updateProject(auth.token, ws.project.id, projectForm);
-    setEditProjectOpen(false);
-    addToast("Project updated");
-    await ws.refresh();
-  };
-
-  const handleDeleteProject = async () => {
-    const target = deleteProjectTarget ?? ws.project;
-    if (!auth || !target) return;
-    await api.deleteProject(auth.token, target.id);
-    setDeleteProjectOpen(false);
-    setDeleteProjectTarget(null);
-    addToast("Project deleted");
-    navigate("/projectsK");
-  };
-
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
     try {
@@ -447,31 +401,11 @@ export function ProjectMilestonesPage() {
         <ProjectInfoCard
           project={ws.project}
           milestonesCount={ws.milestones.length}
+          milestones={ws.milestones}
+          dependencies={ws.dependencies}
           canManageProjects={canManageProjects}
           users={ws.users}
-          onViewProject={() => setViewProject(true)}
-          onEditProject={() => {
-            if (!ws.project) return;
-            setProjectForm({
-              projectCode: ws.project.projectCode ?? "",
-              name: ws.project.name,
-              description: ws.project.description ?? "",
-              category: ws.project.category ?? "Monitoring",
-              plannedStartDate: ws.project.plannedStartDate?.split("T")[0] ?? "",
-              plannedEndDate: ws.project.plannedEndDate?.split("T")[0] ?? "",
-              plannedBudget: ws.project.plannedBudget ?? 0,
-              organizationId: "",
-              departmentId: ws.project.departmentId ?? "",
-              departmentIds: ws.project.departmentIds ?? [],
-              projectManagerId: ws.project.projectManagerId ?? "",
-              priority: ws.project.priority ?? "Medium",
-            });
-            setEditProjectOpen(true);
-          }}
-          onDeleteProject={(project) => {
-            setDeleteProjectTarget(project);
-            setDeleteProjectOpen(true);
-          }}
+          onProjectUpdated={() => ws.refresh()}
         />
       </div>
 
@@ -707,41 +641,6 @@ export function ProjectMilestonesPage() {
         onMessage={() => { }}
       />
 
-      <ProjectDetailModal
-        project={viewProject ? ws.project : null}
-        canManage={canManageProjects}
-        authToken={auth?.token}
-        users={ws.users}
-        milestones={ws.milestones}
-        dependencies={ws.dependencies}
-        onClose={() => setViewProject(false)}
-        onEdit={() => navigate("/projectsK")}
-        onStatusChange={() => { ws.refresh(); }}
-      />
-
-      <ProjectFormModal
-        open={editProjectOpen}
-        title="Edit Project"
-        submitLabel="Save"
-        form={projectForm}
-        setForm={setProjectForm}
-        departments={appData.departments}
-        organizations={appData.organizations}
-        users={appData.users}
-        onSubmit={handleEditProject}
-        onClose={() => setEditProjectOpen(false)}
-      />
-
-      <ConfirmDeleteModal
-        open={deleteProjectOpen}
-        name={deleteProjectTarget?.name ?? ws.project?.name ?? "this project"}
-        warning="All milestones and tasks under this project may be affected."
-        onConfirm={handleDeleteProject}
-        onClose={() => {
-          setDeleteProjectOpen(false);
-          setDeleteProjectTarget(null);
-        }}
-      />
     </div>
   );
 }
