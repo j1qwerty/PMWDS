@@ -23,7 +23,7 @@ public class ProfilesController : BaseApiController
     }
 
     [HttpGet("{userId:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Get(Guid userId, CancellationToken ct)
     {
         if (!await _scope.CanAccessUserAsync(userId, ct))
@@ -36,7 +36,7 @@ public class ProfilesController : BaseApiController
     }
 
     [HttpPut("{userId:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Upsert(Guid userId, [FromBody] UpsertProfileRequest req, CancellationToken ct)
     {
         if (!await _scope.CanManageUserAsync(userId, ct))

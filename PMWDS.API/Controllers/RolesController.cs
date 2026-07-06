@@ -29,7 +29,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetRoles(CancellationToken ct)
     {
         var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
@@ -54,12 +54,12 @@ public class RolesController : BaseApiController
     }
 
     [HttpGet("permissions")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetPermissions(CancellationToken ct)
         => Ok((await VisiblePermissionQuery().OrderBy(p => p.Module).ThenBy(p => p.Name).ToListAsync(ct)).Select(MapPermission));
 
     [HttpPost]
-    [Authorize(Policy = "Roles.Create")]
+    [Authorize(Policy = AuthorizationPolicies.RolesCreate)]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest req, CancellationToken ct)
     {
         if (await _context.Roles.AnyAsync(r => r.Name == req.Name, ct))
@@ -110,7 +110,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Roles.Edit")]
+    [Authorize(Policy = AuthorizationPolicies.RolesEdit)]
     public async Task<IActionResult> UpdateRole(Guid id, [FromBody] UpdateRoleRequest req, CancellationToken ct)
     {
         var role = await _context.Roles
@@ -168,7 +168,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Roles.Delete")]
+    [Authorize(Policy = AuthorizationPolicies.RolesDelete)]
     public async Task<IActionResult> DeleteRole(Guid id, CancellationToken ct)
     {
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
@@ -206,7 +206,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPost("permissions")]
-    [Authorize(Policy = "Permissions.Create")]
+    [Authorize(Policy = AuthorizationPolicies.PermissionsCreate)]
     public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequest req, CancellationToken ct)
     {
         if (await _context.Permissions.AnyAsync(p => p.Code == req.Code.ToUpper(), ct))
@@ -234,7 +234,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPut("permissions/{id:guid}")]
-    [Authorize(Policy = "Permissions.Edit")]
+    [Authorize(Policy = AuthorizationPolicies.PermissionsEdit)]
     public async Task<IActionResult> UpdatePermission(Guid id, [FromBody] UpdatePermissionRequest req, CancellationToken ct)
     {
         var permission = await _uow.Permissions.GetByIdAsync(id, ct);
@@ -262,7 +262,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpDelete("permissions/{id:guid}")]
-    [Authorize(Policy = "Permissions.Delete")]
+    [Authorize(Policy = AuthorizationPolicies.PermissionsDelete)]
     public async Task<IActionResult> DeletePermission(Guid id, CancellationToken ct)
     {
         var permission = await _uow.Permissions.GetByIdAsync(id, ct);

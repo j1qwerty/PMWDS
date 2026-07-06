@@ -33,7 +33,7 @@ public class ReportsController : BaseApiController
     // ──────────────────────────────────────────────
 
     [HttpPost("project-status/generate")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<ActionResult<AiReportResponse>> GenerateProjectStatus(
         [FromBody] ReportGenerateRequest req,
         CancellationToken ct = default)
@@ -48,7 +48,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("budget-variance/generate")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<ActionResult<AiReportResponse>> GenerateBudgetVariance(
         [FromBody] ReportGenerateRequest req,
         CancellationToken ct = default)
@@ -63,7 +63,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("task-completion/generate")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<ActionResult<AiReportResponse>> GenerateTaskCompletion(
         [FromBody] ReportGenerateRequest req,
         CancellationToken ct = default)
@@ -78,7 +78,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("department-workload/generate")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<ActionResult<AiReportResponse>> GenerateDepartmentWorkload(
         [FromBody] DepartmentWorkloadRequest req,
         CancellationToken ct = default)
@@ -92,7 +92,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("delay-analysis/generate")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<ActionResult<AiReportResponse>> GenerateDelayAnalysis(
         [FromBody] ReportGenerateRequest req,
         CancellationToken ct = default)
@@ -111,7 +111,7 @@ public class ReportsController : BaseApiController
     // ──────────────────────────────────────────────
 
     [HttpGet("project-status/{projectId:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DownloadProjectStatus(
         Guid projectId,
         [FromQuery] string format = "pdf",
@@ -125,7 +125,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("task-completion")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DownloadTaskCompletion(
         [FromBody] ReportFilterDto filter,
         [FromQuery] string format = "pdf",
@@ -139,7 +139,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("department-workload")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DownloadDepartmentWorkload(
         [FromBody] DepartmentWorkloadRequest req,
         [FromQuery] string format = "pdf",
@@ -154,7 +154,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpGet("budget-variance/{projectId:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DownloadBudgetVariance(
         Guid projectId,
         [FromQuery] string format = "pdf",
@@ -168,7 +168,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("delay-analysis")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DownloadDelayAnalysis(
         [FromBody] ReportFilterDto filter,
         [FromQuery] string format = "pdf",
@@ -186,12 +186,12 @@ public class ReportsController : BaseApiController
     // ──────────────────────────────────────────────
 
     [HttpGet("stored")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetStoredReports(CancellationToken ct)
         => Ok((await _uow.Reports.GetAllAsync(ct)).OrderByDescending(r => r.GeneratedDate).Select(MapReport));
 
     [HttpGet("stored/{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetStoredReport(Guid id, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
@@ -204,7 +204,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpGet("stored/{id:guid}/download")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DownloadStoredReport(Guid id, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
@@ -214,7 +214,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPost("stored")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> CreateStoredReport([FromBody] UpsertStoredReportRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -232,7 +232,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPut("stored/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateStoredReport(Guid id, [FromBody] UpsertStoredReportRequest req, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
@@ -249,7 +249,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpDelete("stored/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteStoredReport(Guid id, CancellationToken ct)
     {
         await _uow.Reports.DeleteAsync(id, ct);
@@ -262,12 +262,12 @@ public class ReportsController : BaseApiController
     // ──────────────────────────────────────────────
 
     [HttpGet("schedules")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetSchedules(CancellationToken ct)
         => Ok((await _uow.ReportSchedules.GetAllAsync(ct)).OrderBy(s => s.NextRun).Select(MapSchedule));
 
     [HttpPost("schedules")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> CreateSchedule([FromBody] UpsertReportScheduleRequest req, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(req.ReportId, ct);
@@ -282,7 +282,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpPut("schedules/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateSchedule(Guid id, [FromBody] UpsertReportScheduleRequest req, CancellationToken ct)
     {
         var schedule = await _uow.ReportSchedules.GetByIdAsync(id, ct);
@@ -296,7 +296,7 @@ public class ReportsController : BaseApiController
     }
 
     [HttpDelete("schedules/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteSchedule(Guid id, CancellationToken ct)
     {
         await _uow.ReportSchedules.DeleteAsync(id, ct);

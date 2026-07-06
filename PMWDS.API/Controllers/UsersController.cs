@@ -38,7 +38,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] PaginationQuery pagination,
@@ -73,7 +73,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -91,7 +91,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("me")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMe(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -105,7 +105,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Update(
         string id,
         [FromBody] UpdateUserDto dto,
@@ -243,7 +243,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPost("register")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Register(
         [FromBody] RegisterUserDto dto,
         CancellationToken ct)
@@ -337,7 +337,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}/departments")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> AssignDepartments(
         string id,
         [FromBody] AssignUserDepartmentsRequest req,
@@ -372,7 +372,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPost("{id}/profile-picture")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     [RequestSizeLimit(2_000_000)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadProfilePicture(
@@ -419,7 +419,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPatch("{id}/availability")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateAvailability(
         string id,
         [FromBody] UpdateAvailabilityRequest req,
@@ -448,7 +448,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPost("{id}/skills")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> AddSkill(
         string id,
         [FromBody] AddUserSkillRequest req,
@@ -506,7 +506,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}/skills/{skillId:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateSkill(
         string id,
         Guid skillId,
@@ -556,7 +556,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpDelete("{id}/skills/{skillId:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> RemoveSkill(
         string id,
         Guid skillId,
@@ -604,7 +604,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("available")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAvailable([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var query = await _scope.ScopeUsersAsync(
@@ -625,7 +625,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("workload")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetWorkload(
         [FromQuery] Guid? departmentId,
         CancellationToken ct)
@@ -642,7 +642,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPatch("{id}/deactivate")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Deactivate(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -684,7 +684,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPatch("{id}/reactivate")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Reactivate(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))

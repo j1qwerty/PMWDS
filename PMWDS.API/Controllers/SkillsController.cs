@@ -8,7 +8,7 @@ namespace PMWDS.API.Controllers;
 
 [ApiController]
 [Route("api/v1/skills")]
-[Authorize(Policy = "Authenticated")]
+[Authorize(Policy = AuthorizationPolicies.Authenticated)]
 public class SkillsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
@@ -26,7 +26,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var skills = await GetScopedSkillsAsync(ct);
@@ -34,7 +34,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var skill = await _uow.Skills.GetByIdAsync(id, ct);
@@ -49,7 +49,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create(
         [FromBody] CreateSkillDto dto,
         CancellationToken ct)
@@ -79,7 +79,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateSkillDto dto,
@@ -114,7 +114,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var skill = await _uow.Skills.GetByIdAsync(id, ct);

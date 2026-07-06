@@ -28,7 +28,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMine(
         [FromQuery] bool unreadOnly = false,
         [FromQuery] int page = 1,
@@ -62,7 +62,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet("unread-count")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetUnreadCount(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -76,7 +76,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/read")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> MarkRead(Guid id, CancellationToken ct)
     {
         var notification = await _uow.Notifications.GetByIdAsync(id, ct);
@@ -97,7 +97,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPatch("read-all")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> MarkAllRead(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -118,7 +118,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var notification = await _uow.Notifications.GetByIdAsync(id, ct);
@@ -138,7 +138,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPost("broadcast")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Broadcast(
         [FromBody] BroadcastNotificationRequest req,
         CancellationToken ct)
@@ -167,12 +167,12 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet("templates")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> GetTemplates(CancellationToken ct)
         => Ok((await _uow.NotificationTemplates.GetAllAsync(ct)).Select(MapTemplate));
 
     [HttpPost("templates")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> CreateTemplate([FromBody] UpsertNotificationTemplateRequest req, CancellationToken ct)
     {
         var template = NotificationTemplate.Create(req.TemplateType, req.SubjectTemplate, req.BodyTemplate, req.Variables, req.SupportedChannels);
@@ -183,7 +183,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPut("templates/{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> UpdateTemplate(Guid id, [FromBody] UpsertNotificationTemplateRequest req, CancellationToken ct)
     {
         var template = await _uow.NotificationTemplates.GetByIdAsync(id, ct);
@@ -199,7 +199,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpDelete("templates/{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> DeleteTemplate(Guid id, CancellationToken ct)
     {
         await _uow.NotificationTemplates.DeleteAsync(id, ct);
@@ -208,12 +208,12 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet("rules")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> GetRules(CancellationToken ct)
         => Ok((await _uow.AlertRules.GetAllAsync(ct)).Select(MapRule));
 
     [HttpPost("rules")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> CreateRule([FromBody] UpsertAlertRuleRequest req, CancellationToken ct)
     {
         var rule = AlertRule.Create(req.Name, req.ConditionType, req.ConditionExpression, req.ActionType, req.ActionParameters, req.IsEnabled);
@@ -224,7 +224,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPut("rules/{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> UpdateRule(Guid id, [FromBody] UpsertAlertRuleRequest req, CancellationToken ct)
     {
         var rule = await _uow.AlertRules.GetByIdAsync(id, ct);
@@ -240,7 +240,7 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpDelete("rules/{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> DeleteRule(Guid id, CancellationToken ct)
     {
         await _uow.AlertRules.DeleteAsync(id, ct);

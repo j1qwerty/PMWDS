@@ -41,7 +41,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("dashboard")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? departmentId, CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -76,7 +76,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] ProjectStatus? status,
@@ -123,7 +123,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -135,7 +135,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken ct)
     {
         var departmentIds = ResolveDepartmentIds(dto.DepartmentId, dto.DepartmentIds);
@@ -177,7 +177,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(id, ct))
@@ -214,7 +214,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateProjectStatusRequest req, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(id, ct))
@@ -241,7 +241,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/progress")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetProgress(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetWithDetailsAsync(id, ct);
@@ -265,7 +265,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/ai/health")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAIHealth(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -277,7 +277,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/ai/insights")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAIInsights(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -289,7 +289,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/ai/optimize-resources")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> OptimizeResources(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(id, ct))
@@ -301,7 +301,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UploadDocument(Guid id, IFormFile file, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -346,7 +346,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/documents")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -375,7 +375,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/documents/{docId:guid}/download")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
     {
         var docs = await _uow.ProjectDocuments.FindAsync(d => d.Id == docId && d.ProjectId == id);
@@ -393,7 +393,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);

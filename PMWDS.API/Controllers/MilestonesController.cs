@@ -33,7 +33,7 @@ public class MilestonesController : BaseApiController
     // ── Milestone Dependency Endpoints ──────────────────────────────────
 
     [HttpGet("by-project/{projectId:guid}/dependencies")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDependenciesByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -60,7 +60,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost("dependencies")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> CreateDependency([FromBody] CreateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
@@ -138,7 +138,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPut("dependencies/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateDependency(Guid id, [FromBody] UpdateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -183,7 +183,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpDelete("dependencies/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteDependency(Guid id, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -220,7 +220,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}/dependency-status")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDependencyStatus(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -243,7 +243,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -273,7 +273,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -298,7 +298,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create([FromBody] CreateMilestoneDto dto, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
@@ -334,7 +334,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMilestoneDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -397,7 +397,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/complete")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct, [FromQuery] bool forceComplete = false)
     {
         var milestone = await _db.Milestones
@@ -464,7 +464,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetMilestoneStatusDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -542,7 +542,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var milestone = await _uow.Milestones.GetByIdAsync(id, ct);

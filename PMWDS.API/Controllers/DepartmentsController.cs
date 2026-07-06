@@ -26,7 +26,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var query = await _scope.ScopeDepartmentsAsync(_db.Departments.AsNoTracking(), ct);
@@ -45,7 +45,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(id, ct);
@@ -63,7 +63,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/dashboard")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Dashboard(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessDepartmentAsync(id, ct))
@@ -96,7 +96,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create(
         [FromBody] CreateDepartmentDto dto,
         CancellationToken ct)
@@ -167,7 +167,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateDepartmentDto dto,
@@ -253,7 +253,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(id, ct);

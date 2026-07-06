@@ -64,7 +64,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | # | Task | Files | Source | Status |
 |---|------|-------|--------|--------|
 | 1.1 | Add immutable **Role Key** (e.g. `superadmin`, `director`, `manager`, …) distinct from display **Name**; migrate identity to use Key for all logic; allow SuperAdmin to rename only the display Name. `[coordinated]` | `ApplicationUser`/Role entity, `RoleScopeService.cs`, seeders | sec 2.2 / overview | ✅ |
-| 1.2 | Replace every display-name role check with key/permission check — audit `User.IsInRole("SuperAdmin")`, `_scope.IsSuperAdmin`, `_scope.IsDirector`, hardcoded policy names. App must keep functioning after a role rename. `[coordinated]` | `UsersController.cs:165`, `RoleScopeService.cs`, `PermissionPolicyRegistry.cs`, all controllers | api 4.3 / sec 2.x | 🟡 Core role-name logic moved to role keys; policy-name cleanup remains |
+| 1.2 | Replace every display-name role check with key/permission check — audit `User.IsInRole("SuperAdmin")`, `_scope.IsSuperAdmin`, `_scope.IsDirector`, hardcoded policy names. App must keep functioning after a role rename. `[coordinated]` | `UsersController.cs:165`, `RoleScopeService.cs`, `PermissionPolicyRegistry.cs`, all controllers | api 4.3 / sec 2.x | ✅ |
 | 1.3 | Add permission for the **primary department** that creates a project (e.g. `ProjectPrimaryDepartment.Manage`); ensure primary department head sees project + milestones even when not in `ProjectDepartments`. Wire into `RoleScopeService` + project scoping. `[coordinated]` | `PermissionCodes.cs`, `Project.cs` (PrimaryDepartment), `RoleScopeService.cs`, `ProjectsController.cs` | overview / new | ✅ |
 | 1.4 | DB-backed permission revalidation on sensitive ops (don't trust stale JWT claims); shorten permission-claim staleness or move claims to short-lived tokens. `[coordinated]` with 0.5 | `PermissionAuthorizationHandler.cs:30-40`, `AuthController.cs:295` | sec 2.1 | ✅ DB-backed policy authorization; token lifetime/refresh remains tracked in 0.5 |
 | 1.5 | Permission/role edit safety rails: cannot remove own `SystemAdmin`, cannot delete/lock last SuperAdmin, role-key immutable, permission changes invalidate affected sessions. | `RolesController.cs`, `PermissionPolicyRegistry.cs` | sec 2.2 | ✅ Safety rails added; permission changes take effect via DB revalidation |
@@ -148,6 +148,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 0.3 Rate limiting on auth endpoints + account lockout implemented
 - 0.4 Password policy strengthened (≥10, complexity), SHA256 fallback removed
 - 1.1 Role keys added (`Role.Key`, `RoleKeys`, migration, seeders, JWT role-key claims); display `Role.Name` remains UI-facing and renameable.
+- 1.2 Authorization checks now use role keys/permission-backed policies; API policy names are centralized in `AuthorizationPolicies`.
 - 1.3 Added `PROJECT_PRIMARY_DEPARTMENT_MANAGE`; primary-department project and milestone visibility/control now flows through DB permissions and `RoleScopeService`.
 - 1.4 Permission policies now revalidate against active user roles in the database and no longer trust stale JWT permission claims.
 - 1.5 Role/permission safety rails added: SuperAdmin role and `SYSTEM_ADMIN` permission are protected, own `SYSTEM_ADMIN` removal is blocked, and the last active SuperAdmin cannot be deactivated.

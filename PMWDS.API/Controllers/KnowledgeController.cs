@@ -18,7 +18,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpGet("articles")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetArticles([FromQuery] Guid? projectId, CancellationToken ct)
     {
         var articles = projectId.HasValue
@@ -28,7 +28,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpGet("articles/{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetArticle(Guid id, CancellationToken ct)
     {
         var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
@@ -44,7 +44,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPost("articles")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> CreateArticle([FromBody] UpsertKnowledgeArticleRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -60,7 +60,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPut("articles/{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateArticle(Guid id, [FromBody] UpsertKnowledgeArticleRequest req, CancellationToken ct)
     {
         var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
@@ -76,7 +76,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpDelete("articles/{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DeleteArticle(Guid id, CancellationToken ct)
     {
         await _uow.KnowledgeArticles.DeleteAsync(id, ct);
@@ -85,7 +85,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpGet("lessons")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetLessons([FromQuery] Guid? projectId, CancellationToken ct)
     {
         var lessons = projectId.HasValue
@@ -95,7 +95,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPost("lessons")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> CreateLesson([FromBody] UpsertLessonLearnedRequest req, CancellationToken ct)
     {
         var lesson = LessonLearned.Create(req.ProjectId, req.Title, req.Description, req.Category, req.Impact, req.Keywords);
@@ -106,7 +106,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPut("lessons/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateLesson(Guid id, [FromBody] UpsertLessonLearnedRequest req, CancellationToken ct)
     {
         var lesson = await _uow.LessonsLearned.GetByIdAsync(id, ct);
@@ -122,7 +122,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpDelete("lessons/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteLesson(Guid id, CancellationToken ct)
     {
         await _uow.LessonsLearned.DeleteAsync(id, ct);

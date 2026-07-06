@@ -27,7 +27,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var organizations = (await _uow.Organizations.GetAllAsync(ct)).ToList();
@@ -54,7 +54,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -74,7 +74,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertOrganizationRequest req, CancellationToken ct)
     {
         var organization = Organization.Create(req.Name, req.TaxId, req.Address, req.ContactEmail, req.ContactPhone, req.FoundedDate);
@@ -96,7 +96,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertOrganizationRequest req, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -130,7 +130,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpPut("{id:guid}/departments/{departmentId:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> AssignDepartment(Guid id, Guid departmentId, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -160,7 +160,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}/departments/{departmentId:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> RemoveDepartment(Guid id, Guid departmentId, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(departmentId, ct);
@@ -193,7 +193,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var org = await _uow.Organizations.GetByIdAsync(id, ct);

@@ -14,7 +14,7 @@ public class SystemController : BaseApiController
     }
 
     [HttpGet("database")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public IActionResult GetDatabaseStatus()
         => Ok(new
         {

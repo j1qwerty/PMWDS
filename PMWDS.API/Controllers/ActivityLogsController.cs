@@ -30,7 +30,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMine(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -48,7 +48,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("user/{userId:guid}")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> GetByUser(
         Guid userId,
         [FromQuery] int count = 50,
@@ -67,7 +67,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("team")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetTeam(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -88,7 +88,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("all")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> GetAll(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -116,7 +116,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("project/{projectId:guid}")]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetByProject(
         Guid projectId,
         [FromQuery] int count = 50,
@@ -135,7 +135,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Authenticated")]
+    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
