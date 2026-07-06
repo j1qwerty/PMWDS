@@ -59,6 +59,17 @@ var jwt = builder.Configuration
     .GetSection("Jwt")
     .Get<JwtSettings>() ?? new JwtSettings();
 
+// Fail fast in Production if JWT secret is not configured
+if (string.IsNullOrWhiteSpace(jwt.Secret) && !builder.Environment.IsDevelopment())
+{
+    Console.WriteLine("[PMWDS] FATAL: Jwt:Secret is not configured. Set it via environment variable, User Secrets, or .env file.");
+    return;
+}
+if (string.IsNullOrWhiteSpace(jwt.Secret) && builder.Environment.IsDevelopment())
+{
+    Console.WriteLine("[PMWDS] WARNING: Jwt:Secret is empty. Set it via User Secrets (dotnet user-secrets set \"Jwt:Secret\" \"<your-secret>\") or .env file.");
+}
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>

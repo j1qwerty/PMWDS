@@ -29,6 +29,11 @@ public class JwtSettings
     public int ExpiryMinutes { get; set; } = 60;
 }
 
+public class SecurityValidationSettings
+{
+    public bool ValidateSecretsOnStartup { get; set; } = true;
+}
+
 public class AISettings
 {
     public string OpenAIApiKey { get; set; } = string.Empty;
