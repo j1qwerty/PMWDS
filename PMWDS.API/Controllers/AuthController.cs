@@ -25,17 +25,20 @@ public class AuthController : BaseApiController
     private readonly JwtSettings _jwt;
     private readonly EmailSettings _email;
     private readonly IEmailService _emailService;
+    private readonly ILoginLockoutService _loginLockout;
 
     public AuthController(
         IUnitOfWork uow,
         IOptions<JwtSettings> jwt,
         IOptions<EmailSettings> email,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILoginLockoutService loginLockout)
     {
         _uow = uow;
         _jwt = jwt.Value;
         _email = email.Value;
         _emailService = emailService;
+        _loginLockout = loginLockout;
     }
 
     [AllowAnonymous]
@@ -44,12 +47,23 @@ public class AuthController : BaseApiController
         [FromBody] LoginRequest req,
         CancellationToken ct)
     {
+        // Check if account is temporarily locked out due to too many failed attempts
+        if (await _loginLockout.IsLockedOutAsync(req.Email))
+        {
+            return StatusCode(429, new
+            {
+                Message = "Account temporarily locked due to too many failed login attempts. Try again later.",
+                LockedOut = true
+            });
+        }
+
         var user = await _uow.Users.GetByEmailAsync(req.Email, ct);
         var passwordVerification = user == null
             ? PasswordVerificationResult.Failed
             : VerifyPassword(user, req.Password);
         if (user == null || passwordVerification == PasswordVerificationResult.Failed)
         {
+            await _loginLockout.RecordFailureAsync(req.Email);
             return Unauthorized(new { Message = "Invalid credentials." });
         }
 
@@ -57,6 +71,9 @@ public class AuthController : BaseApiController
         {
             return Unauthorized(new { Message = "Your account has been deactivated. Please contact your administrator." });
         }
+
+        // Clear failed login attempts on successful authentication
+        await _loginLockout.ResetAsync(req.Email);
 
         var roles = UserRoleResolver.Resolve(user);
         var permissions = ResolvePermissions(user);

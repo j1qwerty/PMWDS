@@ -1,3 +1,4 @@
+using AspNetCoreRateLimit;
 using AutoMapper;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -52,6 +53,15 @@ builder.Services.Configure<DatabaseSettings>(
     builder.Configuration.GetSection("Database"));
 builder.Services.Configure<LocalFileStorageSettings>(
     builder.Configuration.GetSection("FileStorage"));
+
+// Rate limiting — IP-based, using Redis when available, in-memory otherwise
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.Configure<IpRateLimitPolicies>(
+    builder.Configuration.GetSection("IpRateLimitPolicies"));
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+builder.Services.AddMemoryCache(); // Required by AspNetCoreRateLimit
+builder.Services.AddScoped<ILoginLockoutService, LoginLockoutService>();
 
 var databaseStatus = builder.Services.AddApplicationDatabase(builder.Configuration, builder.Environment);
 
@@ -197,6 +207,7 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseIpRateLimiting();
 
 if (app.Environment.IsDevelopment())
 {
