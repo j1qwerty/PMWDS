@@ -19,41 +19,6 @@ namespace PMWDS.API.Controllers;
 [Authorize(Policy = "Authenticated")]
 public class PagesController : BaseApiController
 {
-    private static readonly HashSet<string> VisiblePermissionModules = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Authentication",
-        "Authorization",
-        "System",
-        "Organization",
-        "Departments",
-        "Projects",
-        "Milestones",
-        "Tasks",
-        "Subtasks",
-        "Users",
-        "Notifications",
-        "Audit",
-        "Reports",
-        "AI"
-    };
-
-    private static readonly Dictionary<string, string[]> ManagePermissionCoverage = new(StringComparer.OrdinalIgnoreCase)
-    {
-        [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
-        [PermissionCodes.DepartmentManage] = new[] { PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete },
-        [PermissionCodes.ProjectManage] = new[] { PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete },
-        [PermissionCodes.MilestoneManage] = new[] { PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete },
-        [PermissionCodes.TaskManage] = new[] { PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack },
-        [PermissionCodes.SubtaskManage] = new[] { PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete },
-        [PermissionCodes.UserManage] = new[] { PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete, PermissionCodes.UserDepartmentManage, PermissionCodes.UserProfilePictureManage },
-        [PermissionCodes.RoleManage] = new[] { PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete },
-        [PermissionCodes.PermissionManage] = new[] { PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete },
-        [PermissionCodes.NotificationManage] = new[] { PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage },
-        [PermissionCodes.ActivityLogManage] = new[] { PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate },
-        [PermissionCodes.ReportManage] = new[] { PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete },
-        [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView }
-    };
-
     private readonly ApplicationDbContext _db;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
@@ -376,7 +341,7 @@ public class PagesController : BaseApiController
     private Task<PaginatedResponse<PagePermissionDto>> GetPermissionsAsync(PaginationQuery pagination, CancellationToken ct)
         => ToPageAsync(
             _db.Permissions.AsNoTracking()
-                .Where(p => VisiblePermissionModules.Contains(p.Module))
+                .Where(p => PermissionCatalog.VisibleModules.Contains(p.Module))
                 .OrderBy(p => p.Module).ThenBy(p => p.Code),
             pagination,
             p => new PagePermissionDto(p.Id, p.Code, p.Name, p.Description, p.Module, p.IsGlobal),
@@ -608,16 +573,16 @@ public class PagesController : BaseApiController
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return codes.Contains(PermissionCodes.SystemAdmin) ||
             codes.Contains(permissionCode) ||
-            ManagePermissionCoverage.Any(pair => pair.Value.Contains(permissionCode, StringComparer.OrdinalIgnoreCase) && codes.Contains(pair.Key));
+            PermissionCatalog.ManagePermissionCoverage.Any(pair => pair.Value.Contains(permissionCode, StringComparer.OrdinalIgnoreCase) && codes.Contains(pair.Key));
     }
 
     private static IEnumerable<string> VisiblePermissionCodes(IEnumerable<Permission> permissions)
     {
         var visible = permissions
-            .Where(permission => VisiblePermissionModules.Contains(permission.Module))
+            .Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module))
             .ToList();
         var codes = visible.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = ManagePermissionCoverage
+        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
             .Where(pair => codes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);

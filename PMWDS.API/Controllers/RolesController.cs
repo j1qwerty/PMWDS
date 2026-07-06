@@ -12,48 +12,6 @@ namespace PMWDS.API.Controllers;
 
 public class RolesController : BaseApiController
 {
-    private static readonly HashSet<string> VisiblePermissionModules = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Authentication",
-        "Authorization",
-        "System",
-        "Organization",
-        "Departments",
-        "Projects",
-        "Milestones",
-        "Tasks",
-        "Subtasks",
-        "Users",
-        "Notifications",
-        "Audit",
-        "Reports",
-        "AI"
-    };
-
-    private static readonly HashSet<string> AdminOnlyModules = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Authentication",
-        "Authorization",
-        "System"
-    };
-
-    private static readonly Dictionary<string, string[]> ManagePermissionCoverage = new(StringComparer.OrdinalIgnoreCase)
-    {
-        [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
-        [PermissionCodes.DepartmentManage] = new[] { PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete },
-        [PermissionCodes.ProjectManage] = new[] { PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete },
-        [PermissionCodes.MilestoneManage] = new[] { PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete },
-        [PermissionCodes.TaskManage] = new[] { PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack },
-        [PermissionCodes.SubtaskManage] = new[] { PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete },
-        [PermissionCodes.UserManage] = new[] { PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete, PermissionCodes.UserDepartmentManage, PermissionCodes.UserProfilePictureManage },
-        [PermissionCodes.RoleManage] = new[] { PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete },
-        [PermissionCodes.PermissionManage] = new[] { PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete },
-        [PermissionCodes.NotificationManage] = new[] { PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage },
-        [PermissionCodes.ActivityLogManage] = new[] { PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate },
-        [PermissionCodes.ReportManage] = new[] { PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete },
-        [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView }
-    };
-
     private static readonly HashSet<string> ProtectedRoleKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         RoleKeys.SuperAdmin
@@ -335,10 +293,10 @@ public class RolesController : BaseApiController
         => new(permission.Id, permission.Code, permission.Name, permission.Description, permission.Module, permission.IsGlobal);
 
     private IQueryable<Permission> VisiblePermissionQuery()
-        => _context.Permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
+        => _context.Permissions.Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module));
 
     private static IEnumerable<Permission> VisiblePermissions(IEnumerable<Permission> permissions)
-        => permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
+        => permissions.Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module));
 
     private async Task<int> GetCurrentUserMaxLevelAsync(CancellationToken ct)
     {
@@ -374,7 +332,7 @@ public class RolesController : BaseApiController
         var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
         foreach (var manageCode in codes)
         {
-            if (ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
+            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
             {
                 foreach (var c in covered) expanded.Add(c);
             }
@@ -393,11 +351,11 @@ public class RolesController : BaseApiController
 
         var assignable = selected
             .Where(p => userPermissions.Contains(p.Code))
-            .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !AdminOnlyModules.Contains(p.Module))
+            .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !PermissionCatalog.AdminOnlyModules.Contains(p.Module))
             .ToList();
 
         var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = ManagePermissionCoverage
+        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
             .Where(pair => selectedCodes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
