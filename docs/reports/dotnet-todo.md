@@ -69,7 +69,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 1.4 | DB-backed permission revalidation on sensitive ops (don't trust stale JWT claims); shorten permission-claim staleness or move claims to short-lived tokens. `[coordinated]` with 0.5 | `PermissionAuthorizationHandler.cs:30-40`, `AuthController.cs:295` | sec 2.1 | ✅ DB-backed policy authorization; token lifetime/refresh remains tracked in 0.5 |
 | 1.5 | Permission/role edit safety rails: cannot remove own `SystemAdmin`, cannot delete/lock last SuperAdmin, role-key immutable, permission changes invalidate affected sessions. | `RolesController.cs`, `PermissionPolicyRegistry.cs` | sec 2.2 | ✅ Safety rails added; permission changes take effect via DB revalidation |
 | 1.6 | Single source of truth: extend `PermissionCodes.cs` (and a new `RoleKeys`) constants; remove duplicated permission-module lists in `RolesController` + `PagesController`. `[coordinated]` | `PermissionCodes.cs`, `RolesController.cs`, `PagesController.cs` | cq 4.4 / api | ✅ |
-| 1.7 | **Update `docs/temp/project-overview.md`** with the full roles/permissions model (keys vs names), the new primary-department permission, scoping rules, file map, and the patterns every future change must follow. | `docs/temp/project-overview.md` | overview | 🔴 |
+| 1.7 | **Update `docs/temp/project-overview.md`** with the full roles/permissions model (keys vs names), the new primary-department permission, scoping rules, file map, and the patterns every future change must follow. | `docs/temp/project-overview.md` | overview | ✅ |
 
 ---
 
@@ -153,6 +153,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 1.4 Permission policies now revalidate against active user roles in the database and no longer trust stale JWT permission claims.
 - 1.5 Role/permission safety rails added: SuperAdmin role and `SYSTEM_ADMIN` permission are protected, own `SYSTEM_ADMIN` removal is blocked, and the last active SuperAdmin cannot be deactivated.
 - 1.6 / 4.7 Added `PermissionCatalog` as the shared source for visible permission modules, admin-only modules, and manage-permission coverage used by Roles and Pages APIs.
+- 1.7 Updated `docs/temp/project-overview.md` with Phase 1 role-key, policy, permission, primary-department, and safety-rail conventions.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)
