@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.Application.Security;
 using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Auth;
@@ -58,6 +59,19 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
             .ToListAsync();
 
         var result = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var permission in permissions)
+        {
+            if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
+            {
+                continue;
+            }
+
+            foreach (var coveredPermission in covered)
+            {
+                result.Add(coveredPermission);
+            }
+        }
+
         if (httpContext != null)
         {
             httpContext.Items[cacheKey] = result;

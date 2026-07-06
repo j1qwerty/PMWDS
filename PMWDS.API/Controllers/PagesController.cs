@@ -330,6 +330,7 @@ public class PagesController : BaseApiController
             pagination,
             r => new PageRoleDto(
                 r.Id,
+                r.Key,
                 r.Name,
                 r.Description,
                 r.PermissionLevel,
@@ -339,13 +340,16 @@ public class PagesController : BaseApiController
     }
 
     private Task<PaginatedResponse<PagePermissionDto>> GetPermissionsAsync(PaginationQuery pagination, CancellationToken ct)
-        => ToPageAsync(
+    {
+        var visibleModules = PermissionCatalog.VisibleModules.ToArray();
+        return ToPageAsync(
             _db.Permissions.AsNoTracking()
-                .Where(p => PermissionCatalog.VisibleModules.Contains(p.Module))
+                .Where(p => visibleModules.Contains(p.Module))
                 .OrderBy(p => p.Module).ThenBy(p => p.Code),
             pagination,
             p => new PagePermissionDto(p.Id, p.Code, p.Name, p.Description, p.Module, p.IsGlobal),
             ct);
+    }
 
     private Task<PaginatedResponse<NotificationDto>> GetNotificationsAsync(
         Guid currentUserId,

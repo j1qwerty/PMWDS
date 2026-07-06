@@ -31,8 +31,8 @@ export function RolesPage() {
   const canManagePermissions = perm.has(PERMISSION_GROUPS.permission.manage);
 
   const userMaxLevel = useMemo(() => {
-    if (!auth?.roles?.length) return 0;
-    return Math.max(...auth.roles.map((r) => ROLE_LEVELS[r] ?? 0));
+    if (!auth?.roleKeys?.length) return 0;
+    return Math.max(...auth.roleKeys.map((r) => ROLE_LEVELS[r] ?? 0));
   }, [auth]);
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);

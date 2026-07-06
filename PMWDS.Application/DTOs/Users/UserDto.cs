@@ -25,6 +25,7 @@ public record UserDto(
  bool IsActive,
  DateTime? LastLoginDate,
  List<string> Roles,
+ List<string> RoleKeys,
  List<string>? Skills,
  List<UserSkillDto>? SkillDetails)
 {
@@ -56,6 +57,11 @@ public record UserDto(
     LastLoginDate: null,
     Roles: roles?.ToList()
     ?? new(),
+    RoleKeys: u.Roles
+    .Select(role => role.Key)
+    .Where(key => !string.IsNullOrWhiteSpace(key))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToList(),
     Skills: null,
     SkillDetails: null
     );
@@ -87,6 +93,11 @@ public record UserDto(
     LastLoginDate: null,
     Roles: roles?.ToList()
     ?? new(),
+    RoleKeys: u.Roles
+    .Select(role => role.Key)
+    .Where(key => !string.IsNullOrWhiteSpace(key))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToList(),
     Skills: u.Skills
     .Select(s => s.Skill?.Name ?? "")
     .ToList(),

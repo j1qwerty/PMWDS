@@ -1,10 +1,12 @@
-export type Role =
-  | "SuperAdmin"
-  | "Director"
-  | "ProjectManager"
-  | "DepartmentHead"
-  | "TeamMember"
-  | "Viewer";
+export type Role = string;
+
+export type RoleKey =
+  | "superadmin"
+  | "director"
+  | "project-manager"
+  | "department-head"
+  | "team-member"
+  | "viewer";
 
 export interface AuthResponse {
   token: string;
@@ -14,6 +16,7 @@ export interface AuthResponse {
   email: string;
   profilePictureUrl?: string | null;
   roles: Role[];
+  roleKeys?: RoleKey[];
   permissions: string[];
 }
 
@@ -40,6 +43,7 @@ export interface User {
   isActive: boolean;
   lastLoginDate?: string | null;
   roles: string[];
+  roleKeys?: RoleKey[];
   skills: string[];
   skillDetails?: UserSkillAssignment[];
 }
@@ -72,6 +76,7 @@ export interface PermissionRecord {
 
 export interface RoleRecord {
   id: string;
+  key: RoleKey | string;
   name: string;
   description: string;
   permissionLevel: number;
@@ -936,11 +941,13 @@ export interface PageUserDto {
   departments: UserDepartmentAssignment[];
   isActive: boolean;
   roles: string[];
+  roleKeys?: RoleKey[];
   skills: { skillId: string; skillName: string; proficiencyLevel: number }[];
 }
 
 export interface PageRoleDto {
   id: string;
+  key: RoleKey | string;
   name: string;
   description: string;
   permissionLevel: number;

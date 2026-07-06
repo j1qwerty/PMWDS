@@ -154,6 +154,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 1.5 Role/permission safety rails added: SuperAdmin role and `SYSTEM_ADMIN` permission are protected, own `SYSTEM_ADMIN` removal is blocked, and the last active SuperAdmin cannot be deactivated.
 - 1.6 / 4.7 Added `PermissionCatalog` as the shared source for visible permission modules, admin-only modules, and manage-permission coverage used by Roles and Pages APIs.
 - 1.7 Updated `docs/temp/project-overview.md` with Phase 1 role-key, policy, permission, primary-department, and safety-rail conventions.
+- Phase 1 follow-up: API policy revalidation now expands manage-permission coverage, visible-permission EF filters are query-safe, auth/pages/user payloads expose role keys, and the React client uses role keys plus stale-auth logout for page-data 401s.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)

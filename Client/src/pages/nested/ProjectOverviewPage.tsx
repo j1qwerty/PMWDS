@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, MilestoneDependency, ProjectDocument, TaskAttachment } from "../../types";
 import {
   GlassCard,
@@ -81,7 +82,7 @@ export function ProjectOverviewPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const currentUser = ws.users.find((u) => u.id === auth?.userId);
   const isPrimaryDept = currentUser?.departmentId === ws.project?.departmentId;
-  const canUploadProjectDocs = perm.isSuperAdmin || perm.roles.includes("Director") || isPrimaryDept;
+  const canUploadProjectDocs = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director) || isPrimaryDept;
 
   useEffect(() => {
     if (!ws.project || !auth) return;

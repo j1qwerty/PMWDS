@@ -16,6 +16,7 @@ export const Permission = {
   DepartmentDelete: "DEPARTMENT_DELETE",
 
   ProjectManage: "PROJECT_MANAGE",
+  ProjectPrimaryDepartmentManage: "PROJECT_PRIMARY_DEPARTMENT_MANAGE",
   ProjectView: "PROJECT_VIEW",
   ProjectCreate: "PROJECT_CREATE",
   ProjectEdit: "PROJECT_EDIT",
@@ -124,6 +125,7 @@ export const PERMISSION_GROUPS = {
     edit: Permission.ProjectEdit,
     delete: Permission.ProjectDelete,
     manage: Permission.ProjectManage,
+    primaryDepartmentManage: Permission.ProjectPrimaryDepartmentManage,
   },
   milestone: {
     view: Permission.MilestoneView,
@@ -233,6 +235,7 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
     Permission.ProjectCreate,
     Permission.ProjectEdit,
     Permission.ProjectDelete,
+    Permission.ProjectPrimaryDepartmentManage,
   ],
   [Permission.MilestoneManage]: [
     Permission.MilestoneView,
@@ -347,14 +350,55 @@ export function expandPermissions(userPermissions: readonly string[] | undefined
   return Array.from(set);
 }
 
-export const ROLE_LEVELS: Record<string, number> = {
-  SuperAdmin: 100,
-  Director: 90,
-  ProjectManager: 80,
-  DepartmentHead: 70,
-  TeamMember: 40,
-  Viewer: 10,
+export const RoleKey = {
+  SuperAdmin: "superadmin",
+  Director: "director",
+  ProjectManager: "project-manager",
+  DepartmentHead: "department-head",
+  TeamMember: "team-member",
+  Viewer: "viewer",
+} as const;
+
+export type RoleKeyCode = (typeof RoleKey)[keyof typeof RoleKey];
+
+export const ROLE_DISPLAY_NAMES: Record<RoleKeyCode, string> = {
+  [RoleKey.SuperAdmin]: "SuperAdmin",
+  [RoleKey.Director]: "Director",
+  [RoleKey.ProjectManager]: "ProjectManager",
+  [RoleKey.DepartmentHead]: "DepartmentHead",
+  [RoleKey.TeamMember]: "TeamMember",
+  [RoleKey.Viewer]: "Viewer",
 };
+
+export const ROLE_LEVELS: Record<string, number> = {
+  [RoleKey.SuperAdmin]: 100,
+  [RoleKey.Director]: 90,
+  [RoleKey.ProjectManager]: 80,
+  [RoleKey.DepartmentHead]: 70,
+  [RoleKey.TeamMember]: 40,
+  [RoleKey.Viewer]: 10,
+};
+
+const LEGACY_ROLE_KEYS: Record<string, RoleKeyCode> = {
+  SuperAdmin: RoleKey.SuperAdmin,
+  Director: RoleKey.Director,
+  ProjectManager: RoleKey.ProjectManager,
+  DepartmentHead: RoleKey.DepartmentHead,
+  TeamMember: RoleKey.TeamMember,
+  Viewer: RoleKey.Viewer,
+};
+
+export function normalizeRoleKey(role: string): string {
+  return LEGACY_ROLE_KEYS[role] ?? role;
+}
+
+export function hasRoleKey(roles: readonly string[] | undefined | null, roleKey: RoleKeyCode): boolean {
+  return Boolean(roles?.some((role) => normalizeRoleKey(role) === roleKey));
+}
+
+export function hasAnyRoleKey(roles: readonly string[] | undefined | null, roleKeys: readonly RoleKeyCode[]): boolean {
+  return roleKeys.some((roleKey) => hasRoleKey(roles, roleKey));
+}
 
 export function getModuleGroup(module: PermissionModule) {
   return PERMISSION_GROUPS[module];

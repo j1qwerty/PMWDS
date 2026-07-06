@@ -319,6 +319,7 @@ Separate Vite + React 19 + TypeScript app. **Detail and task tracker live in `do
 - Auth state in `src/auth.tsx` — **JWT currently in `localStorage`** (migrate to httpOnly cookies — `react-todo.md` 0.1).
 - Route guards in `src/App.tsx` `ROUTE_GUARDS` + `PermissionControls.tsx` are **UI-hiding only** — every check must be backed by server enforcement.
 - Client must stop comparing role **display names** once backend Phase 1 lands (use keys/permissions).
+- Client role logic uses immutable `roleKeys` from auth/user/page payloads. Display `roles` remain for labels only. If old localStorage auth has no `roleKeys`, `Client/src/auth.tsx` derives keys from built-in legacy names and `Client/src/appData.tsx` logs out on a 401 page-data response.
 
 ---
 
@@ -355,11 +356,13 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - `PMWDS.Application/Security/PermissionCodes.cs` - permission-code constants, including `PROJECT_PRIMARY_DEPARTMENT_MANAGE`.
 - `PMWDS.Application/Security/PermissionCatalog.cs` - visible permission modules, admin-only modules, and manage-permission coverage shared by Roles and Pages APIs.
 - `PMWDS.API/Auth/PermissionAuthorizationHandler.cs` - policy authorization queries active user roles/permissions from the DB per request and does not trust stale JWT permission claims.
+- `Client/src/permissions.ts` - frontend permission and role-key constants. Keep it aligned with backend `PermissionCodes`/`RoleKeys`, including `PROJECT_PRIMARY_DEPARTMENT_MANAGE`.
 - `PMWDS.API/Services/RoleScopeService.cs` - central data-scope helper for organizations, departments, projects, users, and primary-department project access.
 
 **Role rules**
 - `Role.Key` is the logic identity and is unique/immutable for authorization. `Role.Name` is display-only and may be renamed.
 - JWTs carry role keys in both `ClaimTypes.Role` and `RoleKeys.RoleClaimType`; display role names are returned to the client only for compatibility/UI.
+- Auth responses and page/user DTOs expose `roleKeys`; frontend authorization and role-tier UI must use those keys or permissions, not `Role.Name`.
 - Built-in seeders locate roles by key and repair old rows with `EnsureKey(...)`.
 - Do not use `Role.Name`, display labels, or `User.IsInRole("DisplayName")` in authorization logic. Use `RoleKeys`, `RoleScopeService`, permissions, or `AuthorizationPolicies`.
 

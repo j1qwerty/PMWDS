@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { Icon } from "../../components/ui/Icon";
 import {
@@ -207,7 +208,7 @@ export function DepartmentsPage() {
                                 allUsers={users}
                                 allOrganizations={organizations}
                                 canManageUsers={canEditDepartments}
-                                isSuperAdmin={perm.roles.includes("SuperAdmin")}
+                                isSuperAdmin={hasRoleKey(perm.roleKeys, RoleKey.SuperAdmin)}
                                 onRefresh={refreshAppData}
                             />
 
@@ -236,7 +237,7 @@ export function DepartmentsPage() {
                         organizations={organizations}
                         users={users}
                         selectedOrgId={selectedOrgId}
-                        showOrganization={perm.roles.includes("SuperAdmin")}
+                        showOrganization={hasRoleKey(perm.roleKeys, RoleKey.SuperAdmin)}
                         onSubmit={handleDeptSubmit}
                         onCancel={() => setDeptModal({ open: false })}
                     />

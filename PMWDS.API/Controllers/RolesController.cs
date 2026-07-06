@@ -293,7 +293,10 @@ public class RolesController : BaseApiController
         => new(permission.Id, permission.Code, permission.Name, permission.Description, permission.Module, permission.IsGlobal);
 
     private IQueryable<Permission> VisiblePermissionQuery()
-        => _context.Permissions.Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module));
+    {
+        var visibleModules = PermissionCatalog.VisibleModules.ToArray();
+        return _context.Permissions.Where(permission => visibleModules.Contains(permission.Module));
+    }
 
     private static IEnumerable<Permission> VisiblePermissions(IEnumerable<Permission> permissions)
         => permissions.Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module));

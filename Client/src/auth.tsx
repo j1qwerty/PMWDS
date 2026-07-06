@@ -9,8 +9,8 @@ import {
   type PropsWithChildren,
 } from "react";
 import { api } from "./api";
-import { coversAnyPermission, coversManagedPermission } from "./permissions";
-import type { AuthResponse, Role } from "./types";
+import { coversAnyPermission, coversManagedPermission, hasRoleKey, normalizeRoleKey, type RoleKeyCode } from "./permissions";
+import type { AuthResponse, Role, RoleKey } from "./types";
 
 export type AuthState = {
   token: string;
@@ -20,6 +20,7 @@ export type AuthState = {
   email: string;
   profilePictureUrl?: string | null;
   roles: Role[];
+  roleKeys: RoleKey[];
   permissions: string[];
 };
 
@@ -29,7 +30,7 @@ type AuthContextValue = {
   logout: () => void;
   refresh: () => Promise<void>;
   updateCurrentUser: (patch: Partial<Pick<AuthState, "fullName" | "email" | "profilePictureUrl">>) => void;
-  hasRole: (...roles: Role[]) => boolean;
+  hasRole: (...roles: RoleKeyCode[]) => boolean;
   hasPermission: (...permissions: string[]) => boolean;
   hasAllPermissions: (...permissions: string[]) => boolean;
 };
@@ -46,14 +47,25 @@ function mapAuth(response: AuthResponse): AuthState {
     email: response.email,
     profilePictureUrl: response.profilePictureUrl,
     roles: response.roles,
+    roleKeys: (response.roleKeys ?? response.roles.map(normalizeRoleKey)) as RoleKey[],
     permissions: response.permissions ?? [],
+  };
+}
+
+function normalizeStoredAuth(value: AuthState): AuthState {
+  return {
+    ...value,
+    roleKeys: value.roleKeys?.length
+      ? value.roleKeys
+      : (value.roles ?? []).map(normalizeRoleKey) as RoleKey[],
+    permissions: value.permissions ?? [],
   };
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [auth, setAuth] = useState<AuthState | null>(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as AuthState) : null;
+    return raw ? normalizeStoredAuth(JSON.parse(raw) as AuthState) : null;
   });
 
   useEffect(() => {
@@ -121,9 +133,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setAuth((current) => current ? { ...current, ...patch } : current);
   }, []);
 
-  const hasRole = useCallback((...roles: Role[]) => {
+  const hasRole = useCallback((...roles: RoleKeyCode[]) => {
     if (!auth) return false;
-    return roles.some((role) => auth.roles.includes(role));
+    return roles.some((role) => hasRoleKey(auth.roleKeys, role));
   }, [auth]);
 
   const hasPermission = useCallback((...permissions: string[]) => {

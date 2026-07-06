@@ -7,7 +7,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
-import { api } from "./api";
+import { ApiError, api } from "./api";
 import { useAuth } from "./auth";
 import type {
   ActivityLogRecord,
@@ -75,6 +75,7 @@ function mapRoleRecords(pages: PagesDataResponse): RoleRecord[] {
   const permissionsByCode = new Map(items(pages.permissions).map((permission) => [permission.code, permission]));
   return items(pages.roles).map((role) => ({
     id: role.id,
+    key: role.key,
     name: role.name,
     description: role.description,
     permissionLevel: role.permissionLevel,
@@ -122,6 +123,7 @@ function mapUsers(pages: PagesDataResponse): User[] {
     isActive: user.isActive,
     lastLoginDate: null,
     roles: user.roles,
+    roleKeys: user.roleKeys,
     skills: user.skills?.map((skill) => skill.skillName) ?? [],
     skillDetails: user.skills?.map((skill) => ({
       skillId: skill.skillId,
@@ -152,7 +154,7 @@ function mapPagesData(pages: PagesDataResponse): AppData {
 }
 
 export function AppDataProvider({ children }: PropsWithChildren) {
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
   const [pages, setPages] = useState<PagesDataResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -169,12 +171,15 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const response = await api.getPagesData(auth.token);
       setPages(response);
     } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        logout();
+      }
       setError(cause instanceof Error ? cause.message : "Failed to load application data.");
       setPages(null);
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, logout]);
 
   useEffect(() => {
     void refresh();

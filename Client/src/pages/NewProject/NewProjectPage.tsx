@@ -9,6 +9,7 @@ import {
   LoadingPage,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
@@ -105,9 +106,9 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 5: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
-  const isSuperAdmin = auth?.roles?.includes("SuperAdmin") ?? false;
-  const isDirector = auth?.roles?.includes("Director") ?? false;
-  const isDepartmentHead = auth?.roles?.includes("DepartmentHead") ?? false;
+  const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
+  const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
+  const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
   const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
@@ -289,7 +290,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       if (u.isActive === false) return false;
       if (seen.has(u.id)) return false;
       seen.add(u.id);
-      if (u.roles?.includes("SuperAdmin")) return false;
+      if (hasRoleKey(u.roleKeys ?? u.roles, RoleKey.SuperAdmin)) return false;
       const belongsToDept =
         (u.departmentId && deptSet.has(u.departmentId)) ||
         u.departments?.some((d) => deptSet.has(d.departmentId));

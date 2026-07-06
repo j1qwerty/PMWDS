@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, MilestoneDependency, Task } from "../../types";
 import { classNames } from "../../ui";
 import {
@@ -37,7 +38,7 @@ export function ProjectMilestonesPage() {
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  const canManageMilestones = perm.isSuperAdmin || perm.roles.includes("Director");
+  const canManageMilestones = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -568,7 +569,7 @@ export function ProjectMilestonesPage() {
         departments={[]}
         milestones={ws.milestones}
         users={ws.users}
-        roles={auth?.roles}
+        roles={auth?.roleKeys}
         onSubmit={handleTaskSubmit}
         onClose={() => setTaskModal({ open: false })}
       />

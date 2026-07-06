@@ -73,6 +73,16 @@ type PaginatedResponse<T> = {
   totalPages: number;
 };
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`);
 
@@ -113,7 +123,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       const json = JSON.parse(text);
       message = json.message || json.error || text;
     } catch {}
-    throw new Error(message || `Request failed with status ${response.status}`);
+    throw new ApiError(message || `Request failed with status ${response.status}`, response.status);
   }
 
   if (options.responseType === 'blob') {

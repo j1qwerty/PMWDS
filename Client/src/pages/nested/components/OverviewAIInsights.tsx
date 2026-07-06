@@ -69,7 +69,7 @@ function AIGauge({
   );
 }
 
-export function OverviewAIInsights({ ws }: { ws: { project: { aiHealthScore?: number; aiDelayRiskScore?: number; aiBudgetRiskScore?: number; aiInsightsSummary?: string } | null } }) {
+export function OverviewAIInsights({ ws }: { ws: { project: { aiHealthScore?: number; aiDelayRiskScore?: number; aiBudgetRiskScore?: number; aiInsightsSummary?: string | null } | null } }) {
   if (!ws?.project) return null;
 
   return (
@@ -84,17 +84,17 @@ export function OverviewAIInsights({ ws }: { ws: { project: { aiHealthScore?: nu
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <AIGauge
             label="Health Score"
-            value={ws.project.aiHealthScore}
+            value={ws.project.aiHealthScore ?? 0}
             type="health"
           />
           <AIGauge
             label="Delay Risk"
-            value={ws.project.aiDelayRiskScore}
+            value={ws.project.aiDelayRiskScore ?? 0}
             type="risk"
           />
           <AIGauge
             label="Budget Risk"
-            value={ws.project.aiBudgetRiskScore}
+            value={ws.project.aiBudgetRiskScore ?? 0}
             type="risk"
           />
         </div>

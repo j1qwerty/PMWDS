@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord } from "../../types";
 import { GlassCard } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { ROLE_DISPLAY_NAMES, RoleKey, type RoleKeyCode } from "../../permissions";
 
 interface RegisterUserFormProps {
   departments: Department[];
@@ -13,12 +14,21 @@ interface RegisterUserFormProps {
 
 export function RegisterUserForm({ departments, organizations, lockedOrganizationId, canSelectSuperAdminRole, onSubmit }: RegisterUserFormProps) {
   const roleOptions = canSelectSuperAdminRole
-    ? ["SuperAdmin", "Director", "ProjectManager", "DepartmentHead", "TeamMember", "Viewer"]
-    : ["Director", "ProjectManager", "DepartmentHead", "TeamMember", "Viewer"];
+    ? [RoleKey.SuperAdmin, RoleKey.Director, RoleKey.ProjectManager, RoleKey.DepartmentHead, RoleKey.TeamMember, RoleKey.Viewer]
+    : [RoleKey.Director, RoleKey.ProjectManager, RoleKey.DepartmentHead, RoleKey.TeamMember, RoleKey.Viewer];
   const organizationOptions = lockedOrganizationId
     ? organizations.filter((organization) => organization.id === lockedOrganizationId)
     : organizations;
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    jobTitle: string;
+    organizationId: string;
+    departmentId: string;
+    role: string;
+  }>({
     firstName: "",
     lastName: "",
     email: "",
@@ -26,7 +36,7 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
     jobTitle: "TeamMember",
     organizationId: lockedOrganizationId ?? "",
     departmentId: "",
-    role: "TeamMember",
+    role: RoleKey.TeamMember,
   });
 
   const selectedOrganizationId = lockedOrganizationId ?? form.organizationId;
@@ -50,7 +60,7 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
       jobTitle: "TeamMember",
       organizationId: lockedOrganizationId ?? "",
       departmentId: "",
-      role: "TeamMember",
+      role: RoleKey.TeamMember,
     });
   };
 
@@ -119,8 +129,8 @@ export function RegisterUserForm({ departments, organizations, lockedOrganizatio
             onChange={(e) => setForm({ ...form, role: e.target.value })}
             className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
-            {roleOptions.map((role) => (
-              <option key={role}>{role}</option>
+            {roleOptions.map((role: RoleKeyCode) => (
+              <option key={role} value={role}>{ROLE_DISPLAY_NAMES[role]}</option>
             ))}
           </select>
         </div>

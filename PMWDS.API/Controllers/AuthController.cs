@@ -104,6 +104,7 @@ public class AuthController : BaseApiController
             Email = user.Email,
             ProfilePictureUrl = user.ProfilePictureUrl,
             Roles = roles,
+            RoleKeys = roleKeys,
             Permissions = permissions
         });
     }
