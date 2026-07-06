@@ -116,25 +116,18 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
         {
-            var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
-            if (task == null)
-            {
-                return NotFound();
-            }
-
-            if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
-            {
-                return Forbid();
-            }
-
-            return Ok(TaskDto.FromEntity(task));
+            return NotFound();
         }
-        catch (Exception ex)
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
         {
-            return StatusCode(500, new { message = "Failed to load task", error = ex.Message, stackTrace = ex.StackTrace });
+            return Forbid();
         }
+
+        return Ok(TaskDto.FromEntity(task));
     }
 
     [HttpPost]
@@ -645,21 +638,14 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetSubtasks(Guid id, [FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        try
-        {
-            var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
-            if (parentTask == null) return NotFound();
-            if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
-            var subtasks = (await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct))
-                .OrderByDescending(task => task.CreatedDate)
-                .ToList();
-            var items = subtasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-            return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, subtasks.Count));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to load subtasks", error = ex.Message, stackTrace = ex.StackTrace });
-        }
+        var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (parentTask == null) return NotFound();
+        if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
+        var subtasks = (await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct))
+            .OrderByDescending(task => task.CreatedDate)
+            .ToList();
+        var items = subtasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, subtasks.Count));
     }
 
     [HttpPost("{id:guid}/subtasks")]
@@ -923,20 +909,13 @@ public class TasksController : BaseApiController
     [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependencies(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var task = await _uow.Tasks.GetByIdAsync(id, ct);
-            if (task == null) return NotFound();
-            if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct)) return Forbid();
-            var dependencies = (await _uow.Tasks.GetDependenciesForTaskAsync(id, ct))
-                .Select(TaskDependencyDto.FromEntity)
-                .ToList();
-            return Ok(dependencies);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to load dependencies", error = ex.Message, stackTrace = ex.StackTrace });
-        }
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null) return NotFound();
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct)) return Forbid();
+        var dependencies = (await _uow.Tasks.GetDependenciesForTaskAsync(id, ct))
+            .Select(TaskDependencyDto.FromEntity)
+            .ToList();
+        return Ok(dependencies);
     }
 
     [HttpPost("{id:guid}/dependencies")]
