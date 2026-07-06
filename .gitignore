@@ -118,4 +118,3 @@ docs/temp
 
 # Docker
 .env
-docker-compose.yml

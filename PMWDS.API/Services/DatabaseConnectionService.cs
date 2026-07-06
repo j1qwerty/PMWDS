@@ -93,6 +93,12 @@ public static class DatabaseConnectionService
             return;
         }
 
+        if (environment.IsDevelopment())
+        {
+            Console.WriteLine("[PMWDS] Dropping and recreating database for development...");
+            await db.Database.EnsureDeletedAsync(ct);
+        }
+
         Console.WriteLine("[PMWDS] Ensuring database schema...");
         await db.Database.EnsureCreatedAsync(ct);
     }
@@ -379,6 +385,13 @@ public static class DatabaseConnectionService
             if (!await HasSqliteColumnAsync(connection, "Skills", "OrganizationId", ct))
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Skills\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Roles", "Key", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Roles\" ADD COLUMN \"Key\" TEXT NOT NULL DEFAULT ''", ct);
+                await ExecuteSqliteAsync(connection, "UPDATE \"Roles\" SET \"Key\" = LOWER(REPLACE(\"Name\", ' ', '-')) WHERE \"Key\" = ''", ct);
+                await ExecuteSqliteAsync(connection, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Roles_Key\" ON \"Roles\" (\"Key\")", ct);
             }
 
             if (!await HasSqliteColumnAsync(connection, "Roles", "PaginationPageSize", ct))
