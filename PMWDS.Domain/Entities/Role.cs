@@ -4,6 +4,7 @@ namespace PMWDS.Domain.Entities;
 
 public class Role : AuditableEntity
 {
+    public string Key { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public int PermissionLevel { get; private set; }
@@ -14,9 +15,13 @@ public class Role : AuditableEntity
     protected Role() { }
 
     public static Role Create(string name, string description, int permissionLevel)
+        => Create(CreateCustomKey(name), name, description, permissionLevel);
+
+    public static Role Create(string key, string name, string description, int permissionLevel)
     {
         return new Role
         {
+            Key = NormalizeKey(key),
             Name = name.Trim(),
             Description = description.Trim(),
             PermissionLevel = permissionLevel
@@ -28,6 +33,14 @@ public class Role : AuditableEntity
         Name = name.Trim();
         Description = description.Trim();
         PermissionLevel = permissionLevel;
+    }
+
+    public void EnsureKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(Key))
+        {
+            Key = NormalizeKey(key);
+        }
     }
 
     public void UpdatePaginationPageSize(int pageSize)
@@ -62,5 +75,21 @@ public class Role : AuditableEntity
         }
 
         return clone;
+    }
+
+    private static string NormalizeKey(string key)
+        => key.Trim().ToLowerInvariant();
+
+    private static string CreateCustomKey(string name)
+    {
+        var slug = new string(name
+            .Trim()
+            .ToLowerInvariant()
+            .Select(c => char.IsLetterOrDigit(c) ? c : '-')
+            .ToArray());
+
+        slug = string.Join('-', slug.Split('-', StringSplitOptions.RemoveEmptyEntries));
+        slug = string.IsNullOrWhiteSpace(slug) ? "role" : slug[..Math.Min(slug.Length, 24)];
+        return $"custom-{slug}-{Guid.NewGuid():N}";
     }
 }

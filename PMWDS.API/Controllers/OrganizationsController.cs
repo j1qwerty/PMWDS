@@ -5,6 +5,7 @@ using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
@@ -222,7 +223,7 @@ public class OrganizationsController : BaseApiController
 
         var users = await _uow.Users.GetAllAsync(ct);
         return users
-            .Where(user => UserRoleResolver.Resolve(user).Contains("Director") &&
+            .Where(user => UserRoleResolver.ResolveKeys(user).Contains(RoleKeys.Director) &&
                 user.DepartmentAssignments.Any(assignment =>
                     assignment.Department?.OrganizationId is { } organizationId &&
                     organizationIds.Contains(organizationId)))

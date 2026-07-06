@@ -75,7 +75,8 @@ public class AuthController : BaseApiController
         // Clear failed login attempts on successful authentication
         await _loginLockout.ResetAsync(req.Email);
 
-        var roles = UserRoleResolver.Resolve(user);
+        var roles = UserRoleResolver.ResolveNames(user);
+        var roleKeys = UserRoleResolver.ResolveKeys(user);
         var permissions = ResolvePermissions(user);
         if (passwordVerification == PasswordVerificationResult.SuccessRehashNeeded)
         {
@@ -83,7 +84,7 @@ public class AuthController : BaseApiController
             await _uow.SaveChangesAsync(ct);
         }
 
-        var token = GenerateToken(user, roles, permissions);
+        var token = GenerateToken(user, roleKeys, permissions);
 
         var log = ActivityLog.Create(
             user.Id,
@@ -123,7 +124,7 @@ public class AuthController : BaseApiController
             return Conflict(new { message = $"A user with email '{email}' already exists." });
         }
 
-        var viewer = (await _uow.Roles.FindAsync(r => r.Name == "Viewer", ct)).FirstOrDefault();
+        var viewer = (await _uow.Roles.FindAsync(r => r.Key == RoleKeys.Viewer || r.Name == "Viewer", ct)).FirstOrDefault();
         if (viewer == null)
         {
             return BadRequest(new { message = "Viewer role was not found." });
@@ -264,7 +265,7 @@ public class AuthController : BaseApiController
             return Unauthorized();
         }
 
-        var token = GenerateToken(user, UserRoleResolver.Resolve(user), ResolvePermissions(user));
+        var token = GenerateToken(user, UserRoleResolver.ResolveKeys(user), ResolvePermissions(user));
         return Ok(new
         {
             Token = token,
@@ -291,7 +292,7 @@ public class AuthController : BaseApiController
 
     private string GenerateToken(
         ApplicationUser user,
-        IEnumerable<string> roles,
+        IEnumerable<string> roleKeys,
         IEnumerable<string> permissions)
     {
         var claims = new List<Claim>
@@ -303,7 +304,8 @@ public class AuthController : BaseApiController
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(roleKeys.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(roleKeys.Select(r => new Claim(RoleKeys.RoleClaimType, r)));
         claims.AddRange(permissions.Select(p => new Claim(PermissionCodes.PermissionClaimType, p)));
 
         var key = new SymmetricSecurityKey(

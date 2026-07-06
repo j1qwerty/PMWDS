@@ -221,24 +221,31 @@ internal static class RolesAndPermissionsSeeder
         };
         var specs = new[]
         {
-            new SeedConstants.RoleSpec("SuperAdmin", "Full administrative access.", 100, allPermissionCodes),
-            new SeedConstants.RoleSpec("Director", "Organization administrator with full access inside one organization.", 90, directorPermissionCodes),
-            new SeedConstants.RoleSpec("ProjectManager", "Manages assigned projects and project teams.", 80, projectManagerPermissionCodes),
-            new SeedConstants.RoleSpec("DepartmentHead", "Manages department capacity and planning.", 70, departmentHeadPermissionCodes),
-            new SeedConstants.RoleSpec("TeamMember", "Contributes to project execution.", 40, teamMemberPermissionCodes),
-            new SeedConstants.RoleSpec("Viewer", "Read-only access.", 10, viewerPermissionCodes)
+            new SeedConstants.RoleSpec(RoleKeys.SuperAdmin, "SuperAdmin", "Full administrative access.", 100, allPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.Director, "Director", "Organization administrator with full access inside one organization.", 90, directorPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.ProjectManager, "ProjectManager", "Manages assigned projects and project teams.", 80, projectManagerPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.DepartmentHead, "DepartmentHead", "Manages department capacity and planning.", 70, departmentHeadPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.TeamMember, "TeamMember", "Contributes to project execution.", 40, teamMemberPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.Viewer, "Viewer", "Read-only access.", 10, viewerPermissionCodes)
         };
 
         foreach (var spec in specs)
         {
-            var role = await context.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Name == spec.Name, ct);
+            var role = await context.Roles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.Key == spec.Key || r.Name == spec.Name, ct);
             if (role == null)
             {
-                role = Role.Create(spec.Name, spec.Description, spec.Level);
+                role = Role.Create(spec.Key, spec.Name, spec.Description, spec.Level);
                 role.SetCreatedBy(SeedConstants.SeedUser);
                 await context.Roles.AddAsync(role, ct);
             }
-            role.UpdatePaginationPageSize(spec.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ? 50 : 10);
+            else
+            {
+                role.EnsureKey(spec.Key);
+            }
+
+            role.UpdatePaginationPageSize(spec.Key == RoleKeys.SuperAdmin ? 50 : 10);
 
             role.Permissions.Clear();
             foreach (var code in spec.PermissionCodes)

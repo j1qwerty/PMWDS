@@ -8,6 +8,7 @@ using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Features.Users.Queries;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
@@ -162,24 +163,22 @@ public class UsersController : BaseApiController
         }
 
         user.UpdateAvailability(dto.AvailabilityStatus ?? user.AvailabilityStatus, dto.AvailabilityPercentage);
-        if (dto.RoleNames is { Count: > 0 } && (User.IsInRole("SuperAdmin") || User.IsInRole("Director")))
+        if (dto.RoleNames is { Count: > 0 } && (_scope.IsSuperAdmin || _scope.IsDirector))
         {
-            var requestedRoles = dto.RoleNames
+            var requestedRoleInputs = dto.RoleNames
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Select(role => role.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (!User.IsInRole("SuperAdmin") && requestedRoles.Any(role => role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+            var requestedRoles = await ResolveRolesByInputAsync(requestedRoleInputs, ct);
+
+            if (!_scope.IsSuperAdmin && requestedRoles.Any(role => role.Key == RoleKeys.SuperAdmin))
             {
                 return Forbid();
             }
 
-            requestedRoles = requestedRoles
-                .Where(role => !role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            if (!User.IsInRole("SuperAdmin") && requestedRoles.Count > 0)
+            if (!_scope.IsSuperAdmin && requestedRoles.Count > 0)
             {
                 var currentUserId = _currentUser.UserId;
                 var currentUserMaxLevel = 0;
@@ -194,28 +193,33 @@ public class UsersController : BaseApiController
                     }
                 }
 
-                var exceedLevel = await _uow.Roles.FindAsync(
-                    r => requestedRoles.Contains(r.Name) && r.PermissionLevel >= currentUserMaxLevel, ct);
-                if (exceedLevel.Any())
+                if (requestedRoles.Any(role => role.PermissionLevel >= currentUserMaxLevel))
                 {
                     return Forbid();
                 }
             }
 
-            var isCurrentlySuperAdmin = user.Roles.Any(r => r.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
-            if (isCurrentlySuperAdmin && !requestedRoles.Contains("SuperAdmin", StringComparer.OrdinalIgnoreCase))
+            var isCurrentlySuperAdmin = user.Roles.Any(r => r.Key == RoleKeys.SuperAdmin);
+            if (isCurrentlySuperAdmin && requestedRoles.All(role => role.Key != RoleKeys.SuperAdmin))
             {
-                requestedRoles.Add("SuperAdmin");
+                var superAdmin = await _db.Roles.FirstOrDefaultAsync(r => r.Key == RoleKeys.SuperAdmin, ct);
+                if (superAdmin != null)
+                {
+                    requestedRoles.Add(superAdmin);
+                }
             }
 
             if (requestedRoles.Count == 0)
             {
-                requestedRoles.Add("Viewer");
+                var viewer = await _db.Roles.FirstOrDefaultAsync(r => r.Key == RoleKeys.Viewer, ct);
+                if (viewer != null)
+                {
+                    requestedRoles.Add(viewer);
+                }
             }
 
-            var roles = await _uow.Roles.FindAsync(r => requestedRoles.Contains(r.Name), ct);
             user.Roles.Clear();
-            foreach (var role in roles)
+            foreach (var role in requestedRoles)
             {
                 user.Roles.Add(role);
             }
@@ -262,16 +266,25 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
-        var roleName = string.IsNullOrWhiteSpace(dto.Role) ? "Viewer" : dto.Role.Trim();
-        if (!_scope.IsSuperAdmin && roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        var roleInput = string.IsNullOrWhiteSpace(dto.Role) ? RoleKeys.Viewer : dto.Role.Trim();
+        var role = await ResolveRoleByInputAsync(roleInput, ct);
+        if (role == null)
+        {
+            return BadRequest(new { message = $"Role '{roleInput}' was not found." });
+        }
+
+        if (!_scope.IsSuperAdmin && role.Key == RoleKeys.SuperAdmin)
         {
             return Forbid();
         }
 
-        var role = (await _uow.Roles.FindAsync(r => r.Name == roleName, ct)).FirstOrDefault();
-        if (role == null)
+        if (!_scope.IsSuperAdmin)
         {
-            return BadRequest(new { message = $"Role '{roleName}' was not found." });
+            var currentUserMaxLevel = await GetCurrentUserMaxRoleLevelAsync(ct);
+            if (role.PermissionLevel >= currentUserMaxLevel)
+            {
+                return Forbid();
+            }
         }
 
         var user = ApplicationUser.Create(
@@ -279,7 +292,7 @@ public class UsersController : BaseApiController
             dto.FirstName,
             dto.LastName,
             Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
-            dto.JobTitle ?? roleName,
+            dto.JobTitle ?? role.Name,
             dto.DepartmentId);
         user.SetCreatedBy(_currentUser.UserId ?? "system");
         user.Roles.Add(role);
@@ -298,7 +311,7 @@ public class UsersController : BaseApiController
         var profile = UserProfile.Create(
             user.Id,
             null,
-            dto.JobTitle ?? roleName,
+            dto.JobTitle ?? role.Name,
             null,
             null,
             null,
@@ -840,6 +853,49 @@ public class UsersController : BaseApiController
         }
 
         return await _scope.CanAccessOrganizationAsync(organizationId.Value, ct);
+    }
+
+    private async Task<List<Role>> ResolveRolesByInputAsync(IReadOnlyCollection<string> roleInputs, CancellationToken ct)
+    {
+        if (roleInputs.Count == 0)
+        {
+            return new List<Role>();
+        }
+
+        var normalizedInputs = roleInputs
+            .Select(RoleKeys.Normalize)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var roles = await _db.Roles
+            .Where(role => normalizedInputs.Contains(role.Key) || normalizedInputs.Contains(role.Name.ToLower()))
+            .ToListAsync(ct);
+
+        return roles
+            .GroupBy(role => role.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private async Task<Role?> ResolveRoleByInputAsync(string roleInput, CancellationToken ct)
+    {
+        var normalizedInput = RoleKeys.Normalize(roleInput);
+        return await _db.Roles
+            .FirstOrDefaultAsync(role => role.Key == normalizedInput || role.Name.ToLower() == normalizedInput, ct);
+    }
+
+    private async Task<int> GetCurrentUserMaxRoleLevelAsync(CancellationToken ct)
+    {
+        var currentUserId = _currentUser.UserId;
+        if (!Guid.TryParse(currentUserId, out var currentUserGuid))
+        {
+            return 0;
+        }
+
+        var currentUserEntity = await _db.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == currentUserGuid, ct);
+
+        return currentUserEntity?.Roles.Max(r => r.PermissionLevel) ?? 0;
     }
 
     private async Task<Guid?> GetOrganizationForDepartmentAsync(Guid? departmentId, CancellationToken ct)

@@ -45,10 +45,10 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 
 | # | Task | Files | Source | Status |
 |---|------|-------|--------|--------|
-| 0.1 | Remove all hardcoded secrets (JWT secret, OpenRouter key, SMTP creds, SQL SA password) → env vars / User Secrets / Key Vault. Rotate the leaked OpenRouter key. `[coordinated]` with react 0.3 | `appsettings.json:12,47`, `appsettings.Development.json:3`, `.env.example` | sec 6.1 / db 6.1 / cq 9.3 | 🔴 |
-| 0.2 | Remove stack-trace leakage: delete the 3 try/catch blocks in `TasksController` that return `ex.Message`/`ex.StackTrace`; let `ExceptionMiddleware` handle. `[independent]` | `TasksController.cs:136,661,938` | api §6.2 / sec 10.1 / cq 2.2 | 🔴 |
-| 0.3 | Rate limiting on auth endpoints (login/signup/forgot/reset) + account lockout after N failures. `[independent]` | `Program.cs`, `AuthController.cs` | sec 1.4 / 9 | 🔴 |
-| 0.4 | Strengthen password policy (≥12, complexity); remove legacy SHA256 fallback in `AuthController.cs:272-274,323-324`. | `AuthController.cs:97,209,272-274` | sec 1.3 | 🔴 |
+| 0.1 | Remove all hardcoded secrets (JWT secret, OpenRouter key, SMTP creds, SQL SA password) → env vars / User Secrets / Key Vault. Rotate the leaked OpenRouter key. `[coordinated]` with react 0.3 | `appsettings.json:12,47`, `appsettings.Development.json:3`, `.env.example` | sec 6.1 / db 6.1 / cq 9.3 | ✅ |
+| 0.2 | Remove stack-trace leakage: delete the 3 try/catch blocks in `TasksController` that return `ex.Message`/`ex.StackTrace`; let `ExceptionMiddleware` handle. `[independent]` | `TasksController.cs:136,661,938` | api §6.2 / sec 10.1 / cq 2.2 | ✅ |
+| 0.3 | Rate limiting on auth endpoints (login/signup/forgot/reset) + account lockout after N failures. `[independent]` | `Program.cs`, `AuthController.cs` | sec 1.4 / 9 | ✅ |
+| 0.4 | Strengthen password policy (≥10, complexity); remove legacy SHA256 fallback. | `AuthController.cs:97,209,272-274` | sec 1.3 | ✅ |
 | 0.5 | JWT hardening: random 256-bit secret, expiry 15–30 min, refresh-token rotation, revocation on logout/password change/deactivation. | `AuthController.cs:231-253,280-310`, `Program.cs:58-77` | sec 1.1/1.2 | 🔴 |
 | 0.6 | Encrypt sensitive data at rest (API keys, webhook secrets, integration config) via `AddDataProtection()`. `[coordinated]` with react 0.7 | `Program.cs`, `AIProviderCredential`, `Webhook`, `Integration` | sec 11.3 | 🔴 |
 | 0.7 | SignalR: require a permission on `NotificationHub.SendBroadcast`; replace static `Dictionary` with `ConcurrentDictionary`. Thread-safe `ChatEngine.Sessions` too. `[independent]` | `NotificationHub.cs:9,66-75`, `DashboardHub.cs`, `ChatEngine.cs:65` | sec 11.1 / api 7.1 / cq 7.1-7.2 | 🔴 |
@@ -63,8 +63,8 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 
 | # | Task | Files | Source | Status |
 |---|------|-------|--------|--------|
-| 1.1 | Add immutable **Role Key** (e.g. `superadmin`, `director`, `manager`, …) distinct from display **Name**; migrate identity to use Key for all logic; allow SuperAdmin to rename only the display Name. `[coordinated]` | `ApplicationUser`/Role entity, `RoleScopeService.cs`, seeders | sec 2.2 / overview | 🔴 |
-| 1.2 | Replace every display-name role check with key/permission check — audit `User.IsInRole("SuperAdmin")`, `_scope.IsSuperAdmin`, `_scope.IsDirector`, hardcoded policy names. App must keep functioning after a role rename. `[coordinated]` | `UsersController.cs:165`, `RoleScopeService.cs`, `PermissionPolicyRegistry.cs`, all controllers | api 4.3 / sec 2.x | 🔴 |
+| 1.1 | Add immutable **Role Key** (e.g. `superadmin`, `director`, `manager`, …) distinct from display **Name**; migrate identity to use Key for all logic; allow SuperAdmin to rename only the display Name. `[coordinated]` | `ApplicationUser`/Role entity, `RoleScopeService.cs`, seeders | sec 2.2 / overview | ✅ |
+| 1.2 | Replace every display-name role check with key/permission check — audit `User.IsInRole("SuperAdmin")`, `_scope.IsSuperAdmin`, `_scope.IsDirector`, hardcoded policy names. App must keep functioning after a role rename. `[coordinated]` | `UsersController.cs:165`, `RoleScopeService.cs`, `PermissionPolicyRegistry.cs`, all controllers | api 4.3 / sec 2.x | 🟡 Core role-name logic moved to role keys; policy-name cleanup remains |
 | 1.3 | Add permission for the **primary department** that creates a project (e.g. `ProjectPrimaryDepartment.Manage`); ensure primary department head sees project + milestones even when not in `ProjectDepartments`. Wire into `RoleScopeService` + project scoping. `[coordinated]` | `PermissionCodes.cs`, `Project.cs` (PrimaryDepartment), `RoleScopeService.cs`, `ProjectsController.cs` | overview / new | 🔴 |
 | 1.4 | DB-backed permission revalidation on sensitive ops (don't trust stale JWT claims); shorten permission-claim staleness or move claims to short-lived tokens. `[coordinated]` with 0.5 | `PermissionAuthorizationHandler.cs:30-40`, `AuthController.cs:295` | sec 2.1 | 🔴 |
 | 1.5 | Permission/role edit safety rails: cannot remove own `SystemAdmin`, cannot delete/lock last SuperAdmin, role-key immutable, permission changes invalidate affected sessions. | `RolesController.cs`, `PermissionPolicyRegistry.cs` | sec 2.2 | 🔴 |
@@ -143,6 +143,11 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 ---
 
 ## Completed ✅ (quick reference)
+- 0.1 Hardcoded secrets removed, UserSecretsId added, `.env.example` created
+- 0.2 Stack-trace leakage removed from `TasksController` (3 try/catch blocks)
+- 0.3 Rate limiting on auth endpoints + account lockout implemented
+- 0.4 Password policy strengthened (≥10, complexity), SHA256 fallback removed
+- 1.1 Role keys added (`Role.Key`, `RoleKeys`, migration, seeders, JWT role-key claims); display `Role.Name` remains UI-facing and renameable.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)

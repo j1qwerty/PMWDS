@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
 using PMWDS.Persistence.Context;
@@ -11,7 +12,7 @@ internal static class UsersSeeder
     internal static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct)
     {
         var departments = await context.Departments.ToListAsync(ct);
-        var roles = await context.Roles.ToDictionaryAsync(r => r.Name, ct);
+        var roles = await context.Roles.ToDictionaryAsync(r => r.Key, ct);
         var org = await context.Organizations.FirstOrDefaultAsync(ct);
         var specs = BuildUserSpecs(departments);
         var imagePaths = await SeedProfileImagesAsync(ct);
@@ -29,7 +30,7 @@ internal static class UsersSeeder
                 user.SetPassword(PasswordHelper.HashPassword(user, SeedConstants.DefaultPassword));
                 user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
-                if (org != null && !spec.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                if (org != null && spec.Role != RoleKeys.SuperAdmin)
                     user.AssignToOrganization(org.Id);
                 await context.Users.AddAsync(user, ct);
             }
@@ -39,7 +40,7 @@ internal static class UsersSeeder
                 user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
 
-                if (spec.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                if (spec.Role == RoleKeys.SuperAdmin)
                 {
                     user.ClearPrimaryDepartment();
                     user.ClearOrganization();
@@ -127,29 +128,29 @@ internal static class UsersSeeder
         return new[]
         {
             // Existing users - reassigned to government departments
-            new SeedConstants.UserSpec("admin@org1.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", "SuperAdmin", null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
-            new SeedConstants.UserSpec("director@org1.com", "Priya", "Menon", "DIR001", "Director", "Director", Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
-            new SeedConstants.UserSpec("manager@org1.com", "Dev", "Kapoor", "PM001", "ProjectManager", "ProjectManager", Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
-            new SeedConstants.UserSpec("head.eng@org1.com", "Rohan", "Iyer", "DH001", "Engineering Head", "DepartmentHead", Dept("PWDC"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
-            new SeedConstants.UserSpec("head.pmo@org1.com", "Sita", "Rao", "DH002", "PMO Head", "DepartmentHead", Dept("PWD"), AvailabilityStatus.PartiallyBusy, 70, 88, 54, 0.20),
-            new SeedConstants.UserSpec("head.ops@org1.com", "Vikram", "Singh", "DH003", "Operations Head", "DepartmentHead", Dept("PROC"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
-            new SeedConstants.UserSpec("head.bstr@org1.com", "Meera", "Nair", "DH004", "Strategy Head", "DepartmentHead", Dept("REV"), AvailabilityStatus.Available, 100, 76, 35, 0.11),
-            new SeedConstants.UserSpec("head.csv@org1.com", "Karan", "Verma", "DH005", "Client Services Head", "DepartmentHead", Dept("QA"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
-            new SeedConstants.UserSpec("member@org1.com", "Ananya", "Patel", "TM001", "TeamMember", "TeamMember", Dept("PWDC"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
-            new SeedConstants.UserSpec("viewer@org1.com", "Sneha", "Kulkarni", "VW001", "Viewer", "Viewer", Dept("PWD"), AvailabilityStatus.Available, 92, 60, 18, 0.05),
+            new SeedConstants.UserSpec("admin@org1.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", RoleKeys.SuperAdmin, null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
+            new SeedConstants.UserSpec("director@org1.com", "Priya", "Menon", "DIR001", "Director", RoleKeys.Director, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new SeedConstants.UserSpec("manager@org1.com", "Dev", "Kapoor", "PM001", "ProjectManager", RoleKeys.ProjectManager, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            new SeedConstants.UserSpec("head.eng@org1.com", "Rohan", "Iyer", "DH001", "Engineering Head", RoleKeys.DepartmentHead, Dept("PWDC"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
+            new SeedConstants.UserSpec("head.pmo@org1.com", "Sita", "Rao", "DH002", "PMO Head", RoleKeys.DepartmentHead, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 70, 88, 54, 0.20),
+            new SeedConstants.UserSpec("head.ops@org1.com", "Vikram", "Singh", "DH003", "Operations Head", RoleKeys.DepartmentHead, Dept("PROC"), AvailabilityStatus.Available, 84, 79, 44, 0.16),
+            new SeedConstants.UserSpec("head.bstr@org1.com", "Meera", "Nair", "DH004", "Strategy Head", RoleKeys.DepartmentHead, Dept("REV"), AvailabilityStatus.Available, 100, 76, 35, 0.11),
+            new SeedConstants.UserSpec("head.csv@org1.com", "Karan", "Verma", "DH005", "Client Services Head", RoleKeys.DepartmentHead, Dept("QA"), AvailabilityStatus.Available, 88, 73, 38, 0.12),
+            new SeedConstants.UserSpec("member@org1.com", "Ananya", "Patel", "TM001", "TeamMember", RoleKeys.TeamMember, Dept("PWDC"), AvailabilityStatus.PartiallyBusy, 70, 88, 61, 0.25),
+            new SeedConstants.UserSpec("viewer@org1.com", "Sneha", "Kulkarni", "VW001", "Viewer", RoleKeys.Viewer, Dept("PWD"), AvailabilityStatus.Available, 92, 60, 18, 0.05),
 
             // New government users - one per department
-            new SeedConstants.UserSpec("rajesh.verma@pwd.up.gov.in", "Rajesh", "Verma", "CE001", "Chief Engineer", "ProjectManager", Dept("PWD"), AvailabilityStatus.Busy, 60, 90, 70, 0.30),
-            new SeedConstants.UserSpec("sunil.yadav@up.gov.in", "Sunil", "Yadav", "REV001", "Tehsildar", "DepartmentHead", Dept("REV"), AvailabilityStatus.Available, 85, 75, 40, 0.15),
-            new SeedConstants.UserSpec("vikas.gupta@up.gov.in", "Vikas", "Gupta", "APC001", "Senior Architect", "TeamMember", Dept("APC"), AvailabilityStatus.PartiallyBusy, 70, 82, 50, 0.20),
-            new SeedConstants.UserSpec("amit.saxena@up.gov.in", "Amit", "Saxena", "TCP001", "Town Planner", "TeamMember", Dept("TCP"), AvailabilityStatus.Available, 90, 78, 35, 0.12),
-            new SeedConstants.UserSpec("manoj.tiwari@up.gov.in", "Manoj", "Tiwari", "PROC001", "Procurement Officer", "TeamMember", Dept("PROC"), AvailabilityStatus.PartiallyBusy, 75, 80, 55, 0.22),
-            new SeedConstants.UserSpec("dinesh.kumar@pwd.up.gov.in", "Dinesh", "Kumar", "PWDC001", "Executive Engineer", "TeamMember", Dept("PWDC"), AvailabilityStatus.Busy, 65, 85, 65, 0.28),
-            new SeedConstants.UserSpec("pradeep.mishra@up.gov.in", "Pradeep", "Mishra", "JAL001", "Jal Nigam Engineer", "TeamMember", Dept("JAL"), AvailabilityStatus.PartiallyBusy, 70, 80, 48, 0.18),
-            new SeedConstants.UserSpec("suresh.pandey@up.gov.in", "Suresh", "Pandey", "ELEC001", "Electrical Engineer", "TeamMember", Dept("ELEC"), AvailabilityStatus.Available, 88, 76, 42, 0.16),
-            new SeedConstants.UserSpec("ramesh.yadav@up.gov.in", "Ramesh", "Yadav", "SEW001", "Sewerage Engineer", "TeamMember", Dept("SEW"), AvailabilityStatus.PartiallyBusy, 72, 78, 46, 0.19),
-            new SeedConstants.UserSpec("harish.sharma@up.gov.in", "Harish", "Sharma", "HORT001", "Horticulture Officer", "TeamMember", Dept("HORT"), AvailabilityStatus.Available, 92, 72, 30, 0.10),
-            new SeedConstants.UserSpec("alok.singh@pwd.up.gov.in", "Alok", "Singh", "QA001", "Quality Engineer", "TeamMember", Dept("QA"), AvailabilityStatus.Available, 85, 82, 38, 0.14),
+            new SeedConstants.UserSpec("rajesh.verma@pwd.up.gov.in", "Rajesh", "Verma", "CE001", "Chief Engineer", RoleKeys.ProjectManager, Dept("PWD"), AvailabilityStatus.Busy, 60, 90, 70, 0.30),
+            new SeedConstants.UserSpec("sunil.yadav@up.gov.in", "Sunil", "Yadav", "REV001", "Tehsildar", RoleKeys.DepartmentHead, Dept("REV"), AvailabilityStatus.Available, 85, 75, 40, 0.15),
+            new SeedConstants.UserSpec("vikas.gupta@up.gov.in", "Vikas", "Gupta", "APC001", "Senior Architect", RoleKeys.TeamMember, Dept("APC"), AvailabilityStatus.PartiallyBusy, 70, 82, 50, 0.20),
+            new SeedConstants.UserSpec("amit.saxena@up.gov.in", "Amit", "Saxena", "TCP001", "Town Planner", RoleKeys.TeamMember, Dept("TCP"), AvailabilityStatus.Available, 90, 78, 35, 0.12),
+            new SeedConstants.UserSpec("manoj.tiwari@up.gov.in", "Manoj", "Tiwari", "PROC001", "Procurement Officer", RoleKeys.TeamMember, Dept("PROC"), AvailabilityStatus.PartiallyBusy, 75, 80, 55, 0.22),
+            new SeedConstants.UserSpec("dinesh.kumar@pwd.up.gov.in", "Dinesh", "Kumar", "PWDC001", "Executive Engineer", RoleKeys.TeamMember, Dept("PWDC"), AvailabilityStatus.Busy, 65, 85, 65, 0.28),
+            new SeedConstants.UserSpec("pradeep.mishra@up.gov.in", "Pradeep", "Mishra", "JAL001", "Jal Nigam Engineer", RoleKeys.TeamMember, Dept("JAL"), AvailabilityStatus.PartiallyBusy, 70, 80, 48, 0.18),
+            new SeedConstants.UserSpec("suresh.pandey@up.gov.in", "Suresh", "Pandey", "ELEC001", "Electrical Engineer", RoleKeys.TeamMember, Dept("ELEC"), AvailabilityStatus.Available, 88, 76, 42, 0.16),
+            new SeedConstants.UserSpec("ramesh.yadav@up.gov.in", "Ramesh", "Yadav", "SEW001", "Sewerage Engineer", RoleKeys.TeamMember, Dept("SEW"), AvailabilityStatus.PartiallyBusy, 72, 78, 46, 0.19),
+            new SeedConstants.UserSpec("harish.sharma@up.gov.in", "Harish", "Sharma", "HORT001", "Horticulture Officer", RoleKeys.TeamMember, Dept("HORT"), AvailabilityStatus.Available, 92, 72, 30, 0.10),
+            new SeedConstants.UserSpec("alok.singh@pwd.up.gov.in", "Alok", "Singh", "QA001", "Quality Engineer", RoleKeys.TeamMember, Dept("QA"), AvailabilityStatus.Available, 85, 82, 38, 0.14),
         };
     }
 }

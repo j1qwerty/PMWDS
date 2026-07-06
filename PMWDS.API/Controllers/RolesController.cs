@@ -76,12 +76,13 @@ public class RolesController : BaseApiController
             .OrderBy(r => r.PermissionLevel)
             .ToListAsync(ct);
 
-        var filtered = User.IsInRole("SuperAdmin")
+        var filtered = User.IsInRole(RoleKeys.SuperAdmin)
             ? roles
             : roles.Where(r => r.PermissionLevel < userMaxLevel).ToList();
 
         return Ok(filtered.Select(r => new RoleResponse(
             r.Id,
+            r.Key,
             r.Name,
             r.Description,
             r.PermissionLevel,
@@ -103,7 +104,7 @@ public class RolesController : BaseApiController
             return Conflict(new { message = $"Role '{req.Name}' already exists." });
         }
 
-        if (!User.IsInRole("SuperAdmin"))
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (req.PermissionLevel >= userMaxLevel)
@@ -137,6 +138,7 @@ public class RolesController : BaseApiController
 
         return CreatedAtAction(nameof(GetRoles), new { id = role.Id }, new RoleResponse(
             role.Id,
+            role.Key,
             role.Name,
             role.Description,
             role.PermissionLevel,
@@ -156,7 +158,7 @@ public class RolesController : BaseApiController
             return NotFound();
         }
 
-        if (!User.IsInRole("SuperAdmin"))
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -189,7 +191,7 @@ public class RolesController : BaseApiController
             }
         );
 
-        return Ok(new RoleResponse(role.Id, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
+        return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
     [HttpDelete("{id:guid}")]
@@ -199,7 +201,7 @@ public class RolesController : BaseApiController
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role == null) return NotFound();
 
-        if (!User.IsInRole("SuperAdmin"))
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -329,7 +331,7 @@ public class RolesController : BaseApiController
 
     private async Task<HashSet<string>> GetCurrentUserPermissionCodesAsync(CancellationToken ct)
     {
-        if (User.IsInRole("SuperAdmin"))
+        if (User.IsInRole(RoleKeys.SuperAdmin))
         {
             var all = await _context.Permissions.Select(p => p.Code).ToListAsync(ct);
             return new HashSet<string>(all, StringComparer.OrdinalIgnoreCase);
@@ -367,7 +369,7 @@ public class RolesController : BaseApiController
 
         var assignable = selected
             .Where(p => userPermissions.Contains(p.Code))
-            .Where(p => User.IsInRole("SuperAdmin") || !AdminOnlyModules.Contains(p.Module))
+            .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !AdminOnlyModules.Contains(p.Module))
             .ToList();
 
         var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -384,6 +386,7 @@ public class RolesController : BaseApiController
 
 public record RoleResponse(
     Guid Id,
+    string Key,
     string Name,
     string Description,
     int PermissionLevel,
