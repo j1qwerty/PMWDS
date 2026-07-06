@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using PMWDS.Application.Security;
 using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Auth;
@@ -27,26 +26,11 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
             return;
         }
 
-        if (HasPermissionClaim(context.User, requirement.PermissionCodes))
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
         var permissions = await GetPermissionsForCurrentUserAsync(context.User);
         if (permissions.Overlaps(requirement.PermissionCodes))
         {
             context.Succeed(requirement);
         }
-    }
-
-    private static bool HasPermissionClaim(ClaimsPrincipal user, IReadOnlyCollection<string> permissionCodes)
-    {
-        var claims = user.FindAll(PermissionCodes.PermissionClaimType)
-            .Select(claim => claim.Value)
-            .Where(value => !string.IsNullOrWhiteSpace(value));
-
-        return claims.Any(value => permissionCodes.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase));
     }
 
     private async Task<HashSet<string>> GetPermissionsForCurrentUserAsync(ClaimsPrincipal principal)
