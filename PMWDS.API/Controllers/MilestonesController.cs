@@ -47,9 +47,12 @@ public class MilestonesController : BaseApiController
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            depsQuery = depsQuery.Where(d =>
-                (d.PrerequisiteMilestone.DepartmentId.HasValue && departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
-                (d.DependentMilestone.DepartmentId.HasValue && departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
+            {
+                depsQuery = depsQuery.Where(d =>
+                    (d.PrerequisiteMilestone.DepartmentId.HasValue && departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
+                    (d.DependentMilestone.DepartmentId.HasValue && departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+            }
         }
 
         var deps = await depsQuery.ToListAsync(ct);
@@ -257,11 +260,7 @@ public class MilestonesController : BaseApiController
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            var projectDeptId = await _db.Projects
-                .Where(p => p.Id == projectId)
-                .Select(p => p.DepartmentId)
-                .FirstOrDefaultAsync(ct);
-            if (!departmentIds.Contains(projectDeptId))
+            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
             {
                 query = query.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
             }
@@ -616,8 +615,17 @@ public class MilestonesController : BaseApiController
             .Where(p => projectIds.Contains(p.Id) && departmentIds.Contains(p.DepartmentId))
             .Select(p => p.Id)
             .ToListAsync(ct);
+        var primaryDeptAllowedProjectIds = new HashSet<Guid>();
+        foreach (var projectId in primaryDeptProjectIds)
+        {
+            if (await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
+            {
+                primaryDeptAllowedProjectIds.Add(projectId);
+            }
+        }
+
         return milestones
-            .Where(m => primaryDeptProjectIds.Contains(m.ProjectId) ||
+            .Where(m => primaryDeptAllowedProjectIds.Contains(m.ProjectId) ||
                         (m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value)))
             .ToList();
     }
@@ -632,11 +640,7 @@ public class MilestonesController : BaseApiController
         var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
         if (milestone.DepartmentId.HasValue && departmentIds.Contains(milestone.DepartmentId.Value))
             return true;
-        var projectDeptId = await _db.Projects
-            .Where(p => p.Id == milestone.ProjectId)
-            .Select(p => p.DepartmentId)
-            .FirstOrDefaultAsync(ct);
-        return departmentIds.Contains(projectDeptId);
+        return await _scope.CanAccessProjectAsPrimaryDepartmentAsync(milestone.ProjectId, ct);
     }
 
     private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)

@@ -25,6 +25,7 @@ public static class PermissionCodes
     public const string ProjectCreate = "PROJECT_CREATE";
     public const string ProjectEdit = "PROJECT_EDIT";
     public const string ProjectDelete = "PROJECT_DELETE";
+    public const string ProjectPrimaryDepartmentManage = "PROJECT_PRIMARY_DEPARTMENT_MANAGE";
 
     public const string MilestoneManage = "MILESTONE_MANAGE";
     public const string MilestoneView = "MILESTONE_VIEW";

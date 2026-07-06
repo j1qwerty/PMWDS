@@ -11,6 +11,7 @@ public class RoleScopeService
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private ScopeSnapshot? _scopeSnapshot;
+    private HashSet<string>? _permissionSnapshot;
 
     public RoleScopeService(ApplicationDbContext db, ICurrentUserService currentUser)
     {
@@ -65,8 +66,9 @@ public class RoleScopeService
         if (IsDepartmentHead && !IsDirector)
         {
             var departmentIds = await GetDepartmentIdsAsync(ct);
+            var canAccessPrimaryDepartmentProjects = await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct);
             return query.Where(project =>
-                departmentIds.Contains(project.DepartmentId) ||
+                (canAccessPrimaryDepartmentProjects && departmentIds.Contains(project.DepartmentId)) ||
                 project.ProjectDepartments.Any(pd =>
                     departmentIds.Contains(pd.DepartmentId)) ||
                 project.Milestones.Any(m =>
@@ -203,6 +205,9 @@ public class RoleScopeService
                 item.ProjectManagerId,
                 item.DepartmentId,
                 OrganizationId = item.Department != null ? item.Department.OrganizationId : null,
+                AssignedDepartmentIds = item.ProjectDepartments
+                    .Select(assignment => assignment.DepartmentId)
+                    .ToList(),
                 AssignedOrganizationIds = item.ProjectDepartments
                     .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
                     .Select(assignment => assignment.Department!.OrganizationId!.Value)
@@ -220,13 +225,20 @@ public class RoleScopeService
             return true;
         }
 
-        if ((IsDirector || IsDepartmentHead) && project.OrganizationId.HasValue &&
+        if (IsDepartmentHead && !IsDirector)
+        {
+            var departmentIds = await GetDepartmentIdsAsync(ct);
+            return departmentIds.Contains(project.DepartmentId) &&
+                await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct);
+        }
+
+        if (IsDirector && project.OrganizationId.HasValue &&
             await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
         {
             return true;
         }
 
-        if (IsDirector || IsDepartmentHead)
+        if (IsDirector)
         {
             foreach (var organizationId in project.AssignedOrganizationIds)
             {
@@ -252,6 +264,14 @@ public class RoleScopeService
             .Select(project => new
             {
                 PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
+                project.DepartmentId,
+                AssignedDepartmentIds = project.ProjectDepartments
+                    .Select(assignment => assignment.DepartmentId)
+                    .ToList(),
+                MilestoneDepartmentIds = project.Milestones
+                    .Where(milestone => milestone.DepartmentId.HasValue)
+                    .Select(milestone => milestone.DepartmentId!.Value)
+                    .ToList(),
                 AssignedOrganizationIds = project.ProjectDepartments
                     .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
                     .Select(assignment => assignment.Department!.OrganizationId!.Value)
@@ -262,6 +282,19 @@ public class RoleScopeService
         if (projectOrganizations == null)
         {
             return false;
+        }
+
+        if (IsDepartmentHead && !IsDirector)
+        {
+            var departmentIds = await GetDepartmentIdsAsync(ct);
+            if (departmentIds.Contains(projectOrganizations.DepartmentId) &&
+                await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
+            {
+                return true;
+            }
+
+            return projectOrganizations.AssignedDepartmentIds.Any(departmentIds.Contains) ||
+                projectOrganizations.MilestoneDepartmentIds.Any(departmentIds.Contains);
         }
 
         if (projectOrganizations.PrimaryOrganizationId.HasValue &&
@@ -279,6 +312,23 @@ public class RoleScopeService
         }
 
         return false;
+    }
+
+    public async Task<bool> CanAccessProjectAsPrimaryDepartmentAsync(Guid projectId, CancellationToken ct)
+    {
+        if (IsSuperAdmin || IsDirector)
+        {
+            return true;
+        }
+
+        if (!IsDepartmentHead || !await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
+        {
+            return false;
+        }
+
+        var departmentIds = await GetDepartmentIdsAsync(ct);
+        return await _db.Projects
+            .AnyAsync(project => project.Id == projectId && departmentIds.Contains(project.DepartmentId), ct);
     }
 
     public async Task<bool> CanAccessUserAsync(Guid userId, CancellationToken ct)
@@ -381,6 +431,43 @@ public class RoleScopeService
 
         _scopeSnapshot = new ScopeSnapshot(organizationIds, departmentIds);
         return _scopeSnapshot;
+    }
+
+    private async Task<bool> HasPermissionAsync(string permissionCode, CancellationToken ct)
+    {
+        var permissions = await GetPermissionSnapshotAsync(ct);
+        if (permissions.Contains(PermissionCodes.SystemAdmin) || permissions.Contains(permissionCode))
+        {
+            return true;
+        }
+
+        return permissionCode == PermissionCodes.ProjectPrimaryDepartmentManage &&
+            permissions.Contains(PermissionCodes.ProjectManage);
+    }
+
+    private async Task<HashSet<string>> GetPermissionSnapshotAsync(CancellationToken ct)
+    {
+        if (_permissionSnapshot != null)
+        {
+            return _permissionSnapshot;
+        }
+
+        if (CurrentUserId is not { } userId)
+        {
+            _permissionSnapshot = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            return _permissionSnapshot;
+        }
+
+        var permissions = await _db.Users
+            .Where(user => user.Id == userId && user.IsActive)
+            .SelectMany(user => user.Roles)
+            .SelectMany(role => role.Permissions)
+            .Select(permission => permission.Code)
+            .Distinct()
+            .ToListAsync(ct);
+
+        _permissionSnapshot = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return _permissionSnapshot;
     }
 
     private sealed record ScopeSnapshot(HashSet<Guid> OrganizationIds, HashSet<Guid> DepartmentIds)

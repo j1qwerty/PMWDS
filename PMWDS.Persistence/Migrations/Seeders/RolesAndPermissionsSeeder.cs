@@ -35,6 +35,7 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.ProjectCreate, "Create Projects", "Create project records.", "Projects", false),
             (PermissionCodes.ProjectEdit, "Edit Projects", "Update project records.", "Projects", false),
             (PermissionCodes.ProjectDelete, "Delete Projects", "Delete project records.", "Projects", false),
+            (PermissionCodes.ProjectPrimaryDepartmentManage, "Manage Primary Department Projects", "Keep visibility and control of projects created by the primary department.", "Projects", false),
             (PermissionCodes.MilestoneManage, "Manage Milestones", "Manage all milestone permissions.", "Milestones", false),
             (PermissionCodes.MilestoneView, "View Milestones", "View milestone records.", "Milestones", false),
             (PermissionCodes.MilestoneCreate, "Create Milestones", "Create milestone records.", "Milestones", false),
@@ -164,6 +165,7 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
@@ -180,6 +182,7 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.DepartmentView,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
@@ -191,6 +194,7 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,

@@ -21,6 +21,7 @@ public static class PermissionPolicyRegistry
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.ProjectCreate,
             PermissionCodes.ProjectEdit,
             PermissionCodes.TaskManage,
