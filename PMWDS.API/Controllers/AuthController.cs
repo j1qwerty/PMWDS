@@ -111,9 +111,10 @@ public class AuthController : BaseApiController
     [HttpPost("signup")]
     public async Task<IActionResult> Signup([FromBody] SignupRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
+        string? pwdError = null;
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || !IsPasswordValid(req.Password, out pwdError))
         {
-            return BadRequest(new { message = "Email and a password of at least 6 characters are required." });
+            return BadRequest(new { message = pwdError ?? "Email and a valid password are required." });
         }
 
         var email = req.Email.ToLower().Trim();
@@ -183,9 +184,10 @@ public class AuthController : BaseApiController
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
+        string? resetPwdError = null;
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || !IsPasswordValid(req.NewPassword, out resetPwdError))
         {
-            return BadRequest(new { message = "New password must be at least 6 characters." });
+            return BadRequest(new { message = resetPwdError ?? "New password must meet the complexity requirements." });
         }
 
         var user = await _uow.Users.GetByEmailAsync(req.Email.ToLower().Trim(), ct);
@@ -223,9 +225,10 @@ public class AuthController : BaseApiController
             return BadRequest(new { message = "Current password is incorrect." });
         }
 
-        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
+        string? changePwdError = null;
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || !IsPasswordValid(req.NewPassword, out changePwdError))
         {
-            return BadRequest(new { message = "New password must be at least 6 characters." });
+            return BadRequest(new { message = changePwdError ?? "New password must meet the complexity requirements." });
         }
 
         var newHash = HashPassword(user, req.NewPassword);
@@ -280,15 +283,7 @@ public class AuthController : BaseApiController
         if (!string.IsNullOrEmpty(user.PasswordHash))
         {
             var hasher = new PasswordHasher<ApplicationUser>();
-            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, normalized);
-            if (result != PasswordVerificationResult.Failed)
-            {
-                return result;
-            }
-
-            return LegacyHashPassword(normalized, user.Id) == user.PasswordHash
-                ? PasswordVerificationResult.SuccessRehashNeeded
-                : PasswordVerificationResult.Failed;
+            return hasher.VerifyHashedPassword(user, user.PasswordHash, normalized);
         }
 
         return PasswordVerificationResult.Failed;
@@ -337,8 +332,40 @@ public class AuthController : BaseApiController
     private static string HashPassword(ApplicationUser user, string password)
         => new PasswordHasher<ApplicationUser>().HashPassword(user, password.Trim());
 
-    private static string LegacyHashPassword(string password, Guid userId)
-        => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(password.Trim() + userId)));
+    /// <summary>
+    /// Validates password meets complexity requirements:
+    /// minimum 10 characters, at least one uppercase, one lowercase, one digit, one special character.
+    /// </summary>
+    private static bool IsPasswordValid(string password, out string? error)
+    {
+        if (password.Length < 10)
+        {
+            error = "Password must be at least 10 characters long.";
+            return false;
+        }
+        if (!password.Any(char.IsUpper))
+        {
+            error = "Password must contain at least one uppercase letter.";
+            return false;
+        }
+        if (!password.Any(char.IsLower))
+        {
+            error = "Password must contain at least one lowercase letter.";
+            return false;
+        }
+        if (!password.Any(char.IsDigit))
+        {
+            error = "Password must contain at least one digit.";
+            return false;
+        }
+        if (!password.Any(c => !char.IsLetterOrDigit(c)))
+        {
+            error = "Password must contain at least one special character.";
+            return false;
+        }
+        error = null;
+        return true;
+    }
 
     private static string HashToken(string token)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
