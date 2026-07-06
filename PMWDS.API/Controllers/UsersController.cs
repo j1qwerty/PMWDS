@@ -661,6 +661,11 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
+        if (await IsLastActiveSuperAdminAsync(parsedId, ct))
+        {
+            return BadRequest(new { message = "The last active SuperAdmin user cannot be deactivated." });
+        }
+
         user.Deactivate();
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
@@ -896,6 +901,25 @@ public class UsersController : BaseApiController
             .FirstOrDefaultAsync(u => u.Id == currentUserGuid, ct);
 
         return currentUserEntity?.Roles.Max(r => r.PermissionLevel) ?? 0;
+    }
+
+    private async Task<bool> IsLastActiveSuperAdminAsync(Guid userId, CancellationToken ct)
+    {
+        var isSuperAdmin = await _db.Users
+            .Where(user => user.Id == userId)
+            .AnyAsync(user => user.Roles.Any(role => role.Key == RoleKeys.SuperAdmin), ct);
+        if (!isSuperAdmin)
+        {
+            return false;
+        }
+
+        var activeSuperAdminCount = await _db.Users
+            .CountAsync(user =>
+                user.IsActive &&
+                user.Roles.Any(role => role.Key == RoleKeys.SuperAdmin),
+                ct);
+
+        return activeSuperAdminCount <= 1;
     }
 
     private async Task<Guid?> GetOrganizationForDepartmentAsync(Guid? departmentId, CancellationToken ct)

@@ -54,6 +54,11 @@ public class RolesController : BaseApiController
         [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView }
     };
 
+    private static readonly HashSet<string> ProtectedRoleKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        RoleKeys.SuperAdmin
+    };
+
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
@@ -171,6 +176,16 @@ public class RolesController : BaseApiController
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
         var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        var selectedCodes = permissions.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (role.Key == RoleKeys.SuperAdmin && !selectedCodes.Contains(PermissionCodes.SystemAdmin))
+        {
+            return BadRequest(new { message = "The SuperAdmin role must keep the SYSTEM_ADMIN permission." });
+        }
+
+        if (await WouldRemoveOwnSystemAdminAsync(role.Id, selectedCodes, ct))
+        {
+            return BadRequest(new { message = "You cannot remove your own SYSTEM_ADMIN permission." });
+        }
 
         role.Permissions.Clear();
         foreach (var permission in permissions)
@@ -200,6 +215,11 @@ public class RolesController : BaseApiController
     {
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role == null) return NotFound();
+
+        if (ProtectedRoleKeys.Contains(role.Key))
+        {
+            return BadRequest(new { message = $"The built-in role '{role.Key}' cannot be deleted." });
+        }
 
         if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
@@ -290,6 +310,10 @@ public class RolesController : BaseApiController
         var permission = await _uow.Permissions.GetByIdAsync(id, ct);
         var permName = permission?.Name ?? "Unknown";
         var permCode = permission?.Code ?? "";
+        if (permCode.Equals(PermissionCodes.SystemAdmin, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "The SYSTEM_ADMIN permission cannot be deleted." });
+        }
 
         await _uow.Permissions.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
@@ -381,6 +405,36 @@ public class RolesController : BaseApiController
         return assignable
             .Where(p => !coveredCodes.Contains(p.Code))
             .ToList();
+    }
+
+    private async Task<bool> WouldRemoveOwnSystemAdminAsync(
+        Guid editedRoleId,
+        HashSet<string> replacementPermissionCodes,
+        CancellationToken ct)
+    {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
+        {
+            return false;
+        }
+
+        var currentUser = await _context.Users
+            .Include(user => user.Roles)
+            .ThenInclude(role => role.Permissions)
+            .FirstOrDefaultAsync(user => user.Id == parsedUserId, ct);
+        if (currentUser == null || currentUser.Roles.All(role => role.Id != editedRoleId))
+        {
+            return false;
+        }
+
+        var remainingCodes = currentUser.Roles
+            .Where(role => role.Id != editedRoleId)
+            .SelectMany(role => role.Permissions)
+            .Select(permission => permission.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        remainingCodes.UnionWith(replacementPermissionCodes);
+        return !remainingCodes.Contains(PermissionCodes.SystemAdmin);
     }
 }
 
