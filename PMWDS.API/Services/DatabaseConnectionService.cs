@@ -377,6 +377,26 @@ public static class DatabaseConnectionService
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"PasswordResetTokenHash\" TEXT NULL", ct);
             }
 
+            if (!await HasSqliteColumnAsync(connection, "Users", "RefreshTokenHash", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"RefreshTokenHash\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "RefreshTokenExpiresAt", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"RefreshTokenExpiresAt\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "RefreshTokenRevokedAt", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"RefreshTokenRevokedAt\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "AccessTokenVersion", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"AccessTokenVersion\" INTEGER NOT NULL DEFAULT 0", ct);
+            }
+
             if (!await HasSqliteColumnAsync(connection, "Users", "OrganizationId", ct))
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);

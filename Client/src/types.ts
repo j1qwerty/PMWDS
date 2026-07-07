@@ -11,6 +11,8 @@ export type RoleKey =
 export interface AuthResponse {
   token: string;
   expiry: string;
+  refreshToken?: string;
+  refreshTokenExpiry?: string;
   userId: string;
   fullName: string;
   email: string;

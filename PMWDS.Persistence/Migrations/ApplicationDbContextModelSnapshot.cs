@@ -484,6 +484,11 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<double>("AIWorkloadScore")
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<int>("AccessTokenVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<double>("AvailabilityPercentage")
                         .HasColumnType("decimal(5,2)");
 
@@ -555,6 +560,16 @@ namespace PMWDS.Persistence.Migrations
 
                     b.Property<string>("PasswordResetTokenHash")
                         .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RefreshTokenExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RefreshTokenRevokedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PhoneNumber")

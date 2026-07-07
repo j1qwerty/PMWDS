@@ -165,11 +165,14 @@ export const api = {
       body: { email, token, newPassword },
     });
   },
-  refresh(token: string) {
-    return request<{ token: string; expiry: string }>("auth/refresh", {
+  refresh(userId: string, refreshToken: string) {
+    return request<{ token: string; expiry: string; refreshToken: string; refreshTokenExpiry: string }>("auth/refresh", {
       method: "POST",
-      token,
+      body: { userId, refreshToken },
     });
+  },
+  logout(token: string) {
+    return request<void>("auth/logout", { method: "POST", token });
   },
   getDashboard(token: string, departmentId?: string | null) {
     return request<DashboardData>("projects/dashboard", {

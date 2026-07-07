@@ -22,6 +22,10 @@ public class UserConfiguration
         .HasMaxLength(100);
         b.Property(e => e.PasswordResetTokenHash)
         .HasMaxLength(128);
+        b.Property(e => e.RefreshTokenHash)
+        .HasMaxLength(128);
+        b.Property(e => e.AccessTokenVersion)
+        .HasDefaultValue(0);
         b.Property(e => e.AvailabilityStatus)
         .HasConversion<string>().HasMaxLength(30);
         b.Property(e => e.AvailabilityPercentage)

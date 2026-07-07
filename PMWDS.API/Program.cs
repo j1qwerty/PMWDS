@@ -22,6 +22,7 @@ using PMWDS.Persistence.Context;
 using PMWDS.Persistence.Migrations;
 using PMWDS.Persistence.Repositories;
 using Serilog;
+using System.Security.Claims;
 using System.Text;
 using Scalar.AspNetCore;
 
@@ -69,15 +70,19 @@ var jwt = builder.Configuration
     .GetSection("Jwt")
     .Get<JwtSettings>() ?? new JwtSettings();
 
-// Fail fast in Production if JWT secret is not configured
-if (string.IsNullOrWhiteSpace(jwt.Secret) && !builder.Environment.IsDevelopment())
+var jwtSecretBytes = Encoding.UTF8.GetBytes(jwt.Secret ?? string.Empty);
+
+// Fail fast if JWT secret is missing or weaker than 256 bits.
+if (jwtSecretBytes.Length < 32)
 {
-    Console.WriteLine("[PMWDS] FATAL: Jwt:Secret is not configured. Set it via environment variable, User Secrets, or .env file.");
+    Console.WriteLine("[PMWDS] FATAL: Jwt:Secret must be a random secret with at least 32 bytes. Set it via environment variable, User Secrets, or .env file.");
     return;
 }
-if (string.IsNullOrWhiteSpace(jwt.Secret) && builder.Environment.IsDevelopment())
+
+if (jwt.ExpiryMinutes is < 15 or > 30)
 {
-    Console.WriteLine("[PMWDS] WARNING: Jwt:Secret is empty. Set it via User Secrets (dotnet user-secrets set \"Jwt:Secret\" \"<your-secret>\") or .env file.");
+    Console.WriteLine("[PMWDS] FATAL: Jwt:ExpiryMinutes must be between 15 and 30 minutes.");
+    return;
 }
 
 builder.Services
@@ -92,8 +97,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwt.Issuer,
             ValidAudience = jwt.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwt.Secret ?? string.Empty)),
+            IssuerSigningKey = new SymmetricSecurityKey(jwtSecretBytes),
             ClockSkew = TimeSpan.Zero
         };
         opt.Events = new JwtBearerEvents
@@ -107,6 +111,29 @@ builder.Services
                     ctx.Token = token;
                 }
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = async ctx =>
+            {
+                var userIdClaim = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var tokenVersionClaim = ctx.Principal?.FindFirstValue("token_version");
+                if (!Guid.TryParse(userIdClaim, out var userId) ||
+                    !int.TryParse(tokenVersionClaim, out var tokenVersion))
+                {
+                    ctx.Fail("Invalid token claims.");
+                    return;
+                }
+
+                var db = ctx.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                var user = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .Select(u => new { u.IsActive, u.AccessTokenVersion })
+                    .FirstOrDefaultAsync(ctx.HttpContext.RequestAborted);
+
+                if (user == null || !user.IsActive || user.AccessTokenVersion != tokenVersion)
+                {
+                    ctx.Fail("Token has been revoked.");
+                }
             }
         };
     });

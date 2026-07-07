@@ -15,6 +15,8 @@ import type { AuthResponse, Role, RoleKey } from "./types";
 export type AuthState = {
   token: string;
   expiry: string;
+  refreshToken?: string;
+  refreshTokenExpiry?: string;
   userId: string;
   fullName: string;
   email: string;
@@ -42,6 +44,8 @@ function mapAuth(response: AuthResponse): AuthState {
   return {
     token: response.token,
     expiry: response.expiry,
+    refreshToken: response.refreshToken,
+    refreshTokenExpiry: response.refreshTokenExpiry,
     userId: response.userId,
     fullName: response.fullName,
     email: response.email,
@@ -84,7 +88,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const doRefresh = async () => {
       try {
-        const refreshed = await api.refresh(auth.token);
+        if (!auth.refreshToken) {
+          throw new Error("Refresh token is missing.");
+        }
+
+        const refreshed = await api.refresh(auth.userId, auth.refreshToken);
         startTransition(() => {
           setAuth((current) =>
             current
@@ -92,6 +100,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   ...current,
                   token: refreshed.token,
                   expiry: refreshed.expiry,
+                  refreshToken: refreshed.refreshToken,
+                  refreshTokenExpiry: refreshed.refreshTokenExpiry,
                 }
               : current,
           );
@@ -116,16 +126,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const logout = useCallback(() => {
+    if (auth?.token) {
+      void api.logout(auth.token).catch(() => undefined);
+    }
     setAuth(null);
-  }, []);
+  }, [auth]);
 
   const refresh = useCallback(async () => {
     if (!auth) return;
-    const refreshed = await api.refresh(auth.token);
+    if (!auth.refreshToken) {
+      setAuth(null);
+      return;
+    }
+
+    const refreshed = await api.refresh(auth.userId, auth.refreshToken);
     setAuth({
       ...auth,
       token: refreshed.token,
       expiry: refreshed.expiry,
+      refreshToken: refreshed.refreshToken,
+      refreshTokenExpiry: refreshed.refreshTokenExpiry,
     });
   }, [auth]);
 

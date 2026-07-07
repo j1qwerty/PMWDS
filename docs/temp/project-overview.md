@@ -379,6 +379,12 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - The last active SuperAdmin user cannot be deactivated.
 - Permission edits take effect immediately for server authorization because policies revalidate against the DB.
 
+**JWT/session hardening**
+- Access tokens must use a random `Jwt:Secret` of at least 32 bytes and `Jwt:ExpiryMinutes` must stay between 15 and 30.
+- `ApplicationUser` stores one active hashed refresh token plus expiry/revocation timestamps. `POST /api/v1/auth/refresh` rotates the refresh token and does not require a valid access token.
+- JWTs include `token_version`; `Program.cs` validates it against `ApplicationUser.AccessTokenVersion` on every authenticated request. `RevokeAllTokens()` increments that version and clears the refresh token.
+- Password change, password reset, logout, and user deactivation revoke existing access and refresh tokens. React auth stores `refreshToken` and rotates it through `Client/src/auth.tsx`.
+
 **Checklist override**
 - If adding/renaming a permission, update `PermissionCodes.cs`, `PermissionCatalog`, `PermissionPolicyRegistry` if a new policy is needed, and `RolesAndPermissionsSeeder`.
 - If adding a controller, use `[Authorize(Policy = AuthorizationPolicies.X)]` or another policy constant, never an inline policy-name string.

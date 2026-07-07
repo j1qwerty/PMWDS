@@ -84,6 +84,7 @@ public class AuthController : BaseApiController
             await _uow.SaveChangesAsync(ct);
         }
 
+        var (refreshToken, refreshTokenExpiresAt) = IssueRefreshToken(user);
         var token = GenerateToken(user, roleKeys, permissions);
 
         var log = ActivityLog.Create(
@@ -99,6 +100,8 @@ public class AuthController : BaseApiController
         {
             Token = token,
             Expiry = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes),
+            RefreshToken = refreshToken,
+            RefreshTokenExpiry = refreshTokenExpiresAt,
             UserId = user.Id,
             FullName = user.FullName,
             Email = user.Email,
@@ -251,27 +254,49 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("refresh")]
-    [Authorize]
-    public async Task<IActionResult> RefreshToken(CancellationToken ct)
+    [AllowAnonymous]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest req, CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out var parsedUserId))
+        if (!Guid.TryParse(req.UserId, out var parsedUserId) || string.IsNullOrWhiteSpace(req.RefreshToken))
         {
             return Unauthorized();
         }
 
         var user = await _uow.Users.GetByIdAsync(parsedUserId, ct);
-        if (user == null)
+        if (user == null || !user.IsRefreshTokenValid(HashToken(req.RefreshToken)))
         {
             return Unauthorized();
         }
+
+        var (refreshToken, refreshTokenExpiresAt) = IssueRefreshToken(user);
+        await _uow.SaveChangesAsync(ct);
 
         var token = GenerateToken(user, UserRoleResolver.ResolveKeys(user), ResolvePermissions(user));
         return Ok(new
         {
             Token = token,
-            Expiry = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes)
+            Expiry = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes),
+            RefreshToken = refreshToken,
+            RefreshTokenExpiry = refreshTokenExpiresAt
         });
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(userId, out var parsedUserId))
+        {
+            var user = await _uow.Users.GetByIdAsync(parsedUserId, ct);
+            if (user != null)
+            {
+                user.RevokeAllTokens();
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
+
+        return NoContent();
     }
 
     private static PasswordVerificationResult VerifyPassword(ApplicationUser user, string password)
@@ -302,6 +327,7 @@ public class AuthController : BaseApiController
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
             new("DepartmentId", user.DepartmentId?.ToString() ?? string.Empty),
+            new("token_version", user.AccessTokenVersion.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
@@ -334,6 +360,14 @@ public class AuthController : BaseApiController
 
     private static string HashPassword(ApplicationUser user, string password)
         => new PasswordHasher<ApplicationUser>().HashPassword(user, password.Trim());
+
+    private (string Token, DateTime ExpiresAtUtc) IssueRefreshToken(ApplicationUser user)
+    {
+        var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(64));
+        var expiresAt = DateTime.UtcNow.AddDays(Math.Max(_jwt.RefreshTokenDays, 1));
+        user.SetRefreshToken(HashToken(token), expiresAt);
+        return (token, expiresAt);
+    }
 
     /// <summary>
     /// Validates password meets complexity requirements:
@@ -387,6 +421,7 @@ public class AuthController : BaseApiController
 
 public record LoginRequest(string Email, string Password);
 public record ChangePasswordRequest(string OldPassword, string NewPassword);
+public record RefreshTokenRequest(string UserId, string RefreshToken);
 public record SignupRequest(string FirstName, string LastName, string Email, string Password, string? JobTitle);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Email, string Token, string NewPassword);
