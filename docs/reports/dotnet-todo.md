@@ -94,7 +94,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 2.3 | Replace `EnsureCreatedAsync` with `Database.MigrateAsync` so migrations are tracked for SQL Server. | `DatabaseConnectionService.cs:97` | db 3.2 | Done |
 | 2.4 | Make `EnsureSqliteDevelopmentDatabaseAsync` non-destructive (no drop/recreate); use idempotent migration/patch steps. `[coordinated]` | `DatabaseConnectionService.cs:265-283` | db 3.2 |  |skip this
 | 2.5 | **Verify the cascade-delete fix** from `issue-sql-cascade-paths.md` is applied (`ProjectConfiguration` Milestones→Project = `NoAction`; `ProjectDepartmentConfiguration` DepartmentId = `NoAction`) and lock it with a test. (Referenced in db audit §2.1; fix documented only in the issue note.) `[independent]` | `ProjectConfiguration.cs:43-54`, `ProjectDepartmentConfiguration.cs`, `MilestoneConfiguration.cs:21-24` | issue-sql-cascade-paths / db 2.1 | ⚠️ Fix applied — verify + add regression test |
-| 2.6 | Configure `RowVersion` as an EF Core concurrency token (`IsConcurrencyToken`/`IsRowVersion`); fix silent overwrite. `[coordinated]` | `BaseEntity.cs`, configurations | db 9.1 | 🔴 |
+| 2.6 | Configure `RowVersion` as an EF Core concurrency token (`IsConcurrencyToken`/`IsRowVersion`); fix silent overwrite. `[coordinated]` | `BaseEntity.cs`, configurations | db 9.1 | Done |
 | 2.7 | `EnableRetryOnFailure()` for SQL Server (transient faults). | DbContext registration | db 6.3 | Done |
 | 2.8 | Normalise user-ID types (string vs Guid) across the task aggregate; stop ignoring `TaskAssignment.User` / `TimeEntry.User` navigations. `[coordinated]` | `TaskAssignment.cs`, `TimeEntry.cs`, `TaskComment.cs`, `Project.cs`, configurations | db 2.1 | 🔴 |
 | 2.9 | Fix N+1 / read perf: add `Include`/`AsSplitQuery` to `ProjectRepository` & `TaskRepository`; use `AverageAsync`; add `AsNoTracking` to read-only queries; add `Select` projections. `[independent]` per repo | `BaseRepository.cs`, `ProjectRepository.cs`, `TaskRepository.cs`, `UserRepository.cs` | db 1.1–1.4 / 5.2 | 🔴 |
@@ -176,6 +176,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 2.2 Database provider selection now probes SQL Server once; Development falls back to SQLite with a clear selection log, while non-Development fails fast and rejects `ForceSqlite`.
 - 2.7 SQL Server `ApplicationDbContext` registration now uses EF Core `EnableRetryOnFailure()` for transient database faults.
 - 2.3 SQL Server startup now applies EF Core migrations with `Database.MigrateAsync()` instead of dropping/recreating or using `EnsureCreatedAsync`.
+- 2.6 `BaseEntity.RowVersion` is configured globally as an EF Core concurrency token while retaining the existing integer, domain-incremented schema.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)

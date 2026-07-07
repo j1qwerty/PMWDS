@@ -66,8 +66,11 @@ public class ApplicationDbContext : DbContext
             if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType) &&
                 entityType.BaseType == null)
             {
-                builder.Entity(entityType.ClrType)
-                    .HasQueryFilter(GetSoftDeleteFilter(entityType.ClrType));
+                var entity = builder.Entity(entityType.ClrType);
+
+                entity.HasQueryFilter(GetSoftDeleteFilter(entityType.ClrType));
+                entity.Property(nameof(BaseEntity.RowVersion))
+                    .IsConcurrencyToken();
             }
         }
     }

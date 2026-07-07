@@ -73,7 +73,7 @@ PMWDS.Infrastructure/ Services/  Jobs/  Settings/
 ## 2. Domain model (entity map)
 
 Base classes — `PMWDS.Domain/Common/`:
-- **`BaseEntity`** — `Id` (Guid), `CreatedDate`, `ModifiedDate`, `CreatedBy` (string), `ModifiedBy`, `IsDeleted` (soft delete), `RowVersion` (int, manually incremented — **NOT a real EF concurrency token yet**). Methods: `SetCreatedBy`, `SetModified`, `SoftDelete`.
+- **`BaseEntity`** — `Id` (Guid), `CreatedDate`, `ModifiedDate`, `CreatedBy` (string), `ModifiedBy`, `IsDeleted` (soft delete), `RowVersion` (int, manually incremented and configured globally as an EF concurrency token). Methods: `SetCreatedBy`, `SetModified`, `SoftDelete`.
 - **`AuditableEntity : BaseEntity`** — adds `Notes`, `Tags`, `IsActive`. Methods: `Activate`/`Deactivate`/`SetNotes`/`SetTags`.
 - **`ValueObject`** — defined but unused (no value objects exist).
 - **`IDomainEvent` / `DomainEvent`** — domain event base. Entities hold `_domainEvents` but **events are NEVER dispatched** (no MediatR dispatch after SaveChanges) — `dotnet-todo.md` 3.5.
@@ -119,7 +119,7 @@ Base classes — `PMWDS.Domain/Common/`:
 - `MilestoneConfiguration`: `Tasks` FK = `SetNull`.
 - Global query filter `IsDeleted == false` applied to all `BaseEntity` subclasses (in `ApplicationDbContext`).
 - `TaskAssignment.User` and `TimeEntry.User` navigations are explicitly `Ignore`d (due to the string/Guid mismatch).
-- **`RowVersion` is NOT configured as a concurrency token** (`dotnet-todo.md` 2.6).
+- `RowVersion` is configured as an EF Core concurrency token for all `BaseEntity` subclasses in `ApplicationDbContext`.
 
 `ApplicationDbContext` (`PMWDS.Persistence/Context/`) exposes ~51 DbSets and applies the soft-delete global filter.
 
