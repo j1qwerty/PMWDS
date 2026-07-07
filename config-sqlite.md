@@ -21,7 +21,7 @@ Selection priority at startup:
 ```
 1. ForceSqlite: true (Development only) —→ SQLite
 2. SQL Server reachable                   —→ SQL Server
-3. Development mode                        —→ SQLite fallback
+3. Development mode                        —→ SQLite fallback after one SQL Server probe
 4. Otherwise                              —→ throw
 ```
 
@@ -29,7 +29,6 @@ Selection priority at startup:
 ```json
 "Database": {
   "ForceSqlite": true,
-  "EnableSqliteFallback": true,
   "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
 }
 ```
@@ -188,7 +187,7 @@ The project uses two competing schema strategies (`EnsureCreated` + migrations) 
 | `PMWDS.API/Services/DatabaseConnectionService.cs` | Provider selection, SQLite bootstrap, schema validation, compatibility columns |
 | `PMWDS.Persistence/Context/ApplicationDbContextFactory.cs` | Design-time factory (SQLite for EF tooling) |
 | `PMWDS.Persistence/Migrations/SeedData.cs` | Seed orchestration |
-| `PMWDS.Infrastructure/Settings/AppSettings.cs` | `DatabaseSettings` class (ForceSqlite, EnableSqliteFallback) |
+| `PMWDS.Infrastructure/Settings/AppSettings.cs` | `DatabaseSettings` class (ForceSqlite, SqliteConnectionString) |
 | `PMWDS.API/appsettings.Development.json` | Development override (ForceSqlite: true) |
 | `PMWDS.API/appsettings.json` | Base configuration (SQL Server connection strings) |
 

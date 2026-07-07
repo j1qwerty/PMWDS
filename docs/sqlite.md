@@ -17,7 +17,6 @@ File: `PMWDS.API/appsettings.Development.json`
 ```json
 "Database": {
   "ForceSqlite": true,
-  "EnableSqliteFallback": true,
   "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
 }
 ```
@@ -29,14 +28,13 @@ SQLite is selected only in Development:
 ```csharp
 var useSqlite = builder.Environment.IsDevelopment() &&
     (databaseSettings.ForceSqlite ||
-     (databaseSettings.EnableSqliteFallback &&
-      !CanConnectToSqlServer(sqlServerConnection)));
+     !CanConnectToSqlServer(sqlServerConnection));
 ```
 
 Behavior:
 
 - `ForceSqlite: true` always uses SQLite in Development.
-- `ForceSqlite: false` and `EnableSqliteFallback: true` tries SQL Server first, then uses SQLite if SQL Server cannot connect.
+- `ForceSqlite: false` tries SQL Server first, then uses SQLite in Development if SQL Server cannot connect.
 - Non-development environments use SQL Server.
 
 ## Startup Bootstrap

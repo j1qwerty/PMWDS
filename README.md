@@ -72,7 +72,7 @@ dotnet build PMWDS.slnx
 dotnet run --project PMWDS.API --urls http://localhost:5177
 ```
 
-The API auto-detects the Docker SQL Server and uses it (no manual config needed). Hangfire and Redis cache are active in this mode.
+The API checks SQL Server once and uses it when reachable. Hangfire and Redis cache are active in this mode.
 
 Reset to SQLite anytime:
 
@@ -80,7 +80,7 @@ Reset to SQLite anytime:
 docker-compose down
 ```
 
-Then run the API normally — it falls back to SQLite automatically.
+Then run the API normally in Development — it falls back to SQLite automatically.
 
 Run the client:
 

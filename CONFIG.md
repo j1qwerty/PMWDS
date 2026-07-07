@@ -24,7 +24,7 @@ ASP.NET Core configuration is loaded from standard sources. Use this priority wh
 
 - .NET SDK compatible with `net10.0`.
 - Node.js and npm for the React client.
-- SQL Server for production-style local runs, optional for development because SQLite fallback is enabled.
+- SQL Server for production-style local runs, optional for development because SQLite fallback is automatic in Development.
 - Redis if testing distributed cache behavior.
 - Azure Storage Emulator or real Azure Blob Storage if testing file storage.
 
@@ -97,7 +97,6 @@ File: `PMWDS.API/appsettings.Development.json`
 ```json
 "Database": {
   "ForceSqlite": true,
-  "EnableSqliteFallback": true,
   "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
 }
 ```
@@ -105,7 +104,7 @@ File: `PMWDS.API/appsettings.Development.json`
 Behavior:
 
 - `ForceSqlite: true` makes Development use SQLite without trying SQL Server.
-- `EnableSqliteFallback: true` allows fallback if `ForceSqlite` is false and SQL Server cannot be reached.
+- If `ForceSqlite` is false and SQL Server cannot be reached, Development falls back to SQLite automatically.
 - The database file is `PMWDS.API/App_Data/pmwds-dev.sqlite`.
 - The API startup path creates the directory, validates the expected SQLite schema, rebuilds stale development schema when needed, and runs seed data.
 - Hangfire is disabled while SQLite is active.
@@ -119,7 +118,6 @@ File: `PMWDS.Infrastructure/Settings/AppSettings.cs`
 ```csharp
 public class DatabaseSettings
 {
-    public bool EnableSqliteFallback { get; set; } = true;
     public bool ForceSqlite { get; set; } = false;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
 }

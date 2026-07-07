@@ -106,6 +106,11 @@ public static class DatabaseConnectionService
     {
         if (settings.ForceSqlite)
         {
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException("Database:ForceSqlite is only allowed in Development. Production must use SQL Server.");
+            }
+
             attempts.Add("SQLite forced by Database:ForceSqlite.");
             return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, true, attempts);
         }
@@ -118,12 +123,12 @@ public static class DatabaseConnectionService
 
         attempts.Add("SQL Server unavailable or not configured.");
 
-        if (!environment.IsDevelopment() && !settings.EnableSqliteFallback)
+        if (!environment.IsDevelopment())
         {
-            throw new InvalidOperationException("No configured database provider is reachable and SQLite fallback is disabled.");
+            throw new InvalidOperationException("SQL Server is required outside Development, but ConnectionStrings:Default is not reachable.");
         }
 
-        attempts.Add("SQLite fallback selected.");
+        attempts.Add("Development SQLite fallback selected after a single SQL Server connectivity check.");
         return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, true, attempts);
     }
 
@@ -152,24 +157,11 @@ public static class DatabaseConnectionService
             probeCs = builder.ConnectionString;
         }
 
-        var maxRetries = 5;
-        for (var i = 0; i < maxRetries; i++)
+        return CanConnect(probeCs, cs =>
         {
-            if (CanConnect(probeCs, cs =>
-            {
-                var b = new SqlConnectionStringBuilder(cs) { ConnectTimeout = 3 };
-                return new SqlConnection(b.ConnectionString);
-            }))
-            {
-                return true;
-            }
-            if (i < maxRetries - 1)
-            {
-                Console.WriteLine($"[PMWDS] SQL Server not ready yet, retrying ({i + 1}/{maxRetries})...");
-                Thread.Sleep(3000);
-            }
-        }
-        return false;
+            var b = new SqlConnectionStringBuilder(cs) { ConnectTimeout = 3 };
+            return new SqlConnection(b.ConnectionString);
+        });
     }
 
     private static void EnsureDatabasesExist(IConfiguration configuration, string? sqlServerConnection)

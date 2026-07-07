@@ -89,8 +89,8 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 
 | # | Task | Files | Source | Status |
 |---|------|-------|--------|--------|
-| 2.1 | **Remove MySQL support entirely** — provider-detection branch, `MySql.EntityFrameworkCore` package refs, configs, seeders, docs. Production = SQL Server; Development = SQLite. `[coordinated]` | `DatabaseConnectionService.cs`, `.csproj`, `appsettings*.json` | db 6.2 / 11.1 | ✅ Done |
-| 2.2 | **Dev DB fast-fail:** replace the SQL Server 5-retry / 15s startup wait with a **single** connectivity check; if unreachable **in Development**, auto-fallback to SQLite with a clear log. Production must **fail fast** (no silent fallback). `[coordinated]` | `DatabaseConnectionService.cs:100-137,178` | db 6.2 / cq 7.5 / new | 🔴 |
+| 2.1 | **Remove MySQL support entirely** — provider-detection branch, `MySql.EntityFrameworkCore` package refs, configs, seeders, docs. Production = SQL Server; Development = SQLite. `[coordinated]` | `DatabaseConnectionService.cs`, `.csproj`, `appsettings*.json` | db 6.2 / 11.1 | Done |
+| 2.2 | **Dev DB fast-fail:** replace the SQL Server 5-retry / 15s startup wait with a **single** connectivity check; if unreachable **in Development**, auto-fallback to SQLite with a clear log. Production must **fail fast** (no silent fallback). `[coordinated]` | `DatabaseConnectionService.cs:100-137,178` | db 6.2 / cq 7.5 / new | Done |
 | 2.3 | Replace `EnsureCreatedAsync` with `Database.MigrateAsync` so migrations are tracked for SQL Server. | `DatabaseConnectionService.cs:97` | db 3.2 | 🔴 |
 | 2.4 | Make `EnsureSqliteDevelopmentDatabaseAsync` non-destructive (no drop/recreate); use idempotent migration/patch steps. `[coordinated]` | `DatabaseConnectionService.cs:265-283` | db 3.2 |  |skip this
 | 2.5 | **Verify the cascade-delete fix** from `issue-sql-cascade-paths.md` is applied (`ProjectConfiguration` Milestones→Project = `NoAction`; `ProjectDepartmentConfiguration` DepartmentId = `NoAction`) and lock it with a test. (Referenced in db audit §2.1; fix documented only in the issue note.) `[independent]` | `ProjectConfiguration.cs:43-54`, `ProjectDepartmentConfiguration.cs`, `MilestoneConfiguration.cs:21-24` | issue-sql-cascade-paths / db 2.1 | ⚠️ Fix applied — verify + add regression test |
@@ -173,6 +173,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 1.7 Updated `docs/temp/project-overview.md` with Phase 1 role-key, policy, permission, primary-department, and safety-rail conventions.
 - Phase 1 follow-up: API policy revalidation now expands manage-permission coverage, visible-permission EF filters are query-safe, auth/pages/user payloads expose role keys, and the React client uses role keys plus stale-auth logout for page-data 401s.
 - 2.1 MySQL support removed from provider selection, settings, package references, and live setup docs. Runtime database providers are now SQL Server and SQLite only.
+- 2.2 Database provider selection now probes SQL Server once; Development falls back to SQLite with a clear selection log, while non-Development fails fast and rejects `ForceSqlite`.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)
