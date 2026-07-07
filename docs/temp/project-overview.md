@@ -118,6 +118,7 @@ Base classes — `PMWDS.Domain/Common/`:
 - `ProjectDepartmentConfiguration`: `Department` FK = **`NoAction`**; `Project` FK remains `Cascade`.
 - `MilestoneConfiguration`: `Tasks` FK = `SetNull`.
 - Global query filter `IsDeleted == false` applied to all `BaseEntity` subclasses (in `ApplicationDbContext`).
+- Soft-delete read paths on tasks, notifications, task assignments, time entries, and milestones have provider-safe `IsDeleted` composite indexes in their EF configurations.
 - `TaskAssignment.User` and `TimeEntry.User` navigations are explicitly `Ignore`d (due to the string/Guid mismatch).
 - `RowVersion` is configured as an EF Core concurrency token for all `BaseEntity` subclasses in `ApplicationDbContext`.
 

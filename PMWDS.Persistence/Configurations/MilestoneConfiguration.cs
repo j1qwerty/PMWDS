@@ -38,5 +38,8 @@ public class MilestoneConfiguration
         b.HasIndex(e => e.ProjectId);
         b.HasIndex(e => e.Status);
         b.HasIndex(e => e.DueDate);
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.ProjectId, e.Status, e.DueDate });
+        b.HasIndex(e => new { e.IsDeleted, e.DepartmentId });
     }
 }

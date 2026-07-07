@@ -58,8 +58,10 @@ public class TaskConfiguration
         b.HasIndex(e => e.AssignedToUserId);
         b.HasIndex(e => e.Status);
         b.HasIndex(e => e.DueDate);
-
-
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.ProjectId, e.Status });
+        b.HasIndex(e => new { e.IsDeleted, e.AssignedToUserId });
+        b.HasIndex(e => new { e.IsDeleted, e.MilestoneId });
         b.HasIndex(e => e.IsEscalated);
         b.HasIndex(e => e.AIDelayProbability);
     }

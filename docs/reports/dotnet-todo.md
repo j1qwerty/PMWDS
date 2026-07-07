@@ -98,7 +98,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 2.7 | `EnableRetryOnFailure()` for SQL Server (transient faults). | DbContext registration | db 6.3 | Done |
 | 2.8 | Normalise user-ID types (string vs Guid) across the task aggregate; stop ignoring `TaskAssignment.User` / `TimeEntry.User` navigations. `[coordinated]` | `TaskAssignment.cs`, `TimeEntry.cs`, `TaskComment.cs`, `Project.cs`, configurations | db 2.1 | 🔴 |
 | 2.9 | Fix N+1 / read perf: add `Include`/`AsSplitQuery` to `ProjectRepository` & `TaskRepository`; use `AverageAsync`; add `AsNoTracking` to read-only queries; add `Select` projections. `[independent]` per repo | `BaseRepository.cs`, `ProjectRepository.cs`, `TaskRepository.cs`, `UserRepository.cs` | db 1.1–1.4 / 5.2 | 🔴 |
-| 2.10 | Add filtered `IsDeleted` indexes + composite indexes (ProjectTask, Notification, TaskAssignment, TimeEntry, Milestone). `[independent]` | configurations | db 5.1 / 8.2 | 🔴 |
+| 2.10 | Add filtered `IsDeleted` indexes + composite indexes (ProjectTask, Notification, TaskAssignment, TimeEntry, Milestone). `[independent]` | configurations | db 5.1 / 8.2 | Done |
 | 2.11 | `BaseRepository.DeleteAsync` → soft delete (not hard `Remove`). `[coordinated]` | `BaseRepository.cs`, `UnitOfWork.cs` | db 8.3 | 🔴 |
 | 2.12 | Wrap multi-`SaveChanges` seeders in explicit transactions (`ProjectsSeeder.ClearExistingProjectsAsync`, `SeedData.SeedAsync`). `[independent]` | `Seeders/*` | db 3.3 / 7.2 | 🔴 |
 
@@ -177,6 +177,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 2.7 SQL Server `ApplicationDbContext` registration now uses EF Core `EnableRetryOnFailure()` for transient database faults.
 - 2.3 SQL Server startup now applies EF Core migrations with `Database.MigrateAsync()` instead of dropping/recreating or using `EnsureCreatedAsync`.
 - 2.6 `BaseEntity.RowVersion` is configured globally as an EF Core concurrency token while retaining the existing integer, domain-incremented schema.
+- 2.10 Added provider-safe `IsDeleted` and composite indexes for tasks, notifications, task assignments, time entries, and milestones to support soft-delete filtered reads.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)

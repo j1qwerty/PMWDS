@@ -31,5 +31,7 @@ public class TimeEntryConfiguration
         b.HasIndex(e => e.TaskId);
         b.HasIndex(e => e.UserId);
         b.HasIndex(e => e.StartTime);
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.TaskId, e.UserId, e.StartTime });
     }
 }

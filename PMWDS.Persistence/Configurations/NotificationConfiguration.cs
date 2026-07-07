@@ -27,5 +27,7 @@ public class NotificationConfiguration
         b.HasIndex(e => e.UserId);
         b.HasIndex(e => e.IsRead);
         b.HasIndex(e => e.CreatedDate);
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.UserId, e.IsRead, e.CreatedDate });
     }
 }
