@@ -21,19 +21,22 @@ public class AIController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly IUnitOfWork _uow;
     private readonly RoleScopeService _scope;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
     public AIController(
         IAIService ai,
         IOptions<AISettings> aiSettings,
         ApplicationDbContext db,
         IUnitOfWork uow,
-        RoleScopeService scope)
+        RoleScopeService scope,
+        ISensitiveDataProtector sensitiveData)
     {
         _ai = ai;
         _aiSettings = aiSettings.Value;
         _db = db;
         _uow = uow;
         _scope = scope;
+        _sensitiveData = sensitiveData;
     }
 
     [HttpGet("settings")]
@@ -93,7 +96,7 @@ public class AIController : BaseApiController
                     provider.Enabled,
                     provider.UseEnvironmentDefault,
                     provider.BaseUrl,
-                    provider.ApiKey,
+                    string.IsNullOrWhiteSpace(provider.ApiKey) ? null : _sensitiveData.Protect(provider.ApiKey),
                     provider.DefaultModel);
                 existing.SetCreatedBy(User.Identity?.Name ?? "system");
                 await _db.AIProviderCredentials.AddAsync(existing, ct);
@@ -106,7 +109,7 @@ public class AIController : BaseApiController
                     provider.Enabled,
                     provider.UseEnvironmentDefault,
                     provider.BaseUrl,
-                    provider.ApiKey,
+                    string.IsNullOrWhiteSpace(provider.ApiKey) ? null : _sensitiveData.Protect(provider.ApiKey),
                     provider.DefaultModel);
             }
         }

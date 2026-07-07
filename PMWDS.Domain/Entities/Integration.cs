@@ -31,11 +31,34 @@ public class Integration : AuditableEntity
         return integration;
     }
 
+    public static Integration CreateWithConfigurationJson(string integrationType, string name, string configurationJson, bool isEnabled)
+    {
+        var integration = Create(integrationType, name, new Dictionary<string, object>(), isEnabled);
+        integration.ConfigurationJson = string.IsNullOrWhiteSpace(configurationJson) ? "{}" : configurationJson;
+        return integration;
+    }
+
     public void Update(string integrationType, string name, object? configuration, bool isEnabled, string status)
     {
         IntegrationType = integrationType.Trim();
         Name = name.Trim();
         ConfigurationJson = JsonSerializer.Serialize(configuration ?? new Dictionary<string, object>());
+        Status = status.Trim();
+        if (isEnabled)
+        {
+            Activate();
+        }
+        else
+        {
+            Deactivate();
+        }
+    }
+
+    public void UpdateConfigurationJson(string integrationType, string name, string configurationJson, bool isEnabled, string status)
+    {
+        IntegrationType = integrationType.Trim();
+        Name = name.Trim();
+        ConfigurationJson = string.IsNullOrWhiteSpace(configurationJson) ? "{}" : configurationJson;
         Status = status.Trim();
         if (isEnabled)
         {

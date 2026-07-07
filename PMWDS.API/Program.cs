@@ -15,6 +15,7 @@ using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.API.Filters;
 using PMWDS.AI.Services;
+using PMWDS.Application.Interfaces.Services;
 using PMWDS.Infrastructure.Jobs;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Infrastructure.Settings;
@@ -62,6 +63,7 @@ builder.Services.Configure<IpRateLimitPolicies>(
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 builder.Services.AddMemoryCache(); // Required by AspNetCoreRateLimit
+builder.Services.AddDataProtection();
 builder.Services.AddScoped<ILoginLockoutService, LoginLockoutService>();
 
 var databaseStatus = builder.Services.AddApplicationDatabase(builder.Configuration, builder.Environment);
@@ -146,6 +148,7 @@ builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserSer
 builder.Services.AddScoped<RoleScopeService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.INotificationService, NotificationService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IEmailService, EmailService>();
+builder.Services.AddSingleton<ISensitiveDataProtector, SensitiveDataProtector>();
 builder.Services.AddScoped<PMWDS.Infrastructure.Services.IFileStorageService, AzureBlobStorageService>();
 builder.Services.AddScoped<PMWDS.Infrastructure.Services.ILocalFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<PMWDS.Infrastructure.Services.AuditService>();
@@ -284,6 +287,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DatabaseConnectionService.PrepareDatabaseAsync(db, databaseStatus, builder.Environment);
     await SeedData.SeedAsync(db);
+    await SensitiveDataMigrationService.ProtectExistingAsync(
+        db,
+        scope.ServiceProvider.GetRequiredService<ISensitiveDataProtector>());
 
     if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
     {

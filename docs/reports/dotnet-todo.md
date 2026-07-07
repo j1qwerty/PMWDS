@@ -50,7 +50,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 0.3 | Rate limiting on auth endpoints (login/signup/forgot/reset) + account lockout after N failures. `[independent]` | `Program.cs`, `AuthController.cs` | sec 1.4 / 9 | ✅ |
 | 0.4 | Strengthen password policy (≥10, complexity); remove legacy SHA256 fallback. | `AuthController.cs:97,209,272-274` | sec 1.3 | ✅ |
 | 0.5 | JWT hardening: random 256-bit secret, expiry 15–30 min, refresh-token rotation, revocation on logout/password change/deactivation. | `AuthController.cs:231-253,280-310`, `Program.cs:58-77` | sec 1.1/1.2 | ✅ |
-| 0.6 | Encrypt sensitive data at rest (API keys, webhook secrets, integration config) via `AddDataProtection()`. `[coordinated]` with react 0.7 | `Program.cs`, `AIProviderCredential`, `Webhook`, `Integration` | sec 11.3 | 🔴 |
+| 0.6 | Encrypt sensitive data at rest (API keys, webhook secrets, integration config) via `AddDataProtection()`. `[coordinated]` with react 0.7 | `Program.cs`, `AIProviderCredential`, `Webhook`, `Integration` | sec 11.3 | ✅ |
 | 0.7 | SignalR: require a permission on `NotificationHub.SendBroadcast`; replace static `Dictionary` with `ConcurrentDictionary`. Thread-safe `ChatEngine.Sessions` too. `[independent]` | `NotificationHub.cs:9,66-75`, `DashboardHub.cs`, `ChatEngine.cs:65` | sec 11.1 / api 7.1 / cq 7.1-7.2 | 🔴 |
 | 0.8 | Fix sync-over-async `.Result` → `await` (deadlock risk). `[independent]` | `TasksController.cs:581,610` | api 10.1 / arch 5.2 / cq 3.1 | 🔴 |
 | 0.9 | SSRF: validate/whitelist AI provider URLs; validate webhook `CallbackUrl`. | `ChatEngine.cs:311-375,536-537`, `WebhooksController.cs:52`, `AIController.cs:64-141` | sec 7.2 | 🔴 |
@@ -148,6 +148,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 0.3 Rate limiting on auth endpoints + account lockout implemented
 - 0.4 Password policy strengthened (≥10, complexity), SHA256 fallback removed
 - 0.5 JWT hardening added: 256-bit minimum secret enforcement, 15-30 minute access tokens, DB-backed refresh-token rotation, logout endpoint, and token-version revocation on logout/password change/password reset/deactivation.
+- 0.6 Sensitive data at rest is protected with ASP.NET Core Data Protection (`dp:v1:` prefix): AI provider API keys, webhook secrets, and integration configuration JSON; startup migrates existing plaintext rows idempotently.
 - 1.1 Role keys added (`Role.Key`, `RoleKeys`, migration, seeders, JWT role-key claims); display `Role.Name` remains UI-facing and renameable.
 - 1.2 Authorization checks now use role keys/permission-backed policies; API policy names are centralized in `AuthorizationPolicies`.
 - 1.3 Added `PROJECT_PRIMARY_DEPARTMENT_MANAGE`; primary-department project and milestone visibility/control now flows through DB permissions and `RoleScopeService`.

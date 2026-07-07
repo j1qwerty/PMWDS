@@ -60,6 +60,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly AISettings _settings;
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _db;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
     // In-memory session history (production: use Redis)
     private static readonly Dictionary<string, List<ChatMessagePayload>> Sessions = new();
@@ -72,12 +73,14 @@ public class OpenAICompatibleChatEngine : IChatEngine
         HttpClient httpClient,
         IOptions<AISettings> settings,
         IUnitOfWork uow,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        ISensitiveDataProtector sensitiveData)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _uow = uow;
         _db = db;
+        _sensitiveData = sensitiveData;
     }
 
     public bool IsConfigured(string? provider = null)
@@ -358,6 +361,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return environmentProvider;
         }
 
+        var storedApiKey = _sensitiveData.Unprotect(stored.ApiKey);
+
         return stored.UseEnvironmentDefault
             ? environmentProvider with
             {
@@ -368,7 +373,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
             : environmentProvider with
             {
                 Enabled = stored.Enabled,
-                ApiKey = string.IsNullOrWhiteSpace(stored.ApiKey) ? environmentProvider.ApiKey : stored.ApiKey,
+                ApiKey = string.IsNullOrWhiteSpace(storedApiKey) ? environmentProvider.ApiKey : storedApiKey,
                 BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
                 DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
             };

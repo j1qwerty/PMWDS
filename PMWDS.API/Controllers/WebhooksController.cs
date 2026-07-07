@@ -10,11 +10,13 @@ public class WebhooksController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
-    public WebhooksController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public WebhooksController(IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _sensitiveData = sensitiveData;
     }
 
     [HttpGet]
@@ -49,7 +51,7 @@ public class WebhooksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertWebhookRequest req, CancellationToken ct)
     {
-        var webhook = Webhook.Create(req.IntegrationId, req.EventType, req.CallbackUrl, req.Secret, req.Headers, req.IsActive);
+        var webhook = Webhook.Create(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
         webhook.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.Webhooks.AddAsync(webhook, ct);
         await _uow.SaveChangesAsync(ct);
@@ -66,7 +68,7 @@ public class WebhooksController : BaseApiController
             return NotFound();
         }
 
-        webhook.Update(req.IntegrationId, req.EventType, req.CallbackUrl, req.Secret, req.Headers, req.IsActive);
+        webhook.Update(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
         await _uow.Webhooks.UpdateAsync(webhook, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok(MapWebhook(webhook));

@@ -385,6 +385,12 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - JWTs include `token_version`; `Program.cs` validates it against `ApplicationUser.AccessTokenVersion` on every authenticated request. `RevokeAllTokens()` increments that version and clears the refresh token.
 - Password change, password reset, logout, and user deactivation revoke existing access and refresh tokens. React auth stores `refreshToken` and rotates it through `Client/src/auth.tsx`.
 
+**Sensitive data protection**
+- `Program.cs` registers `AddDataProtection()` and `ISensitiveDataProtector` (`PMWDS.Infrastructure/Services/SensitiveDataProtector.cs`).
+- Protected values use the `dp:v1:` prefix. `Unprotect(...)` intentionally accepts old plaintext values so migrations and legacy rows keep working.
+- New writes protect AI provider API keys, webhook secrets, and integration `ConfigurationJson`. `SensitiveDataMigrationService.ProtectExistingAsync(...)` runs after seeding and protects existing plaintext rows idempotently.
+- Code that needs to use a protected value must go through `ISensitiveDataProtector`; do not call Data Protection APIs directly from controllers/services.
+
 **Checklist override**
 - If adding/renaming a permission, update `PermissionCodes.cs`, `PermissionCatalog`, `PermissionPolicyRegistry` if a new policy is needed, and `RolesAndPermissionsSeeder`.
 - If adding a controller, use `[Authorize(Policy = AuthorizationPolicies.X)]` or another policy constant, never an inline policy-name string.

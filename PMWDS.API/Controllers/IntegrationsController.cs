@@ -10,11 +10,13 @@ public class IntegrationsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
-    public IntegrationsController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public IntegrationsController(IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _sensitiveData = sensitiveData;
     }
 
     [HttpGet]
@@ -40,7 +42,7 @@ public class IntegrationsController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertIntegrationRequest req, CancellationToken ct)
     {
-        var integration = Integration.Create(req.IntegrationType, req.Name, req.Configuration, req.IsEnabled);
+        var integration = Integration.CreateWithConfigurationJson(req.IntegrationType, req.Name, _sensitiveData.ProtectJson(req.Configuration), req.IsEnabled);
         integration.SetCreatedBy(_currentUser.UserId ?? "system");
         integration.MarkSynced(req.Status);
         await _uow.Integrations.AddAsync(integration, ct);
@@ -58,7 +60,7 @@ public class IntegrationsController : BaseApiController
             return NotFound();
         }
 
-        integration.Update(req.IntegrationType, req.Name, req.Configuration, req.IsEnabled, req.Status);
+        integration.UpdateConfigurationJson(req.IntegrationType, req.Name, _sensitiveData.ProtectJson(req.Configuration), req.IsEnabled, req.Status);
         await _uow.Integrations.UpdateAsync(integration, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok(MapIntegration(integration));
@@ -89,12 +91,12 @@ public class IntegrationsController : BaseApiController
         return NoContent();
     }
 
-    private static IntegrationResponse MapIntegration(Integration integration)
+    private IntegrationResponse MapIntegration(Integration integration)
         => new(
             integration.Id,
             integration.IntegrationType,
             integration.Name,
-            JsonSerializer.Deserialize<Dictionary<string, object>>(integration.ConfigurationJson) ?? new(),
+            _sensitiveData.UnprotectJson<Dictionary<string, object>>(integration.ConfigurationJson) ?? new(),
             integration.IsActive,
             integration.LastSync,
             integration.Status);
