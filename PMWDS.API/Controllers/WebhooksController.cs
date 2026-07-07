@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 
 namespace PMWDS.API.Controllers;
@@ -51,6 +52,11 @@ public class WebhooksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertWebhookRequest req, CancellationToken ct)
     {
+        if (!OutboundUrlGuard.IsSafeWebhookCallbackUrl(req.CallbackUrl, out var callbackUrlError))
+        {
+            return BadRequest(new { message = callbackUrlError });
+        }
+
         var webhook = Webhook.Create(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
         webhook.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.Webhooks.AddAsync(webhook, ct);
@@ -66,6 +72,11 @@ public class WebhooksController : BaseApiController
         if (webhook == null)
         {
             return NotFound();
+        }
+
+        if (!OutboundUrlGuard.IsSafeWebhookCallbackUrl(req.CallbackUrl, out var callbackUrlError))
+        {
+            return BadRequest(new { message = callbackUrlError });
         }
 
         webhook.Update(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);

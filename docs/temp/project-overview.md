@@ -330,7 +330,7 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - No rate limiting / account lockout on auth endpoints.
 - `TasksController` returns `ex.StackTrace` to clients.
 - SignalR `SendBroadcast` has no permission check.
-- AI provider URLs / webhook callback URLs accepted without SSRF validation.
+- AI provider URLs / webhook callback URLs must be validated by `OutboundUrlGuard` before storing or using them.
 - Sensitive data (AI keys, webhook secrets) stored plaintext.
 
 ---
@@ -397,6 +397,12 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 
 **Async controller convention**
 - Controllers must not use `.Result`/`.Wait()` on repository or EF tasks. Await async work directly to avoid request-thread deadlocks.
+
+**Outbound URL validation**
+- `PMWDS.Application/Security/OutboundUrlGuard.cs` is the shared SSRF guard for outbound HTTP destinations.
+- AI provider base URLs must be absolute HTTPS URLs and must match the provider host whitelist: OpenAI uses `api.openai.com`; OpenRouter uses `openrouter.ai`.
+- Webhook callback URLs must be absolute HTTPS URLs, cannot contain user info, and cannot target localhost or private/link-local/multicast literal IP addresses.
+- Validate outbound URLs before saving settings and again before runtime use. New outbound HTTP features must use this guard instead of adding controller-local URL checks.
 
 **Checklist override**
 - If adding/renaming a permission, update `PermissionCodes.cs`, `PermissionCatalog`, `PermissionPolicyRegistry` if a new policy is needed, and `RolesAndPermissionsSeeder`.

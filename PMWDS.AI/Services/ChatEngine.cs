@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -89,7 +90,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var config = ResolveEnvironmentProvider(provider);
         return config.Enabled &&
                !string.IsNullOrWhiteSpace(config.BaseUrl) &&
-               !string.IsNullOrWhiteSpace(config.ApiKey);
+               !string.IsNullOrWhiteSpace(config.ApiKey) &&
+               OutboundUrlGuard.IsAllowedAiProviderBaseUrl(config.ProviderId, config.BaseUrl, out _);
     }
 
     public async Task<IReadOnlyList<AIProviderInfoDto>> GetProvidersAsync(
@@ -366,12 +368,13 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
         if (stored == null)
         {
+            EnsureAllowedProviderUrl(environmentProvider);
             return environmentProvider;
         }
 
         var storedApiKey = _sensitiveData.Unprotect(stored.ApiKey);
 
-        return stored.UseEnvironmentDefault
+        var resolved = stored.UseEnvironmentDefault
             ? environmentProvider with
             {
                 Enabled = stored.Enabled,
@@ -385,6 +388,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
                 BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
                 DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
             };
+        EnsureAllowedProviderUrl(resolved);
+        return resolved;
     }
 
     private ResolvedProviderConfig ResolveEnvironmentProvider(string? provider)
@@ -548,6 +553,14 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
     private static string CombineUrl(string baseUrl, string path)
         => $"{baseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
+
+    private static void EnsureAllowedProviderUrl(ResolvedProviderConfig provider)
+    {
+        if (!OutboundUrlGuard.IsAllowedAiProviderBaseUrl(provider.ProviderId, provider.BaseUrl, out var error))
+        {
+            throw new InvalidOperationException(error);
+        }
+    }
 
     private static string? ExtractAssistantText(string responseText)
     {

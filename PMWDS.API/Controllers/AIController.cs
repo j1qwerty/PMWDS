@@ -84,6 +84,12 @@ public class AIController : BaseApiController
                 return BadRequest(new { message = $"{provider.Provider} base URL is required when enabled." });
             }
 
+            if (provider.Enabled &&
+                !OutboundUrlGuard.IsAllowedAiProviderBaseUrl(provider.Provider, provider.BaseUrl, out var urlError))
+            {
+                return BadRequest(new { message = urlError });
+            }
+
             var existing = await _db.AIProviderCredentials.FirstOrDefaultAsync(
                 p => p.Provider == provider.Provider,
                 ct);
