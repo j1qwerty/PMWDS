@@ -81,9 +81,9 @@ if (jwtSecretBytes.Length < 32)
     return;
 }
 
-if (jwt.ExpiryMinutes is < 15 or > 30)
+if (jwt.ExpiryMinutes is < 15 or > 1440)
 {
-    Console.WriteLine("[PMWDS] FATAL: Jwt:ExpiryMinutes must be between 15 and 30 minutes.");
+    Console.WriteLine("[PMWDS] FATAL: Jwt:ExpiryMinutes must be between 15 minutes and 24 hours (1440 minutes).");
     return;
 }
 
