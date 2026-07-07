@@ -80,9 +80,7 @@ public class HangfireSettings
 public class DatabaseSettings
 {
     public bool EnableSqliteFallback { get; set; } = true;
-    public bool EnableMySqlFallback { get; set; } = true;
     public bool ForceSqlite { get; set; } = false;
-    public string MySqlConnectionString { get; set; } = string.Empty;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
 }
 

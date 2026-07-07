@@ -247,18 +247,17 @@ Strongly-typed `IOptions<T>` classes: `JwtSettings`, `EmailSettings`, `AzureStor
 - `SelectProvider` order:
   1. `ForceSqlite` → SQLite.
   2. SQL Server probe (`CanConnectToSqlServer`) — **5 retries × 3s connect timeout + 3s `Thread.Sleep` between retries ≈ 27s worst-case startup wait**. This is the slow `dotnet run` experience to fix (`dotnet-todo.md` 2.2).
-  3. MySQL fallback (if `EnableMySqlFallback` and `CanConnectToMySql` succeeds — single 2s attempt).
-  4. SQLite fallback (allowed only if `IsDevelopment()` OR `EnableSqliteFallback`; otherwise throws).
+  3. SQLite fallback (allowed only if `IsDevelopment()` OR `EnableSqliteFallback`; otherwise throws).
 - DB prep uses **`EnsureCreatedAsync` exclusively — never `MigrateAsync`** (so migration files are design-time only) — `dotnet-todo.md` 2.3.
 - `EnsureSqliteDevelopmentDatabaseAsync` is **destructive**: drops + recreates the entire SQLite file when the schema sentinel fails (presence of `IX_Departments_Code` or missing tables) — `dotnet-todo.md` 2.4.
 
 ### Target strategy (decided, to implement in Phase 2)
 - **Production: SQL Server only.** Fail fast — no silent fallback.
 - **Development: single SQL Server probe, then auto-fallback to SQLite** with a clear log. No 5× retry.
-- **Remove MySQL entirely** — `dotnet-todo.md` 2.1:
-  - `DatabaseConnectionService` MySQL branches (`CanConnectToMySql`, `UseMySQL` registration, `GetDisplayDataSource` MySQL case).
-  - Package: `MySql.EntityFrameworkCore` (Oracle) referenced **only in `PMWDS.Persistence.csproj`**.
-  - Config keys: `ConnectionStrings:MySql`, `Database:MySqlConnectionString`, `Database:EnableMySqlFallback` (in `appsettings.json`, `appsettings.Development.Sqlite.json`, `.env.example`).
+- **MySQL is removed** — `dotnet-todo.md` 2.1:
+  - Runtime provider selection supports only `SqlServer` and `Sqlite`.
+  - No `MySql.EntityFrameworkCore` package reference remains.
+  - Removed config keys: `ConnectionStrings:MySql`, `Database:MySqlConnectionString`, `Database:EnableMySqlFallback`.
   - **No `EnableRetryOnFailure`** anywhere today (`dotnet-todo.md` 2.7).
 
 ### Migrations (`PMWDS.Persistence/Migrations/`)
@@ -276,7 +275,7 @@ Strongly-typed `IOptions<T>` classes: `JwtSettings`, `EmailSettings`, `AzureStor
 
 ### Connection strings & env (`PMWDS.API/appsettings*.json`, `.env.example`)
 - `ConnectionStrings:Default` (SQL Server), `ConnectionStrings:MySql` (to remove), `ConnectionStrings:Redis`, `ConnectionStrings:Hangfire`.
-- `Database:ForceSqlite`, `Database:EnableSqliteFallback`, `Database:EnableMySqlFallback` (to remove), `Database:SqliteConnectionString`, `Database:MySqlConnectionString` (to remove).
+- `Database:ForceSqlite`, `Database:EnableSqliteFallback`, `Database:SqliteConnectionString`.
 - `.env.example` uses `__` nested-config keys (e.g. `ConnectionStrings__Default`).
 
 ---

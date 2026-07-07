@@ -228,7 +228,7 @@ On first run, the API seeds representative data across the full product surface:
 - The API startup path creates or rebuilds the SQLite development database if the expected schema is missing or stale.
 - Direct `dotnet ef database update` against the existing SQLite file is not the recommended flow for this repo. See [sqlite.md](sqlite.md), [issue-sqlite.md](issue-sqlite.md), and [config-sqlite.md](config-sqlite.md).
 - When running with Docker SQL Server, EF Core migrations (`database.MigrateAsync`) run automatically on startup.
-- The app auto-detects the database provider in order: SQL Server → MySQL → SQLite. Run `docker-compose up -d` before starting the API to use SQL Server.
+- The app auto-detects the database provider in order: SQL Server → SQLite fallback in Development. Run `docker-compose up -d` before starting the API to use SQL Server.
 
 ## Build Checks
 
