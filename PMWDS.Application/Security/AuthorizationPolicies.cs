@@ -12,6 +12,8 @@ public static class AuthorizationPolicies
     public const string ActivityLogsCreate = "ActivityLogs.Create";
     public const string ActivityLogsManage = "ActivityLogs.Manage";
 
+    public const string NotificationsBroadcast = "Notifications.Create";
+
     public const string RolesCreate = "Roles.Create";
     public const string RolesEdit = "Roles.Edit";
     public const string RolesDelete = "Roles.Delete";

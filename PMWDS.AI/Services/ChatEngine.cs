@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +64,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly ISensitiveDataProtector _sensitiveData;
 
     // In-memory session history (production: use Redis)
-    private static readonly Dictionary<string, List<ChatMessagePayload>> Sessions = new();
+    private static readonly ConcurrentDictionary<string, List<ChatMessagePayload>> Sessions = new();
 
     // Cached global DB defaults (refreshed per-resolve)
     private string? _globalDefaultProvider;
@@ -190,40 +191,47 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? model = null,
         CancellationToken ct = default)
     {
-        if (!Sessions.ContainsKey(userId))
-        {
-            Sessions[userId] =
+        var session = Sessions.GetOrAdd(userId, _ =>
             [
                 new ChatMessagePayload(
                     "system",
                     "You are PMWDS AI Assistant, a concise project monitoring expert. " +
                     "Help users with project status, task assignments, risk analysis, and productivity insights.")
-            ];
-        }
-
-        Sessions[userId].Add(new ChatMessagePayload("user", message));
+            ]);
 
         var intent = DetectIntent(message);
         var contextData = await FetchContextData(userId, intent, ct);
-        if (contextData != null)
+        List<ChatMessagePayload> requestMessages;
+        lock (session)
         {
-            Sessions[userId].Add(new ChatMessagePayload(
-                "system",
-                $"System Context: {JsonSerializer.Serialize(contextData, JsonOptions)}"));
+            session.Add(new ChatMessagePayload("user", message));
+            if (contextData != null)
+            {
+                session.Add(new ChatMessagePayload(
+                    "system",
+                    $"System Context: {JsonSerializer.Serialize(contextData, JsonOptions)}"));
+            }
+
+            requestMessages = session.ToList();
         }
 
         var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
-        var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, Sessions[userId], ct);
+        var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, requestMessages, ct);
 
-        Sessions[userId].Add(new ChatMessagePayload("assistant", reply));
-
-        if (Sessions[userId].Count > 22)
+        lock (session)
         {
-            Sessions[userId] = Sessions[userId]
-                .Take(1)
-                .Concat(Sessions[userId].TakeLast(20))
-                .ToList();
+            session.Add(new ChatMessagePayload("assistant", reply));
+
+            if (session.Count > 22)
+            {
+                var trimmed = session
+                    .Take(1)
+                    .Concat(session.TakeLast(20))
+                    .ToList();
+                session.Clear();
+                session.AddRange(trimmed);
+            }
         }
 
         return new ChatResponseDto(
