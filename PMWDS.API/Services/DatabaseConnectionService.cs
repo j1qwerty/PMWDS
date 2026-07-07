@@ -41,7 +41,11 @@ public static class DatabaseConnectionService
             switch (selected.Provider)
             {
                 case ActiveDatabaseProvider.SqlServer:
-                    opt.UseSqlServer(sqlServerConnection, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
+                    opt.UseSqlServer(sqlServerConnection, sql =>
+                    {
+                        sql.MigrationsAssembly("PMWDS.Persistence");
+                        sql.EnableRetryOnFailure();
+                    });
                     break;
                 case ActiveDatabaseProvider.Sqlite:
                     opt.UseSqlite(sqliteConnection, sql => sql.MigrationsAssembly("PMWDS.Persistence"));

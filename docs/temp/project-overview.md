@@ -258,7 +258,7 @@ Strongly-typed `IOptions<T>` classes: `JwtSettings`, `EmailSettings`, `AzureStor
   - Runtime provider selection supports only `SqlServer` and `Sqlite`.
   - No `MySql.EntityFrameworkCore` package reference remains.
   - Removed config keys: `ConnectionStrings:MySql`, `Database:MySqlConnectionString`, `Database:EnableMySqlFallback`.
-  - **No `EnableRetryOnFailure`** anywhere today (`dotnet-todo.md` 2.7).
+  - SQL Server `ApplicationDbContext` registration uses `EnableRetryOnFailure()` for transient faults.
 
 ### Migrations (`PMWDS.Persistence/Migrations/`)
 - `InitialCreate.cs` (large), `AddMilestoneDepartment.cs`, `AddMilestoneDependencies.cs`, `20260630130938_AddAIGlobalSettings.cs`.

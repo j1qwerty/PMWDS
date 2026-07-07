@@ -95,7 +95,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 2.4 | Make `EnsureSqliteDevelopmentDatabaseAsync` non-destructive (no drop/recreate); use idempotent migration/patch steps. `[coordinated]` | `DatabaseConnectionService.cs:265-283` | db 3.2 |  |skip this
 | 2.5 | **Verify the cascade-delete fix** from `issue-sql-cascade-paths.md` is applied (`ProjectConfiguration` Milestones→Project = `NoAction`; `ProjectDepartmentConfiguration` DepartmentId = `NoAction`) and lock it with a test. (Referenced in db audit §2.1; fix documented only in the issue note.) `[independent]` | `ProjectConfiguration.cs:43-54`, `ProjectDepartmentConfiguration.cs`, `MilestoneConfiguration.cs:21-24` | issue-sql-cascade-paths / db 2.1 | ⚠️ Fix applied — verify + add regression test |
 | 2.6 | Configure `RowVersion` as an EF Core concurrency token (`IsConcurrencyToken`/`IsRowVersion`); fix silent overwrite. `[coordinated]` | `BaseEntity.cs`, configurations | db 9.1 | 🔴 |
-| 2.7 | `EnableRetryOnFailure()` for SQL Server (transient faults). | DbContext registration | db 6.3 | 🔴 |
+| 2.7 | `EnableRetryOnFailure()` for SQL Server (transient faults). | DbContext registration | db 6.3 | Done |
 | 2.8 | Normalise user-ID types (string vs Guid) across the task aggregate; stop ignoring `TaskAssignment.User` / `TimeEntry.User` navigations. `[coordinated]` | `TaskAssignment.cs`, `TimeEntry.cs`, `TaskComment.cs`, `Project.cs`, configurations | db 2.1 | 🔴 |
 | 2.9 | Fix N+1 / read perf: add `Include`/`AsSplitQuery` to `ProjectRepository` & `TaskRepository`; use `AverageAsync`; add `AsNoTracking` to read-only queries; add `Select` projections. `[independent]` per repo | `BaseRepository.cs`, `ProjectRepository.cs`, `TaskRepository.cs`, `UserRepository.cs` | db 1.1–1.4 / 5.2 | 🔴 |
 | 2.10 | Add filtered `IsDeleted` indexes + composite indexes (ProjectTask, Notification, TaskAssignment, TimeEntry, Milestone). `[independent]` | configurations | db 5.1 / 8.2 | 🔴 |
@@ -174,6 +174,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - Phase 1 follow-up: API policy revalidation now expands manage-permission coverage, visible-permission EF filters are query-safe, auth/pages/user payloads expose role keys, and the React client uses role keys plus stale-auth logout for page-data 401s.
 - 2.1 MySQL support removed from provider selection, settings, package references, and live setup docs. Runtime database providers are now SQL Server and SQLite only.
 - 2.2 Database provider selection now probes SQL Server once; Development falls back to SQLite with a clear selection log, while non-Development fails fast and rejects `ForceSqlite`.
+- 2.7 SQL Server `ApplicationDbContext` registration now uses EF Core `EnableRetryOnFailure()` for transient database faults.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)
