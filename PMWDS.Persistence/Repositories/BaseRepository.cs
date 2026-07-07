@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.Interfaces.Repositories;
+using PMWDS.Domain.Common;
 using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Repositories;
 
@@ -41,7 +42,19 @@ public class BaseRepository<T>
     Guid id, CancellationToken ct = default)
     {
         var entity = await GetByIdAsync(id, ct);
-        if (entity != null) _dbSet.Remove(entity);
+        if (entity is null)
+        {
+            return;
+        }
+
+        if (entity is BaseEntity softDeleteEntity)
+        {
+            softDeleteEntity.SoftDelete("system");
+            _context.Entry(entity).State = EntityState.Modified;
+            return;
+        }
+
+        _dbSet.Remove(entity);
     }
     public virtual async Task<bool> ExistsAsync(
     Guid id, CancellationToken ct = default)

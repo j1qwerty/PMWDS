@@ -216,6 +216,7 @@ Base classes — `PMWDS.Domain/Common/`:
 
 ### Repositories (`PMWDS.Persistence/Repositories/`)
 - `IRepository<T>` + `BaseRepository<T>` — thin generic wrapper (flagged as low-value, `dotnet-todo.md` 3.3).
+- `BaseRepository.DeleteAsync` soft-deletes `BaseEntity` rows with `SoftDelete("system")`; direct `DbSet.Remove` should be reserved for explicit hard-delete cases.
 - Specific: `IProjectRepository`, `ITaskRepository`, `IUserRepository` (these have domain methods).
 - `UnitOfWork` implements `IUnitOfWork`; `IDisposable`; transactions exist but are **never called** anywhere.
 
