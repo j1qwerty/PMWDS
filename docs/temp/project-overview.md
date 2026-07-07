@@ -395,6 +395,9 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - `NotificationHub.SendBroadcast` must authorize with `AuthorizationPolicies.NotificationsBroadcast` before sending to all clients.
 - Static connection/session state must be thread-safe. `NotificationHub` uses `ConcurrentDictionary`; `OpenAICompatibleChatEngine` uses `ConcurrentDictionary` plus per-session locking around `List<ChatMessagePayload>` mutation.
 
+**Async controller convention**
+- Controllers must not use `.Result`/`.Wait()` on repository or EF tasks. Await async work directly to avoid request-thread deadlocks.
+
 **Checklist override**
 - If adding/renaming a permission, update `PermissionCodes.cs`, `PermissionCatalog`, `PermissionPolicyRegistry` if a new policy is needed, and `RolesAndPermissionsSeeder`.
 - If adding a controller, use `[Authorize(Policy = AuthorizationPolicies.X)]` or another policy constant, never an inline policy-name string.

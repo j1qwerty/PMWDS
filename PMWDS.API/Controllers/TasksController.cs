@@ -567,11 +567,11 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        var entry = _uow.TimeEntries.FindAsync(
+        var entry = (await _uow.TimeEntries.FindAsync(
             e => e.TaskId == id
                 && e.UserId == (_currentUser.UserId ?? "system")
                 && !e.EndTime.HasValue,
-            ct).Result.FirstOrDefault();
+            ct)).FirstOrDefault();
         if (entry == null)
             return NotFound("No running timer found.");
 
