@@ -248,7 +248,7 @@ Strongly-typed `IOptions<T>` classes: `JwtSettings`, `EmailSettings`, `AzureStor
   1. `ForceSqlite` → SQLite.
   2. SQL Server probe (`CanConnectToSqlServer`) — single connectivity check against `master` with a 3s connect timeout.
   3. SQLite fallback in Development only; non-Development fails fast if SQL Server is unreachable.
-- DB prep uses **`EnsureCreatedAsync` exclusively — never `MigrateAsync`** (so migration files are design-time only) — `dotnet-todo.md` 2.3.
+- SQL Server DB prep uses `Database.MigrateAsync()` so EF migration history is tracked. SQLite development prep still uses the existing compatibility bootstrap until `dotnet-todo.md` 2.4 is handled.
 - `EnsureSqliteDevelopmentDatabaseAsync` is **destructive**: drops + recreates the entire SQLite file when the schema sentinel fails (presence of `IX_Departments_Code` or missing tables) — `dotnet-todo.md` 2.4.
 
 ### Target strategy (decided, to implement in Phase 2)

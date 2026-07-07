@@ -91,14 +91,8 @@ public static class DatabaseConnectionService
             return;
         }
 
-        if (environment.IsDevelopment())
-        {
-            Console.WriteLine("[PMWDS] Dropping and recreating database for development...");
-            await db.Database.EnsureDeletedAsync(ct);
-        }
-
-        Console.WriteLine("[PMWDS] Ensuring database schema...");
-        await db.Database.EnsureCreatedAsync(ct);
+        Console.WriteLine("[PMWDS] Applying database migrations...");
+        await db.Database.MigrateAsync(ct);
     }
 
     private static DatabaseConnectionStatus SelectProvider(
