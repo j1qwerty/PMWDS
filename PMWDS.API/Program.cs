@@ -228,14 +228,33 @@ if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
 
 builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddControllers().AddJsonOptions(opt =>
+builder.Services
+    .AddControllers(options => options.Filters.Add<ApiResponseEnvelopeFilter>())
+    .AddJsonOptions(opt =>
+    {
+        opt.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        opt.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        opt.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
 {
-    opt.JsonSerializerOptions.DefaultIgnoreCondition =
-        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
-    opt.JsonSerializerOptions.ReferenceHandler =
-        System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    opt.JsonSerializerOptions.Converters.Add(
-        new System.Text.Json.Serialization.JsonStringEnumConverter());
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var details = context.ModelState
+            .Where(entry => entry.Value?.Errors.Count > 0)
+            .ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray());
+
+        var response = PMWDS.Application.DTOs.Common.ApiResponse<object>.Fail(
+            new PMWDS.Application.DTOs.Common.ApiError("validation_failed", "Validation failed.", details),
+            context.HttpContext.TraceIdentifier);
+
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(response);
+    };
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

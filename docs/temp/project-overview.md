@@ -68,6 +68,7 @@ PMWDS.Infrastructure/ Services/  Jobs/  Settings/
 - Middleware pipeline order: `ExceptionMiddleware` → `RequestLoggingMiddleware` → Swagger/Scalar (Dev) →HttpsRedirection → StaticFiles(`/files`, `/avatars`) → SerilogRequestLogging → CORS → Authentication → Authorization → HangfireDashboard → Hubs/Controllers.
 - `BaseApiController` constructor-injects `IMediator`; every derived controller must accept `IMediator mediator` and call `base(mediator)`.
 - FluentValidation is wired through `AddFluentValidationAutoValidation()` and validators live under `PMWDS.Application/Validators`; prefer validators for request/DTO shape checks and keep database/scope checks in application handlers or controller services.
+- API object responses are wrapped centrally by `ApiResponseEnvelopeFilter` as `ApiResponse<T>`; exception middleware and model-validation failures use `ApiError` with `code`, `message`, optional `details`, `traceId`, and `timestamp`.
 
 ---
 
