@@ -23,6 +23,8 @@
 ## 🔴 High Priority
 
 ### feature
+- [ ] assign users to task based on skills also , search etc , proper flow,
+- [ ] task dependencies 
 - [ ] remove and consolidate the api and types , remove redundant
 - [x] milestone dependencies 
 - [x] director / dept head project creator - whoever creates project others at same role but different departments can not edit it, can only manage tasks and subtasks etc, can uplaod documents
