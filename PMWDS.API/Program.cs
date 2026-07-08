@@ -164,7 +164,17 @@ builder.Services.AddSingleton<PMWDS.Application.Interfaces.Services.ICacheServic
 builder.Services.AddScoped<ITaskAllocationEngine, MLTaskAllocationEngine>();
 builder.Services.AddScoped<IDelayPredictionEngine, MLDelayPredictionEngine>();
 builder.Services.AddHttpClient<IChatEngine, OpenAICompatibleChatEngine>();
-builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IAIService, AIService>();
+builder.Services.AddScoped<AIService>();
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IRecommendationService>(sp =>
+    sp.GetRequiredService<AIService>());
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IPredictionService>(sp =>
+    sp.GetRequiredService<AIService>());
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IProjectHealthService>(sp =>
+    sp.GetRequiredService<AIService>());
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IModelManagementService>(sp =>
+    sp.GetRequiredService<AIService>());
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IChatService>(sp =>
+    sp.GetRequiredService<AIService>());
 
 builder.Services.AddScoped<IDeadlineCheckerJob, DeadlineCheckerJob>();
 builder.Services.AddScoped<IEscalationCheckerJob, EscalationCheckerJob>();

@@ -189,7 +189,11 @@ Base classes — `PMWDS.Domain/Common/`:
 | Interface | Responsibility | Notes |
 |---|---|---|
 | `IUnitOfWork` | Aggregate-root repositories + transaction methods | **God interface — 36 repos + 4 txn methods** (`dotnet-todo.md` 3.3) |
-| `IAIService` | All AI features: recommendations, predictions, health, model mgmt, training data, chat, provider mgmt | **God interface — 30+ methods** (`dotnet-todo.md` 3.2) |
+| `IRecommendationService` | Assignee recommendations and allocation analysis | implemented by shared `AIService` |
+| `IPredictionService` | Task/project delay predictions and prediction result reads | implemented by shared `AIService` |
+| `IProjectHealthService` | Project health, insights, resource optimization, structured report generation | implemented by shared `AIService` |
+| `IModelManagementService` | AI models, training data, provider/model discovery, provider tests, model training | implemented by shared `AIService` |
+| `IChatService` | Chat processing and natural-language summaries | implemented by shared `AIService` |
 | `ICurrentUserService` | Current JWT user (UserId, FullName, IsInRole) | impl in API: `CurrentUserService` |
 | `INotificationService` | Send notifications | impl: `NotificationService` |
 | `IEmailService` | Send email (+ attachments) | impl: `EmailService` (duplicated SMTP logic) |

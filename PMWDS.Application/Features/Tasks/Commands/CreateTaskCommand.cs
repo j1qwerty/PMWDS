@@ -13,13 +13,13 @@ public class CreateTaskCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IAuditService _audit;
     private readonly INotificationService _notifications;
-    private readonly IAIService _ai;
+    private readonly IPredictionService _ai;
     public CreateTaskCommandHandler(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
     IAuditService audit,
     INotificationService notifications,
-    IAIService ai)
+    IPredictionService ai)
     {
         _uow = uow;
         _currentUser = currentUser;

@@ -14,14 +14,14 @@ public class ReportService : IReportService
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly IAIService _ai;
+    private readonly IProjectHealthService _ai;
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IReportPdfRenderer _pdfRenderer;
     private readonly IReportExcelRenderer _excelRenderer;
 
     public ReportService(
-        IAIService ai,
+        IProjectHealthService ai,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         IReportPdfRenderer pdfRenderer,

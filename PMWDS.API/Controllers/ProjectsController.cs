@@ -19,7 +19,7 @@ namespace PMWDS.API.Controllers;
 public class ProjectsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
-    private readonly IAIService _ai;
+    private readonly IProjectHealthService _ai;
     private readonly ICurrentUserService _currentUser;
     private readonly ILocalFileStorageService _localFiles;
     private readonly RoleScopeService _scope;
@@ -28,7 +28,7 @@ public class ProjectsController : BaseApiController
     public ProjectsController(
         IMediator mediator,
         IUnitOfWork uow,
-        IAIService ai,
+        IProjectHealthService ai,
         ICurrentUserService currentUser,
         ILocalFileStorageService localFiles,
         RoleScopeService scope,

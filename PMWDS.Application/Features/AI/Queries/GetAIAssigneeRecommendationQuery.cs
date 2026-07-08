@@ -9,10 +9,10 @@ public class GetAIAssigneeRecommendationQueryHandler
  GetAIAssigneeRecommendationQuery,
  AssigneeRecommendationDto>
 {
- private readonly IAIService _ai;
+ private readonly IRecommendationService _ai;
  private readonly IUnitOfWork _uow;
  public GetAIAssigneeRecommendationQueryHandler(
- IAIService ai,
+ IRecommendationService ai,
  IUnitOfWork uow)
  {
  _ai = ai;

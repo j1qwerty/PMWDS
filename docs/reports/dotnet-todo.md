@@ -109,7 +109,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | # | Task | Files | Source | Status |
 |---|------|-------|--------|--------|
 | 3.1 | Remove Service Locator in `BaseApiController` — constructor-inject `IMediator`. `[coordinated]` | `BaseApiController.cs:14` | arch 3.2 | Done |
-| 3.2 | Split God `IAIService` (30+ methods) → `IRecommendationService`, `IPredictionService`, `IProjectHealthService`, `IModelManagementService`, `IChatService`. `[coordinated]` | `IAIService.cs`, `AIService*.cs`, consumers | arch 3.1 / 11.1 | 🔴 |
+| 3.2 | Split God `IAIService` (30+ methods) → `IRecommendationService`, `IPredictionService`, `IProjectHealthService`, `IModelManagementService`, `IChatService`. `[coordinated]` | `IAIService.cs`, `AIService*.cs`, consumers | arch 3.1 / 11.1 | Done |
 | 3.3 | Slim God `IUnitOfWork` (34 repos); prefer specific repositories; remove redundant generic `BaseRepository` over EF Core. `[coordinated]` | `IUnitOfWork.cs`, `UnitOfWork.cs`, `BaseRepository.cs` | arch 7.1/7.2 | 🔴 |
 | 3.4 | Refactor `TasksController` (1244 lines) — move business logic to application-layer commands/handlers; pull out `Recalculate*`, `ApplyStatusChange*`, `IsUserInProjectOrganization*`. `[coordinated]` | `TasksController.cs`, `Application/Features/Tasks/**` | api 5 / arch 9 | 🔴 |
 | 3.5 | Dispatch domain events after `SaveChanges` via MediatR (currently collected but never dispatched). `[coordinated]` | `Program.cs`, `UnitOfWork.cs` | arch 8.2 | Done |

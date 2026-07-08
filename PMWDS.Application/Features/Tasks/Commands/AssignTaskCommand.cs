@@ -15,13 +15,13 @@ public class AssignTaskCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IAuditService _audit;
     private readonly INotificationService _notifications;
-    private readonly IAIService _ai;
+    private readonly IRecommendationService _ai;
     public AssignTaskCommandHandler(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
     IAuditService audit,
     INotificationService notifications,
-    IAIService ai)
+    IRecommendationService ai)
     {
         _uow = uow;
         _currentUser = currentUser;

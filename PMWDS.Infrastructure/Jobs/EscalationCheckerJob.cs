@@ -9,12 +9,12 @@ public interface IEscalationCheckerJob
 public class EscalationCheckerJob : IEscalationCheckerJob
 {
     private readonly IUnitOfWork _uow;
-    private readonly IAIService _ai;
+    private readonly IPredictionService _ai;
     private readonly INotificationService _notifications;
     private readonly ILogger<EscalationCheckerJob> _logger;
     public EscalationCheckerJob(
     IUnitOfWork uow,
-    IAIService ai,
+    IPredictionService ai,
     INotificationService notifications,
     ILogger<EscalationCheckerJob> logger)
     {

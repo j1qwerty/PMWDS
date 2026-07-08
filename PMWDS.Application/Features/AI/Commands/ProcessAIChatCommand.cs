@@ -7,10 +7,10 @@ public record ProcessAIChatCommand(
 public class ProcessAIChatCommandHandler
  : IRequestHandler<ProcessAIChatCommand, ChatResponseDto>
 {
- private readonly IAIService _ai;
+ private readonly IChatService _ai;
  private readonly ICurrentUserService _currentUser;
  public ProcessAIChatCommandHandler(
- IAIService ai,
+ IChatService ai,
  ICurrentUserService currentUser)
  {
  _ai = ai;
