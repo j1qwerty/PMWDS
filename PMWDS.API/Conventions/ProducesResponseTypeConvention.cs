@@ -18,6 +18,17 @@ public sealed class ProducesResponseTypeConvention : IApplicationModelConvention
                 AddIfMissing(action, StatusCodes.Status403Forbidden);
                 AddIfMissing(action, StatusCodes.Status404NotFound);
                 AddIfMissing(action, StatusCodes.Status500InternalServerError);
+
+                if (action.Selectors.Any(selector => selector.EndpointMetadata.OfType<HttpGetAttribute>().Any()) &&
+                    !action.Filters.OfType<ResponseCacheAttribute>().Any())
+                {
+                    action.Filters.Add(new ResponseCacheAttribute
+                    {
+                        Duration = 30,
+                        Location = ResponseCacheLocation.Client,
+                        VaryByQueryKeys = new[] { "*" }
+                    });
+                }
             }
         }
     }

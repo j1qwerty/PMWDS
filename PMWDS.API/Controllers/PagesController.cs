@@ -23,16 +23,19 @@ public class PagesController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICacheService _cache;
 
     public PagesController(
         IMediator mediator,
         ApplicationDbContext db,
         RoleScopeService scope,
-        ICurrentUserService currentUser) : base(mediator)
+        ICurrentUserService currentUser,
+        ICacheService cache) : base(mediator)
     {
         _db = db;
         _scope = scope;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     [HttpGet]
@@ -53,6 +56,12 @@ public class PagesController : BaseApiController
         var userPageSize = ResolveUserPageSize(currentUser, pageSize);
         var returnedPageSize = Math.Clamp(userPageSize * 2, 1, 500);
         var pagination = new PaginationQuery(page, returnedPageSize);
+        var cacheKey = $"pages:data:{currentUserId}:page:{pagination.NormalizedPage}:size:{returnedPageSize}";
+        var cached = await _cache.GetAsync<PagesDataResponse>(cacheKey, ct);
+        if (cached is not null)
+        {
+            return Ok(cached);
+        }
 
         var organizationsQuery = await _scope.ScopeOrganizationsAsync(
             _db.Organizations.AsNoTracking().OrderBy(o => o.Name),
@@ -175,6 +184,7 @@ public class PagesController : BaseApiController
                 ? await GetActivityLogsAsync(scopedUserIds, pagination, ct)
                 : EmptyPage<PageActivityLogDto>(pagination));
 
+        await _cache.SetAsync(cacheKey, response, TimeSpan.FromSeconds(30), ct);
         return Ok(response);
     }
 

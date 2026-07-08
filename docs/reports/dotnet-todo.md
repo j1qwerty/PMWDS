@@ -118,7 +118,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 3.8 | Universal `ApiResponse<T>` envelope + one consistent error shape. `[coordinated]` | `ExceptionMiddleware.cs`, controllers | api 2 | Done |
 | 3.9 | Add `[ProducesResponseType]` to all actions; expose Swagger/Scalar in staging (configurable, not Dev-only); enable XML doc generation. `[independent]` | controllers, `PMWDS.API.csproj`, `Program.cs` | api 8 | Done |
 | 3.10 | Remove redundant `[Authorize]` re-declarations; standardise policy style (prefer fine-grained `Roles.*`/`Permissions.*` over role names) — ties to Phase 1.2. `[coordinated]` | all controllers | api 4.1/4.2 | 🔴 |
-| 3.11 | `[ResponseCache]` on GET endpoints; actually use `ICacheService`. `[independent]` | controllers | api 10.2 | 🔴 |
+| 3.11 | `[ResponseCache]` on GET endpoints; actually use `ICacheService`. `[independent]` | controllers | api 10.2 | Done |
 
 ---
 
