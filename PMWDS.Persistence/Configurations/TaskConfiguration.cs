@@ -41,6 +41,10 @@ public class TaskConfiguration
         .WithOne()
         .HasForeignKey(c => c.TaskId)
         .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<ApplicationUser>()
+        .WithMany()
+        .HasForeignKey(e => e.AssignedToUserId)
+        .OnDelete(DeleteBehavior.NoAction);
         b.HasMany(e => e.Attachments)
         .WithOne()
         .HasForeignKey(a => a.TaskId)

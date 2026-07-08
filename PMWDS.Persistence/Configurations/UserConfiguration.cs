@@ -52,11 +52,6 @@ public class UserConfiguration
         .HasForeignKey(s => s.UserId)
         .OnDelete(DeleteBehavior.Cascade);
 
-        // Task assignments still use string-based user ids in the domain model.
-        // Keep them out of EF relationship discovery until those ids are
-        // normalized to Guid across the task aggregate.
-        b.Ignore(e => e.TaskAssignments);
-
         b.HasIndex(e => e.EmployeeCode).IsUnique();
         b.HasIndex(e => e.Email).IsUnique();
         b.HasIndex(e => e.OrganizationId);

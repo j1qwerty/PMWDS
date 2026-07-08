@@ -61,7 +61,7 @@ public partial class AIService
         predictionResult.SetCreatedBy("system");
         await _uow.PredictionResults.AddAsync(predictionResult, ct);
 
-        task.UpdateAIRecommendation(recommendation.ConfidenceScore, recommendation.RecommendedUserId);
+        task.UpdateAIRecommendation(recommendation.ConfidenceScore, recommendedUserId);
         await _uow.Tasks.UpdateAsync(task, ct);
         await _uow.SaveChangesAsync(ct);
 
@@ -83,7 +83,7 @@ public partial class AIService
         var task = await _uow.Tasks.GetByIdAsync(recommendation.TaskId, ct);
         if (task != null)
         {
-            task.UpdateAIRecommendation(recommendation.MatchScore, recommendation.RecommendedUserId.ToString());
+            task.UpdateAIRecommendation(recommendation.MatchScore, recommendation.RecommendedUserId);
             await _uow.Tasks.UpdateAsync(task, ct);
         }
 

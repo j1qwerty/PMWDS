@@ -220,7 +220,7 @@ public class RoleScopeService
             return false;
         }
 
-        if (IsProjectManager && CurrentUserId?.ToString() == project.ProjectManagerId)
+        if (IsProjectManager && CurrentUserId == project.ProjectManagerId)
         {
             return true;
         }

@@ -71,7 +71,7 @@ internal static class MiscSeeder
 
         foreach (var user in users.Take(2))
         {
-            var entry = TimeEntry.ManualEntry(task.Id, user.Id.ToString(), DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddHours(-1), $"Focused delivery work on {task.Title}", true);
+            var entry = TimeEntry.ManualEntry(task.Id, user.Id, DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddHours(-1), $"Focused delivery work on {task.Title}", true);
             await context.TimeEntries.AddAsync(entry, ct);
         }
     }
@@ -83,7 +83,7 @@ internal static class MiscSeeder
 
         foreach (var user in users.Take(2))
         {
-            var comment = TaskComment.Create(task.Id, user.Id.ToString(), $"Seed update from {user.FullName}: progress is tracking against plan.");
+            var comment = TaskComment.Create(task.Id, user.Id, $"Seed update from {user.FullName}: progress is tracking against plan.");
             await context.TaskComments.AddAsync(comment, ct);
         }
     }
@@ -269,7 +269,7 @@ internal static class MiscSeeder
         await SeedTrainingDataAsync(context, ct);
         foreach (var task in tasks)
         {
-            var assignee = users.FirstOrDefault(u => u.Id.ToString() == task.AssignedToUserId) ?? users.First();
+            var assignee = users.FirstOrDefault(u => u.Id == task.AssignedToUserId) ?? users.First();
             await SeedPredictionResultAsync(context, allocationModel.Id, delayModel.Id, task, ct);
             await SeedRecommendationAsync(context, allocationModel.Id, task.Id, assignee.Id, ct);
             await SeedDelayPredictionAsync(context, delayModel.Id, task.Id, task.DueDate, ct);

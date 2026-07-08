@@ -50,7 +50,7 @@ public class TaskRepository
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
     GetByAssigneeAsync(
-    string userId,
+    Guid userId,
     CancellationToken ct = default)
     => await _dbSet
     .Where(t => (t.AssignedToUserId == userId ||

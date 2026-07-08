@@ -117,7 +117,11 @@ public class ProjectsController : BaseApiController
             .ToListAsync(ct);
         var managerNames = await ResolveProjectManagerNamesAsync(projects, ct);
         var items = projects
-            .Select(project => ProjectDto.FromEntity(project, managerNames.GetValueOrDefault(project.ProjectManagerId)))
+            .Select(project => ProjectDto.FromEntity(
+                project,
+                project.ProjectManagerId.HasValue
+                    ? managerNames.GetValueOrDefault(project.ProjectManagerId.Value)
+                    : null))
             .ToList();
         return Ok(PaginatedResponse<ProjectDto>.Create(items, pagination, totalCount));
     }
@@ -485,24 +489,24 @@ public class ProjectsController : BaseApiController
             ct);
     }
 
-    private async Task<Dictionary<string, string>> ResolveProjectManagerNamesAsync(IEnumerable<Project> projects, CancellationToken ct)
+    private async Task<Dictionary<Guid, string>> ResolveProjectManagerNamesAsync(IEnumerable<Project> projects, CancellationToken ct)
     {
         var managerIds = projects
             .Select(project => project.ProjectManagerId)
-            .Where(id => Guid.TryParse(id, out _))
-            .Select(Guid.Parse)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
             .Distinct()
             .ToList();
 
         if (managerIds.Count == 0)
         {
-            return new Dictionary<string, string>();
+            return new Dictionary<Guid, string>();
         }
 
         return await _db.Users
             .AsNoTracking()
             .Where(user => managerIds.Contains(user.Id))
-            .ToDictionaryAsync(user => user.Id.ToString(), user => user.FullName, ct);
+            .ToDictionaryAsync(user => user.Id, user => user.FullName, ct);
     }
 }
 

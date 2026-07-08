@@ -77,7 +77,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMyTasks([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(_currentUser.UserId))
+        if (!Guid.TryParse(_currentUser.UserId, out var currentUserId))
             return Unauthorized();
 
         var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
@@ -98,7 +98,7 @@ public class TasksController : BaseApiController
         }
         else
         {
-            tasks = (await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct))
+            tasks = (await _uow.Tasks.GetByAssigneeAsync(currentUserId, ct))
                 .Where(task => allowedProjectIds.Contains(task.ProjectId))
                 .OrderByDescending(task => task.CreatedDate)
                 .ToList();
@@ -184,7 +184,7 @@ public class TasksController : BaseApiController
         }
 
         if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
-            task.AssignedToUserId != (_scope.CurrentUserId?.ToString()))
+            task.AssignedToUserId != _scope.CurrentUserId)
         {
             return Forbid();
         }
@@ -365,29 +365,32 @@ public class TasksController : BaseApiController
             }
         }
 
-        foreach (var active in task.Assignments.Where(a => a.IsActive && !assigneeIds.Contains(a.UserId)))
+        var parsedAssigneeIds = assigneeIds.Select(Guid.Parse).ToList();
+        foreach (var active in task.Assignments.Where(a => a.IsActive && !parsedAssigneeIds.Contains(a.UserId)))
         {
             active.Release();
         }
 
-        var assignedBy = _currentUser.UserId ?? "system";
-        task.AssignTo(assigneeIds[0], assignedBy);
+        var assignedBy = Guid.TryParse(_currentUser.UserId, out var assignedById)
+            ? assignedById
+            : throw new InvalidOperationException("Invalid current user id.");
+        task.AssignTo(parsedAssigneeIds[0], assignedBy);
 
-        foreach (var userId in assigneeIds)
+        foreach (var userId in parsedAssigneeIds)
         {
             if (task.Assignments.All(a => a.UserId != userId || !a.IsActive))
             {
                 await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, userId), ct);
-                await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId, ct);
+                await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId.ToString(), ct);
             }
         }
 
-        task.SetModified(assignedBy);
+        task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
 
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         var assigneeNames = await _db.Users
-            .Where(u => assigneeIds.Contains(u.Id.ToString()))
+            .Where(u => parsedAssigneeIds.Contains(u.Id))
             .Select(u => u.FullName)
             .ToListAsync(ct);
 
@@ -452,7 +455,7 @@ public class TasksController : BaseApiController
 
         var comment = TaskComment.Create(
             id,
-            _currentUser.UserId ?? "system",
+            Guid.TryParse(_currentUser.UserId, out var commentUserId) ? commentUserId : null,
             req.Comment);
         await _uow.TaskComments.AddAsync(comment, ct);
         await _uow.SaveChangesAsync(ct);
@@ -532,7 +535,9 @@ public class TasksController : BaseApiController
         task.Start();
         var entry = TimeEntry.StartTimer(
             id,
-            _currentUser.UserId ?? "system",
+            Guid.TryParse(_currentUser.UserId, out var timerUserId)
+                ? timerUserId
+                : throw new InvalidOperationException("Invalid current user id."),
             req.Description,
             req.IsBillable);
         await _uow.TimeEntries.AddAsync(entry, ct);
@@ -567,9 +572,12 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        var currentTimerUserId = Guid.TryParse(_currentUser.UserId, out var parsedTimerUserId)
+            ? parsedTimerUserId
+            : Guid.Empty;
         var entry = (await _uow.TimeEntries.FindAsync(
             e => e.TaskId == id
-                && e.UserId == (_currentUser.UserId ?? "system")
+                && e.UserId == currentTimerUserId
                 && !e.EndTime.HasValue,
             ct)).FirstOrDefault();
         if (entry == null)
@@ -729,7 +737,7 @@ public class TasksController : BaseApiController
         }
 
         if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
-            task.AssignedToUserId != (_scope.CurrentUserId?.ToString()))
+            task.AssignedToUserId != _scope.CurrentUserId)
         {
             return Forbid();
         }
@@ -1126,7 +1134,9 @@ public class TasksController : BaseApiController
 
     private async Task<bool> CanWorkOnTaskAsync(Guid taskId, CancellationToken ct)
     {
-        var currentUserId = _currentUser.UserId;
+        var currentUserId = Guid.TryParse(_currentUser.UserId, out var parsedCurrentUserId)
+            ? parsedCurrentUserId
+            : (Guid?)null;
         var task = await _db.Tasks
             .Where(item => item.Id == taskId)
             .Select(item => new
@@ -1147,7 +1157,7 @@ public class TasksController : BaseApiController
             return true;
         }
 
-        return !string.IsNullOrWhiteSpace(currentUserId) &&
+        return currentUserId.HasValue &&
             (task.AssignedToUserId == currentUserId || task.HasAssignment);
     }
 

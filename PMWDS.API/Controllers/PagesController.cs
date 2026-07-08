@@ -231,13 +231,13 @@ public class PagesController : BaseApiController
 
         var managerIds = projects
             .Select(p => p.ProjectManagerId)
-            .Where(id => Guid.TryParse(id, out _))
-            .Select(Guid.Parse)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
             .Distinct()
             .ToList();
         var managerNames = await _db.Users.AsNoTracking()
             .Where(u => managerIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id.ToString(), u => u.FullName, ct);
+            .ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
 
         var isDepartmentHead = _scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin;
         var isDirectorOrSuperAdmin = _scope.IsDirector || _scope.IsSuperAdmin;
@@ -270,7 +270,11 @@ public class PagesController : BaseApiController
 
         var items = projects.Select(p =>
         {
-            var dto = ProjectDto.FromEntity(p, managerNames.GetValueOrDefault(p.ProjectManagerId));
+            var dto = ProjectDto.FromEntity(
+                p,
+                p.ProjectManagerId.HasValue
+                    ? managerNames.GetValueOrDefault(p.ProjectManagerId.Value)
+                    : null);
 
             if (isDepartmentHead && userDepartmentIds != null && projectDeptTaskInfo != null)
             {

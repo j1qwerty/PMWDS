@@ -15,7 +15,7 @@ internal static class ProjectsSeeder
         var users = await context.Users.ToListAsync(ct);
         var spec = BuildProjectSpec(departments, users);
 
-        var project = Project.Create(spec.Name, spec.Description, spec.Category, spec.Priority, spec.DepartmentId, spec.ManagerId.ToString(), spec.Start, spec.End, spec.Budget, spec.Client, spec.ProjectCode);
+        var project = Project.Create(spec.Name, spec.Description, spec.Category, spec.Priority, spec.DepartmentId, spec.ManagerId, spec.Start, spec.End, spec.Budget, spec.Client, spec.ProjectCode);
         project.SetCreatedBy(SeedConstants.SeedUser);
         project.UpdateStatus(ProjectStatus.InProgress);
         project.UpdateProgress(spec.Progress);

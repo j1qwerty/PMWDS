@@ -81,7 +81,7 @@ Base classes — `PMWDS.Domain/Common/`:
 ### Core entities (`PMWDS.Domain/Entities/`)
 
 **Identity & RBAC**
-- **`ApplicationUser : AuditableEntity`** — `Id` is **Guid**. Email, names, `PasswordHash`, reset-token fields, `OrganizationId`, `DepartmentId` (primary dept), `JobTitle`, availability + AI-score fields. Nav: `Department`, `Organization`, `Profile`, `Roles` (many-to-many), `DepartmentAssignments`, `Skills`, `TaskAssignments`. Factory `ApplicationUser.Create(...)`.
+- **`ApplicationUser : AuditableEntity`** — `Id` is **Guid**. Email, names, `PasswordHash`, reset-token fields, `OrganizationId`, `DepartmentId` (primary dept), `JobTitle`, availability + AI-score fields. Nav: `Department`, `Organization`, `Profile`, `Roles` (many-to-many), `DepartmentAssignments`, `Skills`, `TaskAssignments`, `TimeEntries`. Factory `ApplicationUser.Create(...)`.
 - **`Role : AuditableEntity`** — `Key` (immutable logic identifier, unique, max 100), `Name` (mutable display label), `Description`, `PermissionLevel` (int, higher = more power), `PaginationPageSize`, `Permissions` (many-to-many), `Users`. Logic must use `Role.Key` / `RoleKeys`; UI may display or edit `Name`.
 - **`Permission`** — `Code` (string, e.g. `PROJECT_MANAGE`), plus `Module`/`Name` for grouping. Referenced by `Role.Permissions`.
 - **`UserProfile`** — extended profile/PII (DOB, address, emergency contact, LinkedIn).
@@ -93,15 +93,15 @@ Base classes — `PMWDS.Domain/Common/`:
 - **`Department : AuditableEntity`** — `Name`, `Code` (uppercased), `OrganizationId`, `ParentDepartmentId` (tree), **`DepartmentHeadUserId`** (string — the head of the dept), `MaxCapacity`. Methods: `AssignHead`, `AssignToOrganization`.
 
 **Project aggregate**
-- **`Project : AuditableEntity`** — `ProjectCode`, `Name`, `Category`, `Priority`, `Status`, **`DepartmentId` (the PRIMARY department)**, `ProjectManagerId` (string), `ClientName`, timeline, budget, progress, AI fields. Holds `_milestones`, `_tasks`, `_documents`, `_projectDepartments`, `_domainEvents`. Key methods: `Create`, `Start`/`Complete`/`PutOnHold`/`UpdateStatus`, `AssignDepartments` (keeps `DepartmentId` as primary; calls `MarkPrimary`/`ClearPrimary` on the join rows), `RecalculateProgressFromMilestones`, `RecalculateStatusFromMilestones`. Raises `ProjectCreatedEvent`, `ProjectStatusChangedEvent`, `ProjectDelayedEvent`, `ProjectBudgetAlertEvent`.
+- **`Project : AuditableEntity`** — `ProjectCode`, `Name`, `Category`, `Priority`, `Status`, **`DepartmentId` (the PRIMARY department)**, `ProjectManagerId` (`Guid?`, FK to `ApplicationUser.Id`), `ClientName`, timeline, budget, progress, AI fields. Holds `_milestones`, `_tasks`, `_documents`, `_projectDepartments`, `_domainEvents`. Key methods: `Create`, `Start`/`Complete`/`PutOnHold`/`UpdateStatus`, `AssignDepartments` (keeps `DepartmentId` as primary; calls `MarkPrimary`/`ClearPrimary` on the join rows), `RecalculateProgressFromMilestones`, `RecalculateStatusFromMilestones`. Raises `ProjectCreatedEvent`, `ProjectStatusChangedEvent`, `ProjectDelayedEvent`, `ProjectBudgetAlertEvent`.
 - **`ProjectDepartment` (join)** — `ProjectId`, `DepartmentId`, **`IsPrimary`** flag. Methods: `MarkPrimary`/`ClearPrimary`. (So "primary department" is modelled twice: `Project.DepartmentId` and the `IsPrimary` flag on the join row. `AssignDepartments` keeps them in sync.)
 - **`Milestone : AuditableEntity`** — `ProjectId`, **`DepartmentId`?** (nullable — a milestone is assigned to **one** department), `Name`, `Order`, `DueDate`, `Status`, `IsCritical`, progress. Nav: `Project`, `Department`, `Tasks`, prerequisite/dependent `MilestoneDependency`. Methods: `AssignDepartment`, `MarkComplete`, `RecalculateProgressFromTasks`, `RecalculateStatusFromTasks`.
 - **`MilestoneDependency`** — `FinishToStart`/`ProgressThreshold` relationships between milestones.
 
 **Task aggregate**
-- **`ProjectTask`** — task under a project/milestone; status, progress, assignment, AI fields. (See entity file for full surface.)
-- **`TaskAssignment`** — user ↔ task. **`UserId` is string** (mismatch with `ApplicationUser.Id` Guid) — `TaskAssignment.User` navigation is **ignored** in EF config (`dotnet-todo.md` 2.8).
-- **`TaskDependency`**, **`TaskComment`**, **`TaskAttachment`**, **`TimeEntry`** (`UserId` string, `TimeEntry.User` ignored) — same string/Guid mismatch.
+- **`ProjectTask`** — task under a project/milestone; assignment user fields (`AssignedToUserId`, `AssignedByUserId`, `AIRecommendedAssigneeId`) are `Guid?` values aligned with `ApplicationUser.Id`. API DTOs still expose these IDs as strings at the boundary.
+- **`TaskAssignment`** — user ↔ task. `UserId` is `Guid` and `TaskAssignment.User` is mapped to `ApplicationUser`.
+- **`TaskDependency`**, **`TaskComment`**, **`TaskAttachment`**, **`TimeEntry`**. `TaskComment.UserId` is `Guid?` so system comments can omit a user; `TimeEntry.UserId` is `Guid` and `TimeEntry.User` is mapped to `ApplicationUser`.
 
 **Other aggregates (one-line each)**
 - Notifications: `Notification`, `NotificationTemplate`, `AlertRule`.
@@ -119,7 +119,7 @@ Base classes — `PMWDS.Domain/Common/`:
 - `MilestoneConfiguration`: `Tasks` FK = `SetNull`.
 - Global query filter `IsDeleted == false` applied to all `BaseEntity` subclasses (in `ApplicationDbContext`).
 - Soft-delete read paths on tasks, notifications, task assignments, time entries, and milestones have provider-safe `IsDeleted` composite indexes in their EF configurations.
-- `TaskAssignment.User` and `TimeEntry.User` navigations are explicitly `Ignore`d (due to the string/Guid mismatch).
+- `TaskAssignment.User` and `TimeEntry.User` are mapped to `ApplicationUser` with `NoAction` user delete behavior after the task aggregate user IDs were normalized to `Guid`.
 - `RowVersion` is configured as an EF Core concurrency token for all `BaseEntity` subclasses in `ApplicationDbContext`.
 
 `ApplicationDbContext` (`PMWDS.Persistence/Context/`) exposes ~51 DbSets and applies the soft-delete global filter.

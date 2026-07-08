@@ -35,7 +35,7 @@ public class GetWorkloadDistributionQueryHandler
 
  var distribution = users.Select(u =>
  {
- var userId = u.Id.ToString();
+ var userId = u.Id;
  var assignedTaskIds = assignments
  .Where(a => a.UserId == userId && a.IsActive)
  .Select(a => a.TaskId)
@@ -51,7 +51,7 @@ public class GetWorkloadDistributionQueryHandler
  var burnoutRisk = CalculateBurnout(workloadScore, activeTasks, u.AvailabilityPercentage);
 
  return new UserWorkloadItem(
- UserId: userId,
+ UserId: userId.ToString(),
  FullName: u.FullName,
  JobTitle: u.JobTitle,
  AvailabilityPercent: u.AvailabilityPercentage,

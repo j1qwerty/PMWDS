@@ -38,7 +38,7 @@ public class ProjectRepository
     .ToListAsync(ct);
     public async Task<IEnumerable<Project>>
     GetByManagerAsync(
-    string managerId,
+    Guid managerId,
     CancellationToken ct = default)
     => await _dbSet
     .Where(p => p.ProjectManagerId == managerId)

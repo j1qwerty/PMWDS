@@ -4,7 +4,7 @@ namespace PMWDS.Domain.Entities;
 public class TimeEntry : BaseEntity
 {
     public Guid TaskId { get; private set; }
-    public string UserId { get; private set; } = string.Empty;
+    public Guid UserId { get; private set; }
     public DateTime StartTime { get; private set; }
     public DateTime? EndTime { get; private set; }
     public string Description { get; private set; } = string.Empty;
@@ -18,7 +18,7 @@ public class TimeEntry : BaseEntity
     public ApplicationUser? User { get; private set; }
     protected TimeEntry() { }
     public static TimeEntry StartTimer(
-    Guid taskId, string userId,
+    Guid taskId, Guid userId,
     string description, bool billable = false)
     {
         return new TimeEntry
@@ -32,7 +32,7 @@ public class TimeEntry : BaseEntity
         };
     }
     public static TimeEntry ManualEntry(
-    Guid taskId, string userId,
+    Guid taskId, Guid userId,
     DateTime start, DateTime end,
     string description, bool billable = false)
     {

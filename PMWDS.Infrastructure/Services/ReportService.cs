@@ -162,8 +162,8 @@ public class ReportService : IReportService
 
         var byAssignee = taskList
             .Where(t => t.AssignedToUserId != null)
-            .GroupBy(t => t.AssignedToUserId ?? "unknown")
-            .ToDictionary(g => g.Key, g => new
+            .GroupBy(t => t.AssignedToUserId!.Value)
+            .ToDictionary(g => g.Key.ToString(), g => new
             {
                 Total = g.Count(),
                 Completed = g.Count(t => t.Status == Domain.Enums.TaskStatus.Completed),
@@ -204,7 +204,7 @@ public class ReportService : IReportService
         var allTasks = await _uow.Tasks.GetAllAsync(ct);
         var relevantTasks = allTasks
             .Where(t => t.Project?.DepartmentId == departmentId ||
-                        (t.AssignedToUserId != null && users.Any(u => u.Id.ToString() == t.AssignedToUserId)))
+                        (t.AssignedToUserId != null && users.Any(u => u.Id == t.AssignedToUserId)))
             .ToList();
 
         var userWorkloads = users.Select(u => new
@@ -216,10 +216,10 @@ public class ReportService : IReportService
             u.AIBurnoutRiskScore,
             u.AIPerformanceScore,
             ActiveTasks = relevantTasks.Count(t =>
-                t.AssignedToUserId == u.Id.ToString() &&
+                t.AssignedToUserId == u.Id &&
                 t.Status != Domain.Enums.TaskStatus.Completed),
             CompletedTasks = relevantTasks.Count(t =>
-                t.AssignedToUserId == u.Id.ToString() &&
+                t.AssignedToUserId == u.Id &&
                 t.Status == Domain.Enums.TaskStatus.Completed),
         }).ToList();
 
@@ -281,7 +281,7 @@ public class ReportService : IReportService
                         t.ProgressPercentage,
                         t.AIDelayProbability,
                         t.Priority,
-                        AssignedTo = t.AssignedToUserId ?? "Unassigned",
+                        AssignedTo = t.AssignedToUserId?.ToString() ?? "Unassigned",
                         ProjectName = t.Project?.Name ?? "Unknown"
                     })
             },

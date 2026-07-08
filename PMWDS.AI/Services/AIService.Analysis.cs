@@ -136,7 +136,7 @@ public partial class AIService
             suggestions.Add(new ReallocationSuggestion(
                 task.Id,
                 task.Title,
-                task.AssignedToUserId ?? string.Empty,
+                task.AssignedToUserId?.ToString() ?? string.Empty,
                 string.Empty,
                 recommendation.RecommendedUserId,
                 recommendation.RecommendedUserName,

@@ -30,8 +30,9 @@ internal static class TasksSeeder
         foreach (var spec in taskSpecs)
         {
             var task = await UpsertTaskAsync(context, spec, ct);
-            await EnsureAssignmentAsync(context, task, spec.AssigneeId, project.ProjectManagerId, ct);
-            await SeedSubtasksAsync(context, task, spec, project.ProjectManagerId, ct);
+            var assignedBy = project.ProjectManagerId ?? users.First().Id;
+            await EnsureAssignmentAsync(context, task, spec.AssigneeId, assignedBy, ct);
+            await SeedSubtasksAsync(context, task, spec, assignedBy, ct);
         }
     }
 
@@ -43,15 +44,15 @@ internal static class TasksSeeder
 
         task = ProjectTask.Create(spec.ProjectId, spec.Title, spec.Description, spec.Priority, spec.Start, spec.Due, spec.EstimatedHours, spec.MilestoneId, spec.ParentTaskId);
         task.SetCreatedBy(SeedConstants.SeedUser);
-        task.AssignTo(spec.AssigneeId.ToString(), spec.AssignedById);
+        task.AssignTo(spec.AssigneeId, spec.AssignedById);
         task.UpdateStatus(spec.Status);
         task.UpdateProgress(spec.Progress, spec.Notes);
-        task.UpdateAIPrediction(spec.DelayProbability, spec.Due.AddDays(spec.ExpectedDelayDays), "[\"Scope variance\",\"Dependency wait\"]", spec.AssigneeId.ToString());
+        task.UpdateAIPrediction(spec.DelayProbability, spec.Due.AddDays(spec.ExpectedDelayDays), "[\"Scope variance\",\"Dependency wait\"]", spec.AssigneeId);
         await context.Tasks.AddAsync(task, ct);
         return task;
     }
 
-    private static async Task SeedSubtasksAsync(ApplicationDbContext context, ProjectTask parent, SeedConstants.TaskSpec spec, string assignedById, CancellationToken ct)
+    private static async Task SeedSubtasksAsync(ApplicationDbContext context, ProjectTask parent, SeedConstants.TaskSpec spec, Guid assignedById, CancellationToken ct)
     {
         var subtaskSpecs = GetSubtaskSpecs(spec.Title);
 
@@ -62,7 +63,7 @@ internal static class TasksSeeder
 
             var subtask = ProjectTask.Create(parent.ProjectId, sub.Title, sub.Description, TaskPriority.Medium, parent.StartDate.AddDays(1), parent.DueDate, sub.Hours, parent.MilestoneId, parent.Id);
             subtask.SetCreatedBy(SeedConstants.SeedUser);
-            subtask.AssignTo(spec.AssigneeId.ToString(), assignedById);
+            subtask.AssignTo(spec.AssigneeId, assignedById);
             subtask.UpdateProgress(sub.Progress, sub.Notes);
             await context.Tasks.AddAsync(subtask, ct);
         }
@@ -344,7 +345,7 @@ internal static class TasksSeeder
     private static SeedConstants.TaskSpec[] BuildTaskSpecs(Project project, List<Milestone> milestones, List<ApplicationUser> users)
     {
         var projectId = project.Id;
-        var assignedBy = project.ProjectManagerId;
+        var assignedBy = project.ProjectManagerId ?? users.First().Id;
         var rng = new Random(42);
 
         Guid DeptMilo(string milestoneName) => milestones.FirstOrDefault(m => m.Name == milestoneName)?.Id ?? Guid.Empty;
@@ -431,13 +432,13 @@ internal static class TasksSeeder
         };
     }
 
-    private static async Task EnsureAssignmentAsync(ApplicationDbContext context, ProjectTask task, Guid userId, string assignedById, CancellationToken ct)
+    private static async Task EnsureAssignmentAsync(ApplicationDbContext context, ProjectTask task, Guid userId, Guid assignedById, CancellationToken ct)
     {
-        var exists = await context.TaskAssignments.AnyAsync(a => a.TaskId == task.Id && a.UserId == userId.ToString(), ct);
+        var exists = await context.TaskAssignments.AnyAsync(a => a.TaskId == task.Id && a.UserId == userId, ct);
         if (exists)
             return;
 
-        var assignment = TaskAssignment.Create(task.Id, userId.ToString(), 0.82, "Seeded based on capacity and skills", true);
+        var assignment = TaskAssignment.Create(task.Id, userId, 0.82, "Seeded based on capacity and skills", true);
         await context.TaskAssignments.AddAsync(assignment, ct);
     }
 
