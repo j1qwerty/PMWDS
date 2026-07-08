@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using PMWDS.API.Auth;
+using PMWDS.API.Conventions;
 using PMWDS.API.Hubs;
 using PMWDS.API.Middleware;
 using PMWDS.API.Services;
@@ -229,7 +230,11 @@ if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
 builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
 builder.Services
-    .AddControllers(options => options.Filters.Add<ApiResponseEnvelopeFilter>())
+    .AddControllers(options =>
+    {
+        options.Filters.Add<ApiResponseEnvelopeFilter>();
+        options.Conventions.Add(new ProducesResponseTypeConvention());
+    })
     .AddJsonOptions(opt =>
     {
         opt.JsonSerializerOptions.DefaultIgnoreCondition =
@@ -257,7 +262,15 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options 
     };
 });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 builder.Services.AddCors(opt =>
     opt.AddPolicy("PMWDSCors", p =>
         p.WithOrigins(builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
@@ -271,7 +284,11 @@ app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseIpRateLimiting();
 
-if (app.Environment.IsDevelopment())
+var exposeApiDocs = app.Environment.IsDevelopment() ||
+                    app.Environment.IsStaging() ||
+                    builder.Configuration.GetValue("Swagger:Enabled", false);
+
+if (exposeApiDocs)
 {
     app.UseSwagger();
     app.MapScalarApiReference(options => options.WithOpenApiRoutePattern("/swagger/v1/swagger.json"));
