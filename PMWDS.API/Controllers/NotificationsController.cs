@@ -31,7 +31,6 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMine(
         [FromQuery] bool unreadOnly = false,
         [FromQuery] int page = 1,
@@ -65,7 +64,6 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpGet("unread-count")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetUnreadCount(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -79,7 +77,6 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/read")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> MarkRead(Guid id, CancellationToken ct)
     {
         var notification = await _uow.Notifications.GetByIdAsync(id, ct);
@@ -100,7 +97,6 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpPatch("read-all")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> MarkAllRead(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -121,7 +117,6 @@ public class NotificationsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var notification = await _uow.Notifications.GetByIdAsync(id, ct);

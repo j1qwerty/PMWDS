@@ -33,7 +33,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMine(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -70,7 +69,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("team")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetTeam(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -119,7 +117,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("project/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetByProject(
         Guid projectId,
         [FromQuery] int count = 50,
@@ -138,7 +135,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))

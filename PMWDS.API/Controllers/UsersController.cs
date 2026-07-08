@@ -41,7 +41,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] PaginationQuery pagination,
@@ -76,7 +75,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -94,7 +92,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("me")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMe(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -108,7 +105,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Update(
         string id,
         [FromBody] UpdateUserDto dto,
@@ -375,7 +371,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpPost("{id}/profile-picture")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     [RequestSizeLimit(2_000_000)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadProfilePicture(
@@ -422,7 +417,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpPatch("{id}/availability")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateAvailability(
         string id,
         [FromBody] UpdateAvailabilityRequest req,
@@ -451,7 +445,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpPost("{id}/skills")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> AddSkill(
         string id,
         [FromBody] AddUserSkillRequest req,
@@ -509,7 +502,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}/skills/{skillId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateSkill(
         string id,
         Guid skillId,
@@ -559,7 +551,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpDelete("{id}/skills/{skillId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> RemoveSkill(
         string id,
         Guid skillId,

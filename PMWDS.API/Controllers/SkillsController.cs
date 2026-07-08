@@ -10,7 +10,6 @@ namespace PMWDS.API.Controllers;
 
 [ApiController]
 [Route("api/v1/skills")]
-[Authorize(Policy = AuthorizationPolicies.Authenticated)]
 public class SkillsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
@@ -29,7 +28,6 @@ public class SkillsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var skills = await GetScopedSkillsAsync(ct);
@@ -37,7 +35,6 @@ public class SkillsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var skill = await _uow.Skills.GetByIdAsync(id, ct);

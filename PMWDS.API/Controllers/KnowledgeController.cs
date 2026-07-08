@@ -20,7 +20,6 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpGet("articles")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetArticles([FromQuery] Guid? projectId, CancellationToken ct)
     {
         var articles = projectId.HasValue
@@ -30,7 +29,6 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpGet("articles/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetArticle(Guid id, CancellationToken ct)
     {
         var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
@@ -46,7 +44,6 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPost("articles")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> CreateArticle([FromBody] UpsertKnowledgeArticleRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -62,7 +59,6 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPut("articles/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateArticle(Guid id, [FromBody] UpsertKnowledgeArticleRequest req, CancellationToken ct)
     {
         var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
@@ -78,7 +74,6 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpDelete("articles/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DeleteArticle(Guid id, CancellationToken ct)
     {
         await _uow.KnowledgeArticles.DeleteAsync(id, ct);
@@ -87,7 +82,6 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpGet("lessons")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetLessons([FromQuery] Guid? projectId, CancellationToken ct)
     {
         var lessons = projectId.HasValue

@@ -189,12 +189,10 @@ public class ReportsController : BaseApiController
     // ──────────────────────────────────────────────
 
     [HttpGet("stored")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetStoredReports(CancellationToken ct)
         => Ok((await _uow.Reports.GetAllAsync(ct)).OrderByDescending(r => r.GeneratedDate).Select(MapReport));
 
     [HttpGet("stored/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetStoredReport(Guid id, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
@@ -207,7 +205,6 @@ public class ReportsController : BaseApiController
     }
 
     [HttpGet("stored/{id:guid}/download")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DownloadStoredReport(Guid id, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);

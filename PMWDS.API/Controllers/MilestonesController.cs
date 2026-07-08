@@ -35,7 +35,6 @@ public class MilestonesController : BaseApiController
     // ── Milestone Dependency Endpoints ──────────────────────────────────
 
     [HttpGet("by-project/{projectId:guid}/dependencies")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDependenciesByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -222,7 +221,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}/dependency-status")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDependencyStatus(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -245,7 +243,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -275,7 +272,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones

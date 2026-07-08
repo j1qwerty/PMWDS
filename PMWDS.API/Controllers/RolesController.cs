@@ -31,7 +31,6 @@ public class RolesController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetRoles(CancellationToken ct)
     {
         var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
@@ -56,7 +55,6 @@ public class RolesController : BaseApiController
     }
 
     [HttpGet("permissions")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetPermissions(CancellationToken ct)
         => Ok((await VisiblePermissionQuery().OrderBy(p => p.Module).ThenBy(p => p.Name).ToListAsync(ct)).Select(MapPermission));
 

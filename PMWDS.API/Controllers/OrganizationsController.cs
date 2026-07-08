@@ -29,7 +29,6 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var organizations = (await _uow.Organizations.GetAllAsync(ct)).ToList();
@@ -56,7 +55,6 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);

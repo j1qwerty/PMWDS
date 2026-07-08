@@ -44,7 +44,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("dashboard")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? departmentId, CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -79,7 +78,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] ProjectStatus? status,
@@ -130,7 +128,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -248,7 +245,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/progress")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetProgress(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetWithDetailsAsync(id, ct);
@@ -308,7 +304,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UploadDocument(Guid id, IFormFile file, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -353,7 +348,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/documents")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -382,7 +376,6 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/documents/{docId:guid}/download")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
     {
         var docs = await _uow.ProjectDocuments.FindAsync(d => d.Id == docId && d.ProjectId == id);

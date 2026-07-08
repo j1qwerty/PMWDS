@@ -46,7 +46,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -77,7 +76,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("my-tasks")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetMyTasks([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var currentUserId))
@@ -116,7 +114,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -235,7 +232,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/progress")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
         if (!await CanWorkOnTaskAsync(id, ct))
@@ -264,7 +260,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -420,7 +415,6 @@ public class TasksController : BaseApiController
         => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(id), ct));
 
     [HttpGet("{id:guid}/ai/delay-prediction")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDelayPrediction(Guid id, CancellationToken ct)
     {
         if (!await CanAccessTaskAsync(id, ct))
@@ -444,7 +438,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/comments")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -480,7 +473,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/attachments")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -523,7 +515,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/time/start")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> StartTimer(Guid id, [FromBody] StartTimerRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -563,7 +554,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/time/stop")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> StopTimer(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -646,7 +636,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("{id:guid}/subtasks")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetSubtasks(Guid id, [FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -660,7 +649,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/subtasks")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> CreateSubtask(Guid id, [FromBody] CreateSubtaskDto dto, CancellationToken ct)
     {
         var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -716,7 +704,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("subtasks/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetSubtaskById(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -772,7 +759,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("subtasks/{id:guid}/progress")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
         if (!await CanWorkOnTaskAsync(id, ct))
@@ -787,7 +773,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("subtasks/{id:guid}/status")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateSubtaskStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -917,7 +902,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("{id:guid}/dependencies")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetDependencies(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -930,7 +914,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/dependencies")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> CreateDependency(Guid id, [FromBody] CreateDependencyDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -979,7 +962,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("dependencies/{depId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> UpdateDependency(Guid depId, [FromBody] UpdateDependencyDto dto, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
@@ -999,7 +981,6 @@ public class TasksController : BaseApiController
     }
 
     [HttpDelete("dependencies/{depId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> DeleteDependency(Guid depId, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);

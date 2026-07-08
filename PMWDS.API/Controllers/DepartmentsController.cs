@@ -28,7 +28,6 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var query = await _scope.ScopeDepartmentsAsync(_db.Departments.AsNoTracking(), ct);
@@ -47,7 +46,6 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(id, ct);

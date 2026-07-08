@@ -55,7 +55,6 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("settings")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetAISettings(CancellationToken ct)
     {
         var stored = (await _db.AIProviderCredentials.AsNoTracking().ToListAsync(ct))
@@ -232,7 +231,6 @@ public class AIController : BaseApiController
         => Ok(await _recommendations.AnalyzeTaskForAllocationAsync(taskId, ct));
 
     [HttpGet("predict-delay/{taskId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> PredictDelay(Guid taskId, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(taskId, ct);
@@ -255,7 +253,6 @@ public class AIController : BaseApiController
         => Ok(await _predictions.GenerateDelayPredictionAsync(taskId, ct));
 
     [HttpGet("predictions/{taskId:guid}/history")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetPredictionHistory(Guid taskId, CancellationToken ct)
         => Ok(await _predictions.GetPredictionHistoryAsync(taskId, ct));
 
@@ -273,7 +270,6 @@ public class AIController : BaseApiController
         => Ok(await _predictions.GetPredictionResultsAsync(taskId, modelId, ct));
 
     [HttpGet("project-health/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> ProjectHealth(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -290,7 +286,6 @@ public class AIController : BaseApiController
         => Ok(await _projectHealth.OptimizeResourceAllocationAsync(projectId, ct));
 
     [HttpGet("burnout-risk")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> BurnoutRisk([FromQuery] Guid? departmentId, CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -324,7 +319,6 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("insights/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Insights(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -336,7 +330,6 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("chat")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> Chat([FromBody] ChatRequest req, CancellationToken ct)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -349,12 +342,10 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("providers")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> GetProviders(CancellationToken ct)
         => Ok(await _models.GetProvidersAsync(ct));
 
     [HttpGet("providers/{provider}/models")]
-    [Authorize(Policy = AuthorizationPolicies.Authenticated)]
     public async Task<IActionResult> SearchModels(
         string provider,
         [FromQuery] string? search,

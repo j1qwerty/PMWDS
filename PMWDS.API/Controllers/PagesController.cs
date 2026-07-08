@@ -16,8 +16,6 @@ using PMWDS.Persistence.Context;
 using System.Text.Json;
 
 namespace PMWDS.API.Controllers;
-
-[Authorize(Policy = AuthorizationPolicies.Authenticated)]
 public class PagesController : BaseApiController
 {
     private readonly ApplicationDbContext _db;
