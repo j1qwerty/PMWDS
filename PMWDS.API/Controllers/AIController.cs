@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -24,12 +25,13 @@ public class AIController : BaseApiController
     private readonly ISensitiveDataProtector _sensitiveData;
 
     public AIController(
+        IMediator mediator,
         IAIService ai,
         IOptions<AISettings> aiSettings,
         ApplicationDbContext db,
         IUnitOfWork uow,
         RoleScopeService scope,
-        ISensitiveDataProtector sensitiveData)
+        ISensitiveDataProtector sensitiveData) : base(mediator)
     {
         _ai = ai;
         _aiSettings = aiSettings.Value;

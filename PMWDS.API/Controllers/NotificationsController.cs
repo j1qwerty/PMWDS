@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -16,10 +17,11 @@ public class NotificationsController : BaseApiController
     private readonly RoleScopeService _scope;
 
     public NotificationsController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         INotificationService notifications,
-        RoleScopeService scope)
+        RoleScopeService scope) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,12 +28,13 @@ public class TasksController : BaseApiController
     private readonly ApplicationDbContext _db;
 
     public TasksController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         INotificationService notifications,
         IFileStorageService files,
         RoleScopeService scope,
-        ApplicationDbContext db)
+        ApplicationDbContext db) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

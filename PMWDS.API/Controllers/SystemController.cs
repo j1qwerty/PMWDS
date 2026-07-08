@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
@@ -8,7 +9,7 @@ public class SystemController : BaseApiController
 {
     private readonly DatabaseConnectionStatus _databaseStatus;
 
-    public SystemController(DatabaseConnectionStatus databaseStatus)
+    public SystemController(IMediator mediator, DatabaseConnectionStatus databaseStatus) : base(mediator)
     {
         _databaseStatus = databaseStatus;
     }

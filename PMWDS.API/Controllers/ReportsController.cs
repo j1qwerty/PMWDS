@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
@@ -17,10 +18,11 @@ public class ReportsController : BaseApiController
     private readonly RoleScopeService _scope;
 
     public ReportsController(
+        IMediator mediator,
         IReportService reports,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
-        RoleScopeService scope)
+        RoleScopeService scope) : base(mediator)
     {
         _reports = reports;
         _uow = uow;

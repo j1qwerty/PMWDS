@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
@@ -16,9 +17,10 @@ public class SkillsController : BaseApiController
     private readonly RoleScopeService _scope;
 
     public SkillsController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
-        RoleScopeService scope)
+        RoleScopeService scope) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

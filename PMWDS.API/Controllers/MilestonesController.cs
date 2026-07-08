@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,7 @@ public class MilestonesController : BaseApiController
     private readonly INotificationService _notifications;
     private readonly ICurrentUserService _currentUser;
 
-    public MilestonesController(IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser)
+    public MilestonesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser) : base(mediator)
     {
         _uow = uow;
         _db = db;

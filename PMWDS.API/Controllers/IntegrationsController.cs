@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -12,7 +13,7 @@ public class IntegrationsController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly ISensitiveDataProtector _sensitiveData;
 
-    public IntegrationsController(IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData)
+    public IntegrationsController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

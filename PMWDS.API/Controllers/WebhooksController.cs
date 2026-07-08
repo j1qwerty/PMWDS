@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -13,7 +14,7 @@ public class WebhooksController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly ISensitiveDataProtector _sensitiveData;
 
-    public WebhooksController(IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData)
+    public WebhooksController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -28,11 +29,12 @@ public class AuthController : BaseApiController
     private readonly ILoginLockoutService _loginLockout;
 
     public AuthController(
+        IMediator mediator,
         IUnitOfWork uow,
         IOptions<JwtSettings> jwt,
         IOptions<EmailSettings> email,
         IEmailService emailService,
-        ILoginLockoutService loginLockout)
+        ILoginLockoutService loginLockout) : base(mediator)
     {
         _uow = uow;
         _jwt = jwt.Value;

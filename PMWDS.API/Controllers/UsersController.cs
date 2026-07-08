@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -24,11 +25,12 @@ public class UsersController : BaseApiController
     private readonly RoleScopeService _scope;
 
     public UsersController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         ApplicationDbContext db,
         ILocalFileStorageService localFiles,
-        RoleScopeService scope)
+        RoleScopeService scope) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

@@ -66,7 +66,7 @@ PMWDS.Infrastructure/ Services/  Jobs/  Settings/
 - Hangfire, dashboard, and recurring jobs are **SQL-Server-only** (gated on `databaseStatus.Provider == SqlServer`).
 - SignalR hubs mapped at `/hubs/notifications` and `/hubs/dashboard`.
 - Middleware pipeline order: `ExceptionMiddleware` → `RequestLoggingMiddleware` → Swagger/Scalar (Dev) →HttpsRedirection → StaticFiles(`/files`, `/avatars`) → SerilogRequestLogging → CORS → Authentication → Authorization → HangfireDashboard → Hubs/Controllers.
-- `BaseApiController` uses a **Service Locator** for `IMediator` (`HttpContext.RequestServices.GetRequiredService<IMediator>`) — to be replaced by constructor injection (`dotnet-todo.md` 3.1).
+- `BaseApiController` constructor-injects `IMediator`; every derived controller must accept `IMediator mediator` and call `base(mediator)`.
 
 ---
 
@@ -344,7 +344,7 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - [ ] If adding an entity → put it in `PMWDS.Domain/Entities/`, inherit `BaseEntity`/`AuditableEntity`, add a configuration in `PMWDS.Persistence/Configurations/`, register the DbSet, choose `Cascade`/`NoAction`/`SetNull` deliberately (SQL Server rejects multiple cascade paths), and respect the soft-delete global filter.
 - [ ] If touching DB providers → MySQL is being removed; dev = SQLite fallback, prod = SQL Server fail-fast.
 - [ ] If adding background work → use Hangfire (SQL-Server-only) or a domain event (once dispatch is wired in Phase 3.5).
-- [ ] If adding a controller → inherit `BaseApiController`, prefer `[Authorize(Policy="...")]` fine-grained policies over role-name policies, and move DTOs to `PMWDS.Application/DTOs/<Domain>/`.
+- [ ] If adding a controller → inherit `BaseApiController`, inject `IMediator` and call `base(mediator)`, prefer `[Authorize(Policy="...")]` fine-grained policies over role-name policies, and move DTOs to `PMWDS.Application/DTOs/<Domain>/`.
 - [ ] **Update this file** with any new pattern, file name, permission code, or role key.
 
 ---

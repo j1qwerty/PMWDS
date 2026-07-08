@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,12 +26,13 @@ public class ProjectsController : BaseApiController
     private readonly ApplicationDbContext _db;
 
     public ProjectsController(
+        IMediator mediator,
         IUnitOfWork uow,
         IAIService ai,
         ICurrentUserService currentUser,
         ILocalFileStorageService localFiles,
         RoleScopeService scope,
-        ApplicationDbContext db)
+        ApplicationDbContext db) : base(mediator)
     {
         _uow = uow;
         _ai = ai;

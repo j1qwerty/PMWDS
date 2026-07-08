@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +19,11 @@ public class ActivityLogsController : BaseApiController
     private readonly ApplicationDbContext _db;
 
     public ActivityLogsController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         RoleScopeService scope,
-        ApplicationDbContext db)
+        ApplicationDbContext db) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

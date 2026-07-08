@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -11,7 +12,7 @@ public class KnowledgeController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
 
-    public KnowledgeController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public KnowledgeController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;

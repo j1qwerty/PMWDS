@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,7 @@ public class OrganizationsController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly ApplicationDbContext _db;
 
-    public OrganizationsController(IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db)
+    public OrganizationsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db) : base(mediator)
     {
         _uow = uow;
         _scope = scope;

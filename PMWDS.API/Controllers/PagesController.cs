@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,9 +25,10 @@ public class PagesController : BaseApiController
     private readonly ICurrentUserService _currentUser;
 
     public PagesController(
+        IMediator mediator,
         ApplicationDbContext db,
         RoleScopeService scope,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser) : base(mediator)
     {
         _db = db;
         _scope = scope;

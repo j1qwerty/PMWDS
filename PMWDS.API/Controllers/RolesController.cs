@@ -1,3 +1,4 @@
+using MediatR;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,7 @@ public class RolesController : BaseApiController
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
 
-    public RolesController(IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser)
+    public RolesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser) : base(mediator)
     {
         _uow = uow;
         _context = context;
