@@ -1,6 +1,9 @@
+using MediatR;
+using PMWDS.Application.Common;
 using Microsoft.EntityFrameworkCore.Storage;
 using PMWDS.Application.Interfaces.Repositories;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Common;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
@@ -9,6 +12,7 @@ namespace PMWDS.Persistence.Repositories;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPublisher _publisher;
     private IDbContextTransaction? _transaction;
 
     public IProjectRepository Projects { get; }
@@ -50,9 +54,10 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<MilestoneDependency> MilestoneDependencies { get; }
     public IRepository<TimeEntry> TimeEntries { get; }
 
-    public UnitOfWork(ApplicationDbContext context)
+    public UnitOfWork(ApplicationDbContext context, IPublisher publisher)
     {
         _context = context;
+        _publisher = publisher;
 
         Projects = new ProjectRepository(context);
         Tasks = new TaskRepository(context);
@@ -95,7 +100,33 @@ public class UnitOfWork : IUnitOfWork
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        var result = await _context.SaveChangesAsync(ct);
+
+        var domainEventEntities = _context.ChangeTracker
+            .Entries<IHasDomainEvents>()
+            .Select(entry => entry.Entity)
+            .Where(entity => entity.DomainEvents.Count > 0)
+            .ToList();
+
+        var domainEvents = domainEventEntities
+            .SelectMany(entity => entity.DomainEvents)
+            .ToList();
+
+        foreach (var entity in domainEventEntities)
+        {
+            entity.ClearDomainEvents();
+        }
+
+        foreach (var domainEvent in domainEvents)
+        {
+            var notificationType = typeof(DomainEventNotification<>).MakeGenericType(domainEvent.GetType());
+            var notification = Activator.CreateInstance(notificationType, domainEvent);
+            await _publisher.Publish(notification!, ct);
+        }
+
+        return result;
+    }
 
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {

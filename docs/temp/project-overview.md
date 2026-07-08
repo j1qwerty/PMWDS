@@ -76,7 +76,7 @@ Base classes — `PMWDS.Domain/Common/`:
 - **`BaseEntity`** — `Id` (Guid), `CreatedDate`, `ModifiedDate`, `CreatedBy` (string), `ModifiedBy`, `IsDeleted` (soft delete), `RowVersion` (int, manually incremented and configured globally as an EF concurrency token). Methods: `SetCreatedBy`, `SetModified`, `SoftDelete`.
 - **`AuditableEntity : BaseEntity`** — adds `Notes`, `Tags`, `IsActive`. Methods: `Activate`/`Deactivate`/`SetNotes`/`SetTags`.
 - **`ValueObject`** — defined but unused (no value objects exist).
-- **`IDomainEvent` / `DomainEvent`** — domain event base. Entities hold `_domainEvents` but **events are NEVER dispatched** (no MediatR dispatch after SaveChanges) — `dotnet-todo.md` 3.5.
+- **`IDomainEvent` / `DomainEvent` / `IHasDomainEvents`** — domain event base plus entity marker. `UnitOfWork.SaveChangesAsync` dispatches collected events after a successful EF save by publishing `DomainEventNotification<TDomainEvent>` wrappers through MediatR, then clears the entity event queues.
 
 ### Core entities (`PMWDS.Domain/Entities/`)
 

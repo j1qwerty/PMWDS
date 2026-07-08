@@ -4,7 +4,7 @@ using PMWDS.Domain.Events;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Domain.Entities;
 
-public class ProjectTask : AuditableEntity
+public class ProjectTask : AuditableEntity, IHasDomainEvents
 {
     // Core Properties
     public Guid ProjectId { get; private set; }

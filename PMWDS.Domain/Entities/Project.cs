@@ -3,7 +3,7 @@ using PMWDS.Domain.Enums;
 using PMWDS.Domain.Events;
 namespace PMWDS.Domain.Entities;
 
-public class Project : AuditableEntity
+public class Project : AuditableEntity, IHasDomainEvents
 {
    // Core Properties
    public string ProjectCode { get; private set; } = string.Empty;
