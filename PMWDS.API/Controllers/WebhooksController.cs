@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -131,9 +132,3 @@ public class WebhooksController : BaseApiController
             delivery.Success,
             delivery.ErrorMessage);
 }
-
-public record WebhookResponse(Guid Id, Guid? IntegrationId, string EventType, string CallbackUrl, List<string> Headers, bool IsActive);
-public record WebhookDetailResponse(WebhookResponse Webhook, List<WebhookDeliveryResponse> Deliveries);
-public record WebhookDeliveryResponse(Guid Id, Guid WebhookId, DateTime AttemptedAt, int StatusCode, string ResponseBody, bool Success, string? ErrorMessage);
-public record UpsertWebhookRequest(Guid? IntegrationId, string EventType, string CallbackUrl, string Secret, List<string> Headers, bool IsActive);
-public record CreateWebhookDeliveryRequest(int StatusCode, string ResponseBody, bool Success, string? ErrorMessage);

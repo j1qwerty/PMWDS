@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -269,15 +270,3 @@ public class ActivityLogsController : BaseApiController
 
     private sealed record EntitySummary(Guid Id, string Type, string Name);
 }
-
-public record ActivityLogResponse(
-    Guid Id,
-    Guid UserId,
-    string? UserName,
-    Guid? ProjectId,
-    string? ProjectName,
-    string ActivityType,
-    string Description,
-    DateTime Timestamp,
-    Dictionary<string, object> Metadata);
-public record CreateActivityLogRequest(string ActivityType, string Description, Dictionary<string, object> Metadata, Guid? ProjectId = null);

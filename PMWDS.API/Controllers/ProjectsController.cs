@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -511,5 +512,3 @@ public class ProjectsController : BaseApiController
             .ToDictionaryAsync(user => user.Id, user => user.FullName, ct);
     }
 }
-
-public record UpdateProjectStatusRequest(ProjectStatus NewStatus, string? Justification = null);

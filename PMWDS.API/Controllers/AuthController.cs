@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -420,10 +421,3 @@ public class AuthController : BaseApiController
         </div>
         """;
 }
-
-public record LoginRequest(string Email, string Password);
-public record ChangePasswordRequest(string OldPassword, string NewPassword);
-public record RefreshTokenRequest(string UserId, string RefreshToken);
-public record SignupRequest(string FirstName, string LastName, string Email, string Password, string? JobTitle);
-public record ForgotPasswordRequest(string Email);
-public record ResetPasswordRequest(string Email, string Token, string NewPassword);

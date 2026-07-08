@@ -348,7 +348,7 @@ Tracked in `dotnet-todo.md` Phase 0 — summarised here so they stay visible:
 - [ ] If adding an entity → put it in `PMWDS.Domain/Entities/`, inherit `BaseEntity`/`AuditableEntity`, add a configuration in `PMWDS.Persistence/Configurations/`, register the DbSet, choose `Cascade`/`NoAction`/`SetNull` deliberately (SQL Server rejects multiple cascade paths), and respect the soft-delete global filter.
 - [ ] If touching DB providers → MySQL is being removed; dev = SQLite fallback, prod = SQL Server fail-fast.
 - [ ] If adding background work → use Hangfire (SQL-Server-only) or a domain event (once dispatch is wired in Phase 3.5).
-- [ ] If adding a controller → inherit `BaseApiController`, inject `IMediator` and call `base(mediator)`, prefer `[Authorize(Policy="...")]` fine-grained policies over role-name policies, and move DTOs to `PMWDS.Application/DTOs/<Domain>/`.
+- [ ] If adding a controller → inherit `BaseApiController`, inject `IMediator` and call `base(mediator)`, prefer `[Authorize(Policy="...")]` fine-grained policies over role-name policies, and move request/response DTOs to `PMWDS.Application/DTOs/Controllers` or a domain-specific DTO folder.
 - [ ] **Update this file** with any new pattern, file name, permission code, or role key.
 
 ---

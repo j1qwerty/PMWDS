@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -102,8 +103,3 @@ public class IntegrationsController : BaseApiController
             integration.LastSync,
             integration.Status);
 }
-
-public record IntegrationResponse(Guid Id, string IntegrationType, string Name, Dictionary<string, object> Configuration, bool IsEnabled, DateTime? LastSync, string Status);
-public record IntegrationDetailResponse(IntegrationResponse Integration, List<WebhookResponse> Webhooks);
-public record UpsertIntegrationRequest(string IntegrationType, string Name, Dictionary<string, object> Configuration, bool IsEnabled, string Status);
-public record SyncIntegrationRequest(string Status);

@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -354,10 +355,3 @@ public class ReportsController : BaseApiController
             _ => "application/octet-stream"
         };
 }
-
-public record DepartmentWorkloadRequest(Guid DepartmentId, DateTime StartDate, DateTime EndDate);
-public record StoredReportResponse(Guid Id, string Name, string ReportType, Dictionary<string, object> Parameters, DateTime GeneratedDate, string Format, Guid GeneratedByUserId, int SizeBytes);
-public record StoredReportDetailResponse(StoredReportResponse Report, List<ReportScheduleResponse> Schedules);
-public record ReportScheduleResponse(Guid Id, Guid ReportId, string Frequency, DateTime NextRun, DateTime? LastRun, List<string> Recipients, Dictionary<string, object> DeliveryOptions, bool IsActive);
-public record UpsertStoredReportRequest(string Name, string ReportType, Dictionary<string, object> Parameters, string Format, string? ContentBase64);
-public record UpsertReportScheduleRequest(Guid ReportId, string Frequency, DateTime NextRun, List<string> Recipients, Dictionary<string, object> DeliveryOptions, bool IsActive);

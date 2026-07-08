@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -201,27 +202,3 @@ public class SkillsController : BaseApiController
             await _scope.CanAccessOrganizationAsync(skill.OrganizationId.Value, ct);
     }
 }
-
-public record SkillDto(
-    Guid Id,
-    string Name,
-    string Category,
-    string Description,
-    int UserCount,
-    Guid? OrganizationId,
-    string CreatedBy)
-{
-    public static SkillDto FromEntity(Skill s)
-    => new(s.Id, s.Name, s.Category, s.Description, s.UserSkills.Count, s.OrganizationId, s.CreatedBy);
-}
-
-public record CreateSkillDto(
-    string Name,
-    string Category,
-    string Description,
-    Guid? OrganizationId = null);
-
-public record UpdateSkillDto(
-    string Name,
-    string Category,
-    string Description);

@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -1228,8 +1229,3 @@ public class TasksController : BaseApiController
         return name ?? "Unknown Project";
     }
 }
-
-public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus, bool ConfirmReset = false);
-public record AssignTaskRequest(string? AssigneeId, bool UseAIRecommendation = false, List<string>? AssigneeIds = null);
-public record AddCommentRequest(string Comment);
-public record StartTimerRequest(string Description, bool IsBillable = false);

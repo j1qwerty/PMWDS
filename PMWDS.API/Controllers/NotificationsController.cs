@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -270,42 +271,3 @@ public class NotificationsController : BaseApiController
             rule.IsEnabled,
             rule.LastTriggered);
 }
-
-public record BroadcastNotificationRequest(
-    string Title,
-    string Message,
-    Guid? DepartmentId = null,
-    string? ActionUrl = null);
-
-public record NotificationTemplateResponse(
-    Guid Id,
-    string TemplateType,
-    string SubjectTemplate,
-    string BodyTemplate,
-    List<string> Variables,
-    List<string> SupportedChannels);
-
-public record UpsertNotificationTemplateRequest(
-    string TemplateType,
-    string SubjectTemplate,
-    string BodyTemplate,
-    List<string> Variables,
-    List<string> SupportedChannels);
-
-public record AlertRuleResponse(
-    Guid Id,
-    string Name,
-    string ConditionType,
-    string ConditionExpression,
-    string ActionType,
-    Dictionary<string, object> ActionParameters,
-    bool IsEnabled,
-    DateTime? LastTriggered);
-
-public record UpsertAlertRuleRequest(
-    string Name,
-    string ConditionType,
-    string ConditionExpression,
-    string ActionType,
-    Dictionary<string, object> ActionParameters,
-    bool IsEnabled);

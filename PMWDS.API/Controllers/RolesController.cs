@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -399,25 +400,3 @@ public class RolesController : BaseApiController
         return !remainingCodes.Contains(PermissionCodes.SystemAdmin);
     }
 }
-
-public record RoleResponse(
-    Guid Id,
-    string Key,
-    string Name,
-    string Description,
-    int PermissionLevel,
-    int PaginationPageSize,
-    List<PermissionResponse> Permissions);
-
-public record PermissionResponse(
-    Guid Id,
-    string Code,
-    string Name,
-    string Description,
-    string Module,
-    bool IsGlobal);
-
-public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
-public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
-public record CreatePermissionRequest(string Code, string Name, string Description, string Module, bool IsGlobal);
-public record UpdatePermissionRequest(string Name, string Description, string Module, bool IsGlobal);

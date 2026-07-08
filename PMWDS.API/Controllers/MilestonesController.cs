@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -707,34 +708,3 @@ public class MilestonesController : BaseApiController
         return project ?? "Unknown Project";
     }
 }
-
-public record SetMilestoneStatusDto(string Status, bool ForceComplete = false);
-
-public record CreateMilestoneDto(
-    Guid ProjectId,
-    string Name,
-    string Description,
-    DateTime DueDate,
-    int Order,
-    Guid? DepartmentId = null,
-    bool IsCritical = false);
-
-public record UpdateMilestoneDto(
-    string Name,
-    string Description,
-    DateTime DueDate,
-    int Order,
-    bool IsCritical,
-    Guid? DepartmentId,
-    double ProgressPercentage);
-
-public record CreateMilestoneDependencyDto(
-    Guid ProjectId,
-    Guid PrerequisiteMilestoneId,
-    Guid DependentMilestoneId,
-    string Type,
-    double? ThresholdPercentage = null);
-
-public record UpdateMilestoneDependencyDto(
-    string Type,
-    double? ThresholdPercentage = null);

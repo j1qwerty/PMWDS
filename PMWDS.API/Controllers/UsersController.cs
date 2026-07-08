@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -937,20 +938,3 @@ public class UsersController : BaseApiController
             .FirstOrDefaultAsync(ct);
     }
 }
-
-public record UpdateAvailabilityRequest(
-    PMWDS.Domain.Enums.AvailabilityStatus Status,
-    double AvailabilityPercentage);
-
-public record AddUserSkillRequest(
-    Guid SkillId,
-    int ProficiencyLevel,
-    int ExperienceMonths);
-
-public record UpdateUserSkillRequest(
-    int ProficiencyLevel,
-    int ExperienceMonths);
-
-public record AssignUserDepartmentsRequest(
-    List<Guid> DepartmentIds,
-    Guid? PrimaryDepartmentId);

@@ -113,7 +113,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 3.3 | Slim God `IUnitOfWork` (34 repos); prefer specific repositories; remove redundant generic `BaseRepository` over EF Core. `[coordinated]` | `IUnitOfWork.cs`, `UnitOfWork.cs`, `BaseRepository.cs` | arch 7.1/7.2 | 🔴 |
 | 3.4 | Refactor `TasksController` (1244 lines) — move business logic to application-layer commands/handlers; pull out `Recalculate*`, `ApplyStatusChange*`, `IsUserInProjectOrganization*`. `[coordinated]` | `TasksController.cs`, `Application/Features/Tasks/**` | api 5 / arch 9 | 🔴 |
 | 3.5 | Dispatch domain events after `SaveChanges` via MediatR (currently collected but never dispatched). `[coordinated]` | `Program.cs`, `UnitOfWork.cs` | arch 8.2 | Done |
-| 3.6 | Move DTO records out of controllers → `PMWDS.Application/DTOs`. `[independent]` per controller | all 17 controllers with inline DTOs | api 5.3 / cq 4.3 | 🔴 |
+| 3.6 | Move DTO records out of controllers → `PMWDS.Application/DTOs`. `[independent]` per controller | all 17 controllers with inline DTOs | api 5.3 / cq 4.3 | Done |
 | 3.7 | Actually wire FluentValidation: validators for DTOs/commands + `AddFluentValidationAutoValidation`; remove ad-hoc manual validation. `[coordinated]` | `Program.cs`, `Application/**`, controllers | api 3 / arch 6.3 | 🔴 |
 | 3.8 | Universal `ApiResponse<T>` envelope + one consistent error shape. `[coordinated]` | `ExceptionMiddleware.cs`, controllers | api 2 | 🔴 |
 | 3.9 | Add `[ProducesResponseType]` to all actions; expose Swagger/Scalar in staging (configurable, not Dev-only); enable XML doc generation. `[independent]` | controllers, `PMWDS.API.csproj`, `Program.cs` | api 8 | 🔴 |

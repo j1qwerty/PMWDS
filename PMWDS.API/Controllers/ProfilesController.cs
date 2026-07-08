@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -81,21 +82,3 @@ public class ProfilesController : BaseApiController
             profile.EmergencyContact,
             profile.LinkedInUrl);
 }
-
-public record UserProfileResponse(
-    Guid Id,
-    Guid UserId,
-    string? Bio,
-    string? JobTitle,
-    DateTime? DateOfBirth,
-    string? Address,
-    string? EmergencyContact,
-    string? LinkedInUrl);
-
-public record UpsertProfileRequest(
-    string? Bio,
-    string? JobTitle,
-    DateTime? DateOfBirth,
-    string? Address,
-    string? EmergencyContact,
-    string? LinkedInUrl);

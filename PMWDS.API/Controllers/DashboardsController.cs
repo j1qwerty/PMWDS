@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -173,27 +174,3 @@ public class DashboardsController : BaseApiController
             JsonSerializer.Deserialize<List<string>>(widget.RequiredPermissionsJson) ?? new(),
             widget.DisplayOrder);
 }
-
-public record DashboardResponse(
-    Guid Id,
-    Guid UserId,
-    string Name,
-    string LayoutType,
-    bool IsDefault,
-    DateTime LastAccessed,
-    List<DashboardWidgetResponse> Widgets);
-
-public record DashboardWidgetResponse(
-    Guid Id,
-    Guid DashboardId,
-    string WidgetType,
-    string Title,
-    Dictionary<string, object> Configuration,
-    int RefreshInterval,
-    DateTime LastRefreshed,
-    List<string> RequiredPermissions,
-    int DisplayOrder);
-
-public record UpsertDashboardRequest(string Name, string LayoutType, bool IsDefault);
-public record UpsertDashboardWidgetRequest(string WidgetType, string Title, Dictionary<string, object> Configuration, int RefreshInterval, List<string> RequiredPermissions, int DisplayOrder);
-public record ReorderDashboardWidgetsRequest(List<Guid> WidgetIds);

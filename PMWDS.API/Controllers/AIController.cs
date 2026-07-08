@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -445,38 +446,4 @@ public class AIController : BaseApiController
                 "Continue standard monitoring."
             }
         };
-}
-
-public record ChatRequest(
-    string Message,
-    string? Provider = null,
-    string? Model = null);
-
-public record ProviderTestRequest(
-    string? Model = null,
-    string? Prompt = null);
-
-public record RejectRecommendationRequest(
-    string Reason);
-
-public record AISettingsDto
-{
-    public string DefaultProvider { get; set; } = "OpenAI";
-    public string DefaultModel { get; set; } = "";
-    public double RiskThreshold { get; set; } = 0.7;
-    public bool UseLocalModel { get; set; } = false;
-    public string MLModelPath { get; set; } = "";
-    public List<AIProviderSettingsDto> Providers { get; set; } = new();
-}
-
-public record AIProviderSettingsDto
-{
-    public string Provider { get; set; } = "";
-    public string DisplayName { get; set; } = "";
-    public bool Enabled { get; set; }
-    public bool UseEnvironmentDefault { get; set; } = true;
-    public string BaseUrl { get; set; } = "";
-    public string ApiKey { get; set; } = "";
-    public bool HasStoredKey { get; set; }
-    public string DefaultModel { get; set; } = "";
 }

@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -287,31 +288,3 @@ public class DepartmentsController : BaseApiController
             department.MaxCapacity,
             department.CalculateCapacityUtilization());
 }
-
-public record DepartmentDto(
-    Guid Id,
-    string Name,
-    string Code,
-    string? Description,
-    Guid? OrganizationId,
-    Guid? ParentDepartmentId,
-    string? DepartmentHeadUserId,
-    int MaxCapacity,
-    double CapacityUtilization);
-
-public record CreateDepartmentDto(
-    string Name,
-    string Code,
-    string? Description,
-    Guid? ParentDepartmentId = null,
-    Guid? OrganizationId = null,
-    string? DepartmentHeadUserId = null,
-    int? MaxCapacity = null);
-
-public record UpdateDepartmentDto(
-    string Name,
-    string Code,
-    string? Description,
-    Guid? OrganizationId = null,
-    string? DepartmentHeadUserId = null,
-    int? MaxCapacity = null);

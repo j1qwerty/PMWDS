@@ -1,3 +1,4 @@
+using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -156,8 +157,3 @@ public class KnowledgeController : BaseApiController
             JsonSerializer.Deserialize<List<string>>(lesson.KeywordsJson) ?? new(),
             lesson.RecordedDate);
 }
-
-public record KnowledgeArticleResponse(Guid Id, Guid? ProjectId, string Title, string Content, string Category, List<string> Tags, Guid AuthorId, DateTime CreatedDate, DateTime LastUpdated, int ViewCount, double RelevanceScore);
-public record LessonLearnedResponse(Guid Id, Guid ProjectId, string Title, string Description, string Category, string Impact, List<string> Keywords, DateTime RecordedDate);
-public record UpsertKnowledgeArticleRequest(Guid? ProjectId, string Title, string Content, string Category, List<string> Tags, double RelevanceScore);
-public record UpsertLessonLearnedRequest(Guid ProjectId, string Title, string Description, string Category, string Impact, List<string> Keywords);
