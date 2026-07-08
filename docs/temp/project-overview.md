@@ -67,6 +67,7 @@ PMWDS.Infrastructure/ Services/  Jobs/  Settings/
 - SignalR hubs mapped at `/hubs/notifications` and `/hubs/dashboard`.
 - Middleware pipeline order: `ExceptionMiddleware` → `RequestLoggingMiddleware` → Swagger/Scalar (Dev) →HttpsRedirection → StaticFiles(`/files`, `/avatars`) → SerilogRequestLogging → CORS → Authentication → Authorization → HangfireDashboard → Hubs/Controllers.
 - `BaseApiController` constructor-injects `IMediator`; every derived controller must accept `IMediator mediator` and call `base(mediator)`.
+- FluentValidation is wired through `AddFluentValidationAutoValidation()` and validators live under `PMWDS.Application/Validators`; prefer validators for request/DTO shape checks and keep database/scope checks in application handlers or controller services.
 
 ---
 

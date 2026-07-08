@@ -184,6 +184,9 @@ builder.Services.AddScoped<IScheduledReportJob, ScheduledReportJob>();
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<
         PMWDS.Application.Features.Projects.Commands.CreateProjectCommand>());
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<
+    PMWDS.Application.Validators.LoginRequestValidator>();
 builder.Services.AddAutoMapper(cfg =>
     cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 
