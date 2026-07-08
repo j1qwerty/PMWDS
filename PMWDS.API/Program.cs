@@ -147,6 +147,7 @@ builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<RoleScopeService>();
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ITaskWorkflowService, TaskWorkflowService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.INotificationService, NotificationService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IEmailService, EmailService>();
 builder.Services.AddSingleton<ISensitiveDataProtector, SensitiveDataProtector>();

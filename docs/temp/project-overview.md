@@ -219,6 +219,7 @@ Base classes — `PMWDS.Domain/Common/`:
 ### CQRS / MediatR (`PMWDS.Application/Features/`)
 - `Features/Projects/{Commands,Queries}/` — both present.
 - `Features/Tasks/Commands/` — **commands only, no query handlers** (queries done inline in `TasksController`).
+- `ITaskWorkflowService` / `TaskWorkflowService` owns task workflow recalculation, status transitions, task access checks, and project-organization assignee validation extracted from `TasksController` (Phase 3.4).
 - `Features/Users/Queries/` — queries only.
 - `Features/AI/{Commands,Queries}/`.
 - **Most controllers bypass CQRS** and use `IUnitOfWork`/`ApplicationDbContext` directly (`dotnet-todo.md` 3.4, 4.2).

@@ -25,6 +25,7 @@ public class TasksController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
     private readonly IFileStorageService _files;
+    private readonly ITaskWorkflowService _taskWorkflow;
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
 
@@ -34,6 +35,7 @@ public class TasksController : BaseApiController
         ICurrentUserService currentUser,
         INotificationService notifications,
         IFileStorageService files,
+        ITaskWorkflowService taskWorkflow,
         RoleScopeService scope,
         ApplicationDbContext db) : base(mediator)
     {
@@ -41,6 +43,7 @@ public class TasksController : BaseApiController
         _currentUser = currentUser;
         _notifications = notifications;
         _files = files;
+        _taskWorkflow = taskWorkflow;
         _scope = scope;
         _db = db;
     }
@@ -81,7 +84,7 @@ public class TasksController : BaseApiController
         if (!Guid.TryParse(_currentUser.UserId, out var currentUserId))
             return Unauthorized();
 
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         List<ProjectTask> tasks;
         if (_scope.IsSuperAdmin)
         {
@@ -140,7 +143,7 @@ public class TasksController : BaseApiController
         }
 
         if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
-            !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, dto.ProjectId, ct))
+            !await _taskWorkflow.IsUserInProjectOrganizationAsync(dto.AssignedToUserId, dto.ProjectId, ct))
         {
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
@@ -149,7 +152,7 @@ public class TasksController : BaseApiController
         if (dto.MilestoneId.HasValue)
         {
             var createdTask = await _uow.Tasks.GetByIdAsync(result.Id, ct);
-            if (createdTask != null) await RecalculateTaskMilestoneAsync(createdTask, ct);
+            if (createdTask != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(createdTask, ct);
         }
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
@@ -200,7 +203,7 @@ public class TasksController : BaseApiController
             dto.MilestoneId);
         task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
-        if (dto.MilestoneId.HasValue) await RecalculateTaskMilestoneAsync(task, ct);
+        if (dto.MilestoneId.HasValue) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         if (oldMilestoneId.HasValue && oldMilestoneId != dto.MilestoneId)
         {
             var oldMilestone = await _db.Milestones
@@ -218,7 +221,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Updated",
-            Description: $"{_currentUser.FullName} updated task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} updated task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -234,18 +237,18 @@ public class TasksController : BaseApiController
     [HttpPatch("{id:guid}/progress")]
     public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+        if (task != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Progress Updated",
-            Description: $"{_currentUser.FullName} updated progress of task \"{task?.Title}\" to {dto.ProgressPercentage}% in project \"{await ResolveProjectNameAsync(task?.ProjectId ?? Guid.Empty, ct)}\"",
+            Description: $"{_currentUser.FullName} updated progress of task \"{task?.Title}\" to {dto.ProgressPercentage}% in project \"{await _taskWorkflow.ResolveProjectNameAsync(task?.ProjectId ?? Guid.Empty, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = id,
@@ -272,13 +275,13 @@ public class TasksController : BaseApiController
         }
 
         var oldStatus = task.Status;
-        await ApplyStatusChangeAsync(task, req, ct);
-        await RecalculateTaskMilestoneAsync(task, ct);
+        await _taskWorkflow.ApplyStatusChangeAsync(task, req, ct);
+        await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Status Changed",
-            Description: $"{_currentUser.FullName} changed task \"{task.Title}\" status from \"{oldStatus}\" to \"{req.NewStatus}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} changed task \"{task.Title}\" status from \"{oldStatus}\" to \"{req.NewStatus}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -317,7 +320,7 @@ public class TasksController : BaseApiController
                 return Forbid();
             }
 
-            if (!await IsUserInProjectOrganizationAsync(assigneeId, singleTask.ProjectId, ct))
+            if (!await _taskWorkflow.IsUserInProjectOrganizationAsync(assigneeId, singleTask.ProjectId, ct))
             {
                 return BadRequest(new { message = "Assignee must belong to the selected project organization." });
             }
@@ -357,7 +360,7 @@ public class TasksController : BaseApiController
         {
             if (!Guid.TryParse(userId, out var parsedUserId) ||
                 await _uow.Users.GetByIdAsync(parsedUserId, ct) == null ||
-                !await IsUserInProjectOrganizationAsync(userId, task.ProjectId, ct))
+                !await _taskWorkflow.IsUserInProjectOrganizationAsync(userId, task.ProjectId, ct))
             {
                 return BadRequest(new { message = $"Invalid assignee '{userId}'." });
             }
@@ -394,7 +397,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Assigned",
-            Description: $"{_currentUser.FullName} assigned task \"{task.Title}\" to {string.Join(", ", assigneeNames)} in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} assigned task \"{task.Title}\" to {string.Join(", ", assigneeNames)} in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -417,7 +420,7 @@ public class TasksController : BaseApiController
     [HttpGet("{id:guid}/ai/delay-prediction")]
     public async Task<IActionResult> GetDelayPrediction(Guid id, CancellationToken ct)
     {
-        if (!await CanAccessTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanAccessTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -429,7 +432,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Escalate(Guid id, CancellationToken ct)
     {
-        if (!await CanManageTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -444,7 +447,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -458,7 +461,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Comment Added",
-            Description: $"{_currentUser.FullName} commented on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} commented on task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -479,7 +482,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -499,7 +502,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Attachment Uploaded",
-            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -539,7 +542,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Timer Started",
-            Description: $"{_currentUser.FullName} started timer on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} started timer on task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -581,7 +584,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Timer Stopped",
-            Description: $"{_currentUser.FullName} stopped timer on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} stopped timer on task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -600,7 +603,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetOverdue([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         var tasks = (await _uow.Tasks.GetOverdueTasksAsync(ct))
             .Where(task => allowedProjectIds.Contains(task.ProjectId))
             .OrderBy(task => task.DueDate)
@@ -613,7 +616,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetEscalated([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         var tasks = (await _uow.Tasks.GetEscalatedTasksAsync(ct))
             .Where(task => allowedProjectIds.Contains(task.ProjectId))
             .OrderByDescending(task => task.ModifiedDate ?? task.CreatedDate)
@@ -626,7 +629,7 @@ public class TasksController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetUnassigned([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         var tasks = (await _uow.Tasks.GetUnassignedTasksAsync(ct))
             .Where(task => allowedProjectIds.Contains(task.ProjectId))
             .OrderByDescending(task => task.CreatedDate)
@@ -655,7 +658,7 @@ public class TasksController : BaseApiController
         if (parentTask == null)
             return NotFound();
 
-        if (!await CanWorkOnTaskAsync(parentTask.Id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(parentTask.Id, ct))
         {
             return Forbid();
         }
@@ -666,7 +669,7 @@ public class TasksController : BaseApiController
         }
 
         if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
-            !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
+            !await _taskWorkflow.IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
         {
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
@@ -745,7 +748,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Subtask Updated",
-            Description: $"{_currentUser.FullName} updated subtask \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} updated subtask \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["subtaskId"] = task.Id,
@@ -761,14 +764,14 @@ public class TasksController : BaseApiController
     [HttpPatch("subtasks/{id:guid}/progress")]
     public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+        if (task != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         return Ok(result);
     }
 
@@ -784,8 +787,8 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        await ApplyStatusChangeAsync(task, req, ct);
-        await RecalculateTaskMilestoneAsync(task, ct);
+        await _taskWorkflow.ApplyStatusChangeAsync(task, req, ct);
+        await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
@@ -799,13 +802,13 @@ public class TasksController : BaseApiController
             return BadRequest(new { message = "Assignee is required." });
         }
 
-        if (!await CanManageTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task == null || !await IsUserInProjectOrganizationAsync(req.AssigneeId, task.ProjectId, ct))
+        if (task == null || !await _taskWorkflow.IsUserInProjectOrganizationAsync(req.AssigneeId, task.ProjectId, ct))
         {
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
@@ -848,7 +851,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Subtask Deleted",
-            Description: $"{_currentUser.FullName} deleted subtask \"{subtaskTitle}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Description: $"{_currentUser.FullName} deleted subtask \"{subtaskTitle}\" from project \"{await _taskWorkflow.ResolveProjectNameAsync(projectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["subtaskTitle"] = subtaskTitle,
@@ -889,7 +892,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Deleted",
-            Description: $"{_currentUser.FullName} deleted task \"{taskTitle}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Description: $"{_currentUser.FullName} deleted task \"{taskTitle}\" from project \"{await _taskWorkflow.ResolveProjectNameAsync(projectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskTitle"] = taskTitle,
@@ -945,7 +948,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Dependency Added",
-            Description: $"{_currentUser.FullName} added dependency: \"{predecessor.Title}\" must precede \"{successor.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} added dependency: \"{predecessor.Title}\" must precede \"{successor.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["dependencyId"] = dependency.Id,
@@ -968,8 +971,8 @@ public class TasksController : BaseApiController
         if (dependency == null)
             return NotFound();
 
-        if (!await CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
-            !await CanManageTaskAsync(dependency.SuccessorTaskId, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await _taskWorkflow.CanManageTaskAsync(dependency.SuccessorTaskId, ct))
         {
             return Forbid();
         }
@@ -987,8 +990,8 @@ public class TasksController : BaseApiController
         if (dependency == null)
             return NotFound();
 
-        if (!await CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
-            !await CanManageTaskAsync(dependency.SuccessorTaskId, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await _taskWorkflow.CanManageTaskAsync(dependency.SuccessorTaskId, ct))
         {
             return Forbid();
         }
@@ -1011,7 +1014,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Dependency Removed",
-            Description: $"{_currentUser.FullName} removed dependency between \"{predTitle}\" and \"{succTitle}\" in project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Description: $"{_currentUser.FullName} removed dependency between \"{predTitle}\" and \"{succTitle}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(projectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["dependencyId"] = depId,
@@ -1023,190 +1026,5 @@ public class TasksController : BaseApiController
         );
 
         return NoContent();
-    }
-
-    private async Task RecalculateTaskMilestoneAsync(ProjectTask task, CancellationToken ct)
-    {
-        if (!task.MilestoneId.HasValue) return;
-        var milestone = await _db.Milestones
-            .Include(m => m.Tasks)
-            .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
-        if (milestone == null) return;
-        milestone.RecalculateProgressFromTasks();
-        milestone.RecalculateStatusFromTasks();
-        milestone.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Milestones.UpdateAsync(milestone, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
-    }
-
-    private async Task RecalculateProjectFromMilestonesAsync(Guid projectId, CancellationToken ct)
-    {
-        var project = await _db.Projects
-            .Include(p => p.Milestones)
-            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
-        if (project == null) return;
-        project.RecalculateProgressFromMilestones();
-        project.RecalculateStatusFromMilestones();
-        project.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Projects.UpdateAsync(project, ct);
-        await _uow.SaveChangesAsync(ct);
-    }
-
-    private async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)
-    {
-        if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.NotStarted
-            && task.ProgressPercentage > 0
-            && !req.ConfirmReset)
-        {
-            throw new ConflictException(
-                $"Task '{task.Title}' currently has {Math.Round(task.ProgressPercentage)}% progress. " +
-                "Switching to Not Started will reset this task and all of its subtasks to 0% progress. " +
-                "Re-submit with confirmReset=true to proceed.");
-        }
-
-        task.UpdateStatus(req.NewStatus);
-
-        if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.NotStarted
-            && req.ConfirmReset)
-        {
-            task.ResetAllProgress();
-        }
-        else if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.Completed)
-        {
-            task.MarkSubtaskCompleted();
-        }
-
-        task.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Tasks.UpdateAsync(task, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        if (task.ParentTaskId.HasValue)
-        {
-            var parent = await _uow.Tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
-            if (parent != null)
-            {
-                parent.RecalculateProgressFromSubtasks();
-                if (parent.ProgressPercentage >= 100)
-                {
-                    parent.MarkSubtaskCompleted();
-                }
-                parent.SetModified(_currentUser.UserId ?? "system");
-                await _uow.SaveChangesAsync(ct);
-            }
-        }
-    }
-
-    private async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
-    {
-        var projectId = await _db.Tasks
-            .Where(task => task.Id == taskId)
-            .Select(task => task.ProjectId)
-            .FirstOrDefaultAsync(ct);
-        return projectId != Guid.Empty && await _scope.CanAccessProjectAsync(projectId, ct);
-    }
-
-    private async Task<bool> CanManageTaskAsync(Guid taskId, CancellationToken ct)
-    {
-        var projectId = await _db.Tasks
-            .Where(task => task.Id == taskId)
-            .Select(task => task.ProjectId)
-            .FirstOrDefaultAsync(ct);
-        return projectId != Guid.Empty && await _scope.CanManageProjectAsync(projectId, ct);
-    }
-
-    private async Task<bool> CanWorkOnTaskAsync(Guid taskId, CancellationToken ct)
-    {
-        var currentUserId = Guid.TryParse(_currentUser.UserId, out var parsedCurrentUserId)
-            ? parsedCurrentUserId
-            : (Guid?)null;
-        var task = await _db.Tasks
-            .Where(item => item.Id == taskId)
-            .Select(item => new
-            {
-                item.ProjectId,
-                item.AssignedToUserId,
-                HasAssignment = currentUserId != null && item.Assignments.Any(assignment => assignment.UserId == currentUserId)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (task == null)
-        {
-            return false;
-        }
-
-        if (await _scope.CanManageProjectAsync(task.ProjectId, ct))
-        {
-            return true;
-        }
-
-        return currentUserId.HasValue &&
-            (task.AssignedToUserId == currentUserId || task.HasAssignment);
-    }
-
-    private async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
-    {
-        var scopedProjects = await _scope.ScopeProjectsAsync(
-            _db.Projects.Include(project => project.Department).AsQueryable(),
-            ct);
-        return (await scopedProjects.Select(project => project.Id).ToListAsync(ct)).ToHashSet();
-    }
-
-    private async Task<bool> IsUserInProjectOrganizationAsync(string userId, Guid projectId, CancellationToken ct)
-    {
-        if (!Guid.TryParse(userId, out var parsedUserId))
-        {
-            return false;
-        }
-
-        var organizationIds = await _db.Projects
-            .Where(project => project.Id == projectId)
-            .Select(project => new
-            {
-                PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
-                AssignedOrganizationIds = project.ProjectDepartments
-                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
-                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
-                    .ToList()
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (organizationIds == null)
-        {
-            return false;
-        }
-
-        var validOrganizationIds = organizationIds.AssignedOrganizationIds.ToHashSet();
-        if (organizationIds.PrimaryOrganizationId.HasValue)
-        {
-            validOrganizationIds.Add(organizationIds.PrimaryOrganizationId.Value);
-        }
-
-        if (validOrganizationIds.Count == 0)
-        {
-            return false;
-        }
-
-        return await _db.Users.AnyAsync(user =>
-            user.Id == parsedUserId &&
-            ((user.OrganizationId.HasValue && validOrganizationIds.Contains(user.OrganizationId.Value)) ||
-             user.DepartmentAssignments.Any(assignment =>
-                assignment.Department.OrganizationId.HasValue &&
-                validOrganizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
-             user.Department != null &&
-                user.Department.OrganizationId.HasValue &&
-                validOrganizationIds.Contains(user.Department.OrganizationId.Value)),
-            ct);
-    }
-
-    private async Task<string> ResolveProjectNameAsync(Guid projectId, CancellationToken ct)
-    {
-        if (projectId == Guid.Empty) return "Unknown Project";
-        var name = await _db.Projects
-            .Where(p => p.Id == projectId)
-            .Select(p => p.Name)
-            .FirstOrDefaultAsync(ct);
-        return name ?? "Unknown Project";
     }
 }
