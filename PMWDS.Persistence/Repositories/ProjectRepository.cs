@@ -6,7 +6,7 @@ using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Repositories;
 
 public class ProjectRepository
- : BaseRepository<Project>, IProjectRepository
+ : EfRepository<Project>, IProjectRepository
 {
     public ProjectRepository(ApplicationDbContext ctx)
     : base(ctx) { }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.DTOs.Controllers;
 using PMWDS.Application.Exceptions;
+using PMWDS.Application.Interfaces.Repositories;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
@@ -11,17 +12,26 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
 {
     private readonly ApplicationDbContext _db;
     private readonly IUnitOfWork _uow;
+    private readonly IProjectRepository _projects;
+    private readonly ITaskRepository _tasks;
+    private readonly IRepository<Milestone> _milestones;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
 
     public TaskWorkflowService(
         ApplicationDbContext db,
         IUnitOfWork uow,
+        IProjectRepository projects,
+        ITaskRepository tasks,
+        IRepository<Milestone> milestones,
         RoleScopeService scope,
         ICurrentUserService currentUser)
     {
         _db = db;
         _uow = uow;
+        _projects = projects;
+        _tasks = tasks;
+        _milestones = milestones;
         _scope = scope;
         _currentUser = currentUser;
     }
@@ -29,17 +39,32 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
     public async Task RecalculateTaskMilestoneAsync(ProjectTask task, CancellationToken ct)
     {
         if (!task.MilestoneId.HasValue) return;
-        var milestone = await _db.Milestones
-            .Include(m => m.Tasks)
-            .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
-        if (milestone == null) return;
-        milestone.RecalculateProgressFromTasks();
-        milestone.RecalculateStatusFromTasks();
-        milestone.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Milestones.UpdateAsync(milestone, ct);
-        await _uow.SaveChangesAsync(ct);
+        await _uow.BeginTransactionAsync(ct);
+        try
+        {
+            var milestone = await _db.Milestones
+                .Include(m => m.Tasks)
+                .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
+            if (milestone == null)
+            {
+                await _uow.RollbackTransactionAsync(ct);
+                return;
+            }
 
-        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
+            milestone.RecalculateProgressFromTasks();
+            milestone.RecalculateStatusFromTasks();
+            milestone.SetModified(_currentUser.UserId ?? "system");
+            await _milestones.UpdateAsync(milestone, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
+            await _uow.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _uow.RollbackTransactionAsync(ct);
+            throw;
+        }
     }
 
     public async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)
@@ -66,23 +91,34 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
             task.MarkSubtaskCompleted();
         }
 
-        task.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Tasks.UpdateAsync(task, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        if (task.ParentTaskId.HasValue)
+        await _uow.BeginTransactionAsync(ct);
+        try
         {
-            var parent = await _uow.Tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
-            if (parent != null)
+            task.SetModified(_currentUser.UserId ?? "system");
+            await _tasks.UpdateAsync(task, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            if (task.ParentTaskId.HasValue)
             {
-                parent.RecalculateProgressFromSubtasks();
-                if (parent.ProgressPercentage >= 100)
+                var parent = await _tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
+                if (parent != null)
                 {
-                    parent.MarkSubtaskCompleted();
+                    parent.RecalculateProgressFromSubtasks();
+                    if (parent.ProgressPercentage >= 100)
+                    {
+                        parent.MarkSubtaskCompleted();
+                    }
+                    parent.SetModified(_currentUser.UserId ?? "system");
+                    await _uow.SaveChangesAsync(ct);
                 }
-                parent.SetModified(_currentUser.UserId ?? "system");
-                await _uow.SaveChangesAsync(ct);
             }
+
+            await _uow.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _uow.RollbackTransactionAsync(ct);
+            throw;
         }
     }
 
@@ -208,7 +244,7 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
         project.RecalculateProgressFromMilestones();
         project.RecalculateStatusFromMilestones();
         project.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Projects.UpdateAsync(project, ct);
+        await _projects.UpdateAsync(project, ct);
         await _uow.SaveChangesAsync(ct);
     }
 }

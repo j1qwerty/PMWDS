@@ -145,6 +145,10 @@ builder.Services.AddAuthorization(PermissionPolicyRegistry.AddPolicies);
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped(typeof(PMWDS.Application.Interfaces.Repositories.IRepository<>), typeof(EfRepository<>));
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.IUserRepository, UserRepository>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<RoleScopeService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ITaskWorkflowService, TaskWorkflowService>();

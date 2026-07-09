@@ -5,12 +5,12 @@ using PMWDS.Domain.Common;
 using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Repositories;
 
-public class BaseRepository<T>
+public class EfRepository<T>
  : IRepository<T> where T : class
 {
     protected readonly ApplicationDbContext _context;
     protected readonly DbSet<T> _dbSet;
-    public BaseRepository(ApplicationDbContext context)
+    public EfRepository(ApplicationDbContext context)
     {
         _context = context;
         _dbSet = context.Set<T>();

@@ -359,7 +359,7 @@ For SQLite-only development:
 | Login fails | Check SeedData.cs for seeded users; verify PasswordHash logic |
 | EF Core Design Time | Set `PMWDS_CONNECTION_STRING` env var for SQLite |
 | File upload hangs | Local file storage is now supported - restart API |
-| UploadDocument 500 (0 rows) | BaseRepository.UpdateAsync was using _dbSet.Update() which marks the entire entity graph as modified; changed to Entry().State = Modified |
+| UploadDocument 500 (0 rows) | EfRepository.UpdateAsync was using _dbSet.Update() which marks the entire entity graph as modified; changed to Entry().State = Modified |
 | GetProjectDetails 500 | GetProjectDetailsQueryHandler used AutoMapper without a mapping profile; changed to FromEntity() |
 
 ---

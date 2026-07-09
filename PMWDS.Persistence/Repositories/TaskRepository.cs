@@ -5,7 +5,7 @@ using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Repositories;
 
 public class TaskRepository
- : BaseRepository<ProjectTask>, ITaskRepository
+ : EfRepository<ProjectTask>, ITaskRepository
 {
     public TaskRepository(ApplicationDbContext ctx)
     : base(ctx) { }

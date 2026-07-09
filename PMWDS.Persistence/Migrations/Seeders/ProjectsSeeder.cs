@@ -9,6 +9,27 @@ internal static class ProjectsSeeder
 {
     internal static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct)
     {
+        if (context.Database.CurrentTransaction != null)
+        {
+            await SeedCoreAsync(context, ct);
+            return;
+        }
+
+        await using var transaction = await context.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await SeedCoreAsync(context, ct);
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    private static async Task SeedCoreAsync(ApplicationDbContext context, CancellationToken ct)
+    {
         await ClearExistingProjectsAsync(context, ct);
 
         var departments = await context.Departments.ToListAsync(ct);

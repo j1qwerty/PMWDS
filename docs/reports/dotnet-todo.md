@@ -97,10 +97,10 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 | 2.6 | Configure `RowVersion` as an EF Core concurrency token (`IsConcurrencyToken`/`IsRowVersion`); fix silent overwrite. `[coordinated]` | `BaseEntity.cs`, configurations | db 9.1 | Done |
 | 2.7 | `EnableRetryOnFailure()` for SQL Server (transient faults). | DbContext registration | db 6.3 | Done |
 | 2.8 | Normalise user-ID types (string vs Guid) across the task aggregate; stop ignoring `TaskAssignment.User` / `TimeEntry.User` navigations. `[coordinated]` | `TaskAssignment.cs`, `TimeEntry.cs`, `TaskComment.cs`, `Project.cs`, configurations | db 2.1 | Done |
-| 2.9 | Fix N+1 / read perf: add `Include`/`AsSplitQuery` to `ProjectRepository` & `TaskRepository`; use `AverageAsync`; add `AsNoTracking` to read-only queries; add `Select` projections. `[independent]` per repo | `BaseRepository.cs`, `ProjectRepository.cs`, `TaskRepository.cs`, `UserRepository.cs` | db 1.1–1.4 / 5.2 | 🔴 |
+| 2.9 | Fix N+1 / read perf: add `Include`/`AsSplitQuery` to `ProjectRepository` & `TaskRepository`; use `AverageAsync`; add `AsNoTracking` to read-only queries; add `Select` projections. `[independent]` per repo | `EfRepository.cs`, `ProjectRepository.cs`, `TaskRepository.cs`, `UserRepository.cs` | db 1.1–1.4 / 5.2 | 🔴 |
 | 2.10 | Add filtered `IsDeleted` indexes + composite indexes (ProjectTask, Notification, TaskAssignment, TimeEntry, Milestone). `[independent]` | configurations | db 5.1 / 8.2 | Done |
-| 2.11 | `BaseRepository.DeleteAsync` → soft delete (not hard `Remove`). `[coordinated]` | `BaseRepository.cs`, `UnitOfWork.cs` | db 8.3 | Done |
-| 2.12 | Wrap multi-`SaveChanges` seeders in explicit transactions (`ProjectsSeeder.ClearExistingProjectsAsync`, `SeedData.SeedAsync`). `[independent]` | `Seeders/*` | db 3.3 / 7.2 | 🔴 |
+| 2.11 | `EfRepository.DeleteAsync` → soft delete (not hard `Remove`). `[coordinated]` | `EfRepository.cs`, `UnitOfWork.cs` | db 8.3 | Done |
+| 2.12 | Wrap multi-`SaveChanges` seeders in explicit transactions (`ProjectsSeeder.ClearExistingProjectsAsync`, `SeedData.SeedAsync`). `[independent]` | `Seeders/*` | db 3.3 / 7.2 | Done |
 
 ---
 
@@ -110,7 +110,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 |---|------|-------|--------|--------|
 | 3.1 | Remove Service Locator in `BaseApiController` — constructor-inject `IMediator`. `[coordinated]` | `BaseApiController.cs:14` | arch 3.2 | Done |
 | 3.2 | Split God `IAIService` (30+ methods) → `IRecommendationService`, `IPredictionService`, `IProjectHealthService`, `IModelManagementService`, `IChatService`. `[coordinated]` | `IAIService.cs`, `AIService*.cs`, consumers | arch 3.1 / 11.1 | Done |
-| 3.3 | Slim God `IUnitOfWork` (34 repos); prefer specific repositories; remove redundant generic `BaseRepository` over EF Core. `[coordinated]` | `IUnitOfWork.cs`, `UnitOfWork.cs`, `BaseRepository.cs` | arch 7.1/7.2 | 🔴 |
+| 3.3 | Slim God `IUnitOfWork` (34 repos); prefer specific repositories; remove redundant generic `BaseRepository` over EF Core. `[coordinated]` | `IUnitOfWork.cs`, `UnitOfWork.cs`, `EfRepository.cs` | arch 7.1/7.2 | Done |
 | 3.4 | Refactor `TasksController` (1244 lines) — move business logic to application-layer commands/handlers; pull out `Recalculate*`, `ApplyStatusChange*`, `IsUserInProjectOrganization*`. `[coordinated]` | `TasksController.cs`, `Application/Features/Tasks/**` | api 5 / arch 9 | Done |
 | 3.5 | Dispatch domain events after `SaveChanges` via MediatR (currently collected but never dispatched). `[coordinated]` | `Program.cs`, `UnitOfWork.cs` | arch 8.2 | Done |
 | 3.6 | Move DTO records out of controllers → `PMWDS.Application/DTOs`. `[independent]` per controller | all 17 controllers with inline DTOs | api 5.3 / cq 4.3 | Done |
@@ -178,7 +178,7 @@ See **Phase 1** for the full plan. Summary of the gaps to fix project-wide:
 - 2.3 SQL Server startup now applies EF Core migrations with `Database.MigrateAsync()` instead of dropping/recreating or using `EnsureCreatedAsync`.
 - 2.6 `BaseEntity.RowVersion` is configured globally as an EF Core concurrency token while retaining the existing integer, domain-incremented schema.
 - 2.10 Added provider-safe `IsDeleted` and composite indexes for tasks, notifications, task assignments, time entries, and milestones to support soft-delete filtered reads.
-- 2.11 `BaseRepository.DeleteAsync` now calls `BaseEntity.SoftDelete("system")` for domain entities instead of hard-removing rows.
+- 2.11 `EfRepository.DeleteAsync` now calls `BaseEntity.SoftDelete("system")` for domain entities instead of hard-removing rows.
 - 2.5 cascade-delete fix **applied** (per `issue-sql-cascade-paths.md`) — pending verification + regression test.
 
 ## High-effort / high-impact (plan accordingly)
