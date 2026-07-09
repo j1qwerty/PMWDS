@@ -56,7 +56,9 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        var tasksQuery = _db.Tasks.Where(task => task.ProjectId == projectId);
+        var tasksQuery = _db.Tasks
+            .Include(t => t.SubTasks)
+            .Where(task => task.ProjectId == projectId);
 
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
