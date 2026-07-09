@@ -92,7 +92,28 @@ public static class DatabaseConnectionService
         }
 
         Console.WriteLine("[PMWDS] Applying database migrations...");
-        await db.Database.MigrateAsync(ct);
+        try
+        {
+            await db.Database.MigrateAsync(ct);
+        }
+        catch when (environment.IsDevelopment())
+        {
+            Console.WriteLine("[PMWDS] SQL Server development migration failed; recreating database from InitialCreate.");
+            await db.Database.EnsureDeletedAsync(ct);
+            await db.Database.MigrateAsync(ct);
+        }
+
+        if (!await HasExpectedSqlServerSchemaAsync(db, ct))
+        {
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException("SQL Server schema is incomplete after migrations. Refusing to reset outside Development.");
+            }
+
+            Console.WriteLine("[PMWDS] SQL Server development schema is incomplete; recreating database from InitialCreate.");
+            await db.Database.EnsureDeletedAsync(ct);
+            await db.Database.MigrateAsync(ct);
+        }
     }
 
     private static DatabaseConnectionStatus SelectProvider(
@@ -321,6 +342,116 @@ public static class DatabaseConnectionService
         command.CommandText = $"SELECT name FROM sqlite_master WHERE type='index' AND name='{indexName}'";
         var result = await command.ExecuteScalarAsync(ct);
         return result != null && result != DBNull.Value;
+    }
+
+    private static async Task<bool> HasExpectedSqlServerSchemaAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        if (!await db.Database.CanConnectAsync(ct))
+        {
+            return false;
+        }
+
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            var expectedTables = new[]
+            {
+                "Organizations",
+                "Users",
+                "Roles",
+                "Projects",
+                "Milestones",
+                "MilestoneDependencies",
+                "Tasks",
+                "TaskAssignments",
+                "TimeEntries",
+                "AIGlobalSettings"
+            };
+
+            foreach (var table in expectedTables)
+            {
+                if (!await HasSqlServerTableAsync(connection, table, ct))
+                {
+                    return false;
+                }
+            }
+
+            return await HasSqlServerColumnAsync(connection, "Roles", "Key", ct) &&
+                await HasSqlServerColumnAsync(connection, "Users", "RefreshTokenHash", ct) &&
+                await HasSqlServerColumnAsync(connection, "Users", "AccessTokenVersion", ct) &&
+                await HasSqlServerColumnAsync(connection, "Milestones", "DepartmentId", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Projects", "ProjectManagerId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Tasks", "AssignedToUserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Tasks", "AssignedByUserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Tasks", "AIRecommendedAssigneeId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "TaskAssignments", "UserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "TaskComments", "UserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "TimeEntries", "UserId", "uniqueidentifier", ct);
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task<bool> HasSqlServerTableAsync(DbConnection connection, string tableName, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT OBJECT_ID(@tableName, 'U')";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "@tableName";
+        parameter.Value = $"dbo.{tableName}";
+        command.Parameters.Add(parameter);
+        var result = await command.ExecuteScalarAsync(ct);
+        return result != null && result != DBNull.Value;
+    }
+
+    private static async Task<bool> HasSqlServerColumnAsync(DbConnection connection, string tableName, string columnName, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT 1
+FROM sys.columns c
+INNER JOIN sys.tables t ON c.object_id = t.object_id
+WHERE t.name = @tableName AND c.name = @columnName";
+        var tableParameter = command.CreateParameter();
+        tableParameter.ParameterName = "@tableName";
+        tableParameter.Value = tableName;
+        command.Parameters.Add(tableParameter);
+        var columnParameter = command.CreateParameter();
+        columnParameter.ParameterName = "@columnName";
+        columnParameter.Value = columnName;
+        command.Parameters.Add(columnParameter);
+        var result = await command.ExecuteScalarAsync(ct);
+        return result != null && result != DBNull.Value;
+    }
+
+    private static async Task<bool> HasSqlServerColumnTypeAsync(DbConnection connection, string tableName, string columnName, string dataType, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @columnName";
+        var tableParameter = command.CreateParameter();
+        tableParameter.ParameterName = "@tableName";
+        tableParameter.Value = tableName;
+        command.Parameters.Add(tableParameter);
+        var columnParameter = command.CreateParameter();
+        columnParameter.ParameterName = "@columnName";
+        columnParameter.Value = columnName;
+        command.Parameters.Add(columnParameter);
+        var result = await command.ExecuteScalarAsync(ct);
+        return string.Equals(result?.ToString(), dataType, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task EnsureSqliteCompatibilityColumnsAsync(ApplicationDbContext db, CancellationToken ct)

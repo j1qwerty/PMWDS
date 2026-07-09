@@ -14,6 +14,8 @@ public class UserConfiguration
         .HasMaxLength(100).IsRequired();
         b.Property(e => e.LastName)
         .HasMaxLength(100).IsRequired();
+        b.Property(e => e.Email)
+        .HasMaxLength(256).IsRequired();
         b.Property(e => e.JobTitle)
         .HasMaxLength(200);
         b.Property(e => e.EmployeeCode)

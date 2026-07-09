@@ -171,7 +171,8 @@ export function DepartmentsPage() {
                 {/* Left Panel: Department List */}
                 <DepartmentList
                     departments={filteredDepartments}
-                    // users={users}
+                    // users={users}cls
+                    
                     selectedDeptId={selectedDeptId}
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}

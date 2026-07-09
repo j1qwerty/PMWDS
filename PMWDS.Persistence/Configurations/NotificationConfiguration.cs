@@ -10,6 +10,8 @@ public class NotificationConfiguration
     {
         b.ToTable("Notifications");
         b.HasKey(e => e.Id);
+        b.Property(e => e.UserId)
+        .HasMaxLength(64).IsRequired();
         b.Property(e => e.Title)
         .HasMaxLength(500).IsRequired();
         b.Property(e => e.Message)

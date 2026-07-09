@@ -1,8 +1,12 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using PMWDS.Persistence.Context;
 
 namespace PMWDS.Persistence.Migrations;
 
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20260630000000_InitialCreate")]
 public partial class InitialCreate : Migration
 {
    protected override void Up(MigrationBuilder m)
@@ -28,7 +32,7 @@ public partial class InitialCreate : Migration
          IsActive = t.Column<bool>(nullable: false)
       }, constraints: t => t.PrimaryKey("PK_Organizations", x => x.Id));
       m.CreateIndex("IX_Organizations_Name", "Organizations", "Name", unique: true);
-      m.CreateIndex("IX_Organizations_TaxId", "Organizations", "TaxId", unique: true);
+      m.CreateIndex("IX_Organizations_TaxId", "Organizations", "TaxId", unique: true, filter: "[TaxId] IS NOT NULL AND [TaxId] <> ''");
 
       // Departments
       m.CreateTable("Departments", t => new
@@ -64,7 +68,7 @@ public partial class InitialCreate : Migration
       m.CreateTable("Users", t => new
       {
          Id = t.Column<Guid>(nullable: false),
-         Email = t.Column<string>(nullable: false),
+         Email = t.Column<string>(maxLength: 256, nullable: false),
          FirstName = t.Column<string>(maxLength: 100, nullable: false),
          LastName = t.Column<string>(maxLength: 100, nullable: false),
          PhoneNumber = t.Column<string>(nullable: false),
@@ -82,6 +86,10 @@ public partial class InitialCreate : Migration
          PasswordHash = t.Column<string>(nullable: true),
          PasswordResetTokenHash = t.Column<string>(maxLength: 128, nullable: true),
          PasswordResetTokenExpiresAt = t.Column<DateTime>(nullable: true),
+         RefreshTokenHash = t.Column<string>(maxLength: 128, nullable: true),
+         RefreshTokenExpiresAt = t.Column<DateTime>(nullable: true),
+         RefreshTokenRevokedAt = t.Column<DateTime>(nullable: true),
+         AccessTokenVersion = t.Column<int>(nullable: false, defaultValue: 0),
          OrganizationId = t.Column<Guid>(nullable: true),
          CreatedDate = t.Column<DateTime>(nullable: false),
          CreatedBy = t.Column<string>(nullable: false),
@@ -232,6 +240,7 @@ public partial class InitialCreate : Migration
       m.CreateTable("Roles", t => new
       {
          Id = t.Column<Guid>(nullable: false),
+         Key = t.Column<string>(maxLength: 100, nullable: false),
          Name = t.Column<string>(maxLength: 100, nullable: false),
          Description = t.Column<string>(maxLength: 500, nullable: false),
          PermissionLevel = t.Column<int>(nullable: false),
@@ -246,6 +255,7 @@ public partial class InitialCreate : Migration
          Tags = t.Column<string>(nullable: true),
          IsActive = t.Column<bool>(nullable: false)
       }, constraints: t => t.PrimaryKey("PK_Roles", x => x.Id));
+      m.CreateIndex("IX_Roles_Key", "Roles", "Key", unique: true);
       m.CreateIndex("IX_Roles_Name", "Roles", "Name", unique: true);
 
       // RolePermissions (join table)
@@ -285,7 +295,7 @@ public partial class InitialCreate : Migration
          Priority = t.Column<string>(maxLength: 20, nullable: false),
          Status = t.Column<string>(maxLength: 20, nullable: false),
          DepartmentId = t.Column<Guid>(nullable: false),
-         ProjectManagerId = t.Column<string>(nullable: false),
+         ProjectManagerId = t.Column<Guid>(nullable: true),
          ClientName = t.Column<string>(nullable: true),
          StakeholderIds = t.Column<string>(nullable: true),
          PlannedStartDate = t.Column<DateTime>(nullable: false),
@@ -315,6 +325,7 @@ public partial class InitialCreate : Migration
       {
          t.PrimaryKey("PK_Projects", x => x.Id);
          t.ForeignKey("FK_Projects_Departments_DepartmentId", x => x.DepartmentId, "Departments", "Id", onDelete: ReferentialAction.Cascade);
+         t.ForeignKey("FK_Projects_Users_ProjectManagerId", x => x.ProjectManagerId, "Users", "Id");
       });
       m.CreateIndex("IX_Projects_AIDelayRiskScore", "Projects", "AIDelayRiskScore");
       m.CreateIndex("IX_Projects_DepartmentId", "Projects", "DepartmentId");
@@ -342,7 +353,7 @@ public partial class InitialCreate : Migration
       {
          t.PrimaryKey("PK_ProjectDepartments", x => x.Id);
          t.ForeignKey("FK_ProjectDepartments_Projects_ProjectId", x => x.ProjectId, "Projects", "Id", onDelete: ReferentialAction.Cascade);
-         t.ForeignKey("FK_ProjectDepartments_Departments_DepartmentId", x => x.DepartmentId, "Departments", "Id", onDelete: ReferentialAction.Cascade);
+         t.ForeignKey("FK_ProjectDepartments_Departments_DepartmentId", x => x.DepartmentId, "Departments", "Id");
       });
       m.CreateIndex("IX_ProjectDepartments_DepartmentId", "ProjectDepartments", "DepartmentId");
       m.CreateIndex("IX_ProjectDepartments_ProjectId_DepartmentId", "ProjectDepartments", new[] { "ProjectId", "DepartmentId" }, unique: true);
@@ -352,6 +363,7 @@ public partial class InitialCreate : Migration
       {
          Id = t.Column<Guid>(nullable: false),
          ProjectId = t.Column<Guid>(nullable: false),
+         DepartmentId = t.Column<Guid>(nullable: true),
          Name = t.Column<string>(maxLength: 300, nullable: false),
          Description = t.Column<string>(maxLength: 2000, nullable: false),
          Order = t.Column<int>(nullable: false),
@@ -372,11 +384,45 @@ public partial class InitialCreate : Migration
       }, constraints: t =>
       {
          t.PrimaryKey("PK_Milestones", x => x.Id);
-         t.ForeignKey("FK_Milestones_Projects_ProjectId", x => x.ProjectId, "Projects", "Id", onDelete: ReferentialAction.Cascade);
+         t.ForeignKey("FK_Milestones_Projects_ProjectId", x => x.ProjectId, "Projects", "Id");
+         t.ForeignKey("FK_Milestones_Departments_DepartmentId", x => x.DepartmentId, "Departments", "Id", onDelete: ReferentialAction.SetNull);
       });
+      m.CreateIndex("IX_Milestones_DepartmentId", "Milestones", "DepartmentId");
       m.CreateIndex("IX_Milestones_DueDate", "Milestones", "DueDate");
       m.CreateIndex("IX_Milestones_ProjectId", "Milestones", "ProjectId");
       m.CreateIndex("IX_Milestones_Status", "Milestones", "Status");
+      m.CreateIndex("IX_Milestones_IsDeleted", "Milestones", "IsDeleted");
+      m.CreateIndex("IX_Milestones_IsDeleted_DepartmentId", "Milestones", new[] { "IsDeleted", "DepartmentId" });
+      m.CreateIndex("IX_Milestones_IsDeleted_ProjectId_Status_DueDate", "Milestones", new[] { "IsDeleted", "ProjectId", "Status", "DueDate" });
+
+      // MilestoneDependencies
+      m.CreateTable("MilestoneDependencies", t => new
+      {
+         Id = t.Column<Guid>(nullable: false),
+         ProjectId = t.Column<Guid>(nullable: false),
+         PrerequisiteMilestoneId = t.Column<Guid>(nullable: false),
+         DependentMilestoneId = t.Column<Guid>(nullable: false),
+         Type = t.Column<string>(maxLength: 30, nullable: false),
+         ThresholdPercentage = t.Column<decimal>(type: "decimal(5,2)", nullable: true),
+         CreatedDate = t.Column<DateTime>(nullable: false),
+         CreatedBy = t.Column<string>(nullable: false),
+         ModifiedDate = t.Column<DateTime>(nullable: true),
+         ModifiedBy = t.Column<string>(nullable: true),
+         IsDeleted = t.Column<bool>(nullable: false),
+         RowVersion = t.Column<int>(nullable: false),
+         Notes = t.Column<string>(nullable: true),
+         Tags = t.Column<string>(nullable: true),
+         IsActive = t.Column<bool>(nullable: false)
+      }, constraints: t =>
+      {
+         t.PrimaryKey("PK_MilestoneDependencies", x => x.Id);
+         t.ForeignKey("FK_MilestoneDependencies_Projects_ProjectId", x => x.ProjectId, "Projects", "Id", onDelete: ReferentialAction.Cascade);
+         t.ForeignKey("FK_MilestoneDependencies_Milestones_PrerequisiteMilestoneId", x => x.PrerequisiteMilestoneId, "Milestones", "Id", onDelete: ReferentialAction.Restrict);
+         t.ForeignKey("FK_MilestoneDependencies_Milestones_DependentMilestoneId", x => x.DependentMilestoneId, "Milestones", "Id", onDelete: ReferentialAction.Restrict);
+      });
+      m.CreateIndex("IX_MilestoneDependencies_ProjectId", "MilestoneDependencies", "ProjectId");
+      m.CreateIndex("IX_MilestoneDependencies_PrerequisiteMilestoneId", "MilestoneDependencies", "PrerequisiteMilestoneId");
+      m.CreateIndex("IX_MilestoneDependencies_DependentMilestoneId", "MilestoneDependencies", "DependentMilestoneId");
 
       // Tasks
       m.CreateTable("Tasks", t => new
@@ -389,8 +435,8 @@ public partial class InitialCreate : Migration
          Description = t.Column<string>(maxLength: 4000, nullable: false),
          Status = t.Column<string>(maxLength: 20, nullable: false),
          Priority = t.Column<string>(maxLength: 20, nullable: false),
-         AssignedToUserId = t.Column<string>(nullable: true),
-         AssignedByUserId = t.Column<string>(nullable: true),
+         AssignedToUserId = t.Column<Guid>(nullable: true),
+         AssignedByUserId = t.Column<Guid>(nullable: true),
          AssignedDate = t.Column<DateTime>(nullable: true),
          StartDate = t.Column<DateTime>(nullable: false),
          DueDate = t.Column<DateTime>(nullable: false),
@@ -407,7 +453,7 @@ public partial class InitialCreate : Migration
          AIDelayProbability = t.Column<decimal>(type: "decimal(5,4)", nullable: false),
          AIPredictedCompletionDate = t.Column<DateTime>(nullable: true),
          AIOptimalAssigneeScore = t.Column<decimal>(type: "decimal(5,4)", nullable: false),
-         AIRecommendedAssigneeId = t.Column<string>(nullable: true),
+         AIRecommendedAssigneeId = t.Column<Guid>(nullable: true),
          AIRiskFactors = t.Column<string>(maxLength: 2000, nullable: true),
          CreatedDate = t.Column<DateTime>(nullable: false),
          CreatedBy = t.Column<string>(nullable: false),
@@ -424,6 +470,7 @@ public partial class InitialCreate : Migration
          t.ForeignKey("FK_Tasks_Projects_ProjectId", x => x.ProjectId, "Projects", "Id", onDelete: ReferentialAction.Cascade);
          t.ForeignKey("FK_Tasks_Milestones_MilestoneId", x => x.MilestoneId, "Milestones", "Id", onDelete: ReferentialAction.SetNull);
          t.ForeignKey("FK_Tasks_Tasks_ParentTaskId", x => x.ParentTaskId, "Tasks", "Id", onDelete: ReferentialAction.Restrict);
+         t.ForeignKey("FK_Tasks_Users_AssignedToUserId", x => x.AssignedToUserId, "Users", "Id");
       });
       m.CreateIndex("IX_Tasks_AIDelayProbability", "Tasks", "AIDelayProbability");
       m.CreateIndex("IX_Tasks_AssignedToUserId", "Tasks", "AssignedToUserId");
@@ -433,13 +480,17 @@ public partial class InitialCreate : Migration
       m.CreateIndex("IX_Tasks_ParentTaskId", "Tasks", "ParentTaskId");
       m.CreateIndex("IX_Tasks_ProjectId", "Tasks", "ProjectId");
       m.CreateIndex("IX_Tasks_Status", "Tasks", "Status");
+      m.CreateIndex("IX_Tasks_IsDeleted", "Tasks", "IsDeleted");
+      m.CreateIndex("IX_Tasks_IsDeleted_AssignedToUserId", "Tasks", new[] { "IsDeleted", "AssignedToUserId" });
+      m.CreateIndex("IX_Tasks_IsDeleted_MilestoneId", "Tasks", new[] { "IsDeleted", "MilestoneId" });
+      m.CreateIndex("IX_Tasks_IsDeleted_ProjectId_Status", "Tasks", new[] { "IsDeleted", "ProjectId", "Status" });
 
       // TaskAssignments
       m.CreateTable("TaskAssignments", t => new
       {
          Id = t.Column<Guid>(nullable: false),
          TaskId = t.Column<Guid>(nullable: false),
-         UserId = t.Column<string>(maxLength: 64, nullable: false),
+         UserId = t.Column<Guid>(nullable: false),
          AssignedAt = t.Column<DateTime>(nullable: false),
          ReleasedAt = t.Column<DateTime>(nullable: true),
          IsActive = t.Column<bool>(nullable: false),
@@ -456,10 +507,13 @@ public partial class InitialCreate : Migration
       {
          t.PrimaryKey("PK_TaskAssignments", x => x.Id);
          t.ForeignKey("FK_TaskAssignments_Tasks_TaskId", x => x.TaskId, "Tasks", "Id", onDelete: ReferentialAction.Cascade);
+         t.ForeignKey("FK_TaskAssignments_Users_UserId", x => x.UserId, "Users", "Id");
       });
       m.CreateIndex("IX_TaskAssignments_IsActive", "TaskAssignments", "IsActive");
       m.CreateIndex("IX_TaskAssignments_TaskId", "TaskAssignments", "TaskId");
       m.CreateIndex("IX_TaskAssignments_UserId", "TaskAssignments", "UserId");
+      m.CreateIndex("IX_TaskAssignments_IsDeleted", "TaskAssignments", "IsDeleted");
+      m.CreateIndex("IX_TaskAssignments_IsDeleted_TaskId_UserId_IsActive", "TaskAssignments", new[] { "IsDeleted", "TaskId", "UserId", "IsActive" });
 
       // TaskAttachments
       m.CreateTable("TaskAttachments", t => new
@@ -489,7 +543,7 @@ public partial class InitialCreate : Migration
       {
          Id = t.Column<Guid>(nullable: false),
          TaskId = t.Column<Guid>(nullable: false),
-         UserId = t.Column<string>(nullable: false),
+         UserId = t.Column<Guid>(nullable: true),
          Content = t.Column<string>(nullable: false),
          IsSystemGenerated = t.Column<bool>(nullable: false),
          ParentCommentId = t.Column<Guid>(nullable: true),
@@ -535,7 +589,7 @@ public partial class InitialCreate : Migration
       {
          Id = t.Column<Guid>(nullable: false),
          TaskId = t.Column<Guid>(nullable: false),
-         UserId = t.Column<string>(maxLength: 64, nullable: false),
+         UserId = t.Column<Guid>(nullable: false),
          StartTime = t.Column<DateTime>(nullable: false),
          EndTime = t.Column<DateTime>(nullable: true),
          Description = t.Column<string>(maxLength: 2000, nullable: false),
@@ -551,10 +605,13 @@ public partial class InitialCreate : Migration
       {
          t.PrimaryKey("PK_TimeEntries", x => x.Id);
          t.ForeignKey("FK_TimeEntries_Tasks_TaskId", x => x.TaskId, "Tasks", "Id", onDelete: ReferentialAction.Cascade);
+         t.ForeignKey("FK_TimeEntries_Users_UserId", x => x.UserId, "Users", "Id");
       });
       m.CreateIndex("IX_TimeEntries_StartTime", "TimeEntries", "StartTime");
       m.CreateIndex("IX_TimeEntries_TaskId", "TimeEntries", "TaskId");
       m.CreateIndex("IX_TimeEntries_UserId", "TimeEntries", "UserId");
+      m.CreateIndex("IX_TimeEntries_IsDeleted", "TimeEntries", "IsDeleted");
+      m.CreateIndex("IX_TimeEntries_IsDeleted_TaskId_UserId_StartTime", "TimeEntries", new[] { "IsDeleted", "TaskId", "UserId", "StartTime" });
 
       // ProjectDocuments
       m.CreateTable("ProjectDocuments", t => new
@@ -585,7 +642,7 @@ public partial class InitialCreate : Migration
       m.CreateTable("Notifications", t => new
       {
          Id = t.Column<Guid>(nullable: false),
-         UserId = t.Column<string>(nullable: false),
+         UserId = t.Column<string>(maxLength: 64, nullable: false),
          Title = t.Column<string>(maxLength: 500, nullable: false),
          Message = t.Column<string>(maxLength: 2000, nullable: false),
          Type = t.Column<string>(maxLength: 50, nullable: false),
@@ -606,6 +663,8 @@ public partial class InitialCreate : Migration
       m.CreateIndex("IX_Notifications_CreatedDate", "Notifications", "CreatedDate");
       m.CreateIndex("IX_Notifications_IsRead", "Notifications", "IsRead");
       m.CreateIndex("IX_Notifications_UserId", "Notifications", "UserId");
+      m.CreateIndex("IX_Notifications_IsDeleted", "Notifications", "IsDeleted");
+      m.CreateIndex("IX_Notifications_IsDeleted_UserId_IsRead_CreatedDate", "Notifications", new[] { "IsDeleted", "UserId", "IsRead", "CreatedDate" });
 
       // AuditLogs
       m.CreateTable("AuditLogs", t => new
@@ -966,6 +1025,27 @@ public partial class InitialCreate : Migration
       m.CreateIndex("IX_AIProviderCredentials_Enabled", "AIProviderCredentials", "Enabled");
       m.CreateIndex("IX_AIProviderCredentials_Provider", "AIProviderCredentials", "Provider", unique: true);
 
+      // AIGlobalSettings
+      m.CreateTable("AIGlobalSettings", t => new
+      {
+         Id = t.Column<Guid>(nullable: false),
+         DefaultProvider = t.Column<string>(maxLength: 80, nullable: false),
+         DefaultModel = t.Column<string>(maxLength: 200, nullable: false),
+         RiskThreshold = t.Column<double>(nullable: false),
+         UseLocalModel = t.Column<bool>(nullable: false),
+         MLModelPath = t.Column<string>(maxLength: 500, nullable: false),
+         CreatedDate = t.Column<DateTime>(nullable: false),
+         CreatedBy = t.Column<string>(nullable: false),
+         ModifiedDate = t.Column<DateTime>(nullable: true),
+         ModifiedBy = t.Column<string>(nullable: true),
+         IsDeleted = t.Column<bool>(nullable: false),
+         RowVersion = t.Column<int>(nullable: false),
+         Notes = t.Column<string>(nullable: true),
+         Tags = t.Column<string>(nullable: true),
+         IsActive = t.Column<bool>(nullable: false)
+      }, constraints: t => t.PrimaryKey("PK_AIGlobalSettings", x => x.Id));
+      m.CreateIndex("IX_AIGlobalSettings_DefaultProvider", "AIGlobalSettings", "DefaultProvider");
+
       // TrainingDataPoints
       m.CreateTable("TrainingDataPoints", t => new
       {
@@ -1086,6 +1166,7 @@ public partial class InitialCreate : Migration
       m.DropTable("DelayPredictions");
       m.DropTable("PredictionResults");
       m.DropTable("TrainingDataPoints");
+      m.DropTable("AIGlobalSettings");
       m.DropTable("AIProviderCredentials");
       m.DropTable("AIModels");
       m.DropTable("ReportSchedules");
@@ -1109,6 +1190,7 @@ public partial class InitialCreate : Migration
       m.DropTable("TaskAttachments");
       m.DropTable("TaskAssignments");
       m.DropTable("Tasks");
+      m.DropTable("MilestoneDependencies");
       m.DropTable("Milestones");
       m.DropTable("ProjectDepartments");
       m.DropTable("Projects");

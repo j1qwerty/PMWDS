@@ -64,6 +64,7 @@ builder.Services.Configure<IpRateLimitPolicies>(
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 builder.Services.AddMemoryCache(); // Required by AspNetCoreRateLimit
+builder.Services.AddResponseCaching();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<ILoginLockoutService, LoginLockoutService>();
 
@@ -322,6 +323,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
+app.UseResponseCaching();
 app.UseAuthentication();
 app.UseAuthorization();
 if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)

@@ -116,12 +116,12 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     body,
   });
 
-  if (!response.ok) {
+if (!response.ok) {
     const text = await response.text();
     let message = text;
     try {
       const json = JSON.parse(text);
-      message = json.message || json.error || text;
+      message = json.error?.message || json.message || json.error || text;
     } catch {}
     throw new ApiError(message || `Request failed with status ${response.status}`, response.status);
   }
@@ -132,7 +132,11 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    return (await response.json()) as T;
+    const json = await response.json();
+    if (json && typeof json === "object" && "success" in json && "data" in json) {
+      return json.data as T;
+    }
+    return json as T;
   }
 
   return (await response.blob()) as T;
