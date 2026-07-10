@@ -23,6 +23,7 @@ public class ProjectRepository
     .Include(p => p.Department)
     .Include(p => p.ProjectDepartments)
     .ThenInclude(pd => pd.Department)
+    .AsSplitQuery()
     .FirstOrDefaultAsync(p => p.Id == projectId, ct);
     public async Task<IEnumerable<Project>>
     GetByDepartmentAsync(
