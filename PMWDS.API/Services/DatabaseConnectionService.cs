@@ -523,12 +523,50 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await ExecuteSqliteAsync(connection, "UPDATE \"Milestones\" SET \"DepartmentId\" = (SELECT \"DepartmentId\" FROM \"Projects\" WHERE \"Projects\".\"Id\" = \"Milestones\".\"ProjectId\") WHERE \"DepartmentId\" IS NULL", ct);
                 await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_Milestones_DepartmentId\" ON \"Milestones\" (\"DepartmentId\")", ct);
             }
+
+            await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
         }
         finally
         {
             if (shouldClose)
             {
                 await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task NormalizeSqliteNullableGuidColumnsAsync(DbConnection connection, CancellationToken ct)
+    {
+        var nullableGuidColumns = new (string Table, string Column)[]
+        {
+            ("ActivityLogs", "ProjectId"),
+            ("Departments", "OrganizationId"),
+            ("Departments", "ParentDepartmentId"),
+            ("KnowledgeArticles", "ProjectId"),
+            ("Milestones", "DepartmentId"),
+            ("PredictionResults", "TaskId"),
+            ("Projects", "ProjectManagerId"),
+            ("Skills", "OrganizationId"),
+            ("TaskComments", "UserId"),
+            ("TaskComments", "ParentCommentId"),
+            ("Tasks", "MilestoneId"),
+            ("Tasks", "ParentTaskId"),
+            ("Tasks", "AssignedToUserId"),
+            ("Tasks", "AssignedByUserId"),
+            ("Tasks", "AIRecommendedAssigneeId"),
+            ("Users", "OrganizationId"),
+            ("Users", "DepartmentId"),
+            ("Webhooks", "IntegrationId")
+        };
+
+        foreach (var (table, column) in nullableGuidColumns)
+        {
+            if (await HasSqliteColumnAsync(connection, table, column, ct))
+            {
+                await ExecuteSqliteAsync(
+                    connection,
+                    $"UPDATE \"{table}\" SET \"{column}\" = NULL WHERE \"{column}\" = ''",
+                    ct);
             }
         }
     }
