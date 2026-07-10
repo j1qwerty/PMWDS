@@ -66,12 +66,24 @@ type ApiOptions = {
   responseType?: 'json' | 'blob';
 };
 
-type PaginatedResponse<T> = {
+export type PaginatedResponse<T> = {
   items: T[];
   page: number;
   pageSize: number;
   totalCount: number;
   totalPages: number;
+};
+
+export type TaskListQuery = {
+  page?: number;
+  pageSize?: number;
+  projectId?: string;
+  departmentId?: string;
+  search?: string;
+  statuses?: string;
+  priorities?: string;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 };
 
 export class ApiError extends Error {
@@ -275,6 +287,9 @@ export const api = {
   },
   getTasksByProject(token: string, projectId: string) {
     return requestList<Task>(`tasks/by-project/${projectId}`, { token });
+  },
+  getTasks(token: string, query: TaskListQuery = {}) {
+    return request<PaginatedResponse<Task>>("tasks", { token, query });
   },
   getMyTasks(token: string) {
     return requestList<Task>("tasks/my-tasks", { token });

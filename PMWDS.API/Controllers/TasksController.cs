@@ -15,6 +15,7 @@ using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
 using TaskDependency = PMWDS.Domain.Entities.TaskDependency;
+using TaskPriority = PMWDS.Domain.Enums.TaskPriority;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 
 namespace PMWDS.API.Controllers;
@@ -46,6 +47,98 @@ public class TasksController : BaseApiController
         _taskWorkflow = taskWorkflow;
         _scope = scope;
         _db = db;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] Guid? projectId,
+        [FromQuery] Guid? departmentId,
+        [FromQuery] string? search,
+        [FromQuery] string[]? statuses,
+        [FromQuery] string[]? priorities,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortDirection,
+        [FromQuery] PaginationQuery pagination,
+        CancellationToken ct)
+    {
+        if (projectId.HasValue && !await _scope.CanAccessProjectAsync(projectId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task => allowedProjectIds.Contains(task.ProjectId) && task.ParentTaskId == null)
+            .Include(task => task.Project)
+                .ThenInclude(project => project!.ProjectDepartments)
+            .Include(task => task.Milestone)
+            .Include(task => task.Assignments)
+                .ThenInclude(assignment => assignment.User)
+            .Include(task => task.SubTasks)
+            .AsSplitQuery()
+            .AsQueryable();
+
+        if (projectId.HasValue)
+        {
+            query = query.Where(task => task.ProjectId == projectId.Value);
+        }
+
+        if (departmentId.HasValue)
+        {
+            query = query.Where(task =>
+                task.Project!.DepartmentId == departmentId.Value ||
+                task.Project.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId.Value) ||
+                (task.Milestone != null && task.Milestone.DepartmentId == departmentId.Value));
+        }
+
+        var normalizedSearch = search?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            query = query.Where(task =>
+                task.Title.Contains(normalizedSearch) ||
+                task.Project!.Name.Contains(normalizedSearch) ||
+                task.Assignments.Any(assignment =>
+                    assignment.IsActive &&
+                    assignment.User != null &&
+                    assignment.User.FullName.Contains(normalizedSearch)));
+        }
+
+        var statusValues = ParseEnumFilters<TaskStatus>(statuses);
+        if (statusValues.Count > 0)
+        {
+            query = query.Where(task => statusValues.Contains(task.Status));
+        }
+
+        var priorityValues = ParseEnumFilters<TaskPriority>(priorities);
+        if (priorityValues.Count > 0)
+        {
+            query = query.Where(task => priorityValues.Contains(task.Priority));
+        }
+
+        query = (sortBy?.Trim().ToLowerInvariant(), sortDirection?.Trim().ToLowerInvariant()) switch
+        {
+            ("title", "desc") => query.OrderByDescending(task => task.Title),
+            ("title", _) => query.OrderBy(task => task.Title),
+            ("progress", "desc") => query.OrderByDescending(task => task.ProgressPercentage),
+            ("progress", _) => query.OrderBy(task => task.ProgressPercentage),
+            ("duedate", "desc") => query.OrderByDescending(task => task.DueDate),
+            ("duedate", _) => query.OrderBy(task => task.DueDate),
+            _ => query.OrderByDescending(task => task.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("by-project/{projectId:guid}")]
@@ -633,6 +726,23 @@ public class TasksController : BaseApiController
             .ToListAsync(ct);
         var items = tasks.Select(TaskDto.FromEntity).ToList();
         return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
+    }
+
+    private static IReadOnlyCollection<TEnum> ParseEnumFilters<TEnum>(IEnumerable<string>? rawValues)
+        where TEnum : struct, Enum
+    {
+        if (rawValues == null)
+        {
+            return Array.Empty<TEnum>();
+        }
+
+        return rawValues
+            .SelectMany(value => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Select(value => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) ? parsed : (TEnum?)null)
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .Distinct()
+            .ToList();
     }
 
     [HttpGet("escalated")]

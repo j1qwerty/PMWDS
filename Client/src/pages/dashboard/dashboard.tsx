@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useMemo, type FormEvent } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -12,7 +12,7 @@ import { PERMISSION_GROUPS, usePermission } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import TaskStats from "../shared/dash/TaskStats";
-import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
+import TaskPerformanceTable, { type TaskPerformanceQuery } from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
 import DashboardStats from "./dashboardStats";
@@ -54,6 +54,13 @@ export function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
+  const [taskPerformanceTasks, setTaskPerformanceTasks] = useState<Task[]>([]);
+  const [taskPerformancePage, setTaskPerformancePage] = useState(1);
+  const [taskPerformancePageSize, setTaskPerformancePageSize] = useState(10);
+  const [taskPerformanceTotalCount, setTaskPerformanceTotalCount] = useState(0);
+  const [taskPerformanceTotalPages, setTaskPerformanceTotalPages] = useState(1);
+  const [taskPerformanceLoading, setTaskPerformanceLoading] = useState(false);
+  const [lastTaskPerformanceQuery, setLastTaskPerformanceQuery] = useState<TaskPerformanceQuery | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -122,6 +129,38 @@ export function DashboardPage() {
       .finally(() => setLoading(false));
   }, [auth, canViewTasks]);
 
+  const loadTaskPerformance = useCallback(async (query: TaskPerformanceQuery) => {
+    if (!auth) return;
+
+    setLastTaskPerformanceQuery(query);
+    setTaskPerformanceLoading(true);
+    try {
+      const response = await api.getTasks(auth.token, {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        projectId: query.projectId,
+        departmentId: query.departmentId,
+        statuses: query.statuses?.join(","),
+        priorities: query.priorities?.join(","),
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+      });
+      setTaskPerformanceTasks(response.items);
+      setTaskPerformancePage(response.page);
+      setTaskPerformancePageSize(response.pageSize);
+      setTaskPerformanceTotalCount(response.totalCount);
+      setTaskPerformanceTotalPages(response.totalPages);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to load task performance data", "error");
+      setTaskPerformanceTasks([]);
+      setTaskPerformanceTotalCount(0);
+      setTaskPerformanceTotalPages(1);
+    } finally {
+      setTaskPerformanceLoading(false);
+    }
+  }, [auth, addToast]);
+
   const canEditTasks = perm.hasAny(
     PERMISSION_GROUPS.task.edit,
     PERMISSION_GROUPS.task.create,
@@ -152,6 +191,9 @@ export function DashboardPage() {
     ]);
     setMyTasks(tasks);
     setEscalatedTasks(escalated);
+    if (lastTaskPerformanceQuery) {
+      await loadTaskPerformance(lastTaskPerformanceQuery);
+    }
     if (selectedTask) {
       setSelectedTask(await api.getTask(auth.token, selectedTask.id));
     }
@@ -211,14 +253,6 @@ export function DashboardPage() {
 
     return dayNames.map((day, i) => ({ day, value: dayCounts[i] }));
   }, [myTasks, overdue, escalatedTasks, selectedActivityFilter]);
-
-  const dashboardTasks = useMemo(() => {
-    const byId = new Map<string, Task>();
-    for (const task of [...myTasks, ...overdue, ...escalatedTasks]) {
-      byId.set(task.id, task);
-    }
-    return Array.from(byId.values());
-  }, [myTasks, overdue, escalatedTasks]);
 
   if (loading) return <PageSkeleton />;
   if (error) return <div className="mx-4 my-2"><div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600">{error}</div></div>;
@@ -302,7 +336,15 @@ export function DashboardPage() {
         </div>
 
         <TaskPerformanceTable
-          tasks={dashboardTasks}
+          tasks={taskPerformanceTasks}
+          projects={projects}
+          departments={departments}
+          totalCount={taskPerformanceTotalCount}
+          totalPages={taskPerformanceTotalPages}
+          page={taskPerformancePage}
+          pageSize={taskPerformancePageSize}
+          loading={taskPerformanceLoading}
+          onQueryChange={loadTaskPerformance}
           onViewTask={openTaskDetails}
           onEditTask={openTaskEditor}
           canEdit={canEditTasks}
