@@ -125,19 +125,49 @@ export function ProjectOverviewPage() {
   }, [ws.tasks]);
 
   const teamTaskCounts = useMemo(() => {
-    const map: Record<string, { user: typeof ws.users[0]; active: number; completed: number; total: number }> = {};
+    const map = new Map<string, {
+      userId: string;
+      user?: (typeof ws.users)[number];
+      name: string;
+      active: number;
+      completed: number;
+      total: number;
+    }>();
+
     for (const t of ws.tasks) {
-      const uid = t.assignedToUserId;
-      if (!uid) continue;
-      if (!map[uid]) {
-        const user = ws.users.find((u) => u.id === uid);
-        map[uid] = { user: user!, active: 0, completed: 0, total: 0 };
+      const assignments = t.assignees?.length
+        ? t.assignees.map((assignee) => ({
+          userId: assignee.userId,
+          name: assignee.fullName ?? undefined,
+        }))
+        : t.assignedToUserId
+          ? [{ userId: t.assignedToUserId, name: t.assignedToUserName ?? undefined }]
+          : [];
+
+      for (const assignment of assignments) {
+        if (!assignment.userId) continue;
+
+        let row = map.get(assignment.userId);
+        if (!row) {
+          const user = ws.users.find((u) => u.id === assignment.userId);
+          row = {
+            userId: assignment.userId,
+            user,
+            name: user?.fullName || assignment.name || "Unknown user",
+            active: 0,
+            completed: 0,
+            total: 0,
+          };
+          map.set(assignment.userId, row);
+        }
+
+        row.total++;
+        if (t.status === "Completed") row.completed++;
+        else if (t.status !== "Cancelled") row.active++;
       }
-      map[uid].total++;
-      if (t.status === "Completed") map[uid].completed++;
-      else if (t.status !== "Cancelled") map[uid].active++;
     }
-    return Object.values(map).sort((a, b) => b.total - a.total);
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [ws.tasks, ws.users]);
 
   const overdueCount = ws.tasks.filter((t) => t.isOverdue).length;
@@ -152,8 +182,17 @@ export function ProjectOverviewPage() {
   const totalDocs = projectDocs.length;
   const totalTaskAttachments = ws.tasks.reduce((s, t) => s + (t.attachments?.length || 0), 0);
 
-  const uniqueAssignees = new Set(ws.tasks.filter((t) => t.assignedToUserId).map((t) => t.assignedToUserId));
-  const totalTeamMembers = ws.users.filter((u) => uniqueAssignees.has(u.id)).length;
+  const uniqueAssignees = new Set<string>();
+  for (const task of ws.tasks) {
+    if (task.assignees?.length) {
+      task.assignees.forEach((assignee) => {
+        if (assignee.userId) uniqueAssignees.add(assignee.userId);
+      });
+    } else if (task.assignedToUserId) {
+      uniqueAssignees.add(task.assignedToUserId);
+    }
+  }
+  const totalTeamMembers = uniqueAssignees.size;
 
   const budgetUtilPct = ws.project?.plannedBudget
     ? Math.min(Math.round(((ws.project?.actualCost || 0) / ws.project.plannedBudget) * 100), 100)
@@ -766,13 +805,13 @@ export function ProjectOverviewPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {teamTaskCounts.map(({ user, active, completed, total }) => (
-                        <tr key={user?.id || "unknown"} className="hover:bg-slate-50 transition-colors">
+                      {teamTaskCounts.map(({ userId, user, name, active, completed, total }) => (
+                        <tr key={userId} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
-                              <Avatark person={user} name={user?.fullName} size="xs" />
+                              <Avatark person={user} name={name} size="xs" />
                               <span className="font-medium text-slate-700 truncate max-w-[120px]">
-                                {user?.fullName || "Unassigned"}
+                                {name}
                               </span>
                             </div>
                           </td>
