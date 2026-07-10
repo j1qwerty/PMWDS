@@ -46,7 +46,6 @@ export function DashboardPage() {
   const canViewTasks = perm.has(PERMISSION_GROUPS.task.view);
   const [dashboard, setDashboard] = useState<any>(null);
   const [myTasks, setMyTasks] = useState<Task[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -98,7 +97,6 @@ export function DashboardPage() {
     Promise.allSettled([
       api.getDashboard(auth.token),
       api.getMyTasks(auth.token),
-      api.getPagesData(auth.token, 1, 500),
       api.getNotifications(auth.token, true),
       api.getDepartments(auth.token),
       api.getOrganizations(auth.token),
@@ -107,10 +105,9 @@ export function DashboardPage() {
       canViewTasks ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       canViewTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardResult, tasksResult, pagesResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
-        if (pagesResult.status === "fulfilled") setAllTasks(pagesResult.value.tasks.items as Task[]);
         if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
         if (organizationsResult.status === "fulfilled") setOrganizations(organizationsResult.value as OrganizationRecord[]);
@@ -215,6 +212,14 @@ export function DashboardPage() {
     return dayNames.map((day, i) => ({ day, value: dayCounts[i] }));
   }, [myTasks, overdue, escalatedTasks, selectedActivityFilter]);
 
+  const dashboardTasks = useMemo(() => {
+    const byId = new Map<string, Task>();
+    for (const task of [...myTasks, ...overdue, ...escalatedTasks]) {
+      byId.set(task.id, task);
+    }
+    return Array.from(byId.values());
+  }, [myTasks, overdue, escalatedTasks]);
+
   if (loading) return <PageSkeleton />;
   if (error) return <div className="mx-4 my-2"><div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600">{error}</div></div>;
 
@@ -297,7 +302,7 @@ export function DashboardPage() {
         </div>
 
         <TaskPerformanceTable
-          tasks={allTasks}
+          tasks={dashboardTasks}
           onViewTask={openTaskDetails}
           onEditTask={openTaskEditor}
           canEdit={canEditTasks}
