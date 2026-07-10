@@ -47,7 +47,7 @@ const emptyProjectForm = (): ProjectFormState => ({
 
 export function ProjectsKPage() {
   const { auth } = useAuth();
-  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
+  const { refresh: refreshAppData } = useAppData();
   const perm = usePermission();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
   const isSuperAdmin = perm.isSuperAdmin;
@@ -96,10 +96,10 @@ export function ProjectsKPage() {
     setLoading(true);
     try {
       const [projectData, deptData, orgData, userData] = await Promise.all([
-        Promise.resolve(data.projects),
-        Promise.resolve(data.departments),
-        Promise.resolve(data.organizations),
-        Promise.resolve(data.users),
+        api.getProjects(auth.token),
+        api.getDepartments(auth.token),
+        api.getOrganizations(auth.token),
+        api.getUsers(auth.token),
       ]);
       setProjects(projectData);
       setDepartments(deptData);
@@ -133,7 +133,7 @@ export function ProjectsKPage() {
 
   useEffect(() => {
     void loadProjects();
-  }, [auth, data]);
+  }, [auth]);
 
   useEffect(() => {
     if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -328,7 +328,7 @@ export function ProjectsKPage() {
     [visibleDepartments]
   );
 
-  if (loading || appDataLoading) return <LoadingPage label="Loading workspace..." />;
+  if (loading) return <LoadingPage label="Loading workspace..." />;
 
   return (
     <div>
