@@ -41,7 +41,7 @@ public class UpdateProjectCommandHandler
         : Guid.Parse(dto.ProjectManagerId);
         project.Update(
         dto.Name,
-        dto.Description,
+        dto.Description ?? string.Empty,
         dto.Category,
         dto.PlannedStartDate,
         dto.PlannedEndDate,

@@ -547,7 +547,7 @@ public class ProjectsController : BaseApiController
 
         var organizationIds = await _db.Departments
             .Where(department => departmentIds.Contains(department.Id) && department.OrganizationId.HasValue)
-            .Select(department => department.OrganizationId)
+            .Select(department => department.OrganizationId!.Value)
             .ToListAsync(ct);
 
         if (organizationIds.Count == 0)
@@ -557,9 +557,14 @@ public class ProjectsController : BaseApiController
 
         return await _db.Users.AnyAsync(user =>
             user.Id == parsedUserId &&
-            ((user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId)) ||
-             user.DepartmentAssignments.Any(assignment => organizationIds.Contains(assignment.Department.OrganizationId)) ||
-             user.Department != null && organizationIds.Contains(user.Department.OrganizationId)),
+            ((user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
+             user.DepartmentAssignments.Any(assignment =>
+                 assignment.Department != null &&
+                 assignment.Department.OrganizationId.HasValue &&
+                 organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
+             user.Department != null &&
+                 user.Department.OrganizationId.HasValue &&
+                 organizationIds.Contains(user.Department.OrganizationId.Value)),
             ct);
     }
 

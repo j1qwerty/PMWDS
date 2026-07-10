@@ -107,6 +107,7 @@ public class RoleScopeService
                     (user.DepartmentId.HasValue && departmentIds.Contains(user.DepartmentId.Value)) ||
                     user.Roles.Any(role => (role.Key == RoleKeys.Director || role.Key == RoleKeys.DepartmentHead) &&
                         user.DepartmentAssignments.Any(assignment =>
+                            assignment.Department != null &&
                             assignment.Department.OrganizationId.HasValue &&
                             organizationIds.Contains(assignment.Department.OrganizationId.Value)))
                 ));
@@ -117,6 +118,7 @@ public class RoleScopeService
             (
                 (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
                 user.DepartmentAssignments.Any(assignment =>
+                    assignment.Department != null &&
                     assignment.Department.OrganizationId.HasValue &&
                     organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
                 (user.Department != null &&
@@ -390,7 +392,9 @@ public class RoleScopeService
                     .Select(assignment => new
                     {
                         assignment.DepartmentId,
-                        OrganizationId = assignment.Department.OrganizationId
+                        OrganizationId = assignment.Department != null
+                            ? assignment.Department.OrganizationId
+                            : null
                     })
                     .ToList()
             })

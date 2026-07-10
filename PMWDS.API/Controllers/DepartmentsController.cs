@@ -159,7 +159,7 @@ public class DepartmentsController : BaseApiController
             {
                 ["departmentId"] = department.Id,
                 ["departmentName"] = department.Name,
-                ["organizationId"] = organizationId
+                ["organizationId"] = organizationId?.ToString() ?? string.Empty
             }
         );
 

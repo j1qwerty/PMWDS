@@ -269,7 +269,7 @@ public class TasksController : BaseApiController
             {
                 ["taskId"] = result.Id,
                 ["taskTitle"] = result.Title,
-                ["milestoneId"] = result.MilestoneId?.ToString(),
+                ["milestoneId"] = result.MilestoneId?.ToString() ?? string.Empty,
                 ["milestoneName"] = result.MilestoneName ?? "",
                 ["projectId"] = result.ProjectId,
                 ["projectName"] = result.ProjectName ?? ""

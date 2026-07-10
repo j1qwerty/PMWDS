@@ -51,8 +51,12 @@ public class MilestonesController : BaseApiController
             if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
             {
                 depsQuery = depsQuery.Where(d =>
-                    (d.PrerequisiteMilestone.DepartmentId.HasValue && departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
-                    (d.DependentMilestone.DepartmentId.HasValue && departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+                    (d.PrerequisiteMilestone != null &&
+                        d.PrerequisiteMilestone.DepartmentId.HasValue &&
+                        departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
+                    (d.DependentMilestone != null &&
+                        d.DependentMilestone.DepartmentId.HasValue &&
+                        departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
             }
         }
 

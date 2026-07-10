@@ -77,7 +77,7 @@ public class PagesController : BaseApiController
         var usersQuery = await _scope.ScopeUsersAsync(
             _db.Users.AsNoTracking()
                 .Include(u => u.Department)
-                .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department).ThenInclude(d => d.Organization)
+                .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department!).ThenInclude(d => d.Organization)
                 .Include(u => u.Profile)
                 .Include(u => u.Roles)
                 .Include(u => u.Skills).ThenInclude(s => s.Skill)
@@ -189,7 +189,7 @@ public class PagesController : BaseApiController
     private Task<ApplicationUser?> LoadCurrentUserAsync(Guid currentUserId, CancellationToken ct)
         => _db.Users
             .Include(u => u.Department)
-            .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department).ThenInclude(d => d.Organization)
+            .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department!).ThenInclude(d => d.Organization)
             .Include(u => u.Profile)
             .Include(u => u.Roles).ThenInclude(r => r.Permissions)
             .Include(u => u.Skills).ThenInclude(s => s.Skill)
