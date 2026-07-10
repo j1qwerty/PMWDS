@@ -87,10 +87,26 @@ public class TasksController : BaseApiController
             return Unauthorized();
 
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
-        List<ProjectTask> tasks;
+        IQueryable<ProjectTask> query = _db.Tasks.AsNoTracking()
+            .Where(t => allowedProjectIds.Contains(t.ProjectId));
         if (_scope.IsSuperAdmin)
         {
-            tasks = await _db.Tasks
+            query = query
+                .Include(t => t.Assignments)
+                .Include(t => t.SubTasks)
+                .Include(t => t.Comments)
+                .Include(t => t.Attachments)
+                .Include(t => t.Dependencies)
+                .Include(t => t.TimeEntries)
+                .Include(t => t.Project);
+        }
+        else
+        {
+            query = query
+                .Where(t => (t.AssignedToUserId == currentUserId ||
+                    t.Assignments.Any(a => a.UserId == currentUserId && a.IsActive)) &&
+                    t.Status != TaskStatus.Completed &&
+                    t.Status != TaskStatus.Cancelled)
                 .Include(t => t.Assignments)
                 .Include(t => t.SubTasks)
                 .Include(t => t.Comments)
@@ -98,24 +114,20 @@ public class TasksController : BaseApiController
                 .Include(t => t.Dependencies)
                 .Include(t => t.TimeEntries)
                 .Include(t => t.Project)
-                .Where(t => allowedProjectIds.Contains(t.ProjectId))
-                .OrderByDescending(t => t.CreatedDate)
-                .ToListAsync(ct);
-        }
-        else
-        {
-            tasks = (await _uow.Tasks.GetByAssigneeAsync(currentUserId, ct))
-                .Where(task => allowedProjectIds.Contains(task.ProjectId))
-                .OrderByDescending(task => task.CreatedDate)
-                .ToList();
+                .Include(t => t.Milestone);
         }
 
-        var items = tasks
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .AsSplitQuery()
+            .OrderByDescending(task => task.CreatedDate)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var response = items
             .Select(TaskDto.FromEntity)
             .ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+        return Ok(PaginatedResponse<TaskDto>.Create(response, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]
@@ -606,12 +618,21 @@ public class TasksController : BaseApiController
     public async Task<IActionResult> GetOverdue([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetOverdueTasksAsync(ct))
-            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task =>
+                allowedProjectIds.Contains(task.ProjectId) &&
+                task.DueDate < DateTime.UtcNow &&
+                task.Status != TaskStatus.Completed &&
+                task.Status != TaskStatus.Cancelled)
+            .Include(task => task.Project);
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
             .OrderBy(task => task.DueDate)
-            .ToList();
-        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("escalated")]
@@ -619,12 +640,20 @@ public class TasksController : BaseApiController
     public async Task<IActionResult> GetEscalated([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetEscalatedTasksAsync(ct))
-            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task =>
+                allowedProjectIds.Contains(task.ProjectId) &&
+                task.IsEscalated &&
+                task.Status != TaskStatus.Completed)
+            .Include(task => task.Project);
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
             .OrderByDescending(task => task.ModifiedDate ?? task.CreatedDate)
-            .ToList();
-        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("unassigned")]
@@ -632,12 +661,20 @@ public class TasksController : BaseApiController
     public async Task<IActionResult> GetUnassigned([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetUnassignedTasksAsync(ct))
-            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task =>
+                allowedProjectIds.Contains(task.ProjectId) &&
+                task.AssignedToUserId == null &&
+                task.Status == TaskStatus.NotStarted)
+            .Include(task => task.Project);
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
             .OrderByDescending(task => task.CreatedDate)
-            .ToList();
-        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}/subtasks")]
@@ -646,11 +683,25 @@ public class TasksController : BaseApiController
         var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
         if (parentTask == null) return NotFound();
         if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
-        var subtasks = (await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct))
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task => task.ParentTaskId == id)
+            .Include(task => task.Assignments)
+            .Include(task => task.Comments)
+            .Include(task => task.Attachments)
+            .Include(task => task.Dependencies)
+                .ThenInclude(dependency => dependency.PredecessorTask)
+            .Include(task => task.TimeEntries)
+            .Include(task => task.Project)
+            .Include(task => task.Milestone);
+        var totalCount = await query.CountAsync(ct);
+        var subtasks = await query
+            .AsSplitQuery()
             .OrderByDescending(task => task.CreatedDate)
-            .ToList();
-        var items = subtasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, subtasks.Count));
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = subtasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpPost("{id:guid}/subtasks")]
