@@ -73,16 +73,23 @@ public class WorkspaceController : BaseApiController
                 project.Status,
                 project.Priority,
                 project.DepartmentId,
-                DepartmentIds = project.ProjectDepartments
-                    .Select(assignment => assignment.DepartmentId)
-                    .Distinct()
-                    .ToList(),
                 project.ProgressPercentage,
                 project.AIDelayRiskScore,
                 TotalTasks = project.Tasks.Count,
                 project.CreatedDate
             })
             .ToListAsync(ct);
+        var projectIds = projectRows.Select(project => project.Id).ToList();
+        var projectDepartmentRows = await _db.ProjectDepartments
+            .AsNoTracking()
+            .Where(assignment => projectIds.Contains(assignment.ProjectId))
+            .Select(assignment => new { assignment.ProjectId, assignment.DepartmentId })
+            .ToListAsync(ct);
+        var departmentIdsByProjectId = projectDepartmentRows
+            .GroupBy(assignment => assignment.ProjectId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(assignment => assignment.DepartmentId).Distinct().ToList());
         var projects = projectRows
             .Select(project => new ProjectNavigationDto(
                 project.Id,
@@ -91,8 +98,8 @@ public class WorkspaceController : BaseApiController
                 project.Status.ToString(),
                 project.Priority.ToString(),
                 project.DepartmentId,
-                project.DepartmentIds.Count > 0
-                    ? project.DepartmentIds
+                departmentIdsByProjectId.TryGetValue(project.Id, out var departmentIds) && departmentIds.Count > 0
+                    ? departmentIds
                     : new List<Guid> { project.DepartmentId },
                 project.ProgressPercentage,
                 (double)project.AIDelayRiskScore,

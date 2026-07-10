@@ -236,9 +236,16 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
         logout();
+        return;
       }
-      setError(cause instanceof Error ? cause.message : "Failed to load application data.");
-      setPages(null);
+      try {
+        const response = await api.getPagesData(auth.token);
+        setPages(response);
+        setBootstrap(null);
+      } catch (fallbackCause) {
+        setError(fallbackCause instanceof Error ? fallbackCause.message : "Failed to load application data.");
+        setPages(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -272,11 +279,23 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         if (cancelled) return;
         if (cause instanceof ApiError && cause.status === 401) {
           logout();
+          setLoading(false);
+          return;
         }
-        setError(cause instanceof Error ? cause.message : "Failed to load application data.");
-        setBootstrap(null);
-        setPages(null);
-        setLoading(false);
+        void api.getPagesData(auth.token)
+          .then((response) => {
+            if (cancelled) return;
+            setPages(response);
+            setBootstrap(null);
+            setLoading(false);
+          })
+          .catch((fallbackCause) => {
+            if (cancelled) return;
+            setError(fallbackCause instanceof Error ? fallbackCause.message : "Failed to load application data.");
+            setBootstrap(null);
+            setPages(null);
+            setLoading(false);
+          });
       });
 
     return () => {
