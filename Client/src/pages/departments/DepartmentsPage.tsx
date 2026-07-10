@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
-import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Department, OrganizationRecord, User } from "../../types";
@@ -24,7 +23,6 @@ import { DepartmentList } from "./DepartmentList";
 
 export function DepartmentsPage() {
     const { auth } = useAuth();
-    const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
     const perm = usePermission();
     const canCreateDepartments = perm.has(PERMISSION_GROUPS.department.create);
     const canDeleteDepartments = perm.has(PERMISSION_GROUPS.department.delete);
@@ -68,20 +66,33 @@ export function DepartmentsPage() {
 
     const { isOrgAdmin, userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
-    const loadData = () => {
+    const loadData = (preferredDeptId?: string) => {
         if (!auth) return;
         setLoading(true);
-        setDepartments(data.departments);
-        setOrganizations(data.organizations);
-        setUsers(canViewManagementData ? data.users : []);
+        Promise.all([
+            api.getDepartments(auth.token),
+            api.getOrganizations(auth.token),
+            canViewManagementData ? api.getUsers(auth.token) : Promise.resolve([]),
+        ])
+            .then(([departmentData, organizationData, userData]) => {
+                setDepartments(departmentData);
+                setOrganizations(organizationData);
+                setUsers(userData);
 
-        if (!selectedDeptId && data.departments.length) {
-            setSelectedDeptId(data.departments[0].id);
-        }
-        setLoading(false);
+                const nextDeptId = preferredDeptId || selectedDeptId;
+                if (nextDeptId && departmentData.some((department) => department.id === nextDeptId)) {
+                    setSelectedDeptId(nextDeptId);
+                } else if (departmentData.length) {
+                    setSelectedDeptId(departmentData[0].id);
+                } else {
+                    setSelectedDeptId("");
+                }
+            })
+            .catch((e) => addToast(`Error: ${e instanceof Error ? e.message : "Failed to load departments"}`, "error"))
+            .finally(() => setLoading(false));
     };
 
-    useEffect(() => { loadData(); }, [auth, data, canViewManagementData]);
+    useEffect(() => { loadData(); }, [auth, canViewManagementData]);
 
     useEffect(() => {
         if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -132,7 +143,7 @@ export function DepartmentsPage() {
             addToast("Department deleted successfully.");
             setDeleteConfirm({ open: false, id: "", name: "" });
             if (selectedDeptId === deleteConfirm.id) setSelectedDeptId("");
-            await refreshAppData();
+            loadData();
         } catch (e) {
             addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
         }
@@ -142,21 +153,24 @@ export function DepartmentsPage() {
         if (!auth) return;
         try {
             const payload = { ...form };
+            let nextDeptId = selectedDeptId;
             if (deptModal.editDept) {
                 await api.updateDepartment(auth.token, deptModal.editDept.id, payload);
+                nextDeptId = deptModal.editDept.id;
             } else {
                 const newDept = await api.createDepartment(auth.token, payload);
-                setSelectedDeptId((newDept as any).id || selectedDeptId);
+                nextDeptId = newDept.id || selectedDeptId;
+                setSelectedDeptId(nextDeptId);
             }
             setDeptModal({ open: false });
-            await refreshAppData();
+            loadData(nextDeptId);
             addToast(deptModal.editDept ? "Department updated." : "Department created.");
         } catch (e) {
             addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
         }
     };
 
-    if (loading || appDataLoading) return <LoadingPage label="Loading departments..." />;
+    if (loading) return <LoadingPage label="Loading departments..." />;
 
     return (
         <div>
@@ -210,7 +224,7 @@ export function DepartmentsPage() {
                                 allOrganizations={organizations}
                                 canManageUsers={canEditDepartments}
                                 isSuperAdmin={hasRoleKey(perm.roleKeys, RoleKey.SuperAdmin)}
-                                onRefresh={refreshAppData}
+                                onRefresh={() => loadData(selectedDeptId)}
                             />
 
 

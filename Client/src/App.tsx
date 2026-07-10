@@ -11,7 +11,7 @@ import { PERMISSION_GROUPS, Permission } from "./permissions";
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
 import { ProjectsKPage } from "./pages/projectsK/projectsK";
-import { NotificationsPage } from "./pages/notifications/notifications";
+import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 
 // Project-nested views
 import { ProjectOverviewPage } from "./pages/nested/ProjectOverviewPage";
