@@ -51,9 +51,9 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        var now = DateTime.UtcNow;
         var query = _db.Projects
-            .Include(project => project.Department)
-            .Include(project => project.ProjectDepartments).ThenInclude(assignment => assignment.Department)
+            .AsNoTracking()
             .AsQueryable();
         if (departmentId.HasValue)
         {
@@ -63,18 +63,88 @@ public class ProjectsController : BaseApiController
         }
 
         query = await _scope.ScopeProjectsAsync(query, ct);
-        var list = await query.ToListAsync(ct);
+        var totalProjects = await query.CountAsync(ct);
+        var activeProjects = await query.CountAsync(project => project.Status == ProjectStatus.InProgress, ct);
+        var completedProjects = await query.CountAsync(project => project.Status == ProjectStatus.Completed, ct);
+        var overdueProjects = await query.CountAsync(project =>
+            (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
+            (!project.ActualEndDate.HasValue && now > project.PlannedEndDate),
+            ct);
+        var highRiskProjects = await query.CountAsync(project => project.AIDelayRiskScore >= 0.7, ct);
+        var averageHealthScore = totalProjects > 0
+            ? await query.AverageAsync(project => project.AIHealthScore, ct)
+            : 0;
+        var totalBudget = await query.SumAsync(project => project.PlannedBudget, ct);
+        var totalActualCost = await query.SumAsync(project => project.ActualCost, ct);
+        var recentProjectRows = await query
+            .OrderByDescending(project => project.CreatedDate)
+            .Take(5)
+            .Select(project => new
+            {
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status,
+                project.ProgressPercentage,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
+                project.ActualEndDate,
+                project.PlannedEndDate
+            })
+            .ToListAsync(ct);
+        var atRiskProjectRows = await query
+            .Where(project => project.AIDelayRiskScore >= 0.7)
+            .OrderByDescending(project => project.AIDelayRiskScore)
+            .Take(10)
+            .Select(project => new
+            {
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status,
+                project.ProgressPercentage,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
+                project.ActualEndDate,
+                project.PlannedEndDate
+            })
+            .ToListAsync(ct);
+        var recentProjects = recentProjectRows
+            .Select(project => new ProjectSummaryDto(
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status.ToString(),
+                project.ProgressPercentage,
+                (double)project.AIHealthScore,
+                (double)project.AIDelayRiskScore,
+                GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
+                project.PlannedEndDate))
+            .ToList();
+        var atRiskProjects = atRiskProjectRows
+            .Select(project => new ProjectSummaryDto(
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status.ToString(),
+                project.ProgressPercentage,
+                (double)project.AIHealthScore,
+                (double)project.AIDelayRiskScore,
+                GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
+                project.PlannedEndDate))
+            .ToList();
+
         return Ok(new ProjectDashboardDto(
-            TotalProjects: list.Count,
-            ActiveProjects: list.Count(project => project.Status == ProjectStatus.InProgress),
-            CompletedProjects: list.Count(project => project.Status == ProjectStatus.Completed),
-            OverdueProjects: list.Count(project => project.GetDelayDays() > 0),
-            HighRiskProjects: list.Count(project => project.AIDelayRiskScore >= 0.7),
-            AverageHealthScore: list.Any() ? list.Average(project => project.AIHealthScore) : 0,
-            TotalBudget: list.Sum(project => project.PlannedBudget),
-            TotalActualCost: list.Sum(project => project.ActualCost),
-            RecentProjects: list.OrderByDescending(project => project.CreatedDate).Take(5).Select(ProjectSummaryDto.FromEntity).ToList(),
-            AtRiskProjects: list.Where(project => project.AIDelayRiskScore >= 0.7).OrderByDescending(project => project.AIDelayRiskScore).Take(10).Select(ProjectSummaryDto.FromEntity).ToList()));
+            TotalProjects: totalProjects,
+            ActiveProjects: activeProjects,
+            CompletedProjects: completedProjects,
+            OverdueProjects: overdueProjects,
+            HighRiskProjects: highRiskProjects,
+            AverageHealthScore: averageHealthScore,
+            TotalBudget: totalBudget,
+            TotalActualCost: totalActualCost,
+            RecentProjects: recentProjects,
+            AtRiskProjects: atRiskProjects));
     }
 
     [HttpGet]
@@ -459,6 +529,14 @@ public class ProjectsController : BaseApiController
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
+
+    private static int GetDelayDays(DateTime? actualEndDate, DateTime plannedEndDate, DateTime now)
+    {
+        var compareDate = actualEndDate ?? now;
+        return compareDate > plannedEndDate
+            ? (int)(compareDate - plannedEndDate).TotalDays
+            : 0;
+    }
 
     private async Task<bool> IsUserInDepartmentOrganizationsAsync(string userId, IReadOnlyCollection<Guid> departmentIds, CancellationToken ct)
     {
