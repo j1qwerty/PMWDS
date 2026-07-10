@@ -46,6 +46,7 @@ public class TaskRepository
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -65,6 +66,7 @@ public class TaskRepository
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -76,6 +78,7 @@ public class TaskRepository
     && t.Status != Domain.Enums.TaskStatus.Completed
     && t.Status != Domain.Enums.TaskStatus.Cancelled)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -94,6 +97,7 @@ public class TaskRepository
     t.AssignedToUserId == null
     && t.Status == Domain.Enums.TaskStatus.NotStarted)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
     GetHighRiskTasksAsync(
@@ -102,6 +106,7 @@ public class TaskRepository
     => await _dbSet
     .Where(t => t.AIDelayProbability >= threshold)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .OrderByDescending(t => t.AIDelayProbability)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -111,6 +116,7 @@ public class TaskRepository
     .Where(t => t.IsEscalated
     && t.Status != Domain.Enums.TaskStatus.Completed)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .OrderByDescending(t => t.EscalationLevel)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -127,6 +133,7 @@ public class TaskRepository
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
 
