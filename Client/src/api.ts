@@ -49,6 +49,7 @@ import type {
   User,
   WebhookDetailRecord,
   WebhookRecord,
+  WorkspaceBootstrap,
   WorkloadReport,
 } from "./types";
 
@@ -996,6 +997,9 @@ export const api = {
   },
   getDatabaseStatus(token: string) {
     return request<DatabaseStatus>("system/database", { token });
+  },
+  getWorkspaceBootstrap(token: string) {
+    return request<WorkspaceBootstrap>("workspace/bootstrap", { token });
   },
   saveAISettings(token: string, settings: AISettingsRequest) {
     return request<{ success: boolean; message: string }>("ai/settings", {

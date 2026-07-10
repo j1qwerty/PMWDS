@@ -195,6 +195,30 @@ export interface ProjectDepartmentAssignment {
   isPrimary: boolean;
 }
 
+export interface ProjectNavigationItem {
+  id: string;
+  projectCode: string;
+  name: string;
+  status: string;
+  priority: string;
+  departmentId: string;
+  departmentIds: string[];
+  progressPercentage: number;
+  aiDelayRiskScore: number;
+  totalTasks: number;
+  isNewForCurrentUser: boolean;
+  createdDate: string;
+}
+
+export interface WorkspaceBootstrap {
+  generatedAt: string;
+  currentUser: User;
+  permissions: string[];
+  projects: ProjectNavigationItem[];
+  unreadNotificationCount: number;
+  userPageSize: number;
+}
+
 export interface Task {
   id: string;
   title: string;
