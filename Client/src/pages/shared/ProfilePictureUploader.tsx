@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Cropper, { type Area } from "react-easy-crop";
 
+const SUPPORTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MIN_DIM = 64;
+const MAX_DIM = 8192;
+
 interface ProfilePictureUploaderProps {
   userId: string;
   token: string;
@@ -41,13 +46,36 @@ export function ProfilePictureUploader({ userId, token, disabled, onUpload }: Pr
     };
   }, [editor]);
 
-  const openEditor = (file: File | undefined) => {
+  const openEditor = async (file: File | undefined) => {
     if (!file || disabled || !token || !userId) return;
     setError("");
-    if (!file.type.startsWith("image/")) {
-      setError("Select an image file.");
+
+    if (!SUPPORTED_TYPES.includes(file.type)) {
+      setError("Select a PNG, JPEG, or WebP image.");
       return;
     }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError("Image must be under 5 MiB.");
+      return;
+    }
+
+    try {
+      const image = await loadImage(file);
+      if (
+        image.naturalWidth < MIN_DIM ||
+        image.naturalHeight < MIN_DIM ||
+        image.naturalWidth > MAX_DIM ||
+        image.naturalHeight > MAX_DIM
+      ) {
+        setError(`Image must be between ${MIN_DIM}×${MIN_DIM} and ${MAX_DIM}×${MAX_DIM} pixels.`);
+        return;
+      }
+    } catch {
+      setError("Could not read image file.");
+      return;
+    }
+
     if (editor?.url) URL.revokeObjectURL(editor.url);
     setEditor({
       file,

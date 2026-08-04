@@ -260,7 +260,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <NavHeaderProvider>
-      <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
+      <div className="flex min-h-screen demo-bg text-on-surface font-sans antialiased">
         {/* Mobile overlay backdrop */}
         {mobileSidebarOpen && (
           <div

@@ -2,13 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAppData } from "../../appData";
 import type { Project } from "../../types";
-import { useUserOrganization } from "../shared/useUserOrganization";
 import { PERMISSION_GROUPS, usePermission } from "../shared/RoleGate";
 import { getStatusColor } from "../shared/colors";
-import { projectBelongsToAnyDepartment } from "../shared/projectDepartments";
 import {
   HiOutlineHome,
-  HiOutlineFolder,
   HiOutlineClipboardList,
   HiOutlineFlag,
   HiOutlineChevronRight,
@@ -85,10 +82,6 @@ export function ProjectsGroup({
   const location = useLocation();
   const { data } = useAppData();
   const perm = usePermission();
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(
-    data.users,
-    data.departments,
-  );
 
   const [expandedIds, setExpandedIds] = useState<string[]>(() => loadExpanded());
 
@@ -118,20 +111,13 @@ export function ProjectsGroup({
 
   const visibleProjects = useMemo<Project[]>(() => {
     if (!perm.has(PERMISSION_GROUPS.project.view)) return [];
-    let filtered = data.projects;
-    if (shouldFilterByOrg && userOrganizationId) {
-      const orgDeptIds = data.departments
-        .filter((d) => d.organizationId === userOrganizationId)
-        .map((d) => d.id);
-      filtered = filtered.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
-    }
-    return [...filtered].sort((a, b) => {
+    return [...data.projects].sort((a, b) => {
       const aNew = isNewProject(a);
       const bNew = isNewProject(b);
       if (aNew !== bNew) return aNew ? -1 : 1;
       return new Date(b.createdDate ?? 0).getTime() - new Date(a.createdDate ?? 0).getTime();
     });
-  }, [data.projects, data.departments, shouldFilterByOrg, userOrganizationId, perm]);
+  }, [data.projects, perm]);
 
   const DISPLAY_LIMIT = 10;
   const displayedProjects = useMemo(() => {

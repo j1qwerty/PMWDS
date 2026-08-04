@@ -96,22 +96,6 @@ export function buildDiamondsPattern(color: string, size: number, sw: number, op
   );
 }
 
-export function buildWavesSvg(color: string, sw: number, opacity: number, amplitude: number, frequency: number, count: number): string {
-  const c = hexToRgba(color, opacity);
-  const w = 600;
-  const h = amplitude * 2 * count + sw * 2;
-  const paths = Array.from({ length: count }, (_, i) => {
-    const baseY = amplitude + sw + i * amplitude * 2;
-    let d = `M0 ${baseY}`;
-    for (let x = 0; x <= w; x += 1) {
-      const y = baseY + amplitude * Math.sin((x / w) * Math.PI * 2 * frequency + i * 0.8);
-      d += ` L${x} ${y.toFixed(2)}`;
-    }
-    return `<path d='${d}' fill='none' stroke='${c}' stroke-width='${sw}' stroke-linecap='round' opacity='${0.4 + (i * 0.2)}'/>`;
-  }).join('');
-  return `<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='${h}' viewBox='0 0 ${w} ${h}' preserveAspectRatio='none'>${paths}</svg>`;
-}
-
 export function buildGradientStyle(cfg: BgConfig['gradient']): React.CSSProperties {
   const { type, color1, color2, color3, angle, opacity } = cfg;
   const c1 = hexToRgba(color1, opacity);

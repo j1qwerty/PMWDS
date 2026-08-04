@@ -129,6 +129,12 @@ export function DashboardPage() {
       .finally(() => setLoading(false));
   }, [auth, canViewTasks]);
 
+  const canEditTasks = perm.hasAny(
+    PERMISSION_GROUPS.task.edit,
+    PERMISSION_GROUPS.task.create,
+    PERMISSION_GROUPS.task.assign,
+  );
+
   const loadTaskPerformance = useCallback(async (query: TaskPerformanceQuery) => {
     if (!auth) return;
 
@@ -160,12 +166,6 @@ export function DashboardPage() {
       setTaskPerformanceLoading(false);
     }
   }, [auth, addToast]);
-
-  const canEditTasks = perm.hasAny(
-    PERMISSION_GROUPS.task.edit,
-    PERMISSION_GROUPS.task.create,
-    PERMISSION_GROUPS.task.assign,
-  );
 
   const openTaskDetails = async (task: Task) => {
     if (!auth) return;

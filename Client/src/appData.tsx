@@ -304,7 +304,21 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth, logout]);
 
   const data = useMemo(() => {
-    if (pages) return mapPagesData(pages);
+    if (pages) {
+      const pageData = mapPagesData(pages);
+      if (!bootstrap) return pageData;
+      return {
+        ...pageData,
+        // Navigation projects are independently server-scoped and are not
+        // limited to the first page of the monolithic pages response.
+        projects: mapProjectNavigation(bootstrap.projects),
+        // Keep the authenticated user available even when they are not on the
+        // first paginated users page.
+        users: pageData.users.some((user) => user.id === bootstrap.currentUser.id)
+          ? pageData.users
+          : [bootstrap.currentUser, ...pageData.users],
+      };
+    }
     if (bootstrap) return mapBootstrapData(bootstrap);
     return emptyData;
   }, [bootstrap, pages]);

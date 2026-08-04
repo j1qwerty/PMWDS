@@ -425,7 +425,7 @@ export const api = {
   getUsers(token: string, departmentId?: string | null) {
     return requestList<User>("users", {
       token,
-      query: { departmentId: departmentId ?? undefined },
+      query: { departmentId: departmentId ?? undefined, pageSize: 500 },
     });
   },
   getMe(token: string) {

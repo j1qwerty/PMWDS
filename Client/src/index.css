@@ -123,6 +123,14 @@ html, body {
   max-width: 100vw;
 }
 
+/* Demo Background — 3-layer gradient: top-left blue spotlight, top-right sky-blue spotlight, vertical fade */
+.demo-bg {
+  background:
+    radial-gradient(circle at top left, rgba(37,99,235,.18), transparent 35%),
+    radial-gradient(circle at top right, rgba(14,165,233,.18), transparent 32%),
+    linear-gradient(180deg, #f8fafc 0%, #eef6ff 48%, #f8fafc 100%);
+}
+
 /* Glass Panel Effect */
 .glass-panel {
   background: rgba(255, 255, 255, 0.7);

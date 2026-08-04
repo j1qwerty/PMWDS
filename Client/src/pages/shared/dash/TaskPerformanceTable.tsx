@@ -81,11 +81,11 @@ export default function TaskPerformanceTable({
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
-  
+  const [statusMenuPos, setStatusMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [priorityMenuPos, setPriorityMenuPos] = useState<{ top: number; left: number } | null>(null);
+
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const priorityDropdownRef = useRef<HTMLDivElement>(null);
-  const statusButtonRef = useRef<HTMLButtonElement>(null);
-  const priorityButtonRef = useRef<HTMLButtonElement>(null);
   
   const itemsPerPage = pageSize;
 
@@ -123,15 +123,19 @@ export default function TaskPerformanceTable({
     const handleClose = (event: MouseEvent) => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setShowStatusDropdown(false);
+        setStatusMenuPos(null);
       }
       if (priorityDropdownRef.current && !priorityDropdownRef.current.contains(event.target as Node)) {
         setShowPriorityDropdown(false);
+        setPriorityMenuPos(null);
       }
     };
 
     const handleScroll = () => {
       setShowStatusDropdown(false);
       setShowPriorityDropdown(false);
+      setStatusMenuPos(null);
+      setPriorityMenuPos(null);
     };
 
     document.addEventListener("mousedown", handleClose);
@@ -145,15 +149,30 @@ export default function TaskPerformanceTable({
     };
   }, [showStatusDropdown, showPriorityDropdown]);
 
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: SortField, event?: React.MouseEvent<HTMLButtonElement>) => {
     if (field === "status" || field === "priority") {
-      // Toggle dropdown for status/priority
       if (field === "status") {
-        setShowStatusDropdown(!showStatusDropdown);
+        const opening = !showStatusDropdown;
+        setShowStatusDropdown(opening);
         setShowPriorityDropdown(false);
+        setPriorityMenuPos(null);
+        if (opening) {
+          const rect = event!.currentTarget.getBoundingClientRect();
+          setStatusMenuPos({ top: rect.bottom + 4, left: rect.left });
+        } else {
+          setStatusMenuPos(null);
+        }
       } else {
-        setShowPriorityDropdown(!showPriorityDropdown);
+        const opening = !showPriorityDropdown;
+        setShowPriorityDropdown(opening);
         setShowStatusDropdown(false);
+        setStatusMenuPos(null);
+        if (opening) {
+          const rect = event!.currentTarget.getBoundingClientRect();
+          setPriorityMenuPos({ top: rect.bottom + 4, left: rect.left });
+        } else {
+          setPriorityMenuPos(null);
+        }
       }
       return;
     }
@@ -166,6 +185,8 @@ export default function TaskPerformanceTable({
     }
     setShowStatusDropdown(false);
     setShowPriorityDropdown(false);
+    setStatusMenuPos(null);
+    setPriorityMenuPos(null);
   };
 
   const handleStatusFilter = (status: string) => {
@@ -361,8 +382,7 @@ export default function TaskPerformanceTable({
               <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
                 <div ref={statusDropdownRef}>
                   <button 
-                    ref={statusButtonRef}
-                    onClick={() => handleSort("status")}
+                    onClick={(e) => handleSort("status", e)}
                     className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
                   >
                     Status
@@ -371,12 +391,12 @@ export default function TaskPerformanceTable({
                       <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
                     )}
                   </button>
-                  {showStatusDropdown && (
+                  {showStatusDropdown && statusMenuPos && (
                     <div 
                       className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
                       style={{
-                        top: (statusButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
-                        left: statusButtonRef.current?.getBoundingClientRect().left ?? 0,
+                        top: statusMenuPos.top,
+                        left: statusMenuPos.left,
                       }}
                     >
                       <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
@@ -404,8 +424,7 @@ export default function TaskPerformanceTable({
               <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
                 <div ref={priorityDropdownRef}>
                   <button 
-                    ref={priorityButtonRef}
-                    onClick={() => handleSort("priority")}
+                    onClick={(e) => handleSort("priority", e)}
                     className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
                   >
                     Priority
@@ -414,12 +433,12 @@ export default function TaskPerformanceTable({
                       <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
                     )}
                   </button>
-                  {showPriorityDropdown && (
+                  {showPriorityDropdown && priorityMenuPos && (
                     <div 
                       className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
                       style={{
-                        top: (priorityButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
-                        left: priorityButtonRef.current?.getBoundingClientRect().left ?? 0,
+                        top: priorityMenuPos.top,
+                        left: priorityMenuPos.left,
                       }}
                     >
                       <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
