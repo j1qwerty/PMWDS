@@ -32,7 +32,7 @@ public class ProjectDocument : BaseEntity
         return new ProjectDocument
         {
             ProjectId = projectId,
-            Title = title,
+            Title = SanitizeTitle(title),
             FilePath = filePath,
             ContentType = contentType,
             FileSizeBytes = sizeBytes,
@@ -40,6 +40,32 @@ public class ProjectDocument : BaseEntity
             Description = description,
             Category = category
         };
+    }
+
+    /// <summary>
+    /// The title is display-only, so strip control characters and any path structure a client may
+    /// have sent. The file on disk is named separately, so the original name is not needed here and
+    /// must never be able to influence where the file is written.
+    /// </summary>
+    private static string SanitizeTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return "document";
+        }
+
+        var cleaned = new string(title
+            .Where(c => !char.IsControl(c))
+            .ToArray())
+            .Trim();
+
+        var lastSeparator = cleaned.LastIndexOfAny(new[] { '/', '\\' });
+        if (lastSeparator >= 0 && lastSeparator < cleaned.Length - 1)
+        {
+            cleaned = cleaned[(lastSeparator + 1)..];
+        }
+
+        return string.IsNullOrWhiteSpace(cleaned) ? "document" : cleaned;
     }
 
     /// <summary>A Utilization Certificate carries a finance approval lifecycle.</summary>

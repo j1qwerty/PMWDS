@@ -30,11 +30,18 @@ internal static class ProjectsSeeder
 
     private static async Task SeedCoreAsync(ApplicationDbContext context, CancellationToken ct)
     {
-        await ClearExistingProjectsAsync(context, ct);
-
         var departments = await context.Departments.ToListAsync(ct);
         var users = await context.Users.ToListAsync(ct);
         var spec = BuildProjectSpec(departments, users);
+
+        // Seed once, matching the guard used by every other seeder. The previous implementation
+        // deleted all projects on every start, which cascade-deleted ProjectDocuments (and any
+        // other project-owned rows), so uploaded documents disappeared after each restart and the
+        // project came back with a new GUID, orphaning the files still on disk.
+        if (await context.Projects.AnyAsync(p => p.ProjectCode == spec.ProjectCode, ct))
+        {
+            return;
+        }
 
         var project = Project.Create(spec.Name, spec.Description, spec.Category, spec.Priority, spec.DepartmentId, spec.ManagerId, spec.Start, spec.End, spec.Budget, spec.Client, spec.ProjectCode);
         project.SetCreatedBy(SeedConstants.SeedUser);
@@ -44,75 +51,6 @@ internal static class ProjectsSeeder
         project.UpdateAIAnalysis(spec.Health, spec.DelayRisk, spec.BudgetRisk, spec.Insight);
         await context.Projects.AddAsync(project, ct);
 
-        await context.SaveChangesAsync(ct);
-    }
-
-    private static async Task ClearExistingProjectsAsync(ApplicationDbContext context, CancellationToken ct)
-    {
-        var existingProjects = await context.Projects.Select(p => p.Id).ToListAsync(ct);
-        if (existingProjects.Count == 0) return;
-
-        // Delete in FK-safe order
-        var projectIds = existingProjects.ToHashSet();
-
-        // 1. MilestoneDependencies (RESTRICT FK to Milestones)
-        var milestoneDeps = await context.MilestoneDependencies
-            .Where(d => projectIds.Contains(d.ProjectId))
-            .ToListAsync(ct);
-        context.MilestoneDependencies.RemoveRange(milestoneDeps);
-        await context.SaveChangesAsync(ct);
-
-        // 2. TaskDependencies (RESTRICT FK to Tasks)
-        var allTaskIds = await context.Tasks
-            .Where(t => projectIds.Contains(t.ProjectId))
-            .Select(t => t.Id)
-            .ToListAsync(ct);
-        var taskIdSet = allTaskIds.ToHashSet();
-        var allTaskDeps = await context.TaskDependencies
-            .Where(d => taskIdSet.Contains(d.PredecessorTaskId) || taskIdSet.Contains(d.SuccessorTaskId))
-            .ToListAsync(ct);
-        context.TaskDependencies.RemoveRange(allTaskDeps);
-        await context.SaveChangesAsync(ct);
-
-        // 3. TaskAssignments (FK to Tasks)
-        var assignments = await context.TaskAssignments
-            .Where(a => taskIdSet.Contains(a.TaskId))
-            .ToListAsync(ct);
-        context.TaskAssignments.RemoveRange(assignments);
-        await context.SaveChangesAsync(ct);
-
-        // 4. Tasks (delete subtasks first due to RESTRICT self-FK on ParentTaskId)
-        var subtasks = await context.Tasks
-            .Where(t => projectIds.Contains(t.ProjectId) && t.ParentTaskId != null)
-            .ToListAsync(ct);
-        context.Tasks.RemoveRange(subtasks);
-        await context.SaveChangesAsync(ct);
-
-        var parentTasks = await context.Tasks
-            .Where(t => projectIds.Contains(t.ProjectId))
-            .ToListAsync(ct);
-        context.Tasks.RemoveRange(parentTasks);
-        await context.SaveChangesAsync(ct);
-
-        // 5. Milestones (FK to Projects is CASCADE, but we explicitly remove)
-        var milestones = await context.Milestones
-            .Where(m => projectIds.Contains(m.ProjectId))
-            .ToListAsync(ct);
-        context.Milestones.RemoveRange(milestones);
-        await context.SaveChangesAsync(ct);
-
-        // 6. ProjectDepartments
-        var projectDepts = await context.ProjectDepartments
-            .Where(pd => projectIds.Contains(pd.ProjectId))
-            .ToListAsync(ct);
-        context.ProjectDepartments.RemoveRange(projectDepts);
-        await context.SaveChangesAsync(ct);
-
-        // 7. Projects
-        var projects = await context.Projects
-            .Where(p => projectIds.Contains(p.Id))
-            .ToListAsync(ct);
-        context.Projects.RemoveRange(projects);
         await context.SaveChangesAsync(ct);
     }
 
