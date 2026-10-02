@@ -30,8 +30,16 @@ public static class DatabaseConnectionService
     {
         var settings = configuration.GetSection("Database").Get<DatabaseSettings>() ?? new DatabaseSettings();
         var sqlServerConnection = configuration.GetConnectionString("Default");
-        var sqliteConnection = settings.SqliteConnectionString;
+
+        // Resolve relative SQLite data sources against the content root so the path does not
+        // depend on the process working directory (differs under systemd).
+        var sqliteConnection = ResolveSqliteConnectionString(settings.SqliteConnectionString, environment.ContentRootPath);
         var attempts = new List<string>();
+
+        if (!environment.IsDevelopment())
+        {
+            GuardSqliteOutsideAppDirectory(sqliteConnection, environment, attempts);
+        }
 
         var selected = SelectProvider(environment, settings, sqlServerConnection, sqliteConnection, attempts);
 
@@ -87,7 +95,16 @@ public static class DatabaseConnectionService
                     : Path.Combine(environment.ContentRootPath, sqliteDirectory));
             }
 
-            await EnsureSqliteDevelopmentDatabaseAsync(db, ct);
+            if (environment.IsDevelopment())
+            {
+                await EnsureSqliteDevelopmentDatabaseAsync(db, ct);
+                return;
+            }
+
+            // Production SQLite: never drop the database. Apply EF migrations forward only.
+            Console.WriteLine("[PMWDS] Applying SQLite migrations (production, no destructive reset)...");
+            await db.Database.MigrateAsync(ct);
+            await EnsureSqliteCompatibilityColumnsAsync(db, ct);
             return;
         }
 
@@ -116,6 +133,92 @@ public static class DatabaseConnectionService
         }
     }
 
+    /// <summary>
+    /// Outside Development the SQLite file must live outside the application directory. The usual
+    /// deploy replaces the publish folder in place, so a database inside it is destroyed on every
+    /// redeploy — the "data disappears" symptom. Fail fast instead of silently losing data.
+    /// </summary>
+    private static void GuardSqliteOutsideAppDirectory(
+        string sqliteConnectionString,
+        IWebHostEnvironment environment,
+        List<string> attempts)
+    {
+        if (string.IsNullOrWhiteSpace(sqliteConnectionString))
+        {
+            return;
+        }
+
+        var marker = "data source=";
+        var index = sqliteConnectionString.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var valueStart = index + marker.Length;
+        var valueEnd = sqliteConnectionString.IndexOf(';', valueStart);
+        if (valueEnd < 0)
+        {
+            valueEnd = sqliteConnectionString.Length;
+        }
+
+        var dataSource = sqliteConnectionString[valueStart..valueEnd].Trim();
+        if (dataSource.Length == 0 ||
+            dataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase) ||
+            dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase) ||
+            !Path.IsPathRooted(dataSource))
+        {
+            return;
+        }
+
+        var appDirectory = Path.GetFullPath(AppContext.BaseDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+        if (dataSource.StartsWith(appDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Database:SqliteConnectionString points inside the application directory ({dataSource}). " +
+                "A deploy replaces that directory, which would delete the database. " +
+                "Use a durable absolute path outside the app folder, e.g. /var/lib/pmwds/database/pmwds.sqlite.");
+        }
+
+        attempts.Add($"SQLite data source '{dataSource}' verified outside the application directory.");
+    }
+
+    private static string ResolveSqliteConnectionString(string connectionString, string contentRootPath)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return connectionString;
+        }
+
+        var marker = "data source=";
+        var index = connectionString.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return connectionString;
+        }
+
+        var valueStart = index + marker.Length;
+        var valueEnd = connectionString.IndexOf(';', valueStart);
+        if (valueEnd < 0)
+        {
+            valueEnd = connectionString.Length;
+        }
+
+        var dataSource = connectionString[valueStart..valueEnd].Trim();
+        if (dataSource.Length == 0
+            || dataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase)
+            || dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+            || Path.IsPathRooted(dataSource))
+        {
+            return connectionString;
+        }
+
+        var resolved = Path.GetFullPath(Path.Combine(contentRootPath, dataSource));
+        return connectionString[..valueStart] + resolved + connectionString[valueEnd..];
+    }
+
     private static DatabaseConnectionStatus SelectProvider(
         IWebHostEnvironment environment,
         DatabaseSettings settings,
@@ -123,11 +226,14 @@ public static class DatabaseConnectionService
         string sqliteConnection,
         List<string> attempts)
     {
+        var sqlitePermitted = environment.IsDevelopment() || settings.AllowSqliteInProduction;
+
         if (settings.ForceSqlite)
         {
-            if (!environment.IsDevelopment())
+            if (!sqlitePermitted)
             {
-                throw new InvalidOperationException("Database:ForceSqlite is only allowed in Development. Production must use SQL Server.");
+                throw new InvalidOperationException(
+                    "Database:ForceSqlite requires Development or Database:AllowSqliteInProduction=true. Production must use SQL Server by default.");
             }
 
             attempts.Add("SQLite forced by Database:ForceSqlite.");
@@ -142,12 +248,14 @@ public static class DatabaseConnectionService
 
         attempts.Add("SQL Server unavailable or not configured.");
 
-        if (!environment.IsDevelopment())
+        if (!sqlitePermitted)
         {
-            throw new InvalidOperationException("SQL Server is required outside Development, but ConnectionStrings:Default is not reachable.");
+            throw new InvalidOperationException(
+                "SQL Server is required outside Development, but ConnectionStrings:Default is not reachable. " +
+                "Set Database:AllowSqliteInProduction=true to run SQLite in Production.");
         }
 
-        attempts.Add("Development SQLite fallback selected after a single SQL Server connectivity check.");
+        attempts.Add("SQLite selected after a single SQL Server connectivity check.");
         return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, true, attempts);
     }
 

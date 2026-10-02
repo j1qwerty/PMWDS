@@ -6,6 +6,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -287,6 +288,13 @@ builder.Services.AddCors(opt =>
 
 var app = builder.Build();
 
+// nginx terminates TLS and proxies over loopback HTTP. Trust its forwarded headers so
+// UseHttpsRedirection and absolute URL generation see the original scheme instead of looping.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseIpRateLimiting();
@@ -303,9 +311,11 @@ if (exposeApiDocs)
 
 app.UseHttpsRedirection();
 var storageSettings = builder.Configuration.GetSection("AzureStorage").Get<AzureStorageSettings>() ?? new AzureStorageSettings();
-var localFilesRoot = string.IsNullOrWhiteSpace(storageSettings.LocalUploadPath)
-    ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"))
-    : Directory.GetParent(storageSettings.LocalUploadPath)?.FullName ?? storageSettings.LocalUploadPath;
+// Uploaded-file root. Must be absolute and must not sit inside the publish folder, otherwise a
+// redeploy that replaces app/ destroys user uploads.
+var localFilesRoot = StoragePathResolver.Resolve(
+    storageSettings.LocalUploadPath,
+    AppContext.BaseDirectory);
 Directory.CreateDirectory(localFilesRoot);
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -313,9 +323,11 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = storageSettings.LocalBaseUrl ?? "/files"
 });
 var fileStorageSettings = builder.Configuration.GetSection("FileStorage").Get<LocalFileStorageSettings>() ?? new LocalFileStorageSettings();
-var avatarsRoot = string.IsNullOrWhiteSpace(fileStorageSettings.BasePath)
-    ? Path.Combine(AppContext.BaseDirectory, "App_Data", "avatars")
-    : Path.Combine(fileStorageSettings.BasePath, "avatars");
+
+// PhysicalFileProvider requires an absolute root, so resolve relative FileStorage:BasePath
+// against the app base directory instead of relying on the process working directory.
+var storageBaseRoot = StoragePathResolver.Resolve(fileStorageSettings.BasePath, AppContext.BaseDirectory);
+var avatarsRoot = Path.Combine(storageBaseRoot, fileStorageSettings.AvatarsPath);
 Directory.CreateDirectory(avatarsRoot);
 app.UseStaticFiles(new StaticFileOptions
 {

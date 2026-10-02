@@ -38,9 +38,7 @@ public class AzureBlobStorageService : IFileStorageService
         {
             _client = new BlobServiceClient(connStr);
             _azureAvailable = true;
-            _basePath = string.IsNullOrWhiteSpace(settings.Value.LocalUploadPath)
-                ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"))
-                : settings.Value.LocalUploadPath;
+            _basePath = StoragePathResolver.Resolve(settings.Value.LocalUploadPath, AppContext.BaseDirectory);
             Directory.CreateDirectory(_basePath);
             _baseUrl = settings.Value.LocalBaseUrl ?? "/files";
             _logger.LogInformation(
@@ -50,9 +48,7 @@ public class AzureBlobStorageService : IFileStorageService
         else
         {
             _azureAvailable = false;
-            _basePath = string.IsNullOrWhiteSpace(settings.Value.LocalUploadPath)
-                ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"))
-                : settings.Value.LocalUploadPath;
+            _basePath = StoragePathResolver.Resolve(settings.Value.LocalUploadPath, AppContext.BaseDirectory);
             Directory.CreateDirectory(_basePath);
             _baseUrl = settings.Value.LocalBaseUrl ?? "/files";
             _logger.LogInformation(
