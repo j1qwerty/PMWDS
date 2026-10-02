@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
@@ -110,26 +110,18 @@ export function ProjectsListPage() {
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersRef = useRef<HTMLDivElement>(null);
   const [newProjectWizardOpen, setNewProjectWizardOpen] = useState(false);
 
-  // Close the overflow filter panel on outside click / Escape.
+  // Escape closes the expanded filter row. No outside-click listener is needed:
+  // the extra filters render inline in the card rather than in a floating
+  // overlay, so there is no layer to dismiss and nothing can intercept clicks.
   useEffect(() => {
     if (!filtersOpen) return;
-    const onPointerDown = (e: MouseEvent) => {
-      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
-        setFiltersOpen(false);
-      }
-    };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setFiltersOpen(false);
     };
-    document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [filtersOpen]);
 
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
@@ -396,7 +388,14 @@ export function ProjectsListPage() {
       <AnimatedBackground />
 
       {/* ── Search + Filters ── */}
-      <div className="relative z-10 mb-4 rounded-2xl border border-slate-100 bg-white/90 backdrop-blur-sm p-4 shadow-sm space-y-3">
+      <div
+        className={`relative mb-4 rounded-2xl border border-slate-100 bg-white/90 backdrop-blur-sm p-4 shadow-sm space-y-3 ${
+          // Raised while the filter row is open so dropdown menus that overflow
+          // this card paint above the results meta and the project cards below,
+          // which share the same z-10 stacking level.
+          filtersOpen ? "z-30" : "z-10"
+        }`}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[220px]">
             <Icon name="search" size={16} className="absolute left-3 top-3 text-slate-400" />
@@ -444,17 +443,7 @@ export function ProjectsListPage() {
           />
 
           {/* Overflow filters (organization, sort, date) */}
-          {/*
-            onMouseDown stops propagation so the document-level outside-click
-            listener never sees clicks on the trigger or the panel. Without it,
-            interacting with a dropdown or date input inside the panel would
-            register as an outside click and dismiss the whole panel.
-          */}
-          <div
-            className="relative shrink-0"
-            ref={filtersRef}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
+          <div className="relative shrink-0">
             <button
               type="button"
               onClick={() => setFiltersOpen((v) => !v)}
@@ -487,8 +476,12 @@ export function ProjectsListPage() {
               </button>
             )}
 
-            {filtersOpen && (
-              <div className="absolute right-0 top-12 z-50 w-[min(92vw,420px)] rounded-2xl border border-slate-100 bg-white shadow-xl p-4 space-y-4">
+            </div>
+          </div>
+
+          {/* Expanded filter row - inline, so no overlay can swallow clicks. */}
+          {filtersOpen && (
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-end gap-2 flex-wrap">
                 {isSuperAdmin && (
                   <div>
                     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -518,24 +511,24 @@ export function ProjectsListPage() {
                   />
                 </div>
 
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <div>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                     <Icon name="calendar" size={14} />
                     Date
                   </p>
 
-                  <CustomDropdown
-                    value={dateField}
-                    onChange={(val) => setDateField(val as DateField)}
-                    options={DATE_FIELD_OPTIONS}
-                    placeholder="Date field"
-                  />
-
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <CustomDropdown
+                      className="w-[150px] shrink-0"
+                      value={dateField}
+                      onChange={(val) => setDateField(val as DateField)}
+                      options={DATE_FIELD_OPTIONS}
+                      placeholder="Date field"
+                    />
                     <input
                       type="date"
                       aria-label="From date"
-                      className={`${FILTER_INPUT} flex-1 min-w-0`}
+                      className={FILTER_INPUT}
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
                     />
@@ -543,13 +536,18 @@ export function ProjectsListPage() {
                     <input
                       type="date"
                       aria-label="To date"
-                      className={`${FILTER_INPUT} flex-1 min-w-0`}
+                      className={FILTER_INPUT}
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
                     />
                   </div>
+                </div>
 
-                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Presets
+                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       type="button"
                       onClick={() => applyDatePreset("all")}
@@ -596,7 +594,7 @@ export function ProjectsListPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <div className="flex items-end gap-2 ml-auto">
                   <button
                     type="button"
                     onClick={() => {
@@ -606,23 +604,21 @@ export function ProjectsListPage() {
                       setOverdueOnly(false);
                       setSortKey("newest");
                     }}
-                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+                    className="h-10 px-3 text-[11px] font-semibold text-slate-500 hover:text-slate-700 transition-colors"
                   >
                     Reset these
                   </button>
                   <button
                     type="button"
                     onClick={() => setFiltersOpen(false)}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                    className="h-10 px-3 rounded-xl text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
                   >
                     Done
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </div>
 
       {/* ── Results meta ── */}
       <div className="relative z-10 mb-3 flex items-center justify-between text-xs text-slate-500">

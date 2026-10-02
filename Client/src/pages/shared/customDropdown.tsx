@@ -45,7 +45,7 @@ export function CustomDropdown({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-12 w-56 bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden max-h-100 overflow-y-auto">
+        <div className="absolute left-0 top-[calc(100%+6px)] min-w-full w-max max-w-[min(90vw,20rem)] bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden max-h-72 overflow-y-auto">
           {options.map((opt) => (
             <button
               key={opt.value}
