@@ -340,6 +340,10 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        // Milestone counts roll up into the project, so both scopes must refetch.
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = milestone.Id }, MilestoneDto.FromEntity(milestone));
     }
 

@@ -602,6 +602,8 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(new { Message = "Comment added.", Comment = comment.Content });
     }
 
@@ -685,6 +687,8 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(new { Message = "Timer started.", EntryId = entry.Id });
     }
 
@@ -727,6 +731,8 @@ public class TasksController : BaseApiController
             },
             ProjectId: task.ProjectId
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
 
         return Ok(new { Message = "Timer stopped.", DurationMinutes = entry.Duration.TotalMinutes });
     }
@@ -1101,6 +1107,12 @@ public class TasksController : BaseApiController
             },
             ProjectId: projectId
         );
+
+        // Deleting a task removes it and its whole subtask subtree, and recalculates the
+        // parent milestone, so tasks, milestones and the project rollup all change.
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestoneId?.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
 
         return NoContent();
     }

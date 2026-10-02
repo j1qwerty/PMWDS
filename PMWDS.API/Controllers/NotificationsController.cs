@@ -167,6 +167,11 @@ public class NotificationsController : BaseApiController
             req.ActionUrl));
 
         await _notifications.SendBulkAsync(dtos, ct);
+
+        // Everyone in scope now has new notifications, including any recipient looking at
+        // the bell in another browser right now.
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
+
         return Ok();
     }
 
