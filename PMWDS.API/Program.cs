@@ -367,7 +367,7 @@ using (var scope = app.Services.CreateScope())
         ["OpenRouter"] = aiSettings.OpenRouter?.ApiKey
     };
 
-    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys);
+    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys, storageBasePath: storageBaseRoot);
     await SensitiveDataMigrationService.ProtectExistingAsync(
         db,
         scope.ServiceProvider.GetRequiredService<ISensitiveDataProtector>());

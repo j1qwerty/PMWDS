@@ -9,13 +9,13 @@ namespace PMWDS.Persistence.Migrations.Seeders;
 
 internal static class UsersSeeder
 {
-    internal static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct)
+    internal static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct, string? storageBasePath = null)
     {
         var departments = await context.Departments.ToListAsync(ct);
         var roles = await context.Roles.ToDictionaryAsync(r => r.Key, ct);
         var org = await context.Organizations.FirstOrDefaultAsync(ct);
         var specs = BuildUserSpecs(departments);
-        var imagePaths = await SeedProfileImagesAsync(ct);
+        var imagePaths = await SeedProfileImagesAsync(ct, storageBasePath);
 
         foreach (var spec in specs)
         {
@@ -90,14 +90,18 @@ internal static class UsersSeeder
         await context.SaveChangesAsync(ct);
     }
 
-    private static async Task<Dictionary<string, string>> SeedProfileImagesAsync(CancellationToken ct)
+    private static async Task<Dictionary<string, string>> SeedProfileImagesAsync(CancellationToken ct, string? storageBasePath)
     {
         var result = new Dictionary<string, string>();
         var seedImagesDir = Path.Combine(AppContext.BaseDirectory, "SeedData", "Images");
         if (!Directory.Exists(seedImagesDir))
             return result;
 
-        var storageBase = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Data"));
+        // Fall back to the app base directory when the host did not supply a path. Do not walk up
+        // parent directories: that resolves outside the publish folder once deployed.
+        var storageBase = string.IsNullOrWhiteSpace(storageBasePath)
+            ? Path.Combine(AppContext.BaseDirectory, "Data")
+            : storageBasePath;
         Directory.CreateDirectory(storageBase);
 
         var extensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
@@ -116,7 +120,10 @@ internal static class UsersSeeder
             if (!File.Exists(destFile))
                 File.Copy(file, destFile, overwrite: false);
 
-            result[employeeCode] = $"/files/pmwds-files/{folderName}/{employeeCode.ToLowerInvariant()}{ext}";
+            // Served by AzureStorage:LocalBaseUrl (default "/files"), which is mounted at the storage root.
+            // The previous "pmwds-files" segment did not match the directory actually written, so
+            // every seeded avatar URL 404'd.
+            result[employeeCode] = $"/files/{folderName}/{employeeCode.ToLowerInvariant()}{ext}";
         }
 
         return result;
