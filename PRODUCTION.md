@@ -11,7 +11,89 @@ Related: [README.md](README.md), [CONFIG.md](CONFIG.md), [config-sqlite.md](conf
 > **Live as of 2026-10-02.** Deployed and verified end to end (§4a). The two deploy failures recorded
 > in §2.1 and §5f are the ones most likely to be repeated — read those before deploying.
 
-## Deploy checklist
+Deploy with **`.\deploy.ps1`** — it runs the checklist below and enforces every rule in §2.1, §2.2 and
+§2a for you. Details in [Deploying](#deploying).
+
+## Deploying
+
+### The script (normal way)
+
+```powershell
+.\deploy.ps1
+```
+
+Run it from the repo root. It prompts for what to ship:
+
+```
+         [1] both  - API + web client
+         [2] api   - API only (leaves the current client build in place)
+         [3] web   - web client only (no service restart)
+```
+
+Then it runs every step with per-step timing and a pass/fail line: preflight, target selection,
+build, package, confirm, upload, remote deploy, verify.
+
+| Flag | Effect |
+|---|---|
+| `-Target api\|web\|both` | skip the prompt |
+| `-SkipConfirm` | deploy without the y/N check (CI) |
+| `-SkipVerify` | skip the post-deploy verification pass |
+| `-Host_ contabo` | override the SSH alias |
+
+Example, web-only client fix with no service restart:
+
+```powershell
+.\deploy.ps1 -Target web -SkipConfirm
+```
+
+Exit code is `0` on success and `1` if any check failed, so it is usable from CI.
+
+### What the script enforces for you
+
+Every item below is a mistake that actually happened during this deploy (§2.1, §2.2, §5a, §6):
+
+- **Preflight** — requires `git`, `dotnet`, `node`, `pnpm`, `tar`, `ssh`, `scp` on PATH, confirms
+  `PMWDS.slnx` is present (catches running it from the wrong directory), prints branch and HEAD, and
+  **warns loudly about uncommitted changes because they get deployed**.
+- **Relative API base** — sets `VITE_API_BASE_URL=/api/v1` for the client build so one bundle serves
+  both the subdomain and the bare IP (§2a), then restores the previous value.
+- **Asset hashes are read, never assumed** — parses `/assets/...` out of the freshly built
+  `dist/index.html`, so verification targets the files that were actually produced.
+- **`tar`, never `Compress-Archive`** — and it additionally inspects `tar -tzf` output and **refuses
+  to deploy** if any entry contains a backslash, which is the exact signature of the blank-page bug.
+- **Ownership and permissions** — `chown -R www-data:www-data` and `chmod -R 755` on both trees.
+- **Service restart only when the API changed** — a web-only deploy does not bounce the API.
+- **Temporary archives cleaned** — including on failure, via `finally`.
+- **Verification** — every asset in `dist/index.html` must return `200` with a body over 1 KB **on
+  every public host** (IP and subdomain), a SPA deep link must return `200`, and the journal must
+  show `Now listening` with no unhandled exceptions. A `200` on `/` is deliberately *not* accepted as
+  proof of a working client, because `index.html` is static and succeeds even when every asset it
+  references 404s.
+- **Database is never touched** — only `app/` and `html/` are replaced, so `/var/lib/pmwds` and the
+  SQLite file are untouched by construction.
+
+### Requirements
+
+- Windows PowerShell 5.1 or later (developed and tested on 5.1).
+- `pnpm` on PATH — the client is built with `pnpm build`, not `npm run build`.
+- The `contabo` SSH alias and its key already configured.
+- SSH host key acceptance; the script uses `BatchMode=yes` so it never blocks on a prompt.
+
+### Manual checklist (fallback / debugging)
+
+Use when the script cannot run, or to reason about what it does.
+
+1. `git checkout production`, `git pull`
+2. `dotnet publish PMWDS.API -c Release -o .\pmwds-pub`
+3. `$env:VITE_API_BASE_URL="/api/v1"; cd Client; pnpm build`
+4. Package with **`tar`** — never `Compress-Archive` (§2.1)
+5. `scp` both archives, extract on the server, `chown -R www-data:www-data`
+6. **Verify every asset returns `200` with a real size** (§2.2) — a blank page otherwise
+7. `systemctl restart pmwds.dharmaatribe.app`
+8. `journalctl -u pmwds.dharmaatribe.app -n 30 --no-pager` — expect `Now listening on: http://127.0.0.1:5001`
+9. Confirm login works and `/var/lib/pmwds/database/pmwds.sqlite` is still the same file
+
+---
 
 1. `git checkout production`, `git pull`
 2. `dotnet publish PMWDS.API -c Release -o .\pmwds-pub`
