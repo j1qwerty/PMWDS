@@ -128,6 +128,27 @@ public class UtilizationCertificate : BaseEntity
         Status == UtilizationCertificateStatus.Draft ||
         Status == UtilizationCertificateStatus.Rejected;
 
+    /// <summary>
+    /// Detaches the certificate from a task that is being deleted.
+    /// </summary>
+    /// <remarks>
+    /// The <c>TaskId</c> foreign key cannot be <c>ON DELETE SET NULL</c> on SQL Server.
+    /// Tasks cascade from Projects, and Projects already reaches this table through
+    /// ProjectDocuments, so SQL Server sees a second cascading path and refuses the
+    /// table - it permits only one cascade path per table. SQLite has no such limit, so
+    /// the two providers cannot share one FK definition.
+    ///
+    /// The unlink is therefore performed in the application instead, in
+    /// <c>TaskRepository.DeleteTaskGraphsByIdsAsync</c>, which every task-deletion path
+    /// funnels through. This keeps behaviour identical on both providers: the certificate
+    /// survives with a null <c>TaskId</c> rather than being deleted or blocking the
+    /// delete.
+    /// </remarks>
+    public void UnlinkTask()
+    {
+        TaskId = null;
+    }
+
     public void MarkAsSubmitted(DateTime submittedOn)
     {
         Status = UtilizationCertificateStatus.Submitted;

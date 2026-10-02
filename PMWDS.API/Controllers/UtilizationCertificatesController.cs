@@ -70,7 +70,7 @@ public class UtilizationCertificatesController : ControllerBase
     [RequestSizeLimit(MaxFileSizeBytes)]
     [Authorize(Policy = AuthorizationPolicies.UtilizationCertificateCreate)]
     public async Task<IActionResult> SubmitCertificate(
-        [FromForm] IFormFile file,
+        IFormFile file,
         [FromForm] SubmitUtilizationCertificateDto dto,
         CancellationToken ct)
     {

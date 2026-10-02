@@ -551,7 +551,7 @@ created by hand — `EnsureDatabasesExist` will handle it, since `sa` can.
 Edit `/etc/pmwds/pmwds.env` (the systemd `EnvironmentFile`, **not** a file in the repo):
 
 ```bash
-ConnectionStrings__Default=Server=127.0.0.1,1433;Database=PMWDS;User Id=pmwds_app;Password=CHANGE_ME_Strong_Passw0rd;MultipleActiveResultSets=true;TrustServerCertificate=True
+ConnectionStrings__Default=Server=127.0.0.1,1433;Database=PMWDS;User Id=pmwds_app;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True
 ConnectionStrings__Hangfire=Server=127.0.0.1,1433;Database=PMWDS_Hangfire;User Id=pmwds_app;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True
 Database__ForceSqlite=false
 Database__AllowSqliteInProduction=false
@@ -863,14 +863,50 @@ contents — and a fresh SQLite database still migrates under Production's forwa
   does not answer there. `127.0.0.1` works. Worth knowing before blaming the app.
 - Express Edition caps databases at 10 GB each.
 
-### Known behaviour difference introduced on SQL Server only
+### Known behaviour difference on SQL Server only - now resolved
 
-Deleting a **task** that a utilization certificate references now raises a foreign-key error
-instead of nulling the reference, because `TaskId` had to become `NO ACTION` to satisfy the
-single-cascade-path rule. SQLite keeps `SET NULL`. Fixing it properly needs a design decision
-— unlink during task deletion, or drop the foreign key — so it is flagged, not papered over.
-`TODO.md` already tracks the underlying multiple-cascade-path problem.
+`TaskId` has to be `NO ACTION` on SQL Server rather than `SET NULL`, because Tasks cascade
+from Projects and Projects already reaches the certificate table through ProjectDocuments, so
+a second cascade path makes SQL Server reject the table.
 
+That originally meant deleting a task linked to a certificate raised a foreign-key error. It
+no longer does: `TaskRepository.DeleteTaskGraphsByIdsAsync` now clears the link in the
+application before the delete. Every task-deletion path funnels through that one method, so
+task delete, subtask delete and milestone delete are all covered.
+
+Both providers now behave identically - verified by creating a certificate against a task,
+deleting the task, and confirming on SQL Server and on a fresh SQLite database that the
+certificate survives with a null `TaskId` instead of being deleted or blocking the delete.
+
+`MilestoneId` keeps `SET NULL` on both providers; that FK is not a second cascade path
+because Milestones does not cascade from Projects.
+
+### First request after start is slow on SQL Server (warm is fine)
+
+`GET /api/v1/pages` issues a few hundred queries. Measured on SQL Server 2022 Express,
+fresh process:
+
+| Call | Time |
+|---|---|
+| 1st | 138s |
+| 2nd | 120s |
+| 3rd | 64s |
+| 4th (after a later restart-free warm-up) | 1.9s |
+| steady state | 0.41-0.53s |
+
+Two warm-up curves overlap: EF Core compiles each distinct LINQ query on first use, and
+SQL Server compiles a plan per distinct batch. Once both are warm the endpoint is on par
+with every other endpoint (`/tasks` 0.34s, `/projects` 0.28s, `/workspace/bootstrap` 0.23s)
+and SQLite is 1.17s for the same call.
+
+This matters after each deploy or service restart: the first user to load the app waits up
+to about two and a half minutes. It is a cold-start cost, not a steady-state regression -
+`/pages` was never fast on a cold SQL Server. If that is unacceptable, the fix is the
+monotonic version-counter cache described in
+`docs/realtime-sync-and-data-durability.md`, which restores caching without the stale-data
+bug that the 30s TTL caused. Do not reinstate the TTL.
+
+Payload is ~326 KB, which is also worth addressing separately.
 ### No automated tests
 
 There is no test project anywhere in the solution, no xUnit/NUnit/MSTest/Testcontainers

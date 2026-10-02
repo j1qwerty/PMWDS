@@ -11,30 +11,43 @@ namespace PMWDS.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // This migration was written against SQLite's type names. SQLite maps Guid,
-            // string and DateTime all to TEXT and bool/int to INTEGER. SQL Server accepts
-            // those names syntactically, so the failure is deferred to the PRIMARY KEY:
+            // This migration must run on both engines, so column types branch on the active
+            // provider. Two traps, both hit the hard way here:
             //
-            //   Column 'Id' in table 'UtilizationCertificates' is of a type that is invalid
-            //   for use as a key column in an index.
+            // 1. SQLite's type names are not valid SQL Server. Guid/string/DateTime were
+            //    all TEXT and bool/int INTEGER. SQL Server *parses* those names - TEXT is
+            //    the legacy LOB type and INTEGER an INT alias - so the DDL was accepted
+            //    right up to the primary key, which then failed:
+            //      Column 'Id' in table 'UtilizationCertificates' is of a type that is
+            //      invalid for use as a key column in an index.
             //
-            // TEXT is the legacy LOB type, which SQL Server forbids in an index. The
-            // migration therefore aborted startup on SQL Server with no useful message,
-            // and DatabaseConnectionService then silently dropped and retried the whole
-            // database before failing again.
+            // 2. Supplying a bare "nvarchar" is a trap of its own. When `type` is given
+            //    EF Core uses it verbatim and IGNORES maxLength, so every string column was
+            //    created as nvarchar(1). Saving a document then failed with
+            //      String or binary data would be truncated in table 'ProjectDocuments',
+            //      column 'Category'. Truncated value: 'G'.
+            //    So the SQL Server string type must carry its length inline.
             //
-            // Branch on the active provider so one migration serves both engines. The
-            // SQLite branch is byte-identical to what already shipped, so existing SQLite
-            // databases are unaffected - EF Core tracks applied migrations by id, not by
-            // file contents.
+            // Types are therefore fully qualified per provider. The SQLite branch is
+            // byte-identical to what already shipped, so existing SQLite databases are
+            // unaffected - EF Core tracks applied migrations by id, not file contents.
+            // Omitting `type` instead was also tried and does NOT work: EF resolves
+            // unspecified column types from this migration's TargetModel, and the model
+            // snapshot has every column pinned to SQLite's TEXT.
+            //
+            // The FK behaviours also have to branch - cascade semantics are not a column
+            // type. See the constraints below.
+
             var sqlServer = migrationBuilder.ActiveProvider?.Contains(
                 "SqlServer", StringComparison.OrdinalIgnoreCase) == true;
 
             var guidType = sqlServer ? "uniqueidentifier" : "TEXT";
-            var stringType = sqlServer ? "nvarchar" : "TEXT";
             var dateTimeType = sqlServer ? "datetime2" : "TEXT";
             var boolType = sqlServer ? "bit" : "INTEGER";
             var intType = sqlServer ? "int" : "INTEGER";
+
+            // Length must be part of the type name, not just maxLength - see trap 2 above.
+            string Text(int maxLength) => sqlServer ? $"nvarchar({maxLength})" : "TEXT";
 
             // Every pre-existing document is a plain file, so backfill the default
             // category rather than an empty string — the enum is stored as text and
@@ -42,7 +55,7 @@ namespace PMWDS.Persistence.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "Category",
                 table: "ProjectDocuments",
-                type: stringType,
+                type: Text(40),
                 maxLength: 40,
                 nullable: false,
                 defaultValue: "General");
@@ -54,25 +67,25 @@ namespace PMWDS.Persistence.Migrations
                     Id = table.Column<Guid>(type: guidType, nullable: false),
                     ProjectId = table.Column<Guid>(type: guidType, nullable: false),
                     DocumentId = table.Column<Guid>(type: guidType, nullable: false),
-                    CertificateNumber = table.Column<string>(type: stringType, maxLength: 100, nullable: false),
-                    FundingSource = table.Column<string>(type: stringType, maxLength: 200, nullable: false),
+                    CertificateNumber = table.Column<string>(type: Text(100), maxLength: 100, nullable: false),
+                    FundingSource = table.Column<string>(type: Text(200), maxLength: 200, nullable: false),
                     AmountClaimed = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     AmountUtilized = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     PeriodStart = table.Column<DateTime>(type: dateTimeType, nullable: false),
                     PeriodEnd = table.Column<DateTime>(type: dateTimeType, nullable: false),
-                    Status = table.Column<string>(type: stringType, maxLength: 20, nullable: false),
+                    Status = table.Column<string>(type: Text(20), maxLength: 20, nullable: false),
                     MilestoneId = table.Column<Guid>(type: guidType, nullable: true),
                     TaskId = table.Column<Guid>(type: guidType, nullable: true),
-                    Purpose = table.Column<string>(type: stringType, maxLength: 2000, nullable: true),
-                    SubmittedByUserId = table.Column<string>(type: stringType, nullable: false),
+                    Purpose = table.Column<string>(type: Text(2000), maxLength: 2000, nullable: true),
+                    SubmittedByUserId = table.Column<string>(type: Text(100), maxLength: 100, nullable: false),
                     SubmittedOn = table.Column<DateTime>(type: dateTimeType, nullable: true),
-                    ReviewedByUserId = table.Column<string>(type: stringType, nullable: true),
+                    ReviewedByUserId = table.Column<string>(type: Text(100), maxLength: 100, nullable: true),
                     ReviewedOn = table.Column<DateTime>(type: dateTimeType, nullable: true),
-                    ReviewNotes = table.Column<string>(type: stringType, maxLength: 2000, nullable: true),
+                    ReviewNotes = table.Column<string>(type: Text(2000), maxLength: 2000, nullable: true),
                     CreatedDate = table.Column<DateTime>(type: dateTimeType, nullable: false),
                     ModifiedDate = table.Column<DateTime>(type: dateTimeType, nullable: true),
-                    CreatedBy = table.Column<string>(type: stringType, nullable: false),
-                    ModifiedBy = table.Column<string>(type: stringType, nullable: true),
+                    CreatedBy = table.Column<string>(type: Text(100), maxLength: 100, nullable: false),
+                    ModifiedBy = table.Column<string>(type: Text(100), maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: boolType, nullable: false),
                     RowVersion = table.Column<int>(type: intType, nullable: false)
                 },
@@ -124,11 +137,12 @@ namespace PMWDS.Persistence.Migrations
                         // The one permitted path is
                         // Projects -> ProjectDocuments -> UtilizationCertificates.
                         //
-                        // Consequence on SQL Server only: deleting a task that a
-                        // certificate references now raises a foreign-key error instead of
-                        // nulling the reference, because SQL Server cannot express "set null
-                        // on delete" here. SQLite keeps SET NULL. See
-                        // docs/realtime-sync-and-data-durability.md for the follow-up.
+                        // NO ACTION does NOT mean SQL Server loses the SET NULL behaviour.
+                        // TaskRepository.DeleteTaskGraphsByIdsAsync clears the link in the
+                        // application before any task delete, and every task-deletion path
+                        // (task, subtask, milestone) funnels through that method. The result
+                        // is identical on both providers: the certificate survives with a
+                        // null TaskId instead of being deleted or blocking the delete.
                         onDelete: sqlServer
                             ? ReferentialAction.NoAction
                             : ReferentialAction.SetNull);

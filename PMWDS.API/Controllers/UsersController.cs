@@ -382,7 +382,7 @@ public class UsersController : BaseApiController
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadProfilePicture(
         string id,
-        [FromForm] IFormFile file,
+        IFormFile file,
         CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))

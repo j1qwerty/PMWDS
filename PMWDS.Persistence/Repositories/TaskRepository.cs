@@ -211,6 +211,24 @@ public class TaskRepository
         .ToListAsync(ct);
         _context.TaskDependencies.RemoveRange(dependencies);
 
+        // Utilization certificates link optionally to the task whose delivery they
+        // certify. The link is informational: an approved financial certificate must
+        // outlive the work item it paid for, so it is detached rather than deleted.
+        //
+        // This cannot be left to the database. The TaskId foreign key is ON DELETE SET NULL
+        // on SQLite, but that is impossible on SQL Server - Tasks cascade from Projects,
+        // and Projects already reaches UtilizationCertificates through ProjectDocuments,
+        // so a second cascade path makes SQL Server reject the table (it permits one per
+        // table). Unlinking here means both providers behave identically, and covers every
+        // task-deletion path because all of them funnel through this method.
+        var certificates = await _context.UtilizationCertificates
+        .Where(c => c.TaskId.HasValue && taskIds.Contains(c.TaskId.Value))
+        .ToListAsync(ct);
+        foreach (var certificate in certificates)
+        {
+            certificate.UnlinkTask();
+        }
+
         var tasks = await _dbSet
         .Where(t => taskIds.Contains(t.Id))
         .OrderByDescending(t => t.ParentTaskId.HasValue)

@@ -75,7 +75,7 @@ File: `PMWDS.API/appsettings.json`
 
 ```json
 "ConnectionStrings": {
-  "Default": "Server=127.0.0.1,1433;Database=PMWDS;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;MultipleActiveResultSets=true;TrustServerCertificate=True",
+  "Default": "Server=127.0.0.1,1433;Database=PMWDS;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True",
   "Redis": "localhost:6379",
   "Hangfire": "Server=127.0.0.1,1433;Database=PMWDS_Hangfire;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True"
 }
@@ -92,6 +92,11 @@ Other notes:
 - Use `127.0.0.1` rather than `localhost`. Some SQL Server instances - including the
   official Linux container - do not answer on `::1`, and the connection hangs until it
   times out rather than failing fast.
+- Do **not** set `MultipleActiveResultSets=true`. `DatabaseConnectionService` enables
+  EF Core's retry strategy for SQL Server, and that strategy depends on savepoints.
+  MARS disables savepoints, so EF logs *"Savepoints are disabled because Multiple Active
+  Result Sets is enabled"* on every `SaveChanges` and cannot roll a failed transaction
+  back to a known clean state before retrying. EF Core does not require MARS.
 - `TrustServerCertificate=True` is required when the instance uses a self-signed
   certificate, which is what the official container generates on first run.
 - Production runs SQL Server in a container (`mcr.microsoft.com/mssql/server:2022-latest`).

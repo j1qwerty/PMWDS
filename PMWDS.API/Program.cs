@@ -294,6 +294,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         options.IncludeXmlComments(xmlPath);
     }
+
 });
 builder.Services.AddCors(opt =>
     opt.AddPolicy("PMWDSCors", p =>

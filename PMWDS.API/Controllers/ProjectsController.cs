@@ -385,7 +385,7 @@ public class ProjectsController : BaseApiController
     [HttpPost("{id:guid}/documents")]
     public async Task<IActionResult> UploadDocument(
     Guid id,
-    [FromForm] IFormFile file,
+    IFormFile file,
     [FromForm] DocumentCategory? category,
     CancellationToken ct)
     {
