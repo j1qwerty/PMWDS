@@ -18,6 +18,11 @@ import { useAuth } from "../../auth";
 import { api } from "../../api";
 import { AnimatedBackground, GlassCard, useToast, useNavHeader, LoadingPage } from "../shared";
 import { GeneratedReports } from "./GeneratedReports";
+import {
+  resolveMetricColor,
+  resolveMetricIcon,
+  resolveMetricTrend,
+} from "./reportMetricStyle";
 
 const CHART_COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8", "#6d28d9"];
 
@@ -48,24 +53,32 @@ const METRIC_COLORS: Record<string, { bg: string; ring: string; text: string }> 
 };
 
 function MetricStat({ metric }: { metric: AiReportResponse["metrics"][number] }) {
-  const c = METRIC_COLORS[metric.color] || METRIC_COLORS.indigo;
-  const t = TREND_STYLE[metric.trend];
+  const c = METRIC_COLORS[resolveMetricColor(metric.color)];
+  const trend = resolveMetricTrend(metric.trend);
+  const t = TREND_STYLE[trend];
+  const icon = resolveMetricIcon(metric.icon, metric.label);
   return (
-    <div className="relative group">
+    <div className="relative group min-w-0">
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent rounded-2xl pointer-events-none" />
       <div className="relative bg-white rounded-2xl border border-slate-200/80 p-5 transition-all duration-300 hover:shadow-xl hover:border-slate-300/60 hover:-translate-y-0.5">
-        <div className="flex items-center justify-between mb-3">
-          <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center ring-1 ${c.ring}`}>
-            <span className={`material-symbols-outlined text-xl ${c.text}`}>{metric.icon}</span>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className={`w-10 h-10 shrink-0 rounded-xl ${c.bg} flex items-center justify-center ring-1 ${c.ring}`}>
+            <span className={`material-symbols-outlined text-xl leading-none ${c.text}`}>{icon}</span>
           </div>
-          {metric.trend && (
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${t.bg} ${t.text}`}>
-              <span className="material-symbols-outlined text-sm">{t.icon}</span>
-            </span>
-          )}
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${t.bg} ${t.text}`}
+            title={trend === "neutral" ? "No change" : trend === "up" ? "Trending up" : "Trending down"}
+          >
+            <span className="material-symbols-outlined text-sm leading-none">{t.icon}</span>
+          </span>
         </div>
-        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{metric.label}</p>
-        <p className="text-2xl font-bold text-slate-900 tabular-nums">{metric.value}</p>
+        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 break-words">
+          {metric.label}
+        </p>
+        {/* Long AI values must wrap inside the card instead of overlapping neighbours. */}
+        <p className="text-2xl font-bold text-slate-900 tabular-nums break-words [overflow-wrap:anywhere]">
+          {metric.value}
+        </p>
       </div>
     </div>
   );

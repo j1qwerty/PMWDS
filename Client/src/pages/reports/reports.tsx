@@ -23,6 +23,7 @@ import {
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
 import { GeneratedReports } from "./GeneratedReports";
+import { useReportGeneration } from "./ReportGenerationContext";
 
 export function ReportsPage() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export function ReportsPage() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
   const [storedReportsLoading, setStoredReportsLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const { generate, isGeneratingType, pendingReportType } = useReportGeneration();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -122,17 +123,20 @@ export function ReportsPage() {
   });
 
   const handleGenerate = async (label: string, reportType: string, body: Record<string, unknown>) => {
-    if (!auth) return;
-    setGenerating(true);
+    // The pending flag lives above the router, so this guard still holds if the
+    // user navigated away and back while the request is running.
+    if (isGeneratingType(reportType)) {
+      addToast(`${label} report is already being generated.`, "error");
+      return;
+    }
+
     try {
-      const report = await api.generateReport(auth.token, reportType, body);
-      navigate("/reports/view", { state: { report, exportParams: reportFilterPayload() } });
+      const { report, exportParams } = await generate(reportType, body, reportFilterPayload());
+      navigate("/reports/view", { state: { report, exportParams } });
       loadStoredReports();
       addToast(`${label} report generated successfully.`);
     } catch (e) {
-      addToast(`Error: ${e instanceof Error ? e.message : "Generation failed"}`, "error");
-    } finally {
-      setGenerating(false);
+      addToast(e instanceof Error ? e.message : "Generation failed", "error");
     }
   };
 
@@ -276,7 +280,8 @@ export function ReportsPage() {
 
           <ReportGenerator
             filters={filters}
-            generating={generating}
+            generatingReportType={pendingReportType}
+            isGeneratingType={isGeneratingType}
             onGenerateProjectStatus={handleGenerateProjectStatus}
             onGenerateBudgetVariance={handleGenerateBudgetVariance}
             onGenerateTaskCompletion={handleGenerateTaskCompletion}

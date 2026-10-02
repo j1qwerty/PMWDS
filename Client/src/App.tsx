@@ -31,6 +31,7 @@ import { SkillsPage } from "./pages/skills/SkillsPage";
 import { AIPage as CoreAIPage } from "./pages/ai/ai";
 import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
 import { ReportViewPage } from "./pages/reports/ReportViewPage";
+import { ReportGenerationProvider } from "./pages/reports/ReportGenerationContext";
 
 // System
 import { RolesPage } from "./pages/roles/RolesPage";
@@ -156,7 +157,11 @@ export default function App() {
       <AuthProvider>
         <AppDataProvider>
           <ToastProvider>
-            <AppRoutes />
+            {/* Holds in-flight report generation above the router so the
+                "Generating..." state survives navigation. */}
+            <ReportGenerationProvider>
+              <AppRoutes />
+            </ReportGenerationProvider>
           </ToastProvider>
         </AppDataProvider>
       </AuthProvider>
