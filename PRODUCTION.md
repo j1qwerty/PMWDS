@@ -451,6 +451,161 @@ nginx -t && systemctl reload nginx
 
 ---
 
+## 3a. Moving production from SQLite to SQL Server
+
+**Production currently runs SQLite** (`/var/lib/pmwds/database/pmwds.sqlite`, see §3).
+This section covers switching it to SQL Server. SQL Server and Hangfire have been
+verified end to end against a real instance — see §2c for the verification table.
+
+### Windows authentication will not work here
+
+`Integrated Security=True` / `Trusted_Connection=True` is a **Windows-only** mechanism.
+There is no domain to authenticate against on Ubuntu, so such a connection string works
+on a Windows dev box and fails on the VPS. Everything below uses SQL Server
+authentication.
+
+### ⚠️ This is a new, empty database
+
+**Nothing in this codebase migrates data between providers.** The production data lives
+in the SQLite file and will not carry over. On a fresh SQL Server database the seeder
+rebuilds the demo workspace (users, roles, the seeded project, milestones, tasks), but
+any real edits made in production are lost.
+
+Back up first, then decide:
+
+```bash
+sudo systemctl stop pmwds.dharmaatribe.app
+mkdir -p /var/lib/pmwds/backup
+sqlite3 /var/lib/pmwds/database/pmwds.sqlite \
+  ".backup /var/lib/pmwds/backup/pmwds-$(date +%F).sqlite"
+sudo systemctl start pmwds.dharmaatribe.app
+```
+
+Migrating that data across to SQL Server needs a one-off script. Treat the seeded rebuild
+as a fresh start unless that data matters.
+
+### 1. Run SQL Server in a container
+
+The Windows service cannot be installed on Ubuntu, so SQL Server runs as a container.
+`docker-compose.yml` already defines it:
+
+```yaml
+mssql-server:
+  image: mcr.microsoft.com/mssql/server:2022-latest
+  ports: ["1433:1433"]
+  environment:
+    ACCEPT_EULA: ${ACCEPT_EULA}
+    MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+  volumes: [mssql_data:/var/opt/mssql]
+  mem_limit: 2g
+```
+
+```bash
+docker compose up -d mssql-server
+docker exec -it mssql-server /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "$SA_PASSWORD" -C -Q "SELECT @@VERSION"
+```
+
+Needs roughly **2 GB of RAM**. `-C` is required: the container generates a self-signed
+certificate on first run, and sqlcmd 18 verifies certificates by default.
+
+Wait for `docker compose up` to report the service healthy before starting the API —
+SQL Server takes ~15 seconds to become ready on a cold volume, and a premature start
+makes the app log a connection failure.
+
+### 2. Create the databases and a least-privilege application login
+
+`sa` is sysadmin. Prefer a dedicated login for the app.
+
+Create the databases **first, as `sa`**. The app does have an `EnsureDatabasesExist` step
+that runs `CREATE DATABASE` against `master` at startup, but a least-privilege login
+cannot do that — it will fail with *"permission denied to create database"*. Creating them
+up front sidesteps that:
+
+```sql
+CREATE DATABASE [PMWDS];
+CREATE DATABASE [PMWDS_Hangfire];
+GO
+CREATE LOGIN [pmwds_app] WITH PASSWORD = 'CHANGE_ME_Strong_Passw0rd', CHECK_POLICY = ON;
+GO
+USE [PMWDS];
+CREATE USER [pmwds_app] FOR LOGIN [pmwds_app];
+CREATE ROLE [pmwds_rw];
+EXEC sp_addrolemember 'db_datareader', 'pmwds_rw';
+EXEC sp_addrolemember 'db_datawriter', 'pmwds_rw';
+ALTER ROLE [pmwds_rw] ADD MEMBER [pmwds_app];
+GO
+USE [PMWDS_Hangfire];
+CREATE USER [pmwds_app] FOR LOGIN [pmwds_app];
+-- Hangfire installs its own schema objects on first run, so it needs to create
+-- tables and indexes here. db_owner on this database only is the simplest grant.
+EXEC sp_addrolemember 'db_owner', 'pmwds_app';
+GO
+```
+
+If you skip the least-privilege setup and just use `sa`, the databases do not need to be
+created by hand — `EnsureDatabasesExist` will handle it, since `sa` can.
+
+### 3. Point the app at SQL Server
+
+Edit `/etc/pmwds/pmwds.env` (the systemd `EnvironmentFile`, **not** a file in the repo):
+
+```bash
+ConnectionStrings__Default=Server=127.0.0.1,1433;Database=PMWDS;User Id=pmwds_app;Password=CHANGE_ME_Strong_Passw0rd;MultipleActiveResultSets=true;TrustServerCertificate=True
+ConnectionStrings__Hangfire=Server=127.0.0.1,1433;Database=PMWDS_Hangfire;User Id=pmwds_app;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True
+Database__ForceSqlite=false
+Database__AllowSqliteInProduction=false
+```
+
+Both databases must already exist if you are using a least-privilege login — see step 2.
+With `sa`, the app creates them itself via `EnsureDatabasesExist`.
+
+Use `127.0.0.1`, **not** `localhost`. The container does not always answer on `::1`, and
+the connection hangs until it times out rather than failing fast — an easy trap to
+misdiagnose as an application bug.
+
+### 4. Restart and verify
+
+```bash
+sudo systemctl restart pmwds.dharmaatribe.app
+sudo journalctl -u pmwds.dharmaatribe.app -n 80 --no-pager
+```
+
+Expect these lines, in this order:
+
+```
+[PMWDS] Using SQL Server database (127.0.0.1,1433).
+[PMWDS] Database 'PMWDS' ensured.
+[PMWDS] Database 'PMWDS_Hangfire' ensured.
+Start installing Hangfire SQL objects...
+Hangfire SQL objects installed.
+[PMWDS] Applying database migrations...
+Now listening on: ...
+```
+
+`Using SQLite database` instead means the connection string is not being read — check the
+variable names in `/etc/pmwds/pmwds.env` and that `Database__AllowSqliteInProduction` is
+not still `true`.
+
+Confirm live updates still work (§2b nginx step) and that the Hangfire dashboard is
+reachable at `/hangfire`.
+
+### Things that change behaviour
+
+- **Hangfire starts running in production for the first time.** All four recurring jobs
+  have never executed there. `escalation-checker` calls the AI provider, so it will begin
+  making real outbound API calls hourly. Watch the Hangfire dashboard after enabling.
+- **Persist the Data Protection keys.** `PRODUCTION.md` §6 item 9 records that keys are
+  currently ephemeral under systemd, so protected fields are re-encrypted on every
+  restart. Set `FileStorage__KeysPath` to a durable path under `/var/lib/pmwds` before
+  this matters.
+- **SQLite backups stop being backups.** Once the app is on SQL Server, `sqlite3 .backup`
+  no longer protects anything. Back up the container volume instead.
+- Keep the existing SQLite file at `/var/lib/pmwds/database/pmwds.sqlite` until the
+  switch is confirmed good; it is the only copy of the old data.
+
+---
+
 ## 4. CORS
 
 Client and API share one origin (`https://pmwds.dharmaatribe.app`), so the browser makes same-origin

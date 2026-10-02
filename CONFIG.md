@@ -75,28 +75,49 @@ File: `PMWDS.API/appsettings.json`
 
 ```json
 "ConnectionStrings": {
-  "Default": "Server=.;Database=PMWDS;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+  "Default": "Server=127.0.0.1,1433;Database=PMWDS;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;MultipleActiveResultSets=true;TrustServerCertificate=True",
   "Redis": "localhost:6379",
-  "Hangfire": "Server=.;Database=PMWDS_Hangfire;Trusted_Connection=True;TrustServerCertificate=True"
+  "Hangfire": "Server=127.0.0.1,1433;Database=PMWDS_Hangfire;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True"
 }
 ```
+
+**Use SQL Server authentication, never `Trusted_Connection=True`.** Windows
+authentication (Integrated Security) is a Windows-only mechanism and does not exist on
+Linux. A connection string carrying `Trusted_Connection=True` or
+`Integrated Security=True` works on a Windows development box and fails on the Ubuntu
+VPS. Every deployed environment must supply `User Id` and `Password`.
+
+Other notes:
+
+- Use `127.0.0.1` rather than `localhost`. Some SQL Server instances - including the
+  official Linux container - do not answer on `::1`, and the connection hangs until it
+  times out rather than failing fast.
+- `TrustServerCertificate=True` is required when the instance uses a self-signed
+  certificate, which is what the official container generates on first run.
+- Production runs SQL Server in a container (`mcr.microsoft.com/mssql/server:2022-latest`).
+  The Windows service cannot be installed on Ubuntu. Needs roughly 2 GB of RAM.
+- Prefer a dedicated least-privilege login over `sa` for the application. `sa` is
+  sysadmin, and Hangfire additionally needs rights to create its own schema objects on
+  first run.
 
 Production changes:
 
 - Replace `Default` with the production SQL Server connection string.
 - Replace `Hangfire` with a dedicated production Hangfire database connection.
-- Avoid `Trusted_Connection=True` unless the deployment identity is intentionally used.
+- Set `Database__ForceSqlite=false` and `Database__AllowSqliteInProduction=false` so a
+  bad connection string fails loudly instead of silently starting on an empty SQLite file.
 - Keep `TrustServerCertificate=True` only when the deployment model requires it.
 
 ### SQLite Development Fallback
 
-The current local development setup uses SQLite because SQL Server is not working on the development laptop.
+SQLite is the automatic fallback in Development when SQL Server cannot be reached. It is
+never used in Production unless explicitly opted in.
 
 File: `PMWDS.API/appsettings.Development.json`
 
 ```json
 "Database": {
-  "ForceSqlite": true,
+  "ForceSqlite": false,
   "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
 }
 ```
@@ -108,6 +129,10 @@ Behavior:
 - The database file is `PMWDS.API/App_Data/pmwds-dev.sqlite`.
 - The API startup path creates the directory, validates the expected SQLite schema, rebuilds stale development schema when needed, and runs seed data.
 - Hangfire is disabled while SQLite is active.
+
+Note: there is no `Database:EnableSqliteFallback` setting. Some `.env` copies contain
+`Database__EnableSqliteFallback=true`, which is read by nothing. The real control is
+`Database:AllowSqliteInProduction`, which permits SQLite outside Development.
 
 See [sqlite.md](sqlite.md), [issue-sqlite.md](issue-sqlite.md), and [config-sqlite.md](config-sqlite.md) before changing this flow.
 
@@ -295,14 +320,20 @@ Runtime behavior:
 
 Recurring jobs:
 
-- Deadline checker.
-- Escalation checker.
-- AI model training.
-- Scheduled reports.
+| Job | Cron | Meaning |
+|-----|------|---------|
+| `deadline-checker` | `0 * * * *` | hourly |
+| `escalation-checker` | `30 * * * *` | hourly at :30 |
+| `ai-model-training` | `0 2 * * *` | daily 02:00 |
+| `scheduled-reports` | `0 7 * * 1` | Mondays 07:00 |
+
+All four have been verified running against SQL Server. Note that `escalation-checker`
+calls the AI provider, so it makes real outbound API calls once per run.
 
 Production changes:
 
-- Use a SQL Server-backed Hangfire database.
+- Use a SQL Server-backed Hangfire database. Hangfire creates its own schema objects on
+  first run, so the login needs permission to create tables there.
 - Restrict dashboard access to administrators.
 - Monitor failed jobs and retry queues.
 
