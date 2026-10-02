@@ -241,8 +241,8 @@ File: `PMWDS.API/appsettings.json`
 "AI": {
   "OpenAIApiKey": "your-openai-api-key",
   "OpenAIModel": "gpt-4o",
-  "DefaultProvider": "OpenAI",
-  "DefaultModel": "gpt-4o",
+  "DefaultProvider": "OpenRouter",
+  "DefaultModel": "openai/gpt-oss-120b:free",
   "AppName": "PMWDS",
   "AppUrl": "http://localhost:5177",
   "OpenAI": {
@@ -253,10 +253,10 @@ File: `PMWDS.API/appsettings.json`
     "ModelsPath": "/models"
   },
   "OpenRouter": {
-    "Enabled": false,
+    "Enabled": true,
     "BaseUrl": "https://openrouter.ai/api/v1",
     "ApiKey": "your-openrouter-api-key",
-    "DefaultModel": "openai/gpt-4o-mini",
+    "DefaultModel": "openai/gpt-oss-120b:free",
     "ModelsPath": "/models",
     "Headers": {
       "HTTP-Referer": "http://localhost:5177",

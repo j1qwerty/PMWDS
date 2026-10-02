@@ -349,7 +349,7 @@ internal static class MiscSeeder
         var specs = new[]
         {
             new SeedConstants.AIProviderCredentialSpec("OpenAI", "OpenAI", true, "https://api.openai.com/v1", "gpt-4o"),
-            new SeedConstants.AIProviderCredentialSpec("OpenRouter", "OpenRouter", false, "https://openrouter.ai/api/v1", "openai/gpt-oss-120b:free")
+            new SeedConstants.AIProviderCredentialSpec("OpenRouter", "OpenRouter", true, "https://openrouter.ai/api/v1", "openai/gpt-oss-120b:free")
         };
 
         foreach (var spec in specs)

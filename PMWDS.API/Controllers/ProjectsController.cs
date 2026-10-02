@@ -374,7 +374,11 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
-    public async Task<IActionResult> UploadDocument(Guid id, IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> UploadDocument(
+    Guid id,
+    [FromForm] IFormFile file,
+    [FromForm] DocumentCategory? category,
+    CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
@@ -384,6 +388,12 @@ public class ProjectsController : BaseApiController
         {
             return Forbid();
         }
+
+        // A Utilization Certificate carries extra finance metadata and an approval
+        // lifecycle, so it has to go through the dedicated UC endpoint instead.
+        var resolvedCategory = category is null || category == DocumentCategory.UtilizationCertificate
+            ? DocumentCategory.General
+            : category.Value;
 
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
@@ -395,7 +405,9 @@ public class ProjectsController : BaseApiController
             filePath,
             file.ContentType,
             file.Length,
-            _currentUser.UserId ?? "system");
+            _currentUser.UserId ?? "system",
+            description: null,
+            category: resolvedCategory);
 
         await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
@@ -418,6 +430,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/documents")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -441,6 +454,7 @@ public class ProjectsController : BaseApiController
             d.UploadedByUserId,
             d.Description,
             d.Version,
+            d.Category,
             d.CreatedDate
         }));
     }

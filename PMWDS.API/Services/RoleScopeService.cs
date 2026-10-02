@@ -449,6 +449,37 @@ public class RoleScopeService
             permissions.Contains(PermissionCodes.ProjectManage);
     }
 
+    /// <summary>
+    /// Checks any of <paramref name="permissionCodes"/>, expanding the
+    /// <c>*_MANAGE</c> umbrella permissions the same way the authorization handler does.
+    /// Use this when the client needs a capability flag that must agree with what
+    /// the API will actually allow.
+    /// </summary>
+    public async Task<bool> HasAnyPermissionAsync(CancellationToken ct, params string[] permissionCodes)
+    {
+        var permissions = await GetPermissionSnapshotAsync(ct);
+        if (permissions.Contains(PermissionCodes.SystemAdmin))
+        {
+            return true;
+        }
+
+        var effective = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase);
+        foreach (var permission in permissions)
+        {
+            if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
+            {
+                continue;
+            }
+
+            foreach (var coveredPermission in covered)
+            {
+                effective.Add(coveredPermission);
+            }
+        }
+
+        return permissionCodes.Any(code => !string.IsNullOrWhiteSpace(code) && effective.Contains(code));
+    }
+
     private async Task<HashSet<string>> GetPermissionSnapshotAsync(CancellationToken ct)
     {
         if (_permissionSnapshot != null)

@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import type { Milestone, MilestoneDependency, Task, ProjectDocument } from "../../types";
 import { StatusBadge } from "./StatusBadge";
-import { useToast } from "./Toast";
 import { ProjectTaskCardk } from "../projectsK/components/ProjectTaskCardk";
+import { DocumentsSection } from "../projectsK/components/DocumentsSection";
 
 interface MilestonesTabProps {
   projectId: string;
@@ -18,9 +18,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const { addToast } = useToast();
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const fetchData = () => {
     if (!authToken || !projectId) return;
@@ -130,38 +127,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     return '#cbd5e1';
   };
 
-  const handleFileUpload = async () => {
-    if (!authToken || !uploadFile) return;
-    try {
-      await api.uploadProjectDocument(authToken, projectId, uploadFile);
-      setUploadFile(null);
-      addToast("Document uploaded successfully");
-      fetchData();
-    } catch (error) {
-      addToast("Failed to upload document", "error");
-    }
-  };
-
-  const handleDownload = async (doc: ProjectDocument) => {
-    if (!authToken) return;
-    setDownloadingId(doc.id);
-    try {
-      const blob = await api.downloadProjectDocument(authToken, projectId, doc.id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.title;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      addToast("Failed to download document", "error");
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
   const toggleMilestoneExpansion = (milestoneId: string) => {
     setExpandedMilestones(prev => {
       const next = new Set(prev);
@@ -172,12 +137,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       }
       return next;
     });
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const getStatusColor = (status: string) => {
@@ -408,122 +367,16 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
         </div>
       )}
 
-      {/* Documents Tab Content */}
+      {/* Documents Tab Content — reuses the shared section so this tab and the
+          project detail modal stay in sync (including Utilization Certificates). */}
       {activeTab === "documents" && (
         <div className="mt-6">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Documents</h3>
-                <p className="text-sm text-slate-500 mt-1">Manage project-related files and documents</p>
-              </div>
-              <label className="
-                inline-flex items-center gap-2 px-4 py-2.5 
-                bg-indigo-600 text-white text-sm font-semibold 
-                rounded-xl hover:bg-indigo-700 transition-colors 
-                cursor-pointer shadow-sm
-              ">
-                <span className="material-symbols-outlined text-lg">upload_file</span>
-                Upload
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </div>
-
-            {/* Upload preview */}
-            {uploadFile && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-indigo-600">description</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{uploadFile.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{formatFileSize(uploadFile.size)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setUploadFile(null)}
-                      className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleFileUpload}
-                      className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Upload File
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Documents list */}
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : documents.length > 0 ? (
-              <div className="grid gap-3">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-indigo-600 text-xl">description</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900 truncate">{doc.title}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-slate-500">{formatFileSize(doc.fileSizeBytes)}</span>
-                            <span className="text-xs text-slate-300">•</span>
-                            <span className="text-xs text-slate-500">
-                              {new Date(doc.createdDate).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDownload(doc)}
-                        disabled={downloadingId === doc.id}
-                        className="
-                          p-2 rounded-lg text-slate-400 hover:text-indigo-600 
-                          hover:bg-indigo-50 transition-all opacity-0 group-hover:opacity-100
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                        "
-                        title="Download"
-                      >
-                        <span className="material-symbols-outlined text-xl">
-                          {downloadingId === doc.id ? "hourglass_top" : "download"}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-3xl text-slate-400">folder_open</span>
-                </div>
-                <h3 className="text-sm font-semibold text-slate-700 mb-1">No Documents Yet</h3>
-                <p className="text-xs text-slate-500">Upload project documents, specifications, or reports.</p>
-              </div>
-            )}
-          </div>
+          <DocumentsSection
+            projectId={projectId}
+            authToken={authToken}
+            milestones={milestones}
+            tasks={tasks}
+          />
         </div>
       )}
     </div>

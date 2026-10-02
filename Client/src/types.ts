@@ -809,6 +809,15 @@ export interface TaskAttachment {
   createdDate: string;
 }
 
+export type DocumentCategory =
+  | "General"
+  | "Plan"
+  | "Report"
+  | "Contract"
+  | "Compliance"
+  | "Financial"
+  | "UtilizationCertificate";
+
 export interface ProjectDocument {
   id: string;
   projectId: string;
@@ -819,7 +828,76 @@ export interface ProjectDocument {
   uploadedByUserId: string;
   description?: string | null;
   version: string;
+  category?: DocumentCategory;
   createdDate: string;
+}
+
+export type UtilizationCertificateStatus =
+  | "Draft"
+  | "Submitted"
+  | "UnderReview"
+  | "Approved"
+  | "Rejected";
+
+export interface UtilizationCertificate {
+  id: string;
+  projectId: string;
+  documentId: string;
+  certificateNumber: string;
+  fundingSource: string;
+  amountClaimed: number;
+  amountUtilized: number;
+  unutilizedAmount: number;
+  utilizationPercentage: number;
+  periodStart: string;
+  periodEnd: string;
+  status: UtilizationCertificateStatus;
+  milestoneId?: string | null;
+  taskId?: string | null;
+  milestoneTitle?: string | null;
+  taskTitle?: string | null;
+  purpose?: string | null;
+  submittedByUserId: string;
+  submittedOn?: string | null;
+  reviewedByUserId?: string | null;
+  reviewedOn?: string | null;
+  reviewNotes?: string | null;
+  createdDate: string;
+  // Denormalized document info.
+  title: string;
+  filePath: string;
+  contentType: string;
+  fileSizeBytes: number;
+  capabilities: UtilizationCertificateCapabilities;
+}
+
+export interface SubmitUtilizationCertificatePayload {
+  projectId: string;
+  certificateNumber: string;
+  fundingSource: string;
+  amountClaimed: number;
+  amountUtilized: number;
+  periodStart: string;
+  periodEnd: string;
+  milestoneId?: string | null;
+  taskId?: string | null;
+  purpose?: string | null;
+  title?: string | null;
+  description?: string | null;
+}
+
+export type UpdateUtilizationCertificatePayload = Omit<
+  SubmitUtilizationCertificatePayload,
+  "projectId"
+>;
+
+export interface UtilizationCertificateCapabilities {
+  /** Resolved server-side, so the UI never disagrees with the API. */
+  canEdit: boolean;
+  canSubmitForReview: boolean;
+  canReview: boolean;
+  canDelete: boolean;
+  isOwner: boolean;
 }
 
 export interface TaskTimeEntry {

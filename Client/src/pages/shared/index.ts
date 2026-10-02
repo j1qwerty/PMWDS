@@ -16,6 +16,7 @@ export { RoleGate, Permission, PERMISSION_GROUPS, ROLE_LEVELS, expandPermissions
 export { getProjectDepartmentIds, projectBelongsToDepartment, projectBelongsToAnyDepartment, getProjectDepartments } from "./projectDepartments";
 export { LoadingPage, PageSkeleton, Skeleton } from "./Skeleton";
 export { NotificationList } from "./NotificationList";
+export { UtilizationCertificates } from "./UtilizationCertificates";
 export { WorkloadBars } from "./WorkloadBars";
 export { useToast } from "./Toast";
 export { StatusBadge } from "./StatusBadge";

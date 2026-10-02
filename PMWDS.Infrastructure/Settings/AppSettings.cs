@@ -39,8 +39,8 @@ public class AISettings
 {
     public string OpenAIApiKey { get; set; } = string.Empty;
     public string OpenAIModel { get; set; } = "gpt-4o";
-    public string DefaultProvider { get; set; } = "OpenAI";
-    public string DefaultModel { get; set; } = string.Empty;
+    public string DefaultProvider { get; set; } = "OpenRouter";
+    public string DefaultModel { get; set; } = "openai/gpt-oss-120b:free";
     public string AppName { get; set; } = "PMWDS";
     public string AppUrl { get; set; } = "http://localhost:5177";
     public string MLModelPath { get; set; } = string.Empty;
@@ -55,9 +55,9 @@ public class AISettings
     };
     public AIProviderOptions OpenRouter { get; set; } = new()
     {
-        Enabled = false,
+        Enabled = true,
         BaseUrl = "https://openrouter.ai/api/v1",
-        DefaultModel = "openai/gpt-4o-mini"
+        DefaultModel = "openai/gpt-oss-120b:free"
     };
 }
 

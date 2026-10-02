@@ -51,6 +51,9 @@ import type {
   WebhookRecord,
   WorkspaceBootstrap,
   WorkloadReport,
+  SubmitUtilizationCertificatePayload,
+  UpdateUtilizationCertificatePayload,
+  UtilizationCertificate,
 } from "./types";
 
 const API_BASE_URL =
@@ -244,6 +247,62 @@ export const api = {
   },
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
+  },
+  getProjectUtilizationCertificates(token: string, projectId: string) {
+    return request<UtilizationCertificate[]>(`utilization-certificates/project/${projectId}`, { token });
+  },
+  getUtilizationCertificate(token: string, id: string) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}`, { token });
+  },
+  submitUtilizationCertificate(token: string, file: File, payload: SubmitUtilizationCertificatePayload) {
+    const form = new FormData();
+    form.set("file", file);
+    form.set("projectId", payload.projectId);
+    form.set("certificateNumber", payload.certificateNumber);
+    form.set("fundingSource", payload.fundingSource);
+    form.set("amountClaimed", String(payload.amountClaimed));
+    form.set("amountUtilized", String(payload.amountUtilized));
+    // Date-only fields: send yyyy-MM-dd so the server is not off by a timezone day.
+    form.set("periodStart", payload.periodStart.slice(0, 10));
+    form.set("periodEnd", payload.periodEnd.slice(0, 10));
+    if (payload.milestoneId) form.set("milestoneId", payload.milestoneId);
+    if (payload.taskId) form.set("taskId", payload.taskId);
+    if (payload.purpose) form.set("purpose", payload.purpose);
+    if (payload.title) form.set("title", payload.title);
+    if (payload.description) form.set("description", payload.description);
+    return request<UtilizationCertificate>("utilization-certificates", { token, method: "POST", body: form });
+  },
+  updateUtilizationCertificate(token: string, id: string, payload: UpdateUtilizationCertificatePayload) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}`, {
+      token,
+      method: "PUT",
+      body: {
+        certificateNumber: payload.certificateNumber,
+        fundingSource: payload.fundingSource,
+        amountClaimed: payload.amountClaimed,
+        amountUtilized: payload.amountUtilized,
+        periodStart: payload.periodStart.slice(0, 10),
+        periodEnd: payload.periodEnd.slice(0, 10),
+        milestoneId: payload.milestoneId ?? null,
+        taskId: payload.taskId ?? null,
+        purpose: payload.purpose ?? null,
+        title: payload.title ?? null,
+        description: payload.description ?? null,
+      },
+    });
+  },
+  submitUtilizationCertificateForReview(token: string, id: string) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}/submit`, { token, method: "POST" });
+  },
+  reviewUtilizationCertificate(token: string, id: string, approve: boolean, notes?: string) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}/review`, {
+      token,
+      method: "POST",
+      body: { approve, notes: notes ?? null },
+    });
+  },
+  deleteUtilizationCertificate(token: string, id: string) {
+    return request<void>(`utilization-certificates/${id}`, { token, method: "DELETE" });
   },
   deleteProject(token: string, id: string) {
     return request<void>(`projects/${id}`, { token, method: "DELETE" });

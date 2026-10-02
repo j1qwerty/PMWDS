@@ -94,7 +94,13 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.IntegrationEdit, "Edit Integrations", "Update integrations and webhooks.", "Integrations", true),
             (PermissionCodes.IntegrationDelete, "Delete Integrations", "Delete integrations and webhooks.", "Integrations", true),
             (PermissionCodes.AiView, "View AI", "View AI insights and predictions.", "AI", false),
-            (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true)
+            (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true),
+            (PermissionCodes.UtilizationCertificateView, "View Utilization Certificates", "View utilization certificates proving funds were spent as intended.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateCreate, "Submit Utilization Certificates", "Upload and submit a utilization certificate against a project milestone or task.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateEdit, "Edit Utilization Certificates", "Edit a draft or rejected utilization certificate you own.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateReview, "Review Utilization Certificates", "Approve or reject submitted utilization certificates as the finance sign-off authority.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateDelete, "Delete Utilization Certificates", "Delete draft or rejected utilization certificates.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateManage, "Manage Utilization Certificates", "Full control over utilization certificates, including review and deletion.", "Utilization Certificates", true)
         };
 
         foreach (var spec in specs)
@@ -176,7 +182,8 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
-            PermissionCodes.AiManage
+            PermissionCodes.AiManage,
+            PermissionCodes.UtilizationCertificateManage
         };
         var projectManagerPermissionCodes = new[]
         {
@@ -188,7 +195,10 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.SubtaskManage,
             PermissionCodes.UserView,
             PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogCreate
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.UtilizationCertificateView,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateEdit
         };
         var departmentHeadPermissionCodes = new[]
         {
@@ -201,7 +211,15 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.UserManage,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogView,
-            PermissionCodes.ActivityLogCreate
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.UtilizationCertificateView,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateEdit,
+            // A department head owns their department's projects (they are the
+            // primary department), so they carry the same finance sign-off
+            // authority as a Director for those projects.
+            PermissionCodes.UtilizationCertificateReview,
+            PermissionCodes.UtilizationCertificateDelete
         };
         var teamMemberPermissionCodes = new[]
         {
@@ -210,7 +228,10 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
             PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
             PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogCreate
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.UtilizationCertificateView,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateEdit
         };
         var viewerPermissionCodes = new[]
         {
@@ -221,7 +242,8 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.TaskView,
             PermissionCodes.SubtaskView,
             PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogView
+            PermissionCodes.ActivityLogView,
+            PermissionCodes.UtilizationCertificateView
         };
         var specs = new[]
         {

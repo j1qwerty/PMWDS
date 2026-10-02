@@ -93,6 +93,13 @@ export const Permission = {
 
   AiView: "AI_VIEW",
   AiManage: "AI_MANAGE",
+
+  UtilizationCertificateManage: "UTILIZATION_CERTIFICATE_MANAGE",
+  UtilizationCertificateView: "UTILIZATION_CERTIFICATE_VIEW",
+  UtilizationCertificateCreate: "UTILIZATION_CERTIFICATE_CREATE",
+  UtilizationCertificateEdit: "UTILIZATION_CERTIFICATE_EDIT",
+  UtilizationCertificateDelete: "UTILIZATION_CERTIFICATE_DELETE",
+  UtilizationCertificateReview: "UTILIZATION_CERTIFICATE_REVIEW",
 } as const;
 
 export type PermissionCode = (typeof Permission)[keyof typeof Permission];
@@ -212,6 +219,14 @@ export const PERMISSION_GROUPS = {
     view: Permission.AiView,
     manage: Permission.AiManage,
   },
+  utilizationCertificate: {
+    view: Permission.UtilizationCertificateView,
+    create: Permission.UtilizationCertificateCreate,
+    edit: Permission.UtilizationCertificateEdit,
+    delete: Permission.UtilizationCertificateDelete,
+    review: Permission.UtilizationCertificateReview,
+    manage: Permission.UtilizationCertificateManage,
+  },
 } as const;
 
 export type PermissionModule = keyof typeof PERMISSION_GROUPS;
@@ -309,6 +324,13 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
   ],
   [Permission.AiManage]: [
     Permission.AiView,
+  ],
+  [Permission.UtilizationCertificateManage]: [
+    Permission.UtilizationCertificateView,
+    Permission.UtilizationCertificateCreate,
+    Permission.UtilizationCertificateEdit,
+    Permission.UtilizationCertificateDelete,
+    Permission.UtilizationCertificateReview,
   ],
 };
 

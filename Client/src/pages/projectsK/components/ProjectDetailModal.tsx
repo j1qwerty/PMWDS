@@ -161,6 +161,7 @@ export function ProjectDetailModal({
               <DocumentsSection
                 projectId={project.id}
                 authToken={authToken}
+                milestones={milestones}
               />
             )}
           </div>

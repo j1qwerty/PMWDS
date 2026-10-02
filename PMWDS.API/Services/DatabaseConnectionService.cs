@@ -302,7 +302,8 @@ public static class DatabaseConnectionService
             "AIProviderCredentials",
             "UserDepartments",
             "ProjectDepartments",
-            "MilestoneDependencies"
+            "MilestoneDependencies",
+            "UtilizationCertificates"
         };
 
         var connection = db.Database.GetDbConnection();

@@ -140,7 +140,7 @@ public record RejectRecommendationRequest(
 
 public record AISettingsDto
 {
-    public string DefaultProvider { get; set; } = "OpenAI";
+    public string DefaultProvider { get; set; } = "OpenRouter";
     public string DefaultModel { get; set; } = "";
     public double RiskThreshold { get; set; } = 0.7;
     public bool UseLocalModel { get; set; } = false;

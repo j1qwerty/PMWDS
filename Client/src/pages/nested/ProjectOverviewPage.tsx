@@ -14,6 +14,7 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useToast,
+  UtilizationCertificates,
 } from "../shared";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
@@ -181,6 +182,13 @@ export function ProjectOverviewPage() {
 
   const totalDocs = projectDocs.length;
   const totalTaskAttachments = ws.tasks.reduce((s, t) => s + (t.attachments?.length || 0), 0);
+
+  // Utilization certificates have their own block above, so keep them out of
+  // the plain document table to avoid showing the same file twice.
+  const plainDocs = useMemo(
+    () => projectDocs.filter((doc) => doc.category !== "UtilizationCertificate"),
+    [projectDocs],
+  );
 
   const uniqueAssignees = new Set<string>();
   for (const task of ws.tasks) {
@@ -839,6 +847,15 @@ export function ProjectOverviewPage() {
                 </div>
               </div>
               <div className="p-5 flex-1 overflow-y-auto min-h-0 space-y-4">
+                {/* Utilization Certificates get their own block: they carry finance
+                    metadata and an approval lifecycle, not just a file. The
+                    explainer is behind the ? icon so it is not always on screen. */}
+                <UtilizationCertificates
+                  projectId={ws.project?.id ?? ""}
+                  milestones={ws.milestones}
+                  tasks={ws.tasks}
+                />
+
                 {canUploadProjectDocs && (
                   <div className="flex items-center justify-end">
                     <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold cursor-pointer hover:bg-indigo-100 transition-colors border border-indigo-200">
@@ -883,7 +900,7 @@ export function ProjectOverviewPage() {
 
                 {loadingDocs ? (
                   <div className="text-center text-xs text-slate-400 py-4">Loading documents...</div>
-                ) : projectDocs.length > 0 ? (
+                ) : plainDocs.length > 0 ? (
                   <div>
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                       <Icon name="hi-folder-open" size={12} />
@@ -894,17 +911,25 @@ export function ProjectOverviewPage() {
                         <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
                           <tr>
                             <th className="text-left px-3 py-2 font-medium">Title</th>
-                            <th className="text-left px-3 py-2 font-medium">Type</th>
+                            <th className="text-left px-3 py-2 font-medium">Category</th>
                             <th className="text-right px-3 py-2 font-medium">Size</th>
                             <th className="text-right px-3 py-2 font-medium">Version</th>
                             <th className="text-right px-3 py-2 font-medium">Date</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                          {projectDocs.slice(0, 5).map((doc) => (
+                          {plainDocs.slice(0, 5).map((doc) => (
                             <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
                               <td className="px-3 py-2 font-medium text-slate-700">{doc.title}</td>
-                              <td className="px-3 py-2 text-slate-500">{doc.contentType?.split("/").pop() || "—"}</td>
+                              <td className="px-3 py-2 text-slate-500">
+                                {doc.category && doc.category !== "General" ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-semibold">
+                                    {doc.category}
+                                  </span>
+                                ) : (
+                                  doc.contentType?.split("/").pop() || "—"
+                                )}
+                              </td>
                               <td className="px-3 py-2 text-right text-slate-500">
                                 {(doc.fileSizeBytes / 1024).toFixed(0)} KB
                               </td>
@@ -916,9 +941,9 @@ export function ProjectOverviewPage() {
                           ))}
                         </tbody>
                       </table>
-                      {projectDocs.length > 5 && (
+                      {plainDocs.length > 5 && (
                         <div className="text-center pt-2">
-                          <span className="text-[10px] text-indigo-500 font-semibold">+{projectDocs.length - 5} more</span>
+                          <span className="text-[10px] text-indigo-500 font-semibold">+{plainDocs.length - 5} more</span>
                         </div>
                       )}
                     </div>

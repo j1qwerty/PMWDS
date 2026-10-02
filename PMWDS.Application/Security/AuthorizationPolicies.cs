@@ -21,4 +21,10 @@ public static class AuthorizationPolicies
     public const string PermissionsCreate = "Permissions.Create";
     public const string PermissionsEdit = "Permissions.Edit";
     public const string PermissionsDelete = "Permissions.Delete";
+
+    public const string UtilizationCertificateView = "UtilizationCertificates.View";
+    public const string UtilizationCertificateCreate = "UtilizationCertificates.Create";
+    public const string UtilizationCertificateEdit = "UtilizationCertificates.Edit";
+    public const string UtilizationCertificateDelete = "UtilizationCertificates.Delete";
+    public const string UtilizationCertificateReview = "UtilizationCertificates.Review";
 }

@@ -96,4 +96,16 @@ public static class PermissionCodes
 
     public const string AiView = "AI_VIEW";
     public const string AiManage = "AI_MANAGE";
+
+    // Utilization Certificates — formal proof that grant, government or corporate
+    // funds were spent strictly for their intended purpose.
+    public const string UtilizationCertificateManage = "UTILIZATION_CERTIFICATE_MANAGE";
+    public const string UtilizationCertificateView = "UTILIZATION_CERTIFICATE_VIEW";
+    public const string UtilizationCertificateCreate = "UTILIZATION_CERTIFICATE_CREATE";
+    public const string UtilizationCertificateEdit = "UTILIZATION_CERTIFICATE_EDIT";
+    public const string UtilizationCertificateDelete = "UTILIZATION_CERTIFICATE_DELETE";
+
+    // Reviewing (approving / rejecting) a UC is a separate authority from submitting
+    // one, so a contributor can never sign off their own certificate.
+    public const string UtilizationCertificateReview = "UTILIZATION_CERTIFICATE_REVIEW";
 }
