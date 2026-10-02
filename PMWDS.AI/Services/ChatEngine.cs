@@ -333,9 +333,24 @@ public class OpenAICompatibleChatEngine : IChatEngine
         }
 
         var content = ExtractAssistantText(responseText);
-        return string.IsNullOrWhiteSpace(content)
-            ? "The provider returned an empty response."
-            : content.Trim();
+
+        // Do not return a prose placeholder here. Callers parse the result as JSON, so a sentence
+        // like "The provider returned an empty response." surfaces to the user as
+        // "'T' is an invalid start of a value", which hides the real cause. Reasoning models can
+        // return an empty content field when reasoning consumes the whole token budget, so throw
+        // with the reason attached and let the caller degrade with a meaningful message.
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            var finishReason = TryGetFinishReason(responseText) ?? "unknown";
+            var reasoningLength = TryGetReasoningLength(responseText);
+            throw new InvalidOperationException(
+                $"Provider '{provider.ProviderId}' returned no content (finish_reason={finishReason}" +
+                (reasoningLength is { } len ? $", reasoning produced {len} characters" : "") +
+                "). For a reasoning model this usually means the token budget was consumed before the " +
+                "answer was written. Increase AI:MaxOutputTokens or switch to a non-reasoning model.");
+        }
+
+        return content.Trim();
     }
 
     private async Task<HttpResponseMessage> SendAsync(
@@ -596,6 +611,52 @@ public class OpenAICompatibleChatEngine : IChatEngine
         {
             throw new InvalidOperationException(error);
         }
+    }
+
+    /// <summary>Reads choices[0].finish_reason for diagnostics. Returns null when absent.</summary>
+    private static string? TryGetFinishReason(string responseText)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseText);
+            if (document.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.ValueKind == JsonValueKind.Array &&
+                choices.GetArrayLength() > 0 &&
+                choices[0].TryGetProperty("finish_reason", out var reason))
+            {
+                return reason.GetString();
+            }
+        }
+        catch
+        {
+            // Diagnostics only; never let this mask the original failure.
+        }
+
+        return null;
+    }
+
+    /// <summary>Length of the reasoning field, used to explain an empty completion.</summary>
+    private static int? TryGetReasoningLength(string responseText)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseText);
+            if (document.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.ValueKind == JsonValueKind.Array &&
+                choices.GetArrayLength() > 0 &&
+                choices[0].TryGetProperty("message", out var message) &&
+                message.TryGetProperty("reasoning", out var reasoning) &&
+                reasoning.ValueKind == JsonValueKind.String)
+            {
+                return reasoning.GetString()?.Length;
+            }
+        }
+        catch
+        {
+            // Diagnostics only.
+        }
+
+        return null;
     }
 
     private static string? ExtractAssistantText(string responseText)

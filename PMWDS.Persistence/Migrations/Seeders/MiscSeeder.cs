@@ -143,30 +143,20 @@ internal static class MiscSeeder
         await context.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedReportsAsync(ApplicationDbContext context, List<ApplicationUser> users, CancellationToken ct)
-    {
-        var owner = users.FirstOrDefault() ?? await context.Users.FirstAsync(ct);
-        var reportSpecs = new[]
-        {
-            ("Weekly Delivery Health", "ProjectHealth", "pdf"),
-            ("Capacity Forecast", "Workload", "xlsx"),
-            ("Risk Register Export", "Risk", "pdf")
-        };
-
-        foreach (var spec in reportSpecs)
-        {
-            var report = await context.Reports.FirstOrDefaultAsync(r => r.Name == spec.Item1, ct);
-            if (report == null)
-            {
-                report = Report.Create(spec.Item1, spec.Item2, new { seeded = true, period = "weekly" }, spec.Item3, System.Text.Encoding.UTF8.GetBytes($"Seed report: {spec.Item1}"), owner.Id);
-                report.SetCreatedBy(SeedConstants.SeedUser);
-                await context.Reports.AddAsync(report, ct);
-                await context.SaveChangesAsync(ct);
-            }
-
-            await SeedReportScheduleAsync(context, report.Id, owner.Email, ct);
-        }
-    }
+    /// <summary>
+    /// Intentionally does not seed Reports.
+    ///
+    /// These were placeholder rows ("Weekly Delivery Health", "Capacity Forecast", "Risk Register
+    /// Export") whose Data was the literal string "Seed report: &lt;name&gt;". They appeared in the
+    /// Reports list as real entries with a 30-35 byte payload, indistinguishable from a genuine
+    /// generated report until opened, and they carried weekly e-mail schedules pointing at a
+    /// placeholder address.
+    ///
+    /// Reports come from the AI pipeline instead, so there is nothing to seed. If a sample report is
+    /// ever wanted, create it through the API so it holds a real payload.
+    /// </summary>
+    private static Task SeedReportsAsync(ApplicationDbContext context, List<ApplicationUser> users, CancellationToken ct)
+        => Task.CompletedTask;
 
     private static async Task SeedReportScheduleAsync(ApplicationDbContext context, Guid reportId, string email, CancellationToken ct)
     {

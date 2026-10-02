@@ -526,14 +526,27 @@ You MUST respond with ONLY valid JSON matching this schema:
 
             return (title, summary, metrics, tables, sections, insights, recommendations);
         }
-        catch
+        catch (JsonException ex)
         {
-            return (ReportTitle(reportType), "AI report generation returned an unexpected format. Please try again.",
+            // Log the offending prefix: models that ignore "ONLY valid JSON" emit a preamble, a
+            // markdown fence, or trailing prose, and the bare parse error is impossible to act on.
+            var preview = responseText.Length > 300 ? responseText[..300] : responseText;
+            _logger.LogWarning(
+                "Could not parse AI report response for {ReportType}: {Message}. Response began: {Preview}",
+                reportType, ex.Message, preview);
+
+            return (ReportTitle(reportType),
+                $"AI report generation returned an unexpected format: {ex.Message}",
                 new List<ReportMetric>(), new List<ReportTable>(), new List<ReportSection>(),
                 new List<string>(), new List<string>());
         }
     }
 
+    /// <summary>
+    /// Pulls the JSON object out of a model response. Models frequently wrap it in a markdown code
+    /// fence or add a sentence of preamble, so slice from the first brace to the last one rather
+    /// than assuming the response starts with JSON.
+    /// </summary>
     private static string ExtractJson(string text)
     {
         var start = text.IndexOf('{');
