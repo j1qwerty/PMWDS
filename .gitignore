@@ -106,6 +106,11 @@ PMWDS.Database/
 PMWDS.API/publish/
 Client/dist/
 
+# Local deploy artifacts (packaged with tar, uploaded to the VPS)
+pmwds-pub/
+pmwds-api.tar.gz
+pmwds-web.tar.gz
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -127,3 +132,4 @@ docs/temp
 
 # Docker
 .env
+pmwds-pub
