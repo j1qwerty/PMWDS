@@ -97,6 +97,15 @@ PMWDS.API/App_Data/
 Data/
 PMWDS.API/Data/
 
+# Production SQLite database folder
+Database/
+PMWDS.API/Database/
+PMWDS.Database/
+
+# Build output
+PMWDS.API/publish/
+Client/dist/
+
 # OS generated files
 .DS_Store
 .DS_Store?

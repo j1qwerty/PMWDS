@@ -81,6 +81,12 @@ public class DatabaseSettings
 {
     public bool ForceSqlite { get; set; } = false;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+
+    /// <summary>
+    /// Permits SQLite outside Development. Off by default so Production still demands SQL Server
+    /// unless a deployment deliberately opts in (single-instance hosting, no Hangfire).
+    /// </summary>
+    public bool AllowSqliteInProduction { get; set; } = false;
 }
 
 public class LocalFileStorageSettings
@@ -88,10 +94,13 @@ public class LocalFileStorageSettings
     public string BasePath { get; set; } = string.Empty;
     public string AvatarsPath { get; set; } = "avatars";
     public string DocumentsPath { get; set; } = "documents";
-    public string FullAvatarsPath => string.IsNullOrWhiteSpace(BasePath)
-        ? Path.Combine(AppContext.BaseDirectory, "App_Data", AvatarsPath)
-        : Path.Combine(BasePath, AvatarsPath);
-    public string FullDocumentsPath => string.IsNullOrWhiteSpace(BasePath)
-        ? Path.Combine(AppContext.BaseDirectory, "App_Data", DocumentsPath)
-        : Path.Combine(BasePath, DocumentsPath);
+
+    // Resolve relative BasePath against AppContext.BaseDirectory so callers never get a
+    // working-directory-dependent path (systemd runs with a different working directory).
+    // Empty BasePath keeps the historical App_Data default.
+    private string ResolvedBasePath =>
+        StoragePathResolver.Resolve(BasePath, AppContext.BaseDirectory, "App_Data");
+
+    public string FullAvatarsPath => Path.Combine(ResolvedBasePath, AvatarsPath);
+    public string FullDocumentsPath => Path.Combine(ResolvedBasePath, DocumentsPath);
 }
