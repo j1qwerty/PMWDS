@@ -9,8 +9,23 @@ namespace PMWDS.Persistence.Migrations.Seeders;
 
 internal static class UsersSeeder
 {
+    /// <summary>
+    /// Executive account addresses that were retired when the top two roles were relabelled:
+    /// the SuperAdmin account became superadmin@org1.com and the Director account became
+    /// admin@org1.com. The rename has to run before the specs below - the old SuperAdmin row
+    /// still holds admin@org1.com, which is exactly the address the Director now needs.
+    /// Applied in order with a save between each step so the unique index never sees a clash.
+    /// </summary>
+    private static readonly (string OldEmail, string NewEmail)[] EmailRenames =
+    {
+        ("admin@org1.com", "superadmin@org1.com"),
+        ("director@org1.com", "admin@org1.com"),
+    };
+
     internal static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct, string? storageBasePath = null)
     {
+        await RenameRetiredEmailsAsync(context, ct);
+
         var departments = await context.Departments.ToListAsync(ct);
         var roles = await context.Roles.ToDictionaryAsync(r => r.Key, ct);
         var org = await context.Organizations.FirstOrDefaultAsync(ct);
@@ -71,6 +86,19 @@ internal static class UsersSeeder
 
         await context.SaveChangesAsync(ct);
         await SeedUserDepartmentsAsync(context, ct);
+    }
+
+    private static async Task RenameRetiredEmailsAsync(ApplicationDbContext context, CancellationToken ct)
+    {
+        foreach (var (oldEmail, newEmail) in EmailRenames)
+        {
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Email == oldEmail, ct);
+            if (user == null || await context.Users.AnyAsync(u => u.Email == newEmail, ct))
+                continue;
+
+            user.UpdateEmail(newEmail);
+            await context.SaveChangesAsync(ct);
+        }
     }
 
     private static async Task SeedUserDepartmentsAsync(ApplicationDbContext context, CancellationToken ct)
@@ -134,9 +162,11 @@ internal static class UsersSeeder
         Guid Dept(string code) => departments.FirstOrDefault(d => d.Code == code)?.Id ?? departments.First().Id;
         return new[]
         {
-            // Existing users - reassigned to government departments
-            new SeedConstants.UserSpec("admin@org1.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", RoleKeys.SuperAdmin, null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
-            new SeedConstants.UserSpec("director@org1.com", "Priya", "Menon", "DIR001", "Director", RoleKeys.Director, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
+            // Existing users - reassigned to government departments.
+            // Top two roles are presented as SuperAdmin and Admin; the backend role keys stay
+            // RoleKeys.SuperAdmin / RoleKeys.Director so all authorization is unaffected.
+            new SeedConstants.UserSpec("superadmin@org1.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", RoleKeys.SuperAdmin, null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
+            new SeedConstants.UserSpec("admin@org1.com", "Priya", "Menon", "DIR001", "Admin", RoleKeys.Director, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
             new SeedConstants.UserSpec("manager@org1.com", "Dev", "Kapoor", "PM001", "ProjectManager", RoleKeys.ProjectManager, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
             new SeedConstants.UserSpec("head.eng@org1.com", "Rohan", "Iyer", "DH001", "Engineering Head", RoleKeys.DepartmentHead, Dept("PWDC"), AvailabilityStatus.Busy, 64, 84, 66, 0.31),
             new SeedConstants.UserSpec("head.pmo@org1.com", "Sita", "Rao", "DH002", "PMO Head", RoleKeys.DepartmentHead, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 70, 88, 54, 0.20),

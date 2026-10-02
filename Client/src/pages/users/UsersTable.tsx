@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
+import { roleDisplayNames } from "../../permissions";
 import { api } from "../../api";
 import { Avatar, GlassCard } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
@@ -170,7 +171,7 @@ export function UsersTable({
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-xs font-medium text-slate-600">
-                      {user.roles?.join(", ") || user.jobTitle || "-"}
+                      {roleDisplayNames(user.roles).join(", ") || user.jobTitle || "-"}
                     </span>
                   </td>
                   <td className="px-6 py-4">

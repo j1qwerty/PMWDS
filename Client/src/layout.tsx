@@ -5,6 +5,7 @@ import { useAppData } from "./appData";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 import { SHOW_SKILLS_PAGE } from "./featureFlags";
+import { roleDisplayNames } from "./permissions";
 
 import {
   HiOutlineHome,
@@ -576,7 +577,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                       {auth?.fullName || "Alex Rivera"}
                     </span>
                     <span className="truncate text-[clamp(8px,1vw,9px)] uppercase tracking-[0.18em] text-outline group-hover:text-error/70 transition-colors">
-                      {auth?.roles?.join(", ") || "SuperAdmin"}
+                      {roleDisplayNames(auth?.roles).join(", ") || "SuperAdmin"}
                     </span>
                   </div>
                 )}

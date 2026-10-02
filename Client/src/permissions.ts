@@ -385,7 +385,9 @@ export type RoleKeyCode = (typeof RoleKey)[keyof typeof RoleKey];
 
 export const ROLE_DISPLAY_NAMES: Record<RoleKeyCode, string> = {
   [RoleKey.SuperAdmin]: "SuperAdmin",
-  [RoleKey.Director]: "Director",
+  // Presented as "Admin" throughout the UI. The backend key stays "director", so no
+  // permission, guard or API payload changes.
+  [RoleKey.Director]: "Admin",
   [RoleKey.ProjectManager]: "ProjectManager",
   [RoleKey.DepartmentHead]: "DepartmentHead",
   [RoleKey.TeamMember]: "TeamMember",
@@ -412,6 +414,23 @@ const LEGACY_ROLE_KEYS: Record<string, RoleKeyCode> = {
 
 export function normalizeRoleKey(role: string): string {
   return LEGACY_ROLE_KEYS[role] ?? role;
+}
+
+/**
+ * Display label for a role, given either its backend key ("director") or the role name
+ * stored on the user ("Director"). Use this anywhere a role is shown to a user so the
+ * relabelled roles read the same everywhere.
+ */
+export function roleDisplayName(role: string | null | undefined): string {
+  const trimmed = role?.trim();
+  if (!trimmed) return "";
+  const key = normalizeRoleKey(trimmed) as RoleKeyCode;
+  return ROLE_DISPLAY_NAMES[key] ?? trimmed;
+}
+
+/** Display labels for a list of roles, dropping any empty entries. */
+export function roleDisplayNames(roles: readonly string[] | null | undefined): string[] {
+  return (roles ?? []).map(roleDisplayName).filter(Boolean);
 }
 
 export function hasRoleKey(roles: readonly string[] | undefined | null, roleKey: RoleKeyCode): boolean {

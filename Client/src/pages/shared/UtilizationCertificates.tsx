@@ -426,7 +426,7 @@ export function UtilizationCertificates({
                 A UC is the formal document that proves grant money, government funds or a corporate
                 contribution was spent strictly for its intended purpose. Anyone working on this
                 project&rsquo;s milestones or tasks can raise one against the work they delivered. It
-                is reviewed and signed off by a Director — or by the head of this project&rsquo;s
+                is reviewed and signed off by an Admin — or by the head of this project&rsquo;s
                 primary department — and only then is it accepted as valid.
               </p>
               <p className="text-[10px] text-indigo-700/80 mt-1.5 font-medium">
@@ -601,7 +601,7 @@ export function UtilizationCertificates({
                     )}
                     {cert.status === "Submitted" && caps.isOwner && !caps.canReview && (
                       <p className="text-[10px] text-slate-400 italic w-full">
-                        Awaiting review by a Director or the head of this project&rsquo;s primary
+                        Awaiting review by an Admin or the head of this project&rsquo;s primary
                         department.
                       </p>
                     )}
@@ -623,7 +623,7 @@ export function UtilizationCertificates({
               </h3>
               <p className="text-[11px] text-slate-500 mt-1">
                 Proves that funds released to this project were spent for their intended purpose. Saved
-                as a draft first, then sent to a Director for sign-off.
+                as a draft first, then sent to an Admin for sign-off.
               </p>
             </div>
 

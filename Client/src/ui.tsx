@@ -1,5 +1,6 @@
 import { Icon } from "./components/ui/Icon";
 import type { Project, User } from "./types";
+import { roleDisplayNames } from "./permissions";
 
 // ============================================================
 // Grid & Panel Layout Classes
@@ -357,7 +358,7 @@ export function UserTable({ users }: { users: User[] }) {
                 </div>
               </td>
               <td className="px-md py-md">
-                {user.roles.join(", ") || user.jobTitle}
+                {roleDisplayNames(user.roles).join(", ") || user.jobTitle}
               </td>
               <td className="px-md py-md">
                 {user.department || "Unassigned"}

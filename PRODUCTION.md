@@ -366,7 +366,7 @@ Two failures occurred during this deploy, both recorded below because they are e
 | `GET /` | `200`, `<title>PMWDS</title>` |
 | JS / CSS assets | `200`, 1.70 MB / 160 KB |
 | SPA deep links `/projects`, `/login` | `200` |
-| `POST /api/v1/auth/login` | `200`, JWT issued for `admin@org1.com` (SuperAdmin) |
+| `POST /api/v1/auth/login` | `200`, JWT issued for `superadmin@org1.com` (SuperAdmin) |
 | Authenticated `GET /api/v1/projects` | `200`, project returned |
 | CORS preflight, `https://pmwds.dharmaatribe.app` | `204`, origin echoed + credentials true |
 | CORS preflight, `https://evil.example` | `204`, **no** `Access-Control-Allow-Origin` |
@@ -452,11 +452,12 @@ Not yet addressed. Listed so they are not lost.
 1. **Secrets — done, but rotate before real traffic.** A fresh 88-character `Jwt__Secret` was
    generated and written to `/etc/pmwds/pmwds.env` (mode `0600`, owner `root`) at deploy time; nothing
    is committed. Regenerate if that file is ever exposed.
-2. **Seeded credentials are live on a public URL** — `admin@org1.com` / `Pmwds@123` plus ~20 more,
+2. **Seeded credentials are live on a public URL** — `superadmin@org1.com` / `Pmwds@123` plus ~20 more,
    reachable at `https://pmwds.dharmaatribe.app`. Rotate or disable before real users.
 3. **Seeded emails in the docs are wrong.** `README.md` and `CONFIG.md` say `admin@pmwds.com`,
-   `manager@pmwds.com`, `viewer@pmwds.com`. The actual seed is `admin@org1.com`, `director@org1.com`,
-   `manager@org1.com`, `head.bstr@org1.com`, and others. Update the docs.
+   `manager@pmwds.com`, `viewer@pmwds.com`. The actual seed is `superadmin@org1.com` (SuperAdmin),
+   `admin@org1.com` (the `director` role, shown as Admin), `manager@org1.com`, `head.bstr@org1.com`,
+   and others. Update the docs.
 4. **Email is unconfigured** (`smtp.gmail.com`, blank credentials) — password reset and invite emails
    will fail. Supply real SMTP and set `Email__ClientBaseUrl` to the production URL.
 5. **No backups.** A SQLite database on a VPS with no backup is one disk failure from total loss.

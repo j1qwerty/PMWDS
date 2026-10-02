@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { PermissionRecord, RoleRecord } from "../../types";
+import { roleDisplayName } from "../../permissions";
 import {
   AnimatedBackground,
   GlassCard,
@@ -192,7 +193,7 @@ export function RolesPage() {
           <RolesTable
             roles={visibleRoles}
             onEdit={(role) => setRoleModal({ open: true, editRole: role })}
-            onDelete={(role) => setDeleteConfirm({ open: true, type: "role", id: role.id, name: role.name })}
+            onDelete={(role) => setDeleteConfirm({ open: true, type: "role", id: role.id, name: roleDisplayName(role.name) })}
             onCreate={() => setRoleModal({ open: true })}
             isAdmin={canManageRoles}
           />

@@ -50,7 +50,7 @@ internal static class DepartmentsSeeder
 
         var headMap = new Dictionary<string, string>
         {
-            ["PWD"] = users.FirstOrDefault(u => u.Email == "director@org1.com")?.Id.ToString() ?? "",
+            ["PWD"] = users.FirstOrDefault(u => u.Email == "admin@org1.com")?.Id.ToString() ?? "",
             ["REV"] = users.FirstOrDefault(u => u.Email == "head.bstr@org1.com")?.Id.ToString() ?? "",
             ["PROC"] = users.FirstOrDefault(u => u.Email == "head.ops@org1.com")?.Id.ToString() ?? "",
             ["PWDC"] = users.FirstOrDefault(u => u.Email == "head.eng@org1.com")?.Id.ToString() ?? "",

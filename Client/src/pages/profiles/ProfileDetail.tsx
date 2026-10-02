@@ -4,6 +4,7 @@ import { Avatar, GlassCard, GradientButton } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
 import { Icon } from "../../components/ui/Icon";
 import { SHOW_PROFILE_SKILLS } from "../../featureFlags";
+import { roleDisplayName, roleDisplayNames } from "../../permissions";
 
 interface ProfileDetailProps {
   user: User;
@@ -119,7 +120,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
                           key={role}
                           className="px-3 py-1 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 text-xs font-semibold text-indigo-700 border border-indigo-200/60 shadow-sm"
                         >
-                          {role}
+                          {roleDisplayName(role)}
                         </span>
                       ))}
                     </div>
@@ -236,7 +237,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
                 <DetailItem icon="link" label="LinkedIn" value={linkedInUrl} isLink={true} />
               )}
               <DetailItem icon="verified_user" label="Account Status" value={isActive ? "Active" : "Inactive"} statusColor={isActive ? "emerald" : "red"} />
-              <DetailItem icon="groups" label="Roles" value={user.roles?.join(", ") || "No roles assigned"} />
+              <DetailItem icon="groups" label="Roles" value={roleDisplayNames(user.roles).join(", ") || "No roles assigned"} />
               <DetailItem icon="location_on" label="Address" value={address || "Not set"} fullWidth />
             </div>
           </div>

@@ -84,6 +84,15 @@ public class ApplicationUser : AuditableEntity
         }
     }
     public void AssignToDepartment(Guid departmentId) => DepartmentId = departmentId;
+    public void UpdateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new ArgumentException("Email is required.", nameof(email));
+        }
+
+        Email = email.ToLower().Trim();
+    }
     public void AssignToOrganization(Guid organizationId) => OrganizationId = organizationId;
     public void ClearPrimaryDepartment() => DepartmentId = null;
     public void ClearOrganization() => OrganizationId = null;
