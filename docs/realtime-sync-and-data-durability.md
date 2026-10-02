@@ -1,5 +1,8 @@
 # Real-time Sync + Data Durability Plan (PMWDS)
 
+> **Status: implemented.** See [Implementation notes](#implementation-notes) at the end for
+> deviations from the plan and the verification that was actually run.
+
 ## Problem being solved
 
 Two browsers signed into the same VPS instance do not see each other's edits until a
@@ -365,3 +368,95 @@ Manual, since there is no test suite for this area:
 - **Seeded user edit semantics.** Step 8 means a seeded user who was renamed at seed
   time keeps the old name forever. That is the intended trade (edits persist), but if
   you want to rename seeds, the seeder constants must change rather than the DB row.
+---
+
+## Implementation notes
+
+All nine steps are implemented. Deviations from the plan, and why:
+
+### Where the notifier lives
+
+Planned for `PMWDS.Infrastructure/Services/DataChangeNotifier.cs`. It is in
+**`PMWDS.API/Services/DataChangeNotifier.cs`** instead: it depends on
+`IHubContext<DashboardHub>` and the hub itself, and `PMWDS.Infrastructure` cannot
+reference `PMWDS.API`. The interface and the `DataChangeScopes` constants stay in
+`PMWDS.Application/Interfaces/Services/IDataChangeNotifier.cs` as planned.
+
+### Redundant work removed from the notifications path
+
+`NotificationService` was deliberately **not** wired to the hub beyond the
+notifications scope. Existing notification writes already broadcast via the
+`notifications` scope, which the app-data store treats as a global scope, so the
+notification bell updates without a special case.
+
+### Redis probe
+
+The probe was made async (`ConnectAsync`) and its result now drives the registration
+rather than being logged and ignored. `RedisCacheService` was also given a
+constructor-injected `ILogger` and a catch-all that degrades to a miss.
+
+### Seeder avatar URL
+
+The planned "verify the seeder's URL still matches" check turned out to be moot:
+`PMWDS.API/SeedData/Images/` contains only a `README.txt`, so no profile images are
+copied and every seeded user falls back to a dicebear URL. The structural fix still
+matters - the seeder writes into `storageRoot` and `/files` is now rooted there too.
+
+### Storage resolution detail the plan missed
+
+The plan said to point Development config at a persistent gitignored folder, but did
+not account for **how** relative paths resolve. `StoragePathResolver.Resolve` binds
+against `AppContext.BaseDirectory`, which under `dotnet run` is
+`PMWDS.API/bin/Debug/net10.0` - so `App_Data` would still have landed inside `bin/`
+and been deleted on rebuild, exactly the bug being fixed. Relative storage paths now
+resolve against `IWebHostEnvironment.ContentRootPath`, which is `PMWDS.API/` in
+development and the publish folder in production. This matches what
+`DatabaseConnectionService` already does for the SQLite data source.
+
+Because of that, the root had to be resolved **before** `builder.Build()` so
+`LocalFileStorageSettings` could be pinned to it via `PostConfigure`; the
+configuration read previously happened after `Build()`.
+
+### Verification actually performed
+
+Run against a live API on `:5199` with **Redis down**, Development/SQLite:
+
+| Check | Result |
+|---|---|
+| `POST /hubs/dashboard/negotiate` | 200, connectionToken, WebSockets offered |
+| WebSocket upgrade `GET /hubs/dashboard?id=...` | 101, authenticated (`User: Aarav Sharma`) |
+| SignalR handshake | `{}` ack |
+| `POST /api/v1/departments` mutation | **`DataChanged` broadcast received over the socket** |
+| `/api/v1/pages` with Redis down | 200 (previously 500) |
+| `Cache-Control` on `/pages`, `/projects`, `/users`, `/workspace/bootstrap` | absent |
+| Seeded user job title edited, API restarted | edit survived (Step 8) |
+| Uploaded document listed + downloaded | 55,877 bytes |
+| ...after full `dotnet build` + restart | still listed, still 55,877 bytes (Step 9) |
+| `GET /avatars/<file>` | 200 `image/webp` from the upload root (Step 9) |
+| Startup log | `[PMWDS] Storage root: ...\PMWDS.API\App_Data` |
+
+The end-to-end broadcast was confirmed with a real `System.Net.WebSockets.ClientWebSocket`
+rather than assumed, precisely because the SSE path returned 200 with an empty body and
+would have been easy to misread as working.
+
+### Two test-harness traps hit along the way
+
+Recorded because both produced convincing false results:
+
+1. PowerShell does not expand `` `x1e `` inside a double-quoted string; it emits the
+   literal characters `x1e`. The first WebSocket handshake therefore sent a malformed
+   frame and the server returned `{"error":"Handshake was canceled."}` after its 15s
+   timeout. Fixed by building the record separator as `[char]0x1e`.
+2. The first SSE/WS probes returned HTTP 200 / 404 in ways that looked like product
+   bugs. The 404 was a malformed URL built from a scratch file that had been written
+   with `docId: <guid>` labels rather than a bare GUID.
+
+### Still outstanding
+
+- The **VPS nginx change is not in the repo** and has not been applied. See the callout
+  in Step 7 and `PRODUCTION.md` section 2b. SignalR works locally and will fail
+  silently in production until this is done by hand.
+- SQL Server, Redis and Hangfire remain out of scope and untouched.
+- `packages` audit warnings (`SQLitePCLRaw.lib.e_sqlite3`, `Microsoft.OpenApi`) are
+  pre-existing and unaddressed.
+- No automated test covers this area; the verification above is manual.
