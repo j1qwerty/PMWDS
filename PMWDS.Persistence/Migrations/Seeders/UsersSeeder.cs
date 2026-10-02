@@ -47,38 +47,32 @@ internal static class UsersSeeder
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
                 if (org != null && spec.Role != RoleKeys.SuperAdmin)
                     user.AssignToOrganization(org.Id);
-                await context.Users.AddAsync(user, ct);
-            }
-            else
-            {
-                user.UpdateProfile(spec.FirstName, spec.LastName, user.PhoneNumber, spec.JobTitle, user.ProfilePictureUrl);
-                user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
-                user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
 
+                // A SuperAdmin is deliberately org- and department-less so it can see
+                // everything. This runs once, at insert. It used to run on every boot,
+                // which silently discarded department assignments an admin had made.
                 if (spec.Role == RoleKeys.SuperAdmin)
                 {
                     user.ClearPrimaryDepartment();
                     user.ClearOrganization();
-                    var assignments = await context.UserDepartments
-                        .Where(assignment => assignment.UserId == user.Id)
-                        .ToListAsync(ct);
-                    if (assignments.Count > 0)
-                        context.UserDepartments.RemoveRange(assignments);
                 }
-                else
-                {
-                    if (spec.DepartmentId.HasValue)
-                        user.AssignToDepartment(spec.DepartmentId.Value);
-                    if (org != null && user.OrganizationId == null)
-                        user.AssignToOrganization(org.Id);
-                }
+
+                await context.Users.AddAsync(user, ct);
             }
+            else
+            {
+                // Non-destructive reconcile. This branch used to overwrite the user's
+                // name, job title, availability, AI scores and avatar on every restart,
+                // so an admin's edits to a seeded account silently reverted on the next
+                // deploy. Only fill in what is genuinely still unset, and never remove a
+                // role or department an admin granted.
+                BackfillEmptyProfileFields(user, spec, imagePaths);
 
-            var profilePicUrl = imagePaths.TryGetValue(spec.EmployeeCode, out var path)
-                ? path
-                : $"https://api.dicebear.com/9.x/initials/svg?seed={user.EmployeeCode}";
-
-            user.UpdateProfile(user.FirstName, user.LastName, user.PhoneNumber, user.JobTitle, profilePicUrl);
+                if (spec.DepartmentId.HasValue && user.DepartmentId is null)
+                    user.AssignToDepartment(spec.DepartmentId.Value);
+                if (org != null && user.OrganizationId == null)
+                    user.AssignToOrganization(org.Id);
+            }
 
             if (roles.TryGetValue(spec.Role, out var role) && user.Roles.All(r => r.Id != role.Id))
                 user.Roles.Add(role);
@@ -86,6 +80,37 @@ internal static class UsersSeeder
 
         await context.SaveChangesAsync(ct);
         await SeedUserDepartmentsAsync(context, ct);
+    }
+
+    /// <summary>
+    /// Fills in only the profile fields that are still empty on an existing user.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately one-way. The previous implementation re-applied the whole seed spec
+    /// on every application start, which meant an edit to a seeded account - a renamed
+    /// user, a corrected job title, an uploaded avatar - was reverted on the next restart
+    /// and there was no way to tell that had happened. Seeding is a floor, not a reset.
+    ///
+    /// Availability and AI scores are left alone entirely once a row exists: they are
+    /// live operational values, not seed metadata, and the seeder has no way to tell a
+    /// deliberate change from a default.
+    /// </remarks>
+    private static void BackfillEmptyProfileFields(
+        ApplicationUser user,
+        SeedConstants.UserSpec spec,
+        IReadOnlyDictionary<string, string> imagePaths)
+    {
+        var firstName = string.IsNullOrWhiteSpace(user.FirstName) ? spec.FirstName : user.FirstName;
+        var lastName = string.IsNullOrWhiteSpace(user.LastName) ? spec.LastName : user.LastName;
+        var jobTitle = string.IsNullOrWhiteSpace(user.JobTitle) ? spec.JobTitle : user.JobTitle;
+
+        var profilePicUrl = !string.IsNullOrWhiteSpace(user.ProfilePictureUrl)
+            ? user.ProfilePictureUrl
+            : imagePaths.TryGetValue(spec.EmployeeCode, out var seededImagePath)
+                ? seededImagePath
+                : $"https://api.dicebear.com/9.x/initials/svg?seed={user.EmployeeCode}";
+
+        user.UpdateProfile(firstName, lastName, user.PhoneNumber, jobTitle, profilePicUrl);
     }
 
     private static async Task RenameRetiredEmailsAsync(ApplicationDbContext context, CancellationToken ct)
@@ -162,9 +187,9 @@ internal static class UsersSeeder
         Guid Dept(string code) => departments.FirstOrDefault(d => d.Code == code)?.Id ?? departments.First().Id;
         return new[]
         {
-            // Existing users - reassigned to government departments.
             // Top two roles are presented as SuperAdmin and Admin; the backend role keys stay
             // RoleKeys.SuperAdmin / RoleKeys.Director so all authorization is unaffected.
+            // SuperAdmin has no department on purpose: it must be able to see everything.
             new SeedConstants.UserSpec("superadmin@org1.com", "Aarav", "Sharma", "ADMIN001", "SuperAdmin", RoleKeys.SuperAdmin, null, AvailabilityStatus.Available, 100, 92, 26, 0.08),
             new SeedConstants.UserSpec("admin@org1.com", "Priya", "Menon", "DIR001", "Admin", RoleKeys.Director, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
             new SeedConstants.UserSpec("manager@org1.com", "Dev", "Kapoor", "PM001", "ProjectManager", RoleKeys.ProjectManager, Dept("PWD"), AvailabilityStatus.PartiallyBusy, 72, 86, 58, 0.24),
