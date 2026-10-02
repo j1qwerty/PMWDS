@@ -495,8 +495,8 @@ export const api = {
   reactivateUser(token: string, id: string) {
     return request<User>(`users/${id}/reactivate`, { token, method: "PATCH" });
   },
-  getDepartments(token: string) {
-    return requestList<Department>("departments", { token });
+  getDepartments(token: string, pageSize = 500) {
+    return requestList<Department>("departments", { token, query: { page: 1, pageSize } });
   },
   getRoles(token: string) {
     return request<RoleRecord[]>("roles", { token });

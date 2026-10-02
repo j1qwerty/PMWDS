@@ -1,4 +1,4 @@
-import type { Department } from "../../../types";
+import type { Department, OrganizationRecord } from "../../../types";
 import { GlassCard } from "../../shared";
 
 interface MilestoneEntry {
@@ -13,12 +13,16 @@ interface MilestoneEntry {
 interface MilestoneDepartmentsStepProps {
   milestones: MilestoneEntry[];
   departments: Department[];
+  organizations?: OrganizationRecord[];
+  loading?: boolean;
   onChange: (milestones: MilestoneEntry[]) => void;
 }
 
 export function MilestoneDepartmentsStep({
   milestones,
   departments,
+  organizations = [],
+  loading = false,
   onChange,
 }: MilestoneDepartmentsStepProps) {
   const assignDepartment = (milestoneId: string, departmentId: string) => {
@@ -29,6 +33,8 @@ export function MilestoneDepartmentsStep({
     );
   };
 
+  const orgNameById = new Map(organizations.map((o) => [o.id, o.name]));
+
   if (milestones.length === 0) {
     return (
       <GlassCard className="p-10 text-center">
@@ -37,6 +43,30 @@ export function MilestoneDepartmentsStep({
         </div>
         <p className="text-sm font-semibold text-slate-600">Create milestones first</p>
         <p className="text-xs text-slate-400 mt-1">Each project milestone needs a department assignment.</p>
+      </GlassCard>
+    );
+  }
+
+  if (loading && departments.length === 0) {
+    return (
+      <GlassCard className="p-10 text-center">
+        <p className="text-sm font-semibold text-slate-600">Loading departments...</p>
+        <p className="text-xs text-slate-400 mt-1">Fetching the latest department list.</p>
+      </GlassCard>
+    );
+  }
+
+  if (departments.length === 0) {
+    return (
+      <GlassCard className="p-10 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-3xl text-red-400">groups</span>
+        </div>
+        <p className="text-sm font-semibold text-slate-600">No departments available</p>
+        <p className="text-xs text-slate-400 mt-1">
+          No departments were returned for your organization scope. Create one on the Departments page
+          (or ask an admin), then refresh and return to this step.
+        </p>
       </GlassCard>
     );
   }
@@ -74,11 +104,21 @@ export function MilestoneDepartmentsStep({
               className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
             >
               <option value="">Select department...</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
+              {departments.map((department) => {
+                const orgName = department.organizationId
+                  ? orgNameById.get(department.organizationId)
+                  : undefined;
+                const label = orgName
+                  ? `${department.name} (${department.code} · ${orgName})`
+                  : department.code
+                    ? `${department.name} (${department.code})`
+                    : department.name;
+                return (
+                  <option key={department.id} value={department.id}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
+import type { Department } from "../../types";
 import {
   GlassCard,
   useToast,
@@ -78,7 +79,44 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const { auth } = useAuth();
   const { data, refresh } = useAppData();
   const { addToast } = useToast();
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(data.users, data.departments);
+  const [liveDepartments, setLiveDepartments] = useState<Department[] | null>(null);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+
+  // The wizard previously relied only on the paginated / cached appData
+  // departments (pages API). The Departments page fetches live via
+  // api.getDepartments, so newly created departments were visible there
+  // but missing here. Fetch live and merge so the dropdown never goes
+  // empty while cached data is stale.
+  useEffect(() => {
+    if (!auth) {
+      setLiveDepartments(null);
+      return;
+    }
+    let cancelled = false;
+    setDepartmentsLoading(true);
+    api.getDepartments(auth.token)
+      .then((departments) => {
+        if (!cancelled) setLiveDepartments(departments);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveDepartments(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDepartmentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.token]);
+
+  const allDepartments = useMemo(() => {
+    if (!liveDepartments) return data.departments;
+    const seen = new Set(liveDepartments.map((d) => d.id));
+    const missing = data.departments.filter((d) => !seen.has(d.id));
+    return [...liveDepartments, ...missing];
+  }, [data.departments, liveDepartments]);
+
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(data.users, allDepartments);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -272,12 +310,18 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   };
 
   const scopedDepartments = useMemo(() => {
-    let filtered = data.departments;
+    let filtered = allDepartments;
     if (shouldFilterByOrg && userOrganizationId) {
-      filtered = filtered.filter((d) => d.organizationId === userOrganizationId);
+      const orgFiltered = filtered.filter((d) => d.organizationId === userOrganizationId);
+      // Fall back to the full server-scoped list instead of an empty
+      // dropdown when the client-side org id does not match (e.g. stale
+      // user scope or departments without an organization).
+      if (orgFiltered.length > 0) return orgFiltered;
+      // If every department lacks an organization, filtering is meaningless.
+      if (filtered.length > 0 && filtered.every((d) => !d.organizationId)) return filtered;
     }
     return filtered;
-  }, [data.departments, shouldFilterByOrg, userOrganizationId]);
+  }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
 
   const departmentUsers = useMemo(() => {
     const effectiveDepartmentIds = usesExecutiveFlow
@@ -437,6 +481,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             <MilestoneDepartmentsStep
               milestones={milestones}
               departments={scopedDepartments}
+              organizations={data.organizations}
+              loading={departmentsLoading}
               onChange={setMilestones}
             />
           )}
