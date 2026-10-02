@@ -654,10 +654,75 @@ Not yet addressed. Listed so they are not lost.
      `EnvFileLoader` reads the parent directory. It was **not** deployed (only `dotnet publish`
      output was uploaded), but confirm it never ends up inside `app/`.
 
-14. **SQL Server path still untested.** The production SQLite path is verified end to end. The SQL
-    Server branch (`HasExpectedSqlServerSchemaAsync` and the `EnsureDeleted` recovery that is
-    Development-only) has not been exercised against a real SQL Server in this work. Note
-    `TODO.md` already tracks the multiple-cascade-path issue (`status/issue-sqlite-cascade-paths.md`).
+14. **SQL Server path — now tested.** Superseded; see §2c below.
+
+---
+
+## 2c. SQL Server and Hangfire verified locally
+
+The SQL Server branch had never been run against a real instance. It is now, and it was
+broken. See `docs/realtime-sync-and-data-durability.md` for the full write-up.
+
+**Result:** `AddUtilizationCertificate` could not run on SQL Server at all. Startup dropped
+the database, retried, and crashed. Three provider bugs stacked:
+
+1. SQLite column types (`TEXT`/`INTEGER`). SQL Server parses `TEXT` — it is the legacy LOB
+   type — so the DDL was accepted right up to `PRIMARY KEY ([Id])`, which then failed with
+   *"is of a type that is invalid for use as a key column in an index"*.
+2. `ProjectId` CASCADE gave a second cascade path, because `ProjectDocuments` already
+   cascades from `Projects`.
+3. `TaskId` `SET NULL` was a third, because `Tasks` also cascades from `Projects`. SQL Server
+   counts `SET NULL` as cascading for that check and allows only one path per table.
+
+Fixed by branching on `migrationBuilder.ActiveProvider`; the SQLite branch is byte-identical to
+what shipped. **SQLite is unaffected** — EF matches applied migrations by id, not file
+contents — and a fresh SQLite database still migrates under Production's forward-only path.
+
+### Verified working on SQL Server 2022 Express
+
+| Check | Result |
+|---|---|
+| Provider selection | `Using SQL Server database (127.0.0.1,1433)` |
+| `EnsureDatabasesExist` | `PMWDS` and `PMWDS_Hangfire` created |
+| Hangfire schema | installed, schema version 9 |
+| Migrations | all 5 applied |
+| `HasExpectedSqlServerSchemaAsync` | passed (no reset) |
+| Seeding | ran |
+| `/hangfire` dashboard | 200 with a valid JWT |
+| Recurring jobs | all 4 scheduled: `0 * * * *`, `30 * * * *`, `0 2 * * *`, `0 7 * * 1` |
+| Job execution | `escalation-checker` fired on schedule at 20:30:14 UTC, worker picked it up, `EscalationCheckerJob started` |
+| API endpoints | `/pages`, `/projects`, `/users`, `/workspace/bootstrap`, `/tasks`, `/milestones/by-project` → all 200 |
+| SignalR | `DataChanged` delivered over a real WebSocket |
+| Fresh SQLite (Production mode) | migrates clean, forward-only, no destructive reset |
+
+### Local instance prerequisites
+
+- **SQL logins must be enabled.** The local instance ships in Windows-only auth mode
+  (`SERVERPROPERTY('IsIntegratedSecurityOnly') = 1`), so `sa` fails with *"Login failed"*
+  regardless of the password, and `ALTER LOGIN sa WITH PASSWORD = ...` appears to succeed
+  while changing nothing. Switching to mixed mode needs
+  `HKLM\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.MSSQLSERVER\LoginMode = 2` plus a
+  service restart, both of which require Administrator. Until then, test with
+  `Integrated Security=True` as a local sysadmin.
+- **`Server=localhost` can time out.** `localhost` resolves to `::1` first and this instance
+  does not answer there. `127.0.0.1` works. Worth knowing before blaming the app.
+- Express Edition caps databases at 10 GB each.
+
+### Known behaviour difference introduced on SQL Server only
+
+Deleting a **task** that a utilization certificate references now raises a foreign-key error
+instead of nulling the reference, because `TaskId` had to become `NO ACTION` to satisfy the
+single-cascade-path rule. SQLite keeps `SET NULL`. Fixing it properly needs a design decision
+— unlink during task deletion, or drop the foreign key — so it is flagged, not papered over.
+`TODO.md` already tracks the underlying multiple-cascade-path problem.
+
+### No automated tests
+
+There is no test project anywhere in the solution, no xUnit/NUnit/MSTest/Testcontainers
+package reference, no `[Fact]`/`[Theory]`/`Assert` usage, and no client test runner
+(`package.json` has no `test` script and no vitest/jest/playwright). Everything above was
+verified by hand against a running instance. This migration bug would have been caught
+immediately by a single test that runs `MigrateAsync` against each provider.
 
 ---
 
