@@ -21,19 +21,16 @@ public class PagesController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
-    private readonly ICacheService _cache;
 
     public PagesController(
         IMediator mediator,
         ApplicationDbContext db,
         RoleScopeService scope,
-        ICurrentUserService currentUser,
-        ICacheService cache) : base(mediator)
+        ICurrentUserService currentUser) : base(mediator)
     {
         _db = db;
         _scope = scope;
         _currentUser = currentUser;
-        _cache = cache;
     }
 
     [HttpGet]
@@ -54,12 +51,14 @@ public class PagesController : BaseApiController
         var userPageSize = ResolveUserPageSize(currentUser, pageSize);
         var returnedPageSize = Math.Clamp(userPageSize * 2, 1, 500);
         var pagination = new PaginationQuery(page, returnedPageSize);
-        var cacheKey = $"pages:data:{currentUserId}:page:{pagination.NormalizedPage}:size:{returnedPageSize}";
-        var cached = await _cache.GetAsync<PagesDataResponse>(cacheKey, ct);
-        if (cached is not null)
-        {
-            return Ok(cached);
-        }
+
+        // Intentionally uncached. This response used to be memoized for 30s behind a
+        // per-user key that nothing ever evicted, so a mutation could leave every other
+        // browser (and the mutating one) looking at a stale snapshot for half a minute.
+        // Clients now refetch on the DataChanged hub event, which is both faster and correct.
+        // If this endpoint ever needs caching again, key it on a monotonic version counter
+        // bumped by every mutation - never on a TTL.
+        // See docs/realtime-sync-and-data-durability.md step 3b.
 
         var organizationsQuery = await _scope.ScopeOrganizationsAsync(
             _db.Organizations.AsNoTracking().OrderBy(o => o.Name),
@@ -182,7 +181,6 @@ public class PagesController : BaseApiController
                 ? await GetActivityLogsAsync(scopedUserIds, pagination, ct)
                 : EmptyPage<PageActivityLogDto>(pagination));
 
-        await _cache.SetAsync(cacheKey, response, TimeSpan.FromSeconds(30), ct);
         return Ok(response);
     }
 

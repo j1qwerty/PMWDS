@@ -66,7 +66,6 @@ builder.Services.Configure<IpRateLimitPolicies>(
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 builder.Services.AddMemoryCache(); // Required by AspNetCoreRateLimit
-builder.Services.AddResponseCaching();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<ILoginLockoutService, LoginLockoutService>();
 
@@ -206,31 +205,41 @@ builder.Services.AddValidatorsFromAssemblyContaining<
 builder.Services.AddAutoMapper(cfg =>
     cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
 
+// Probe Redis first and register the cache that actually matches the outcome. Previously
+// AddStackExchangeRedisCache was called unconditionally, so the "falls back to in-memory"
+// warning below was a lie: with Redis down, every IDistributedCache call threw and a page
+// load turned into a 500. See docs/realtime-sync-and-data-durability.md step 3c.
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+var redisAvailable = false;
+
 if (!string.IsNullOrWhiteSpace(redisConnectionString))
 {
     try
     {
-        using var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString);
-        if (redis.IsConnected)
-        {
-            Console.WriteLine($"[PMWDS] Redis connected ({redisConnectionString}).");
-        }
-        else
-        {
-            Console.WriteLine($"[PMWDS] WARNING: Redis at {redisConnectionString} is not reachable. Caching will fall back to in-memory.");
-        }
+        using var redis = await StackExchange.Redis.ConnectionMultiplexer.ConnectAsync(redisConnectionString);
+        redisAvailable = redis.IsConnected;
+        Console.WriteLine(redisAvailable
+            ? $"[PMWDS] Redis connected ({redisConnectionString})."
+            : $"[PMWDS] WARNING: Redis at {redisConnectionString} is not reachable. Caching falls back to in-memory.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[PMWDS] WARNING: Redis connection failed ({redisConnectionString}): {ex.Message}. Caching will fall back to in-memory.");
+        Console.WriteLine($"[PMWDS] WARNING: Redis connection failed ({redisConnectionString}): {ex.Message}. Caching falls back to in-memory.");
     }
 }
-builder.Services.AddStackExchangeRedisCache(opt =>
+
+if (redisAvailable)
 {
-    opt.Configuration = redisConnectionString;
-    opt.InstanceName = "PMWDS:";
-});
+    builder.Services.AddStackExchangeRedisCache(opt =>
+    {
+        opt.Configuration = redisConnectionString;
+        opt.InstanceName = "PMWDS:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
 {
@@ -343,7 +352,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
-app.UseResponseCaching();
 app.UseAuthentication();
 app.UseAuthorization();
 if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)

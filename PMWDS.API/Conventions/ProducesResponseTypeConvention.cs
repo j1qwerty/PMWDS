@@ -19,16 +19,10 @@ public sealed class ProducesResponseTypeConvention : IApplicationModelConvention
                 AddIfMissing(action, StatusCodes.Status404NotFound);
                 AddIfMissing(action, StatusCodes.Status500InternalServerError);
 
-                if (action.Selectors.Any(selector => selector.EndpointMetadata.OfType<HttpGetAttribute>().Any()) &&
-                    !action.Filters.OfType<ResponseCacheAttribute>().Any())
-                {
-                    action.Filters.Add(new ResponseCacheAttribute
-                    {
-                        Duration = 30,
-                        Location = ResponseCacheLocation.Client,
-                        VaryByQueryKeys = new[] { "*" }
-                    });
-                }
+                // No blanket ResponseCache here. Every endpoint is auth-scoped, so a shared or
+                // browser cache would serve one user's workspace data to another. Clients are
+                // kept up to date by the DataChanged hub event plus a focus/poll safety net,
+                // not by a TTL. See docs/realtime-sync-and-data-durability.md step 3a.
             }
         }
     }
