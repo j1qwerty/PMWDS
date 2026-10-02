@@ -302,6 +302,44 @@ builder.Services.AddCors(opt =>
          .AllowAnyHeader()
          .AllowCredentials()));
 
+// Resolve the single local storage root before Build(), so LocalFileStorageService can be
+// pinned to the very same directory the static file providers and the seeder use.
+//
+// These used to resolve to two different places. The /files static root came from
+// AzureStorage:LocalUploadPath (default "Data") while LocalFileStorageService and the
+// /avatars root came from FileStorage:BasePath (default "App_Data"). Files were therefore
+// written to one directory and served from another - uploaded avatars 404'd in
+// development - and seeded profile images were written to App_Data but advertised as
+// /files/... URLs served out of Data. In production both happened to be configured to
+// /var/lib/pmwds/data, which is the only reason it was not visible there.
+//
+// Precedence: FileStorage:BasePath, then AzureStorage:LocalUploadPath, then "App_Data".
+//
+// Relative values bind to the content root, never the process working directory and never
+// AppContext.BaseDirectory. This matters: under `dotnet run` the base directory is
+// PMWDS.API/bin/Debug/net10.0, so resolving "App_Data" against it put uploads inside bin/,
+// where every rebuild deleted the files while their ProjectDocuments rows survived in the
+// database and downloads 404'd. The content root is PMWDS.API itself in development and
+// the publish folder in production. Production configures absolute paths
+// (/var/lib/pmwds/data), so this only affects relative defaults. This matches how
+// DatabaseConnectionService already resolves the SQLite data source.
+var azureStorageSettings = builder.Configuration.GetSection("AzureStorage").Get<AzureStorageSettings>()
+    ?? new AzureStorageSettings();
+var fileStorageSettings = builder.Configuration.GetSection("FileStorage").Get<LocalFileStorageSettings>()
+    ?? new LocalFileStorageSettings();
+
+var configuredStorageRoot = !string.IsNullOrWhiteSpace(fileStorageSettings.BasePath)
+    ? fileStorageSettings.BasePath
+    : azureStorageSettings.LocalUploadPath;
+var storageRoot = StoragePathResolver.Resolve(
+    configuredStorageRoot,
+    builder.Environment.ContentRootPath,
+    "App_Data");
+
+// Pin the injected settings to the resolved root so the service cannot disagree with the
+// host about where files live.
+builder.Services.PostConfigure<LocalFileStorageSettings>(opts => opts.BasePath = storageRoot);
+
 var app = builder.Build();
 
 // nginx terminates TLS and proxies over loopback HTTP. Trust its forwarded headers so
@@ -326,24 +364,20 @@ if (exposeApiDocs)
 }
 
 app.UseHttpsRedirection();
-var storageSettings = builder.Configuration.GetSection("AzureStorage").Get<AzureStorageSettings>() ?? new AzureStorageSettings();
-// Uploaded-file root. Must be absolute and must not sit inside the publish folder, otherwise a
-// redeploy that replaces app/ destroys user uploads.
-var localFilesRoot = StoragePathResolver.Resolve(
-    storageSettings.LocalUploadPath,
-    AppContext.BaseDirectory);
-Directory.CreateDirectory(localFilesRoot);
+
+// Serve everything under the one resolved root: /files exposes the documents and seeded
+// profile images the seeder writes, /avatars exposes uploaded avatars. Both are served from
+// storageRoot so what was written is always what is served.
+var filesRequestPath = azureStorageSettings.LocalBaseUrl ?? "/files";
+Directory.CreateDirectory(storageRoot);
+Directory.CreateDirectory(Path.Combine(storageRoot, fileStorageSettings.DocumentsPath));
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(localFilesRoot),
-    RequestPath = storageSettings.LocalBaseUrl ?? "/files"
+    FileProvider = new PhysicalFileProvider(storageRoot),
+    RequestPath = filesRequestPath
 });
-var fileStorageSettings = builder.Configuration.GetSection("FileStorage").Get<LocalFileStorageSettings>() ?? new LocalFileStorageSettings();
 
-// PhysicalFileProvider requires an absolute root, so resolve relative FileStorage:BasePath
-// against the app base directory instead of relying on the process working directory.
-var storageBaseRoot = StoragePathResolver.Resolve(fileStorageSettings.BasePath, AppContext.BaseDirectory);
-var avatarsRoot = Path.Combine(storageBaseRoot, fileStorageSettings.AvatarsPath);
+var avatarsRoot = Path.Combine(storageRoot, fileStorageSettings.AvatarsPath);
 Directory.CreateDirectory(avatarsRoot);
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -366,6 +400,12 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapControllers();
 
+// Logged on every start. When an upload 404s or a seeded avatar is missing, the first
+// question is always "which directory is this actually using" - and the answer is not
+// guessable, because it depends on the environment and on which config key won.
+Console.WriteLine($"[PMWDS] Storage root: {storageRoot}");
+Console.WriteLine($"[PMWDS]   documents/avatars served at {filesRequestPath}/... and /avatars/...");
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -382,7 +422,7 @@ using (var scope = app.Services.CreateScope())
         ["OpenRouter"] = aiSettings.OpenRouter?.ApiKey
     };
 
-    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys, storageBasePath: storageBaseRoot);
+    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys, storageBasePath: storageRoot);
     await SensitiveDataMigrationService.ProtectExistingAsync(
         db,
         scope.ServiceProvider.GetRequiredService<ISensitiveDataProtector>());
