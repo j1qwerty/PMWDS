@@ -372,8 +372,11 @@ export function ProjectOverviewPage() {
                       >
                         <div className="flex items-start gap-2">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-semibold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                            <div className="flex items-start gap-1.5">
+                              <span
+                                title={pinnedMilestone.name}
+                                className="text-xs font-semibold text-slate-800 leading-snug break-words group-hover:text-indigo-600 transition-colors"
+                              >
                                 {pinnedMilestone.name}
                               </span>
                               {pinnedMilestone.isCritical && (
@@ -468,8 +471,11 @@ export function ProjectOverviewPage() {
                           >
                             <div className="flex items-start gap-2">
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs font-medium text-slate-700 truncate group-hover:text-indigo-600 transition-colors">
+                                <div className="flex items-start gap-1.5 flex-wrap">
+                                  <span
+                                    title={m.name}
+                                    className="text-xs font-medium text-slate-700 leading-snug break-words group-hover:text-indigo-600 transition-colors"
+                                  >
                                     {m.name}
                                   </span>
                                   {m.isCritical && (
@@ -912,7 +918,6 @@ export function ProjectOverviewPage() {
                         <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
                           <tr>
                             <th className="text-left px-3 py-2 font-medium">Title</th>
-                            <th className="text-left px-3 py-2 font-medium">Category</th>
                             <th className="text-right px-3 py-2 font-medium">Size</th>
                             <th className="text-right px-3 py-2 font-medium">Version</th>
                             <th className="text-right px-3 py-2 font-medium">Date</th>
@@ -922,15 +927,6 @@ export function ProjectOverviewPage() {
                           {plainDocs.slice(0, 5).map((doc) => (
                             <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
                               <td className="px-3 py-2 font-medium text-slate-700">{doc.title}</td>
-                              <td className="px-3 py-2 text-slate-500">
-                                {doc.category && doc.category !== "General" ? (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-semibold">
-                                    {doc.category}
-                                  </span>
-                                ) : (
-                                  doc.contentType?.split("/").pop() || "—"
-                                )}
-                              </td>
                               <td className="px-3 py-2 text-right text-slate-500">
                                 {(doc.fileSizeBytes / 1024).toFixed(0)} KB
                               </td>

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
 import { ModalOverlay, ScopedUserSelect } from "../../shared";
-import { BUDGET_INPUT_LABEL } from "../../../ui";
+import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees, rupeesToLakhs } from "../../../ui";
 
 export type ProjectFormState = {
   projectCode: string;
@@ -59,6 +59,19 @@ export function ProjectFormModal({
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // The budget field is typed in lakhs while `form.plannedBudget` holds rupees. Keeping the
+  // raw text locally stops the leading zero from sticking: with value={0} the browser edits
+  // "0" as a string, so typing 20 lands as "020".
+  const [budgetLakhs, setBudgetLakhs] = useState(() =>
+    form.plannedBudget > 0 ? String(rupeesToLakhs(form.plannedBudget)) : "",
+  );
+
+  useEffect(() => {
+    if (open) {
+      setBudgetLakhs(form.plannedBudget > 0 ? String(rupeesToLakhs(form.plannedBudget)) : "");
+    }
+  }, [open, form.plannedBudget]);
+
   if (!open) return null;
 
   const filteredDepartments = form.organizationId
@@ -114,13 +127,21 @@ export function ProjectFormModal({
                 type="number"
                 min={0}
                 step={0.5}
-                value={form.plannedBudget}
-                onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })}
+                value={budgetLakhs}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setBudgetLakhs(text);
+                  setForm((prev) => ({ ...prev, plannedBudget: text === "" ? 0 : lakhsToRupees(Number(text)) }));
+                }}
+                placeholder="0"
                 title="Enter the project budget in lakhs (1 lakh = ₹1,00,000)"
                 className="w-full border border-slate-200 rounded-lg p-2 pl-6 text-sm"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">Enter amount in lakhs (1 lakh = ₹1,00,000)</p>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Enter amount in lakhs (1 lakh = ₹1,00,000)
+              {form.plannedBudget > 0 && <> &middot; {formatRupees(form.plannedBudget)}</>}
+            </p>
           </Field>
           <Field label="Start">
             <input type="date" value={form.plannedStartDate} onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />

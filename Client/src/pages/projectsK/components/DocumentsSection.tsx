@@ -152,12 +152,6 @@ export function DocumentsSection({
                       day: "numeric",
                       year: "numeric",
                     })}
-                    {doc.category && doc.category !== "General" && (
-                      <>
-                        {" "}&middot;{" "}
-                        <span className="font-semibold text-indigo-600">{doc.category}</span>
-                      </>
-                    )}
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
 import type { Department } from "../../types";
+import { lakhsToRupees } from "../../ui";
 import {
   GlassCard,
   useToast,
@@ -252,7 +253,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         category: "Monitoring",
         plannedStartDate: startDate,
         plannedEndDate: endDate || "",
-        plannedBudget: budget,
+        // The budget field is in lakhs; the API stores rupees.
+        plannedBudget: lakhsToRupees(budget),
         organizationId: "",
         departmentId: execPrimaryDeptId,
         departmentIds: assignedDepartmentIds,

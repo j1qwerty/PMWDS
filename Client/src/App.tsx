@@ -10,13 +10,13 @@ import { PERMISSION_GROUPS, Permission } from "./permissions";
 
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
-import { ProjectsKPage } from "./pages/projectsK/projectsK";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 
+// Projects list + project workspace shell (Overview / Milestones / Tasks / Documents)
+import { ProjectsListPage } from "./pages/projects/ProjectsListPage";
+import { ProjectDetailShell } from "./pages/projects/ProjectDetailShell";
+
 // Project-nested views
-import { ProjectOverviewPage } from "./pages/nested/ProjectOverviewPage";
-import { ProjectTasksPage } from "./pages/nested/ProjectTasksPage";
-import { ProjectMilestonesPage } from "./pages/nested/ProjectMilestonesPage";
 import { ProjectDependenciesPage } from "./pages/nested/ProjectDependenciesPage";
 import { ProjectNotFound } from "./pages/nested/ProjectNotFound";
 
@@ -86,25 +86,30 @@ function AppRoutes() {
               <Routes>
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
+                {/* Projects list + project workspace shell (4 tabs) */}
                 <Route
-                  path="/projectsK"
-                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsKPage /></Guarded>}
+                  path="/projects"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsListPage /></Guarded>}
                 />
+                <Route
+                  path="/projects/:projectId"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
+                />
+                <Route
+                  path="/projects/:projectId/:tab"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
+                />
+                {/* Legacy workspace route kept in code (ProjectsKPage) but no longer routed.
+                    Delete ProjectsKPage from this import if the old workspace is retired. */}
                 <Route
                   path="/notificationsPage"
                   element={<Guarded permission={ROUTE_GUARDS.notificationsPage}><NotificationsPage /></Guarded>}
                 />
 
-                {/* Project-nested deep links */}
-                <Route path="/projects/:projectId/overview" element={<ProjectOverviewPage />} />
-                <Route path="/projects/:projectId/tasks" element={<ProjectTasksPage />} />
-                <Route
-                  path="/projects/:projectId/milestones"
-                  element={<ProjectMilestonesPage />}
-                />
+                {/* Project-nested deep links not covered by the tab shell */}
                 <Route
                   path="/projects/:projectId/dependencies"
-                  element={<ProjectDependenciesPage />}
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDependenciesPage /></Guarded>}
                 />
                 <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
 

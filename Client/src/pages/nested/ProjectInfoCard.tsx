@@ -23,7 +23,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   category: "Monitoring",
   plannedStartDate: new Date().toISOString().split("T")[0],
   plannedEndDate: "",
-  plannedBudget: 25000,
+  plannedBudget: 0,
   organizationId: "",
   departmentId: "",
   departmentIds: [],
@@ -91,7 +91,7 @@ export function ProjectInfoCard({
     setDeleteProjectOpen(false);
     setDeleteProjectTarget(null);
     addToast("Project deleted");
-    navigate("/projectsK");
+    navigate("/projects");
   };
 
   return (
@@ -133,7 +133,7 @@ export function ProjectInfoCard({
                 <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${getPriorityColor(project.priority).dot}`} />
                 {project.priority}
               </span>
-              <span className="text-[11px] text-slate-500" title="Planned budget (entered in lakhs)">{formatLakhs(project.plannedBudget)}</span>
+              <span className="text-[11px] text-slate-500" title="Planned budget (in lakhs)">{formatLakhs(project.plannedBudget)}</span>
               {project.departmentName && (
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
                   <Icon name="hi-office-building" size={14} />
@@ -225,7 +225,7 @@ export function ProjectInfoCard({
           milestones={milestones}
           dependencies={dependencies}
           onClose={() => setViewProject(false)}
-          onEdit={() => navigate("/projectsK")}
+          onEdit={() => navigate("/projects")}
           onStatusChange={onProjectUpdated}
         />,
         document.body,

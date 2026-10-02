@@ -55,8 +55,12 @@ export function formatDate(value?: string | null) {
 
 export const RUPEE_SYMBOL = "\u20B9";
 
-/** 1 lakh = 100,000 rupees. Budgets are entered and stored in lakhs. */
+/** 1 lakh = 100,000 rupees. 1 crore = 100 lakhs. */
 export const RUPEES_PER_LAKH = 100000;
+
+/** Budgets at or above this many lakhs read better in crores. */
+const LAKHS_PER_CRORE = 100;
+const CRORE_THRESHOLD_IN_LAKHS = 10000;
 
 function toSafeNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
@@ -77,26 +81,41 @@ export function formatRupees(value: number) {
 }
 
 /**
- * Formats an amount that is expressed in lakhs (project budgets, actual cost,
- * budget variance). Uses the lakh/crore unit so large figures stay readable:
- * 5 -> "₹5 L", 12.5 -> "₹12.5 L", 250 -> "₹2.5 Cr".
+ * Formats a budget amount for display. The amount arrives as RAW RUPEES - that
+ * is what the database stores - and is converted to lakhs so the figures stay
+ * readable: 2,23,50,000 -> "₹223 L", 1,85,00,00,000 -> "₹18,500 L".
+ * Amounts of 10,000 lakhs (1 crore) and above switch to crores.
  */
-export function formatLakhs(valueInLakhs: number) {
-  const lakhs = toSafeNumber(valueInLakhs);
-  const rupees = lakhs * RUPEES_PER_LAKH;
+export function formatLakhs(valueInRupees: number) {
+  const rupees = toSafeNumber(valueInRupees);
 
   if (Math.abs(rupees) < RUPEES_PER_LAKH) return formatRupees(rupees);
 
-  const sign = lakhs < 0 ? "-" : "";
-  const absLakhs = Math.abs(lakhs);
-  if (absLakhs >= 100) {
-    return `${sign}${RUPEE_SYMBOL}${trimNumber(absLakhs / 100)} Cr`;
+  const sign = rupees < 0 ? "-" : "";
+  const absLakhs = Math.abs(rupees) / RUPEES_PER_LAKH;
+
+  if (absLakhs >= CRORE_THRESHOLD_IN_LAKHS) {
+    return `${sign}${RUPEE_SYMBOL}${trimNumber(absLakhs / LAKHS_PER_CRORE)} Cr`;
   }
   return `${sign}${RUPEE_SYMBOL}${trimNumber(absLakhs)} L`;
 }
 
 /**
- * Formats a project budget (stored in lakhs) as rupees.
+ * Converts lakhs as typed into a budget field back to the rupees the API stores.
+ */
+export function lakhsToRupees(lakhs: number) {
+  return toSafeNumber(lakhs) * RUPEES_PER_LAKH;
+}
+
+/**
+ * Converts a stored rupee budget into lakhs for a budget input field.
+ */
+export function rupeesToLakhs(rupees: number) {
+  return toSafeNumber(rupees) / RUPEES_PER_LAKH;
+}
+
+/**
+ * Formats a project budget (stored in rupees) for display.
  */
 export function formatMoney(value: number) {
   return formatLakhs(value);

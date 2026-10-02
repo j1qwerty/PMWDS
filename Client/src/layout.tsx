@@ -4,7 +4,7 @@ import { useAuth } from "./auth";
 import { useAppData } from "./appData";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
-import { SHOW_SKILLS_PAGE } from "./featureFlags";
+import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
 import { roleDisplayNames } from "./permissions";
 
 import {
@@ -293,9 +293,14 @@ function Layout({ children }: { children: React.ReactNode }) {
           {/* Logo + Toggle */}
           <div className="flex items-center justify-between px-[clamp(12px,2vw,16px)] pt-[clamp(16px,2.5vw,20px)] pb-[clamp(8px,1.5vw,12px)]">
             {!sidebarCompact && (
-              <div className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap">
+              <Link
+                to="/"
+                onClick={() => setMobileSidebarOpen(false)}
+                title="Go to Dashboard"
+                className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap transition-opacity hover:opacity-70"
+              >
                 PMWDS
-              </div>
+              </Link>
             )}
 
             {/* Hide toggle on mobile (sidebar closes via overlay click) */}
@@ -379,10 +384,10 @@ function Layout({ children }: { children: React.ReactNode }) {
               {/* Projects */}
               {(() => {
                 const theme = sectionThemes.Overview;
-                const active = isActive("/projectsK");
+                const active = isActive("/projects");
                 return (
                   <Link
-                    to="/projectsK"
+                    to="/projects"
                     onClick={() => setMobileSidebarOpen(false)}
                     className={classNames(
                       "relative flex items-center rounded-md transition-all duration-200 group",
@@ -626,14 +631,17 @@ function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
                 <NavActionButton />
 
-                {/* Chat button */}
-                <Link
-                  to="/chat"
-                  className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
-                  style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
-                >
-                  <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
-                </Link>
+                {/* Chat button is hidden for now - no /chat route is registered.
+                    Re-enable this block if the chat route comes back. */}
+                {SHOW_CHAT_BUTTON && (
+                  <Link
+                    to="/chat"
+                    className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                    style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
+                  >
+                    <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
+                  </Link>
+                )}
 
                 {/* Notifications button */}
                 <Link

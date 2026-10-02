@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { priorities } from "../../constants";
 
 import type { Department } from "../../../types";
-import { BUDGET_INPUT_LABEL } from "../../../ui";
+import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees } from "../../../ui";
 
 interface ProjectDetailsStepProps {
   name: string;
@@ -17,6 +18,10 @@ interface ProjectDetailsStepProps {
 }
 
 export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange }: ProjectDetailsStepProps) {
+  // The budget is typed in lakhs. Holding the raw text locally keeps typing natural: with a
+  // controlled value of 0 the browser edits "0" as a string, so typing 20 lands as "020".
+  const [budgetLakhs, setBudgetLakhs] = useState(budget > 0 ? String(budget) : "");
+
   return (
     <div className="space-y-5">
       <div>
@@ -85,8 +90,12 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">₹</span>
             <input
               type="number"
-              value={budget}
-              onChange={(e) => onChange("budget", Number(e.target.value))}
+              value={budgetLakhs}
+              onChange={(e) => {
+                const text = e.target.value;
+                setBudgetLakhs(text);
+                onChange("budget", text === "" ? 0 : Number(text));
+              }}
               placeholder="0"
               min={0}
               step={0.5}
@@ -94,7 +103,10 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
               className="w-full p-3 pl-7 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
             />
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Enter amount in lakhs (1 lakh = ₹1,00,000)</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Enter amount in lakhs (1 lakh = ₹1,00,000)
+            {budget > 0 && <> &middot; {formatRupees(lakhsToRupees(budget))}</>}
+          </p>
         </div>
       </div>
 
