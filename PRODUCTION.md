@@ -345,6 +345,64 @@ paths remain root-relative.
 
 ---
 
+## 2b. nginx must proxy `/hubs/` (SignalR) — manual VPS step
+
+Live updates travel over a SignalR WebSocket to `/hubs/dashboard` (and `/hubs/notifications`),
+mapped in `Program.cs`. nginx therefore needs a `location /hubs/` block with WebSocket upgrade
+headers.
+
+> **This config lives on the VPS, not in this repo. It must be applied by hand.**
+> `Client/nginx.conf` is only the Docker/Compose config — production does not read it.
+>
+> **Both** server blocks need it:
+> - `/etc/nginx/sites-available/pmwds-ip` — the bare-IP block from §2a
+> - the Certbot block for `pmwds.dharmaatribe.app`
+>
+> If you skip this, SignalR works perfectly in local development and **silently fails in
+> production**: the browser gets a 404 on `/hubs/dashboard/negotiate`, `onclose` fires, and the
+> client quietly drops to the 60s poll. Nothing errors visibly. Treat it as a required deploy
+> step.
+
+Add to each block:
+
+```nginx
+location /hubs/ {
+    proxy_pass http://127.0.0.1:5000;   # match whatever upstream the existing /api/ block uses
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+}
+```
+
+The long timeouts are required, not cosmetic: nginx drops an idle WebSocket at its 60s
+default, which would reconnect every client every minute even when nothing is wrong.
+
+Apply and verify:
+
+```bash
+ssh contabo
+sudo cp /etc/nginx/sites-available/pmwds-ip{,.bak-$(date +%s)}
+sudo nano /etc/nginx/sites-available/pmwds-ip
+sudo nginx -t && sudo systemctl reload nginx
+# Repeat for the domain block.
+# Expect 400 (missing access_token) or a 101 upgrade. A 404 means the location is
+# missing or still spelled /hub/ (singular).
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==" \
+  http://127.0.0.1/hubs/dashboard/negotiate
+```
+
+Design and verification notes: `docs/realtime-sync-and-data-durability.md`.
+
+---
+
 ## 3. VPS layout
 
 ```
