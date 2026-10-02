@@ -13,3 +13,6 @@ export const SHOW_PROFILE_SKILLS = false;
 
 /** Hide the chat button in the top bar (there is no /chat route). */
 export const SHOW_CHAT_BUTTON = false;
+
+/** Hide the SuperAdmin entry from the login screen's Dev Quick Login list. */
+export const SHOW_SUPERADMIN_DEMO_LOGIN = false;

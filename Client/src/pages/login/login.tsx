@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { LoginSidebar } from "./LoginSidebar";
 import { Icon } from "../../components/ui/Icon";
+import { SHOW_SUPERADMIN_DEMO_LOGIN } from "../../featureFlags";
 
 type LoginMode = "signin" | "signup" | "forgot" | "reset";
 
@@ -30,7 +31,7 @@ const authSchemas = {
   }),
 };
 
-const demoAccountGroups = [
+const allDemoAccountGroups = [
   {
     label: "Executive",
     accounts: [
@@ -63,6 +64,20 @@ const demoAccountGroups = [
     ]
   }
 ];
+
+/**
+ * SuperAdmin is hidden from the quick-login list by default. Filtering here
+ * keeps the account definition in place so the flag can restore it.
+ * Groups that end up empty are dropped so no orphaned heading renders.
+ */
+const demoAccountGroups = allDemoAccountGroups
+  .map((group) => ({
+    ...group,
+    accounts: group.accounts.filter(
+      (account) => SHOW_SUPERADMIN_DEMO_LOGIN || account.email !== "superadmin@org1.com"
+    ),
+  }))
+  .filter((group) => group.accounts.length > 0);
 
 export function LoginPage() {
   const [email, setEmail] = useState("admin@org1.com");
