@@ -16,14 +16,15 @@ const ROOT = path.resolve(HERE, "..");
 const manifest = JSON.parse(await readFile(path.join(ROOT, "manifest.json"), "utf8"));
 
 const ROLE_LABEL = {
-  admin: "System Administrator (SuperAdmin)",
-  director: "Director",
+  admin: "Admin (formerly Director)",
+  manager: "Manager",
   head: "Department Head",
   member: "Team Member",
 };
 
 const top = manifest.results.filter((r) => r.slug && r.file);
 const deep = (manifest.deep ?? []).filter((r) => r && r.slug);
+const wizard = (manifest.wizard ?? []).filter((r) => r && r.slug);
 
 // Re-runs append to the manifest, so keep only the newest entry per role+slug.
 const newest = (rows) => {
@@ -34,13 +35,15 @@ const newest = (rows) => {
 
 const allTop = newest(top);
 const allDeep = newest(deep);
+const allWizard = newest(wizard);
 console.log(
-  `manifest entries: top=${top.length} deep=${deep.length} · after dedupe: top=${allTop.length} deep=${allDeep.length}`,
+  `manifest entries: top=${top.length} deep=${deep.length} wizard=${wizard.length} · ` +
+    `after dedupe: top=${allTop.length} deep=${allDeep.length} wizard=${allWizard.length}`,
 );
 
 const item = (r, group) => {
-  const dir = group === "deep" ? "deep" : "";
-  const src = `shots/${r.role}/${dir ? "deep/" : ""}${r.file}`;
+  const sub = group === "top" ? "" : `${group}/`;
+  const src = `shots/${r.role}/${sub}${r.file}`;
   const state = r.access !== "allowed" ? "blocked" : r.partial ? "partial" : "ok";
   const badge =
     state === "blocked" ? "RESTRICTED — omit" :
@@ -60,11 +63,16 @@ const sections = Object.keys(ROLE_LABEL)
   .map((role) => {
     const t = allTop.filter((r) => r.role === role);
     const d = allDeep.filter((r) => r.role === role);
+    const w = allWizard.filter((r) => r.role === role);
+    const block = (label, rows, group) =>
+      rows.length
+        ? `<h3>${label}</h3><div class="grid">${rows.map((r) => item(r, group)).join("")}</div>`
+        : "";
     return `<section>
-      <h2>${ROLE_LABEL[role]} <small>${t.filter((r) => r.access === "allowed").length}/${t.length} pages · ${d.filter((r) => r.file).length} drilled</small></h2>
-      <h3>Page-level screens</h3>
-      <div class="grid">${t.map((r) => item(r, "top")).join("")}</div>
-      ${d.length ? `<h3>Drilled-in sections &amp; modals</h3><div class="grid">${d.map((r) => item(r, "deep")).join("")}</div>` : ""}
+      <h2>${ROLE_LABEL[role]} <small>${t.filter((r) => r.access === "allowed").length}/${t.length} pages · ${d.length} drilled · ${w.length} wizard</small></h2>
+      ${block("Page-level screens", t, "top")}
+      ${block("New Project wizard", w, "wizard")}
+      ${block("Drilled-in sections &amp; modals", d, "deep")}
     </section>`;
   })
   .join("\n");
@@ -129,4 +137,6 @@ const html = `<!doctype html>
 </script>`;
 
 await writeFile(path.join(ROOT, "review.html"), html);
-console.log(`review.html written · ${allTop.length} page shots · ${allDeep.length} drilled shots`);
+console.log(
+  `review.html written · ${allTop.length} page · ${allDeep.length} drilled · ${allWizard.length} wizard`,
+);

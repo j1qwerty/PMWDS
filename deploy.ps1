@@ -76,10 +76,16 @@ function Write-Step {
     Write-Host "  ($stamp)" -ForegroundColor DarkGray
 }
 
-function Write-Ok    { param([string]$m = 'done') Write-Host "       OK  $m" -ForegroundColor Green }
+function Write-Running {
+    param([string]$m)
+    $elapsed = ((Get-Date) - $script:Start).TotalSeconds
+    $stamp = '{0,6:N1}s' -f $elapsed
+    Write-Host "       RUN  $m  ($stamp)" -ForegroundColor Yellow
+}
+function Write-Ok    { param([string]$m = 'done') Write-Host "       OK   $m" -ForegroundColor Green }
 function Write-Warn2 { param([string]$m)        Write-Host "  WARN  $m" -ForegroundColor Yellow }
 function Write-Err   { param([string]$m)        Write-Host "  FAIL  $m" -ForegroundColor Red }
-function Write-Info  { param([string]$m)        Write-Host "       $m" -ForegroundColor Gray }
+function Write-Info  { param([string]$m)        Write-Host "       INFO $m" -ForegroundColor Gray }
 function Write-Detail{ param([string]$m)        Write-Host "       $m" -ForegroundColor DarkGray }
 
 function Fail {
@@ -88,56 +94,76 @@ function Fail {
     exit $Code
 }
 
-# Runs a command, streaming nothing, and throws with its output on failure.
+# Runs a command, streams output while it is running, and throws with its output on failure.
 function Invoke-Checked {
     param(
         [Parameter(Mandatory)] [string]   $FilePath,
         [Parameter(Mandatory)] [string[]] $Arguments,
         [string] $What = 'command',
         [string[]] $OnSuccessPatterns = @(),
-        [string] $WorkingDirectory
+        [string] $WorkingDirectory,
+        [switch] $StreamOutput,
+        [string] $OutputLabel = 'output'
     )
 
     # Native tools routinely write progress and warnings to stderr (pnpm/vite do, for
     # the chunk-size notice). With $ErrorActionPreference = 'Stop' those become
     # terminating errors and kill an otherwise successful build, so relax it here and
     # rely on the real exit code instead.
-    $text = $null
+    $lines = [System.Collections.Generic.List[string]]::new()
     $code = 0
     $previousEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
+
     try {
+        $run = {
+            & $FilePath @Arguments 2>&1 | ForEach-Object {
+                $line = $_.ToString()
+                [void]$lines.Add($line)
+
+                if ($StreamOutput -and $line.Trim()) {
+                    Write-Host "       $OutputLabel $line" -ForegroundColor DarkGray
+                }
+            }
+            $script:__InvokeCheckedExitCode = $LASTEXITCODE
+        }
+
         if ($WorkingDirectory) {
             Push-Location $WorkingDirectory
             try {
-                $out = & $FilePath @Arguments 2>&1
-                $code = $LASTEXITCODE
-                $text = ($out | ForEach-Object { $_.ToString() } | Out-String).Trim()
+                & $run
             } finally {
                 Pop-Location
             }
         } else {
-            $out = & $FilePath @Arguments 2>&1
-            $code = $LASTEXITCODE
-            $text = ($out | ForEach-Object { $_.ToString() } | Out-String).Trim()
+            & $run
         }
+
+        $code = $script:__InvokeCheckedExitCode
     } finally {
         $ErrorActionPreference = $previousEap
     }
 
+    $text = ($lines | Out-String).Trim()
+
     if ($code -ne 0) {
-        Write-Host $text -ForegroundColor DarkRed
+        if ($text) {
+            Write-Host $text -ForegroundColor DarkRed
+        }
         Fail "$What failed (exit $code)"
     }
 
     if ($OnSuccessPatterns.Count) {
         foreach ($p in $OnSuccessPatterns) {
             if ($text -notmatch $p) {
-                Write-Host $text -ForegroundColor DarkRed
+                if ($text) {
+                    Write-Host $text -ForegroundColor DarkRed
+                }
                 Fail "$What did not produce expected output: $p"
             }
         }
     }
+
     return $text
 }
 
@@ -146,6 +172,7 @@ function Test-CommandExists { param([string]$Name) return [bool](Get-Command $Na
 # ── Preflight ───────────────────────────────────────────────────────────
 Write-Banner
 Write-Step 'Preflight'
+Write-Running 'checking local tools, repository state, and SSH connectivity'
 
 foreach ($cmd in @('git', 'dotnet', 'node', 'pnpm', 'tar', 'ssh', 'scp')) {
     if (-not (Test-CommandExists $cmd)) { Fail "Required tool not on PATH: $cmd" }
@@ -171,6 +198,7 @@ Write-Ok "ssh $Host_ reachable"
 
 # ── Choose what to deploy ───────────────────────────────────────────────
 Write-Step 'Select target'
+Write-Running 'selecting API, web, or both'
 
 if (-not $Target) {
     Write-Host ''
@@ -197,9 +225,11 @@ $webAssets = @()
 
 if ($doApi) {
     Write-Step 'Build API (dotnet publish -c Release)'
+    Write-Running 'dotnet publish is running. Build output will appear live below.'
     if (Test-Path $PublishDir) { Remove-Item -Recurse -Force $PublishDir }
     Invoke-Checked dotnet @('publish','PMWDS.API','-c','Release','-o',$PublishDir) `
-        -What 'dotnet publish' -OnSuccessPatterns @('PMWDS.API ->') | Out-Null
+        -What 'dotnet publish' -OnSuccessPatterns @('PMWDS.API ->') `
+        -StreamOutput -OutputLabel 'build' | Out-Null
     if (-not (Test-Path (Join-Path $PublishDir 'PMWDS.API.dll'))) { Fail 'PMWDS.API.dll missing from publish output' }
     $apiAssets = @(Get-ChildItem $PublishDir -File -Recurse)
     Write-Ok ("{0} files, {1:N1} MB" -f $apiAssets.Count, (($apiAssets | Measure-Object Length -Sum).Sum / 1MB))
@@ -207,6 +237,7 @@ if ($doApi) {
 
 if ($doWeb) {
     Write-Step 'Build web client (pnpm build)'
+    Write-Running 'pnpm build is running. Vite output will appear live below.'
 
     # Relative base so ONE bundle serves both the subdomain and the bare IP.
     $prevBase = $env:VITE_API_BASE_URL
@@ -214,7 +245,8 @@ if ($doWeb) {
     try {
         Invoke-Checked pnpm @('build') -What 'pnpm build' `
             -WorkingDirectory (Join-Path $RepoRoot 'Client') `
-            -OnSuccessPatterns @('built in') | Out-Null
+            -OnSuccessPatterns @('built in') `
+            -StreamOutput -OutputLabel 'build' | Out-Null
     } finally {
         $env:VITE_API_BASE_URL = $prevBase
     }
@@ -240,6 +272,7 @@ $uploads = @()
 
 if ($doApi) {
     Write-Step 'Package API (tar)'
+    Write-Running "creating $([IO.Path]::GetFileName($ApiArchive))"
     if (Test-Path $ApiArchive) { Remove-Item $ApiArchive -Force }
     Invoke-Checked tar @('-czf', $ApiArchive, '-C', $PublishDir, '.') -What 'tar api' | Out-Null
     $sz = (Get-Item $ApiArchive).Length / 1MB
@@ -249,6 +282,7 @@ if ($doApi) {
 
 if ($doWeb) {
     Write-Step 'Package web (tar)'
+    Write-Running "creating $([IO.Path]::GetFileName($WebArchive))"
     if (Test-Path $WebArchive) { Remove-Item $WebArchive -Force }
     Invoke-Checked tar @('-czf', $WebArchive, '-C', $DistDir, '.') -What 'tar web' | Out-Null
 
@@ -264,6 +298,7 @@ if ($doWeb) {
 
 # ── Confirm ─────────────────────────────────────────────────────────────
 Write-Step 'Confirm'
+Write-Running 'waiting for deployment confirmation'
 
 Write-Host ''
 Write-Host '       About to deploy to:' -ForegroundColor White
@@ -286,15 +321,44 @@ Write-Ok 'confirmed'
 $script:Start = Get-Date
 Write-Step 'Upload (scp)'
 
+$totalUploadBytes = ($uploads | ForEach-Object {
+    (Get-Item $_.Local).Length
+} | Measure-Object -Sum).Sum
+$totalUploadMb = $totalUploadBytes / 1MB
+Write-Running ("{0} archive(s), {1:N1} MB total. Native scp transfer progress will stay visible below." -f `
+    $uploads.Count, $totalUploadMb)
+
+$uploadIndex = 0
 foreach ($u in $uploads) {
-    Invoke-Checked scp @('-o','BatchMode=yes','-o','ConnectTimeout=10', $u.Local, "${Host_}:$($u.Remote)") `
-        -What "scp $(Split-Path $u.Local -Leaf)" | Out-Null
-    Write-Ok "$(Split-Path $u.Local -Leaf) -> $($u.Remote)"
+    $uploadIndex++
+    $fileName = Split-Path $u.Local -Leaf
+    $fileSize = (Get-Item $u.Local).Length
+    $fileMb = $fileSize / 1MB
+
+    Write-Info ("upload {0}/{1}: {2} ({3:N1} MB) -> {4}:{5}" -f `
+        $uploadIndex, $uploads.Count, $fileName, $fileMb, $Host_, $u.Remote)
+    Write-Running "scp is transferring $fileName. The native scp percentage, speed, and ETA are shown live."
+
+    $scpArgs = @(`
+        '-o','BatchMode=yes',
+        '-o','ConnectTimeout=10',
+        $u.Local,
+        "${Host_}:$($u.Remote)"
+    )
+
+    & scp @scpArgs
+    $scpCode = $LASTEXITCODE
+    if ($scpCode -ne 0) {
+        Fail "scp $fileName failed (exit $scpCode)"
+    }
+
+    Write-Ok "$fileName -> $($u.Remote)"
 }
 
 # ── Remote deploy ───────────────────────────────────────────────────────
 $script:Start = Get-Date
 Write-Step 'Deploy on server'
+Write-Running 'remote extraction, permissions, and service restart are running. Server output will appear live below.'
 
 # Written to a script file rather than inlined: $ and quoting behave differently
 # when a command crosses the Windows -> ssh boundary.
@@ -334,8 +398,16 @@ rm -f /tmp/pmwds-api.tar.gz /tmp/pmwds-web.tar.gz
 if [ "$TARGET" = "api" ] || [ "$TARGET" = "both" ]; then
   echo "restarting service"
   systemctl restart pmwds.dharmaatribe.app
-  sleep 50
-  echo "service: $(systemctl is-active pmwds.dharmaatribe.app)"
+  echo "service startup: waiting up to 50s for active state"
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    status=$(systemctl is-active pmwds.dharmaatribe.app 2>/dev/null || true)
+    echo "service startup check $i/10: $status"
+    if [ "$status" = "active" ]; then
+      break
+    fi
+    sleep 5
+  done
+  echo "service: $(systemctl is-active pmwds.dharmaatribe.app 2>/dev/null || true)"
 fi
 '@
 
@@ -344,8 +416,8 @@ $tmpScript = Join-Path ([System.IO.Path]::GetTempPath()) ("pmwds-deploy-" + [gui
 try {
     scp -o BatchMode=yes -o ConnectTimeout=10 $tmpScript "${Host_}:/tmp/pmwds-deploy.sh" | Out-Null
 
-    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-deploy.sh $Target") -What 'remote deploy'
-    ($out -split "`r?`n") | Where-Object { $_ } | ForEach-Object { Write-Detail "  $_" }
+    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-deploy.sh $Target") `
+        -What 'remote deploy' -StreamOutput -OutputLabel 'server'
 
     $out | Select-String -Pattern 'service: active' | Out-Null
     if (-not $?) { Fail 'service did not report active after restart' }
@@ -358,6 +430,7 @@ try {
 # ── Verify ──────────────────────────────────────────────────────────────
 if ($SkipVerify) {
     Write-Step 'Verify'
+    Write-Running 'verification was skipped by -SkipVerify'
     Write-Warn2 'skipped by -SkipVerify'
     Write-Banner; Write-Host '  Deploy finished (unverified).' -ForegroundColor Green; Write-Host ''
     exit 0
@@ -365,6 +438,7 @@ if ($SkipVerify) {
 
 $script:Start = Get-Date
 Write-Step 'Verify'
+Write-Running 'post-deploy checks are running. Each result will appear as it completes.'
 
 # Every referenced asset must return 200 with a real body size. GET / returning
 # 200 proves nothing: index.html is static and served by try_files, so it succeeds
@@ -385,6 +459,7 @@ try {
     scp -o BatchMode=yes $tmpCurl "${Host_}:/tmp/pmwds-curl.sh" | Out-Null
 
     if ($doWeb) {
+        Write-Running 'checking every referenced web asset on both public hosts. Results will appear live below.'
         $urls = @()
         $labels = @{}
         foreach ($h in $PublicHosts) {
@@ -393,7 +468,8 @@ try {
                 $labels[($h.Url + $a)] = $h.Label
             }
         }
-        $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-curl.sh " + ($urls -join ' ')) -What 'asset check'
+        $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-curl.sh " + ($urls -join ' ')) `
+            -What 'asset check' -StreamOutput -OutputLabel 'check'
         $lines = ($out -split "`r?`n") | Where-Object { $_ -match '^\d{3} \d+' }
 
         Write-Info 'assets referenced by dist/index.html, on every public host:'
@@ -412,7 +488,9 @@ try {
     }
 
     # Deep link proves the SPA fallback works.
-    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, 'bash /tmp/pmwds-curl.sh https://pmwds.dharmaatribe.app/projects') -What 'deep link'
+    Write-Running 'checking SPA deep link /projects'
+    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, 'bash /tmp/pmwds-curl.sh https://pmwds.dharmaatribe.app/projects') `
+        -What 'deep link' -StreamOutput -OutputLabel 'check'
     $deep = ($out -split "`r?`n") | Where-Object { $_ -match '^\d{3} \d+' } | Select-Object -First 1
     if ($deep -match '^200 ') { Write-Ok 'SPA deep link /projects -> 200' }
     else { Write-Err "SPA deep link failed: $deep"; $allOk = $false }
@@ -421,16 +499,18 @@ try {
         # grep -c exits 1 when the count is zero, which would fail the check even though
         # zero unhandled exceptions is the good outcome. Force the exit status to 0 and read
         # the printed count instead.
+        Write-Running 'checking recent API journal for unhandled exceptions'
         $log = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
             "journalctl -u $ServiceName --since '-3min' --no-pager | grep -c 'Unhandled exception'; exit 0") `
-            -What 'log scan' -OnSuccessPatterns @('\d+')
+            -What 'log scan' -OnSuccessPatterns @('\d+') -StreamOutput -OutputLabel 'check'
         $logCount = ($log -split "`r?`n" | Where-Object { $_ -match '^\d+$' } | Select-Object -First 1)
         if ($logCount -eq '0') { Write-Ok 'no unhandled exceptions in the last 3 minutes' }
         else { Write-Err "$logCount unhandled exception(s) in journal"; $allOk = $false }
 
+        Write-Running 'checking API startup log for "Now listening"'
         $listening = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
             "journalctl -u $ServiceName --since '-3min' --no-pager | grep -c 'Now listening'; exit 0") `
-            -What 'listen check' -OnSuccessPatterns @('\d+')
+            -What 'listen check' -OnSuccessPatterns @('\d+') -StreamOutput -OutputLabel 'check'
         $listenCount = ($listening -split "`r?`n" | Where-Object { $_ -match '^\d+$' } | Select-Object -First 1)
         if ([int]$listenCount -ge 1) { Write-Ok 'API reports "Now listening on: http://127.0.0.1:5001"' }
         else { Write-Err 'API did not report listening'; $allOk = $false }

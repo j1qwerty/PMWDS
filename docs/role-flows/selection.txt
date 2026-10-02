@@ -1,57 +1,67 @@
+# Screenshots that go into the deck, and the only pages the capture scripts open.
+# Format: <role>|<group>|<slug>    group = top | deep | wizard
+#
+# This file drives three things, so they cannot drift apart:
+#   capture.mjs / deep-capture.mjs / wizard-capture.mjs  -> which pages to open
+#   build_deck.py                                        -> which slides to emit
+#   prune.mjs                                            -> which shots to keep
+#
+# Passing `--all` to a capture script bypasses this file and shoots everything.
+#
+# Removed everywhere: organization-structure and settings (SuperAdmin only).
+# Also removed: most drilled-in sub-sections, and per-role pages dropped by hand
+# (Manager has no Profiles / Notifications, Head has no Documents / Dependencies,
+# TeamMember has no Notifications). Blocked "Page not found" shots are never kept.
+
+# ---------------------------------------------------------------- Admin ----
 admin|top|dashboard
 admin|top|projects
+admin|wizard|wizard-1-project-details
+admin|wizard|wizard-2-milestones
+admin|wizard|wizard-3-assign-departments
+admin|wizard|wizard-4-dependencies
 admin|top|project-overview
-admin|top|project-tasks
 admin|top|project-milestones
+admin|top|project-tasks
+admin|top|project-documents
+admin|top|project-dependencies
 admin|top|users
 admin|top|departments
-admin|top|organization-structure
 admin|top|profiles
 admin|top|roles-permissions
 admin|top|activity-logs
 admin|top|reports
 admin|top|ai-insights
 admin|top|notifications
-admin|top|settings
-admin|deep|project-documents
 admin|deep|project-edit-modal
-admin|deep|tasks-subtasks-tree
-admin|deep|ai-risk-prediction
-admin|deep|ai-recommendations
-admin|deep|activity-log-filters
-director|top|dashboard
-director|top|projects
-director|top|project-overview
-director|top|project-tasks
-director|top|project-milestones
-director|top|users
-director|top|departments
-director|top|profiles
-director|top|roles-permissions
-director|top|activity-logs
-director|top|reports
-director|top|ai-insights
-director|top|notifications
-director|deep|project-documents
-director|deep|project-documents-viewall
-director|deep|roles-table-detail
-director|deep|users-row-detail
-director|deep|users-create-modal
-director|deep|ai-recommendations
-director|deep|activity-log-filters
-director|deep|notification-templates
+admin|deep|tasks-add-modal
+
+# -------------------------------------------------------------- Manager ----
+manager|top|dashboard
+manager|top|projects
+manager|top|project-overview
+manager|top|project-milestones
+manager|top|project-tasks
+manager|top|project-documents
+manager|top|users
+manager|top|departments
+
+# --------------------------------------------------- Department Head ----
 head|top|dashboard
 head|top|projects
 head|top|project-overview
-head|top|project-tasks
 head|top|project-milestones
+head|top|project-tasks
 head|top|users
 head|top|departments
 head|top|profiles
+head|top|activity-logs
 head|top|notifications
+
+# ---------------------------------------------------------- Team Member ---
 member|top|dashboard
 member|top|projects
 member|top|project-overview
-member|top|project-tasks
 member|top|project-milestones
-member|top|notifications
+member|top|project-tasks
+member|top|project-documents

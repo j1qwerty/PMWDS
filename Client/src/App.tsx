@@ -17,7 +17,6 @@ import { ProjectsListPage } from "./pages/projects/ProjectsListPage";
 import { ProjectDetailShell } from "./pages/projects/ProjectDetailShell";
 
 // Project-nested views
-import { ProjectDependenciesPage } from "./pages/nested/ProjectDependenciesPage";
 import { ProjectNotFound } from "./pages/nested/ProjectNotFound";
 
 // Team
@@ -86,7 +85,7 @@ function AppRoutes() {
               <Routes>
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
-                {/* Projects list + project workspace shell (4 tabs) */}
+                {/* Projects list + project workspace shell (tabs) */}
                 <Route
                   path="/projects"
                   element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsListPage /></Guarded>}
@@ -106,11 +105,9 @@ function AppRoutes() {
                   element={<Guarded permission={ROUTE_GUARDS.notificationsPage}><NotificationsPage /></Guarded>}
                 />
 
-                {/* Project-nested deep links not covered by the tab shell */}
-                <Route
-                  path="/projects/:projectId/dependencies"
-                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDependenciesPage /></Guarded>}
-                />
+                {/* Project-nested deep links. Dependencies is served by the tab
+                    shell above; a static path here would outrank /:tab in
+                    React Router's ranking and bypass the tabs. */}
                 <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
 
                 {/* Team */}

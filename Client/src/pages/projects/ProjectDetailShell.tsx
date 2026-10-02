@@ -5,6 +5,7 @@ import { ProjectOverviewPage } from "../nested/ProjectOverviewPage";
 import { ProjectMilestonesPage } from "../nested/ProjectMilestonesPage";
 import { ProjectTasksPage } from "../nested/ProjectTasksPage";
 import { ProjectDocumentsPage } from "../nested/ProjectDocumentsPage";
+import { ProjectDependenciesPage } from "../nested/ProjectDependenciesPage";
 import { ProjectNotFound } from "../nested/ProjectNotFound";
 
 const TABS = [
@@ -12,6 +13,7 @@ const TABS = [
   { key: "milestones", label: "Milestones", icon: "hi-flag" },
   { key: "tasks", label: "Tasks", icon: "hi-clipboard" },
   { key: "documents", label: "Documents", icon: "description" },
+  { key: "dependencies", label: "Dependencies", icon: "account_tree" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -23,8 +25,8 @@ function isTabKey(value: string | undefined): value is TabKey {
 }
 
 /**
- * Shell for a single project. Renders a back link plus the four small
- * tabs, then mounts the existing project page component for the active tab.
+ * Shell for a single project. Renders a back link plus the small tabs, then
+ * mounts the existing project page component for the active tab.
  *
  * URL shape: /projects/:projectId/:tab  (tab defaults to "overview")
  */
@@ -87,6 +89,7 @@ export function ProjectDetailShell() {
       {activeTab === "milestones" && <ProjectMilestonesPage />}
       {activeTab === "tasks" && <ProjectTasksPage />}
       {activeTab === "documents" && <ProjectDocumentsPage />}
+      {activeTab === "dependencies" && <ProjectDependenciesPage />}
     </div>
   );
 }
