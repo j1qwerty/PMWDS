@@ -25,7 +25,9 @@ import { OrganizationStructurePage } from "./pages/organisations/OrganizationStr
 import { DepartmentsPage } from "./pages/departments/DepartmentsPage";
 import { UsersPage } from "./pages/users/users";
 import { ProfilesPage } from "./pages/profiles/ProfilesPage";
+// Kept for when the Skills page is re-enabled (see SHOW_SKILLS_PAGE).
 import { SkillsPage } from "./pages/skills/SkillsPage";
+import { SHOW_SKILLS_PAGE } from "./featureFlags";
 
 // Tools
 import { AIPage as CoreAIPage } from "./pages/ai/ai";
@@ -120,7 +122,11 @@ function AppRoutes() {
                   element={<Guarded permission={ROUTE_GUARDS.users}><UsersPage /></Guarded>}
                 />
                 <Route path="/profiles" element={<Guarded permission={ROUTE_GUARDS.profiles}><ProfilesPage /></Guarded>} />
-                <Route path="/skills" element={<Guarded permission={ROUTE_GUARDS.skills}><SkillsPage /></Guarded>} />
+                {/* Skills page is temporarily hidden for all roles - see SHOW_SKILLS_PAGE.
+                    Removing the route falls through to the "*" NoAccessPage route. */}
+                {SHOW_SKILLS_PAGE && (
+                  <Route path="/skills" element={<Guarded permission={ROUTE_GUARDS.skills}><SkillsPage /></Guarded>} />
+                )}
 
                 {/* Tools (open to all authenticated users) */}
                 <Route path="/ai" element={<Guarded permission={ROUTE_GUARDS.ai}><CoreAIPage /></Guarded>} />

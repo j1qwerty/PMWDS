@@ -1,5 +1,6 @@
 import { Icon } from "../../../components/ui/Icon";
 import { getStatusColor } from "../../shared";
+import { formatLakhs } from "../../../ui";
 
 const statusHexColors: Record<string, string> = {
   Planning: "#06b6d4",
@@ -229,7 +230,7 @@ export function BudgetBar({
     <div>
       <div className="flex justify-between text-xs mb-1">
         <span className="text-slate-500">{label}</span>
-        <span className="font-semibold text-slate-700">₹{value.toLocaleString("en-IN")}</span>
+        <span className="font-semibold text-slate-700">{formatLakhs(value)}</span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />

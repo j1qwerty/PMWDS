@@ -52,13 +52,57 @@ export function formatDate(value?: string | null) {
   });
 }
 
-export function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value ?? 0);
+export const RUPEE_SYMBOL = "\u20B9";
+
+/** 1 lakh = 100,000 rupees. Budgets are entered and stored in lakhs. */
+export const RUPEES_PER_LAKH = 100000;
+
+function toSafeNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
+
+function trimNumber(value: number, maxFractionDigits = 2) {
+  return value
+    .toLocaleString("en-IN", { maximumFractionDigits: maxFractionDigits })
+    .replace(/\.0+$/, "");
+}
+
+/**
+ * Formats a raw rupee amount (e.g. fund claims, certificate amounts) as
+ * Indian rupees, e.g. 1250000 -> "₹12,50,000".
+ */
+export function formatRupees(value: number) {
+  return `${RUPEE_SYMBOL}${Math.round(toSafeNumber(value)).toLocaleString("en-IN")}`;
+}
+
+/**
+ * Formats an amount that is expressed in lakhs (project budgets, actual cost,
+ * budget variance). Uses the lakh/crore unit so large figures stay readable:
+ * 5 -> "₹5 L", 12.5 -> "₹12.5 L", 250 -> "₹2.5 Cr".
+ */
+export function formatLakhs(valueInLakhs: number) {
+  const lakhs = toSafeNumber(valueInLakhs);
+  const rupees = lakhs * RUPEES_PER_LAKH;
+
+  if (Math.abs(rupees) < RUPEES_PER_LAKH) return formatRupees(rupees);
+
+  const sign = lakhs < 0 ? "-" : "";
+  const absLakhs = Math.abs(lakhs);
+  if (absLakhs >= 100) {
+    return `${sign}${RUPEE_SYMBOL}${trimNumber(absLakhs / 100)} Cr`;
+  }
+  return `${sign}${RUPEE_SYMBOL}${trimNumber(absLakhs)} L`;
+}
+
+/**
+ * Formats a project budget (stored in lakhs) as rupees.
+ */
+export function formatMoney(value: number) {
+  return formatLakhs(value);
+}
+
+/** Label used next to budget inputs so the unit is explicit. */
+export const BUDGET_INPUT_LABEL = "Budget (₹ in Lakhs)";
 
 export function formatPercent(value: number) {
   return `${Math.round(value ?? 0)}%`;

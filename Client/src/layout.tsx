@@ -4,6 +4,7 @@ import { useAuth } from "./auth";
 import { useAppData } from "./appData";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
+import { SHOW_SKILLS_PAGE } from "./featureFlags";
 
 import {
   HiOutlineHome,
@@ -226,7 +227,10 @@ function Layout({ children }: { children: React.ReactNode }) {
         { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
         { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
         { path: "/profiles", label: "Profiles", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
-        { path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] },
+        // Skills page is temporarily hidden for all roles - see SHOW_SKILLS_PAGE.
+        ...(SHOW_SKILLS_PAGE
+          ? [{ path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] }]
+          : []),
       ],
     },
     {

@@ -254,28 +254,32 @@ export function ReportsPage() {
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         {/* Left: Filters & Report Generation */}
         <div className="flex flex-col gap-6">
-          <OrganizationDepartmentFilter
-            organizations={organizations}
-            departments={departments}
-            users={[]}
-            selectedOrganizationId={filters.organizationId}
-            selectedDepartmentId={filters.departmentId}
-            onOrganizationChange={(organizationId) => setFilters((current) => ({
-              ...current,
-              organizationId,
-              departmentId: "",
-              projectId: "",
-            }))}
-            onDepartmentChange={(departmentId) => setFilters((current) => ({
-              ...current,
-              departmentId,
-              projectId: "",
-            }))}
-          />
           <ReportFilters
             filters={filters}
             projects={visibleProjects}
             onFilterChange={setFilters}
+            scopeFields={
+              <OrganizationDepartmentFilter
+                variant="fields"
+                searchPlaceholder="Search departments..."
+                organizations={organizations}
+                departments={departments}
+                users={[]}
+                selectedOrganizationId={filters.organizationId}
+                selectedDepartmentId={filters.departmentId}
+                onOrganizationChange={(organizationId) => setFilters((current) => ({
+                  ...current,
+                  organizationId,
+                  departmentId: "",
+                  projectId: "",
+                }))}
+                onDepartmentChange={(departmentId) => setFilters((current) => ({
+                  ...current,
+                  departmentId,
+                  projectId: "",
+                }))}
+              />
+            }
           />
 
           <ReportGenerator

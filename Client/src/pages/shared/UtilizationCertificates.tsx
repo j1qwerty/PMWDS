@@ -10,6 +10,7 @@ import type {
 import { PERMISSION_GROUPS, usePermission } from "./RoleGate";
 import { useToast } from "./Toast";
 import { useAuth } from "../../auth";
+import { formatRupees } from "../../ui";
 
 /**
  * Self-contained overlay, portalled to <body>.
@@ -439,10 +440,10 @@ export function UtilizationCertificates({
 
       {certificates.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <SummaryTile label="Total claimed" value={`₹${totals.claimed.toLocaleString("en-IN")}`} />
+          <SummaryTile label="Total claimed" value={formatRupees(totals.claimed)} />
           <SummaryTile
             label="Total utilized"
-            value={`₹${totals.utilized.toLocaleString("en-IN")}`}
+            value={formatRupees(totals.utilized)}
             tone={totals.claimed > 0 && totals.utilized > totals.claimed ? "warn" : "ok"}
           />
           <SummaryTile label="Approved" value={String(totals.approved)} tone="ok" />
@@ -508,16 +509,16 @@ export function UtilizationCertificates({
                 <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
                   <div>
                     <p className="text-slate-400 text-[10px]">Claimed</p>
-                    <p className="font-semibold text-slate-700">₹{cert.amountClaimed.toLocaleString("en-IN")}</p>
+                    <p className="font-semibold text-slate-700">{formatRupees(cert.amountClaimed)}</p>
                   </div>
                   <div>
                     <p className="text-slate-400 text-[10px]">Utilized</p>
-                    <p className="font-semibold text-slate-700">₹{cert.amountUtilized.toLocaleString("en-IN")}</p>
+                    <p className="font-semibold text-slate-700">{formatRupees(cert.amountUtilized)}</p>
                   </div>
                   <div>
                     <p className="text-slate-400 text-[10px]">Unutilized</p>
                     <p className={`font-semibold ${cert.unutilizedAmount > 0 ? "text-amber-600" : "text-slate-700"}`}>
-                      ₹{cert.unutilizedAmount.toLocaleString("en-IN")}
+                      {formatRupees(cert.unutilizedAmount)}
                     </p>
                   </div>
                 </div>
@@ -797,9 +798,8 @@ export function UtilizationCertificates({
             <div className="px-6 py-4 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-800">Review utilization certificate</h3>
               <p className="text-[11px] text-slate-500 mt-1">
-                {reviewTarget.certificateNumber} · ₹
-                {reviewTarget.amountUtilized.toLocaleString("en-IN")} of ₹
-                {reviewTarget.amountClaimed.toLocaleString("en-IN")} utilized
+                {reviewTarget.certificateNumber} · {formatRupees(reviewTarget.amountUtilized)} of{" "}
+                {formatRupees(reviewTarget.amountClaimed)} utilized
               </p>
             </div>
             <div className="p-6 space-y-4">

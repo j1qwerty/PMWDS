@@ -73,6 +73,9 @@ export function MilestoneDepartmentsStep({
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        Every milestone must be assigned a department <span className="text-red-500">*</span>
+      </p>
       {milestones.map((milestone) => (
         <div
           key={milestone.id}
@@ -96,12 +99,16 @@ export function MilestoneDepartmentsStep({
 
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Department
+              Department <span className="text-red-500">*</span>
             </label>
             <select
               value={milestone.departmentId ?? ""}
               onChange={(event) => assignDepartment(milestone.id, event.target.value)}
-              className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={`w-full p-2.5 rounded-lg border text-sm outline-none bg-white focus:ring-2 transition-all ${
+                milestone.departmentId
+                  ? "border-slate-200 focus:border-indigo-300 focus:ring-indigo-100"
+                  : "border-red-300 focus:border-red-400 focus:ring-red-100"
+              }`}
             >
               <option value="">Select department...</option>
               {departments.map((department) => {

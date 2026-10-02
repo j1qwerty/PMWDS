@@ -21,6 +21,17 @@ import { Activity } from "../shared/dash/Activity";
 import Timer from "../shared/dash/Timer";
 import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
 
+// Temporarily hidden dashboard widgets. Kept behind flags (not deleted) so
+// they can be restored by flipping these back to true.
+//   SHOW_MY_TASKS          - "My Tasks" (Active Objectives) card
+//   SHOW_WORKLOAD_DISTRIBUTION - "Workload Distribution" card
+//   SHOW_TIME_TRACKER      - "Time Tracker" card (Notifications render in its place)
+//   SHOW_ACTIVITY_FILTER   - "All Tasks / My Tasks / Team Tasks" dropdown on the Activity card
+const SHOW_MY_TASKS = false;
+const SHOW_WORKLOAD_DISTRIBUTION = false;
+const SHOW_TIME_TRACKER = false;
+const SHOW_ACTIVITY_FILTER = false;
+
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
   name: "",
@@ -276,24 +287,32 @@ export function DashboardPage() {
               doneProjects={(dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0}
             />
 
-            {/* Activity Chart */}
+            {/* Activity Chart - the task filter dropdown is hidden via SHOW_ACTIVITY_FILTER */}
             <Activity
               data={activityData}
               title="Activity"
-              filterOptions={["All Tasks", "My Tasks", "Team Tasks"]}
+              filterOptions={SHOW_ACTIVITY_FILTER ? ["All Tasks", "My Tasks", "Team Tasks"] : []}
               selectedFilter={selectedActivityFilter}
               onFilterChange={setSelectedActivityFilter}
             />
 
-            {/* Timer */}
-            <Timer tasks={myTasks} token={auth?.token ?? ''} />
+            {/* Timer (hidden) - Notifications are shown in its place */}
+            {SHOW_TIME_TRACKER ? (
+              <Timer tasks={myTasks} token={auth?.token ?? ''} />
+            ) : (
+              <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+            )}
           </div>
         </section>
 
 
-        {/* Active Objectives , Workload Distribution, Notifications */}
+        {/* Active Objectives , Workload Distribution, Notifications
+            "My Tasks" and "Workload Distribution" are currently hidden via the
+            SHOW_MY_TASKS / SHOW_WORKLOAD_DISTRIBUTION flags above. */}
+        {(SHOW_MY_TASKS || SHOW_WORKLOAD_DISTRIBUTION) && (
         <section className="flex gap-4">
           {/* left - Active Objectives */}
+          {SHOW_MY_TASKS && (
           <div className="flex-1 py-4">
             <ActiveObjectives
               objectives={myTasks.slice(0, 6).map((task) => {
@@ -315,8 +334,10 @@ export function DashboardPage() {
               subtitle={`${myTasks.length} tasks`}
             />
           </div>
+          )}
 
           {/* middle - Workload Distribution */}
+          {SHOW_WORKLOAD_DISTRIBUTION && (
           <div className="flex-1 py-4">
             <WorkloadBars
               items={departmentWorkload}
@@ -324,12 +345,14 @@ export function DashboardPage() {
               isDepartment={true}
             />
           </div>
+          )}
 
           {/* right - Notifications */}
           <div className="flex-1 py-4">
             <NotificationList items={unread.slice(0, 6)} title="Notifications" />
           </div>
         </section>
+        )}
 
         <div className="py-4">
           <TaskStats tasks={myTasks} />

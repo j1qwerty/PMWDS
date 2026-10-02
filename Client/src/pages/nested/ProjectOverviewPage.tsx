@@ -23,6 +23,7 @@ import { Icon } from "../../components/ui/Icon";
 import { Avatark } from "../shared/Avatark";
 import { TaskStatusDonut, MilestoneTimeline, BudgetBar } from "./components/OverviewCharts";
 import { OverviewAIInsights } from "./components/OverviewAIInsights";
+import { formatLakhs } from "../../ui";
 
 function KpiCard({
   label,
@@ -669,7 +670,7 @@ export function ProjectOverviewPage() {
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">Budget Variance</span>
                     <span className={`font-bold ${ws.project.budgetVariance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                      {ws.project.budgetVariance >= 0 ? "+" : ""}₹{ws.project.budgetVariance.toLocaleString("en-IN")}
+                      {ws.project.budgetVariance >= 0 ? "+" : ""}{formatLakhs(ws.project.budgetVariance)}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs mt-1">

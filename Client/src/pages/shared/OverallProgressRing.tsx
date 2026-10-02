@@ -50,7 +50,9 @@ export function OverallProgressRing({ progress, project, delayRisk, healthScore 
         <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Budget Utilized */}
           <div className="bg-slate-50 p-4 rounded-xl">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1">Budget Utilized</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1" title="Project budget is entered in lakhs">
+              Budget Utilized
+            </div>
             <div className="text-lg font-bold text-slate-800 mb-1">
               {formatMoney(project.actualCost)}
               <span className="text-sm text-slate-400 font-normal"> / {formatMoney(project.plannedBudget)}</span>

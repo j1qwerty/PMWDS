@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
 import { ModalOverlay, ScopedUserSelect } from "../../shared";
+import { BUDGET_INPUT_LABEL } from "../../../ui";
 
 export type ProjectFormState = {
   projectCode: string;
@@ -106,8 +107,20 @@ export function ProjectFormModal({
             </select>
             
           </Field>
-            <Field label="Budget">
-            <input type="number" value={form.plannedBudget} onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
+            <Field label={BUDGET_INPUT_LABEL}>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">₹</span>
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={form.plannedBudget}
+                onChange={(e) => setForm({ ...form, plannedBudget: Number(e.target.value) })}
+                title="Enter the project budget in lakhs (1 lakh = ₹1,00,000)"
+                className="w-full border border-slate-200 rounded-lg p-2 pl-6 text-sm"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">Enter amount in lakhs (1 lakh = ₹1,00,000)</p>
           </Field>
           <Field label="Start">
             <input type="date" value={form.plannedStartDate} onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />

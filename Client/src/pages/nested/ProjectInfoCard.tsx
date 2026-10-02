@@ -13,6 +13,7 @@ import {
   ConfirmDeleteModal,
 } from "../projectsK/components";
 import { Icon } from "../../components/ui/Icon";
+import { formatLakhs } from "../../ui";
 import { Avatark } from "../shared/Avatark";
 
 const emptyProjectForm = (): ProjectFormState => ({
@@ -132,7 +133,7 @@ export function ProjectInfoCard({
                 <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${getPriorityColor(project.priority).dot}`} />
                 {project.priority}
               </span>
-              <span className="text-[11px] text-slate-500">₹{project.plannedBudget.toLocaleString("en-IN")}</span>
+              <span className="text-[11px] text-slate-500" title="Planned budget (entered in lakhs)">{formatLakhs(project.plannedBudget)}</span>
               {project.departmentName && (
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
                   <Icon name="hi-office-building" size={14} />

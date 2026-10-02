@@ -3,6 +3,7 @@ import type { User, UserProfileRecord } from "../../types";
 import { Avatar, GlassCard, GradientButton } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
 import { Icon } from "../../components/ui/Icon";
+import { SHOW_PROFILE_SKILLS } from "../../featureFlags";
 
 interface ProfileDetailProps {
   user: User;
@@ -197,7 +198,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
               </p>
             </div> */}
 
-            {user.skills && user.skills.length > 0 && (
+            {SHOW_PROFILE_SKILLS && user.skills && user.skills.length > 0 && (
               <div className="mt-5">
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Skills</div>
                 <div className="flex flex-wrap gap-2">

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Project } from "../../types";
 import { GlassCard } from "../shared";
 
@@ -12,9 +13,14 @@ interface ReportFiltersProps {
   };
   projects: Project[];
   onFilterChange: (filters: ReportFiltersProps["filters"]) => void;
+  /**
+   * Extra scope fields (organization / department / search) rendered as the
+   * first cells of the same filter grid, instead of a separate row above it.
+   */
+  scopeFields?: ReactNode;
 }
 
-export function ReportFilters({ filters, projects, onFilterChange }: ReportFiltersProps) {
+export function ReportFilters({ filters, projects, onFilterChange, scopeFields }: ReportFiltersProps) {
   const hasFilters = filters.organizationId || filters.projectId || filters.departmentId || filters.startDate || filters.endDate || filters.status;
 
   const clearFilters = () => {
@@ -39,6 +45,9 @@ export function ReportFilters({ filters, projects, onFilterChange }: ReportFilte
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Scope (Organization / Department / Search) - rendered inline with the filters below */}
+        {scopeFields}
+
         {/* Project */}
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">

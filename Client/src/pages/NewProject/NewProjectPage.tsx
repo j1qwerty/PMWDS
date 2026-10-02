@@ -64,6 +64,8 @@ const LEGACY_STEPS: StepConfig[] = [
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
+// Executive flow. Steps 5-7 (Departments / Users / Tasks) are intentionally
+// hidden for every executive role - see `visibleSteps` below.
 const EXECUTIVE_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "milestones", label: "Milestones", icon: "flag" },
@@ -154,7 +156,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  const visibleSteps = usesExecutiveFlow && !isSuperAdmin
+  // Executive flows (super admin, director, department head) stop after the
+  // Dependencies step: the Departments / Users / Tasks steps are hidden and the
+  // final visible step submits with "Finish" instead of showing "Next".
+  const visibleSteps = usesExecutiveFlow
     ? steps.slice(0, dependenciesStepIndex + 1)
     : steps;
 
@@ -179,7 +184,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const isStepComplete = (step: number): boolean => {
     switch (steps[step]?.key) {
-      case "details": return name.trim().length > 0 && startDate.trim().length > 0 && endDate.trim().length > 0;
+      case "details":
+        return (
+          name.trim().length > 0 &&
+          startDate.trim().length > 0 &&
+          endDate.trim().length > 0 &&
+          endDate >= startDate
+        );
       case "departments": return selectedDepartmentIds.length > 0;
       case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
       case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
@@ -194,7 +205,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const handleNext = () => {
     if (!canProceed) return;
-    if (currentStep < steps.length - 1) {
+    if (currentStep < visibleSteps.length - 1) {
       setCurrentStep((s) => s + 1);
     }
   };
@@ -431,7 +442,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">{steps[currentStep].label}</h2>
-            <p className="text-xs text-slate-400">Step {currentStep + 1} of {visibleSteps.length}</p>
+            <p className="text-xs text-slate-400">
+              Step {currentStep + 1} of {visibleSteps.length} ·{" "}
+              <span className="text-red-500">*</span> required
+            </p>
           </div>
         </div>
 
