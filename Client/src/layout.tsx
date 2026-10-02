@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { useAppData } from "./appData";
+import { onStatusChanged, type RealtimeStatus } from "./realtime";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
@@ -27,6 +28,7 @@ import {
   HiOutlineChevronDoubleRight,
   HiOutlineMenu,
   HiOutlineX,
+  HiOutlineRefresh,
 } from "react-icons/hi";
 import { Icon } from "./components/ui/Icon";
 
@@ -180,10 +182,17 @@ function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
   const perm = usePermission();
-  const { data } = useAppData();
+  const { data, refresh, loading } = useAppData();
 
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Live-update status. Shown as a hint rather than an error: while the socket is down
+  // the app still updates via focus-refetch and the 60s poll, just not instantly.
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("disconnected");
+  useEffect(() => onStatusChanged(setRealtimeStatus), []);
+
+  const realtimeConnected = realtimeStatus === "connected";
 
   // Track screen size for responsive behavior
   const [isMobile, setIsMobile] = useState(false);
@@ -629,6 +638,38 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Right actions */}
               <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
+                <button
+                  onClick={() => void refresh()}
+                  disabled={loading}
+                  aria-label="Refresh workspace data"
+                  title={
+                    realtimeConnected
+                      ? "Live updates connected. Click to refresh now."
+                      : "Live updates offline - data refreshes every 60s and on focus. Click to refresh now."
+                  }
+                  className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110 disabled:opacity-50 disabled:hover:scale-100"
+                  style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
+                >
+                  <HiOutlineRefresh
+                    className={loading ? "animate-spin" : undefined}
+                    style={{
+                      height: 'clamp(16px,2.5vw,20px)',
+                      width: 'clamp(16px,2.5vw,20px)',
+                    }}
+                  />
+                  {!realtimeConnected && (
+                    <span
+                      className="absolute rounded-full bg-warning"
+                      style={{
+                        height: 'clamp(5px,0.8vw,7px)',
+                        width: 'clamp(5px,0.8vw,7px)',
+                        top: 'clamp(3px,0.6vw,5px)',
+                        right: 'clamp(3px,0.6vw,5px)',
+                      }}
+                    />
+                  )}
+                </button>
+
                 <NavActionButton />
 
                 {/* Chat button is hidden for now - no /chat route is registered.

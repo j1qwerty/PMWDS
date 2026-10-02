@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Milestone, ProjectDocument, Task } from "../../../types";
 import { api } from "../../../api";
+import { onDataChanged } from "../../../realtime";
+import { DOCUMENT_SCOPES } from "../../../realtimeScopes";
 import { UtilizationCertificates } from "../../shared";
 
 interface DocumentsSectionProps {
@@ -44,6 +46,28 @@ export function DocumentsSection({
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  // Keep the list in sync with other sessions. Document rows live in the DB and the bytes
+  // on disk, and the API now broadcasts a `documents` change on upload, so a file added in
+  // another browser appears here without a reload.
+  useEffect(() => {
+    let debounceTimer: number | undefined;
+
+    const stopListening = onDataChanged((notification) => {
+      if (!DOCUMENT_SCOPES.includes(notification.scope)) return;
+      if (notification.projectId && notification.projectId !== projectId) return;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined;
+        fetchDocuments();
+      }, 250);
+    });
+
+    return () => {
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      stopListening();
+    };
+  }, [projectId, fetchDocuments]);
 
   const handleFileUpload = async () => {
     if (!authToken || !uploadFile) return;

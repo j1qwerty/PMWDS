@@ -4,11 +4,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
 import { ApiError, api } from "./api";
 import { useAuth } from "./auth";
+import { isRealtimeHealthy, onDataChanged, startRealtime } from "./realtime";
+import { GLOBAL_SCOPES } from "./realtimeScopes";
 import type {
   ActivityLogRecord,
   AlertRuleRecord,
@@ -26,6 +29,13 @@ import type {
   User,
   WorkspaceBootstrap,
 } from "./types";
+
+/** Coalesce a burst of DataChanged events (one mutation can fire several) into one refetch. */
+const REALTIME_DEBOUNCE_MS = 250;
+/** Focus/visibility refetch delay, long enough to ignore rapid tab switching. */
+const FOCUS_DEBOUNCE_MS = 1000;
+/** Fallback poll when the socket is not connected. */
+const POLL_INTERVAL_MS = 60_000;
 
 type AppData = {
   organizations: OrganizationRecord[];
@@ -219,12 +229,20 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Guards against overlapping refetches. Without it, a burst of DataChanged events (or a
+  // poll landing mid-focus-refresh) can start several concurrent bootstrap+pages loads
+  // and let a slower earlier response overwrite a newer one.
+  const inFlightRef = useRef(false);
+
   const refresh = useCallback(async () => {
     if (!auth) {
       setBootstrap(null);
       setPages(null);
       return;
     }
+
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
 
     setLoading(true);
     setError("");
@@ -247,6 +265,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         setPages(null);
       }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [auth, logout]);
@@ -302,6 +321,69 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [auth, logout]);
+
+  // Keep the shared store in sync with other sessions.
+  //
+  // Before this, appData loaded once per auth token and never again, so a change made in
+  // one browser was invisible in another until a manual reload. Three layers keep it
+  // current: the DataChanged hub event (instant), a refetch when the tab regains focus
+  // (catches anything missed while asleep), and a slow poll (catches a dead socket).
+  useEffect(() => {
+    if (!auth) return;
+
+    let disposed = false;
+    let debounceTimer: number | undefined;
+
+    const scheduleRefresh = (delay: number) => {
+      if (disposed) return;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined;
+        if (!disposed) void refresh();
+      }, delay);
+    };
+
+    // A single mutation can touch several scopes (deleting a project refreshes
+    // milestones, tasks and documents too), so coalesce bursts into one refetch.
+    const stopListening = onDataChanged((notification) => {
+      if (GLOBAL_SCOPES.includes(notification.scope)) {
+        scheduleRefresh(REALTIME_DEBOUNCE_MS);
+      }
+    });
+
+    void startRealtime();
+
+    // Refetch on focus / tab-visible. A backgrounded tab can miss socket events, and this
+    // is also the moment a user is most likely to be looking at stale data.
+    const onFocus = () => scheduleRefresh(FOCUS_DEBOUNCE_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleRefresh(FOCUS_DEBOUNCE_MS);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      disposed = true;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      stopListening();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [auth, refresh]);
+
+  // Safety net for a dead or unavailable socket. Skipped while the tab is hidden, and
+  // skipped while the socket is healthy so a working setup does not pay for both.
+  useEffect(() => {
+    if (!auth) return;
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (isRealtimeHealthy()) return;
+      void refresh();
+    }, POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [auth, refresh]);
 
   const data = useMemo(() => {
     if (pages) {

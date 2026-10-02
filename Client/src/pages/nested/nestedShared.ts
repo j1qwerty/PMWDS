@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
+import { onDataChanged } from "../../realtime";
+import { PROJECT_WORKSPACE_SCOPES } from "../../realtimeScopes";
 import type { Department, Milestone, MilestoneDependency, Project, Task, User } from "../../types";
 import { projectBelongsToAnyDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
+
+/** See the matching constants in appData.tsx. */
+const REALTIME_DEBOUNCE_MS = 250;
+const FOCUS_DEBOUNCE_MS = 1000;
 
 export interface ProjectWorkspaceData {
   project: Project | null;
@@ -47,7 +53,7 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     return project;
   }, [project, data.departments, departments, shouldFilterByOrg, userOrganizationId]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!auth || !projectId) {
       setLoading(false);
       return;
@@ -76,13 +82,53 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     } finally {
       setLoading(false);
     }
-  };
+    // `data` is intentionally not a dependency: it is a large memo that changes on every
+    // refetch, which would make `load` unstable and re-trigger the effect below in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, projectId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token, projectId]);
+  }, [load]);
+
+  // Keep the workspace in sync with other sessions. Without this, an edit made in
+  // another browser stayed invisible here until the tab was reloaded.
+  useEffect(() => {
+    if (!auth || !projectId) return;
+
+    let debounceTimer: number | undefined;
+
+    const scheduleLoad = (delay: number) => {
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined;
+        void load();
+      }, delay);
+    };
+
+    const stopListening = onDataChanged((notification) => {
+      if (!PROJECT_WORKSPACE_SCOPES.includes(notification.scope)) return;
+      // Only react to events for this project when the server tells us which one it is.
+      // The projectId is null for some server-side cascades, so treat that as "mine".
+      if (notification.projectId && notification.projectId !== projectId) return;
+      scheduleLoad(REALTIME_DEBOUNCE_MS);
+    });
+
+    const onFocus = () => scheduleLoad(FOCUS_DEBOUNCE_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleLoad(FOCUS_DEBOUNCE_MS);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      stopListening();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [auth, projectId, load]);
 
   return {
     project: visibleProject,
