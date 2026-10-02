@@ -100,7 +100,11 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`);
+  // Resolve against the current origin so a relative API base such as "/api/v1" works. `new URL`
+  // throws "is not a valid URL" for a relative input with no base argument, which is why the
+  // absolute subdomain URL used to be required.
+  const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+  const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`, origin);
 
   if (options.query) {
     Object.entries(options.query).forEach(([key, value]) => {

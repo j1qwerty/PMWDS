@@ -133,3 +133,6 @@ docs/temp
 # Docker
 .env
 pmwds-pub
+docs\role-flows\tools\node_modules
+
+docs/role-flows/shots/

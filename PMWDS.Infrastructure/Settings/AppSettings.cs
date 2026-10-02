@@ -40,13 +40,27 @@ public class AISettings
     public string OpenAIApiKey { get; set; } = string.Empty;
     public string OpenAIModel { get; set; } = "gpt-4o";
     public string DefaultProvider { get; set; } = "OpenRouter";
-    public string DefaultModel { get; set; } = "openai/gpt-oss-120b:free";
+    public string DefaultModel { get; set; } = "nvidia/nemotron-3-ultra-550b-a55b:free";
     public string AppName { get; set; } = "PMWDS";
     public string AppUrl { get; set; } = "http://localhost:5177";
     public string MLModelPath { get; set; } = string.Empty;
     public bool UseLocalModel { get; set; } = false;
     public double RiskThreshold { get; set; } = 0.7;
     public int TrainingCronHour { get; set; } = 2; // 2 AM
+
+    /// <summary>
+    /// Overall timeout for provider calls. The default HttpClient timeout is
+    /// 100s, which is not enough for large structured report completions on a
+    /// large model such as the 550B default.
+    /// </summary>
+    public int RequestTimeoutSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// Caps the completion length. Must be large enough to hold a complete
+    /// JSON report body; if the cap truncates the response mid-object the
+    /// JSON will not parse and the report falls back.
+    /// </summary>
+    public int MaxOutputTokens { get; set; } = 16000;
     public AIProviderOptions OpenAI { get; set; } = new()
     {
         Enabled = true,
@@ -57,7 +71,7 @@ public class AISettings
     {
         Enabled = true,
         BaseUrl = "https://openrouter.ai/api/v1",
-        DefaultModel = "openai/gpt-oss-120b:free"
+        DefaultModel = "nvidia/nemotron-3-ultra-550b-a55b:free"
     };
 }
 

@@ -317,7 +317,11 @@ public class OpenAICompatibleChatEngine : IChatEngine
         IReadOnlyList<ChatMessagePayload> messages,
         CancellationToken ct)
     {
-        var body = new ChatCompletionRequest(model, messages, Stream: false);
+        var body = new ChatCompletionRequest(
+            model,
+            messages,
+            Stream: false,
+            MaxTokens: _settings.MaxOutputTokens > 0 ? _settings.MaxOutputTokens : null);
         var response = await SendAsync(
             HttpMethod.Post,
             provider,
@@ -335,7 +339,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var content = ExtractAssistantText(responseText);
 
         // Do not return a prose placeholder here. Callers parse the result as JSON, so a sentence
-        // like "The provider returned an empty response." surfaces to the user as
+        // like "The provider returned an empty response." surfaces as
         // "'T' is an invalid start of a value", which hides the real cause. Reasoning models can
         // return an empty content field when reasoning consumes the whole token budget, so throw
         // with the reason attached and let the caller degrade with a meaningful message.
@@ -345,7 +349,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
             var reasoningLength = TryGetReasoningLength(responseText);
             throw new InvalidOperationException(
                 $"Provider '{provider.ProviderId}' returned no content (finish_reason={finishReason}" +
-                (reasoningLength is { } len ? $", reasoning produced {len} characters" : "") +
+                (reasoningLength is { } len ? $", reasoning tokens produced {len} characters" : "") +
                 "). For a reasoning model this usually means the token budget was consumed before the " +
                 "answer was written. Increase AI:MaxOutputTokens or switch to a non-reasoning model.");
         }
@@ -613,7 +617,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         }
     }
 
-    /// <summary>Reads choices[0].finish_reason for diagnostics. Returns null when absent.</summary>
+    /// <summary>Reads choices[0].finish_reason for diagnostics. Returns null if absent.</summary>
     private static string? TryGetFinishReason(string responseText)
     {
         try
@@ -635,7 +639,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         return null;
     }
 
-    /// <summary>Length of the reasoning field, used to explain an empty completion.</summary>
+    /// <summary>Length of the reasoning field, used to explain empty completions.</summary>
     private static int? TryGetReasoningLength(string responseText)
     {
         try
@@ -715,7 +719,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private sealed record ChatCompletionRequest(
         string Model,
         IReadOnlyList<ChatMessagePayload> Messages,
-        bool Stream);
+        bool Stream,
+        [property: JsonPropertyName("max_tokens")] int? MaxTokens = null);
 
     private sealed record ChatMessagePayload(
         string Role,

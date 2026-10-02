@@ -172,7 +172,13 @@ builder.Services.AddSingleton<PMWDS.Application.Interfaces.Services.ICacheServic
 
 builder.Services.AddScoped<ITaskAllocationEngine, MLTaskAllocationEngine>();
 builder.Services.AddScoped<IDelayPredictionEngine, MLDelayPredictionEngine>();
-builder.Services.AddHttpClient<IChatEngine, OpenAICompatibleChatEngine>();
+builder.Services.AddHttpClient<IChatEngine, OpenAICompatibleChatEngine>((sp, client) =>
+{
+    // The default HttpClient timeout is 100s, which is too short for large
+    // structured report completions on slower models.
+    var aiSettings = sp.GetRequiredService<IOptions<AISettings>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(aiSettings.RequestTimeoutSeconds, 30, 900));
+});
 builder.Services.AddScoped<AIService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IRecommendationService>(sp =>
     sp.GetRequiredService<AIService>());
