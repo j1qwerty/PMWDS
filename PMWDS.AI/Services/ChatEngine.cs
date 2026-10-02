@@ -43,7 +43,7 @@ public interface IChatEngine
         string? prompt = null,
         CancellationToken ct = default);
 
-    bool IsConfigured(string? provider = null);
+    Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default);
 
     Task<string> GenerateStructuredReportAsync(
         string systemPrompt,
@@ -71,6 +71,12 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private string? _globalDefaultProvider;
     private string? _globalDefaultModel;
 
+    private static bool IsOpenRouterModel(string model)
+        => model.Contains('/', StringComparison.Ordinal);
+
+    private static bool IsOpenAiModel(string model)
+        => !model.Contains('/', StringComparison.Ordinal);
+
     public OpenAICompatibleChatEngine(
         HttpClient httpClient,
         IOptions<AISettings> settings,
@@ -85,14 +91,25 @@ public class OpenAICompatibleChatEngine : IChatEngine
         _sensitiveData = sensitiveData;
     }
 
-    public bool IsConfigured(string? provider = null)
+    public async Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default)
     {
-        var config = ResolveEnvironmentProvider(provider);
-        return config.Enabled &&
-               !string.IsNullOrWhiteSpace(config.BaseUrl) &&
-               !string.IsNullOrWhiteSpace(config.ApiKey) &&
-               OutboundUrlGuard.IsAllowedAiProviderBaseUrl(config.ProviderId, config.BaseUrl, out _);
+        try
+        {
+            // Resolve through the database so credentials saved from the Settings
+            // page are honoured, not just environment configuration.
+            return IsUsableProvider(await ResolveProviderAsync(provider, ct));
+        }
+        catch
+        {
+            return false;
+        }
     }
+
+    private static bool IsUsableProvider(ResolvedProviderConfig config)
+        => config.Enabled &&
+           !string.IsNullOrWhiteSpace(config.BaseUrl) &&
+           !string.IsNullOrWhiteSpace(config.ApiKey) &&
+           OutboundUrlGuard.IsAllowedAiProviderBaseUrl(config.ProviderId, config.BaseUrl, out _);
 
     public async Task<IReadOnlyList<AIProviderInfoDto>> GetProvidersAsync(
         CancellationToken ct = default)
@@ -250,7 +267,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? model = null,
         CancellationToken ct = default)
     {
-        if (!IsConfigured(provider))
+        if (!await IsConfiguredAsync(provider, ct))
         {
             return "AI summary not available.";
         }
@@ -275,7 +292,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string userContext,
         CancellationToken ct = default)
     {
-        if (!IsConfigured())
+        if (!await IsConfiguredAsync(null, ct))
         {
             throw new InvalidOperationException(
                 "AI provider is not configured. Please configure AI settings first.");
@@ -443,24 +460,43 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? requestedModel,
         bool providerExplicitlySelected)
     {
-        var envDefault = !string.IsNullOrWhiteSpace(_globalDefaultModel)
+        if (!string.IsNullOrWhiteSpace(requestedModel))
+        {
+            return requestedModel;
+        }
+
+        if (providerExplicitlySelected && !string.IsNullOrWhiteSpace(provider.DefaultModel))
+        {
+            return provider.DefaultModel;
+        }
+
+        // The global default model is only valid for the provider it belongs to.
+        // Reusing an OpenAI model id against OpenRouter (or vice versa) makes the
+        // provider reject the request, so fall back to the provider's own default.
+        var globalDefault = !string.IsNullOrWhiteSpace(_globalDefaultModel)
             ? _globalDefaultModel
             : _settings.DefaultModel;
 
-        var model = string.IsNullOrWhiteSpace(requestedModel)
-            ? (providerExplicitlySelected || string.IsNullOrWhiteSpace(envDefault)
-                ? provider.DefaultModel
-                : envDefault)
-            : requestedModel;
-
-        if (string.IsNullOrWhiteSpace(model))
+        if (!string.IsNullOrWhiteSpace(globalDefault) && ModelBelongsToProvider(globalDefault, provider.ProviderId))
         {
-            throw new InvalidOperationException(
-                $"No default model is configured for provider '{provider.ProviderId}'.");
+            return globalDefault;
         }
 
-        return model;
+        if (!string.IsNullOrWhiteSpace(provider.DefaultModel))
+        {
+            return provider.DefaultModel;
+        }
+
+        throw new InvalidOperationException(
+            $"No default model is configured for provider '{provider.ProviderId}'.");
     }
+
+    private static bool ModelBelongsToProvider(string model, string providerId)
+        => providerId.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase)
+            ? IsOpenRouterModel(model)
+            : providerId.Equals("OpenAI", StringComparison.OrdinalIgnoreCase)
+                ? IsOpenAiModel(model)
+                : true;
 
     private static string DetectIntent(string message)
     {

@@ -7,7 +7,10 @@ namespace PMWDS.Persistence.Migrations.Seeders;
 
 internal static class MiscSeeder
 {
-    internal static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct)
+    internal static async Task SeedAsync(
+        ApplicationDbContext context,
+        CancellationToken ct,
+        IReadOnlyDictionary<string, string?>? aiProviderKeys = null)
     {
         await SeedSkillsAsync(context, ct);
         await SeedCollaborationAsync(context, ct);
@@ -15,7 +18,8 @@ internal static class MiscSeeder
         await SeedIntegrationsAsync(context, ct);
         await SeedKnowledgeAsync(context, ct);
         await SeedAiAsync(context, ct);
-        await SeedAiProviderCredentialsAsync(context, ct);
+        await SeedAiProviderCredentialsAsync(context, ct, aiProviderKeys);
+        await SeedAiGlobalSettingsAsync(context, ct);
     }
 
     private static async Task SeedSkillsAsync(ApplicationDbContext context, CancellationToken ct)
@@ -344,7 +348,10 @@ internal static class MiscSeeder
         return model;
     }
 
-    private static async Task SeedAiProviderCredentialsAsync(ApplicationDbContext context, CancellationToken ct)
+    private static async Task SeedAiProviderCredentialsAsync(
+        ApplicationDbContext context,
+        CancellationToken ct,
+        IReadOnlyDictionary<string, string?>? aiProviderKeys)
     {
         var specs = new[]
         {
@@ -354,14 +361,91 @@ internal static class MiscSeeder
 
         foreach (var spec in specs)
         {
-            if (await context.AIProviderCredentials.AnyAsync(p => p.Provider == spec.Provider, ct))
-                continue;
+            var environmentKey = aiProviderKeys is not null &&
+                aiProviderKeys.TryGetValue(spec.Provider, out var configuredKey)
+                    ? configuredKey
+                    : null;
+            var hasEnvironmentKey = !string.IsNullOrWhiteSpace(environmentKey);
 
-            var credential = AIProviderCredential.Create(spec.Provider, spec.DisplayName, spec.Enabled, useEnvironmentDefault: true, spec.BaseUrl, apiKey: null, spec.DefaultModel);
+            var existing = await context.AIProviderCredentials.FirstOrDefaultAsync(p => p.Provider == spec.Provider, ct);
+            if (existing != null)
+            {
+                // Older databases were seeded with OpenRouter disabled, which made it
+                // unusable as the default provider. Enable it when a key is available.
+                var shouldEnable = hasEnvironmentKey || spec.Enabled;
+                if (shouldEnable && !existing.Enabled)
+                {
+                    existing.Update(
+                        existing.Provider,
+                        existing.DisplayName,
+                        enabled: true,
+                        existing.UseEnvironmentDefault,
+                        existing.BaseUrl,
+                        apiKey: null,
+                        existing.DefaultModel);
+                    existing.SetModified(SeedConstants.SeedUser);
+                }
+
+                continue;
+            }
+
+            var credential = AIProviderCredential.Create(
+                spec.Provider,
+                spec.DisplayName,
+                spec.Enabled,
+                useEnvironmentDefault: true,
+                spec.BaseUrl,
+                apiKey: null,
+                spec.DefaultModel);
             credential.SetCreatedBy(SeedConstants.SeedUser);
             await context.AIProviderCredentials.AddAsync(credential, ct);
         }
 
         await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedAiGlobalSettingsAsync(ApplicationDbContext context, CancellationToken ct)
+    {
+        var global = await context.AIGlobalSettings.FirstOrDefaultAsync(ct);
+
+        if (global == null)
+        {
+            global = new AIGlobalSetting
+            {
+                DefaultProvider = SeedConstants.DefaultAiProvider,
+                DefaultModel = string.Empty
+            };
+            global.SetCreatedBy(SeedConstants.SeedUser);
+            await context.AIGlobalSettings.AddAsync(global, ct);
+            await context.SaveChangesAsync(ct);
+            return;
+        }
+
+        // The stored default provider overrides appsettings. Migrate a legacy
+        // OpenAI default once OpenRouter is usable so the app stops defaulting
+        // to a provider that has no API key configured.
+        if (global.DefaultProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+        {
+            var openRouter = await context.AIProviderCredentials
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Provider == "OpenRouter", ct);
+            // Only switch the stored default away from OpenAI once OpenRouter is
+            // actually usable, otherwise reports would keep falling back.
+            var openRouterConfigured = openRouter?.Enabled == true;
+
+            if (openRouterConfigured)
+            {
+                global.DefaultProvider = SeedConstants.DefaultAiProvider;
+                // Only replace an OpenAI model id; a namespaced model already belongs to OpenRouter.
+                if (string.IsNullOrWhiteSpace(global.DefaultModel) ||
+                    !global.DefaultModel.Contains('/', StringComparison.Ordinal))
+                {
+                    global.DefaultModel = string.Empty;
+                }
+
+                global.SetModified(SeedConstants.SeedUser);
+                await context.SaveChangesAsync(ct);
+            }
+        }
     }
 }

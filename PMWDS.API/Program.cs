@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PMWDS.API.Auth;
 using PMWDS.API.Conventions;
@@ -342,7 +343,19 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DatabaseConnectionService.PrepareDatabaseAsync(db, databaseStatus, builder.Environment);
-    await SeedData.SeedAsync(db);
+
+    // The .env key is the final key for AI providers; pass it to seeding so the
+    // provider credentials and default provider reflect real configuration.
+    var aiSettings = scope.ServiceProvider.GetRequiredService<IOptions<AISettings>>().Value;
+    var aiProviderKeys = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["OpenAI"] = string.IsNullOrWhiteSpace(aiSettings.OpenAI?.ApiKey)
+            ? aiSettings.OpenAIApiKey
+            : aiSettings.OpenAI?.ApiKey,
+        ["OpenRouter"] = aiSettings.OpenRouter?.ApiKey
+    };
+
+    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys);
     await SensitiveDataMigrationService.ProtectExistingAsync(
         db,
         scope.ServiceProvider.GetRequiredService<ISensitiveDataProtector>());

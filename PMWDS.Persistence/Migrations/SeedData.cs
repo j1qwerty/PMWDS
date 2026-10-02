@@ -6,7 +6,10 @@ namespace PMWDS.Persistence.Migrations;
 
 public static class SeedData
 {
-    public static async Task SeedAsync(ApplicationDbContext context, CancellationToken ct = default)
+    public static async Task SeedAsync(
+        ApplicationDbContext context,
+        CancellationToken ct = default,
+        IReadOnlyDictionary<string, string?>? aiProviderKeys = null)
     {
         var strategy = context.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
@@ -24,7 +27,7 @@ public static class SeedData
                 await TasksSeeder.SeedAsync(context, ct);
                 await NotificationsSeeder.SeedAsync(context, ct);
                 await ActivityLogsSeeder.SeedAsync(context, ct);
-                await MiscSeeder.SeedAsync(context, ct);
+                await MiscSeeder.SeedAsync(context, ct, aiProviderKeys);
 
                 await transaction.CommitAsync(ct);
             }

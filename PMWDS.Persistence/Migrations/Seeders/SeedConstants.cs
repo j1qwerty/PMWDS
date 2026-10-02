@@ -7,6 +7,7 @@ internal static class SeedConstants
 {
     internal const string SeedUser = "system-seed";
     internal const string DefaultPassword = "Pmwds@123";
+    internal const string DefaultAiProvider = "OpenRouter";
 
     internal sealed record DepartmentSpec(string OrganizationName, string Name, string Code, string Description, int Capacity);
     internal sealed record AlertRuleSpec(string Name, string ConditionType, string Expression, string ActionType, object Parameters);
