@@ -1,6 +1,9 @@
 # PRODUCTION.md — PMWDS deployment, environments, and dev↔prod differences
 
-Branch: `production`. Live URL: `https://pmwds.dharmaatribe.app` (GoDaddy `A pmwds -> 147.93.155.185`).
+Branch: `production`. Live URLs:
+- `https://pmwds.dharmaatribe.app` — HTTPS, primary
+- `http://147.93.155.185` — bare IP, **HTTP only** (no TLS possible for a bare IP)
+
 Host: Contabo VPS `147.93.155.185` (`ssh contabo`), Ubuntu 24.04, nginx 1.24, `aspnetcore-runtime-10.0`.
 
 Related: [README.md](README.md), [CONFIG.md](CONFIG.md), [config-sqlite.md](config-sqlite.md).
@@ -12,7 +15,7 @@ Related: [README.md](README.md), [CONFIG.md](CONFIG.md), [config-sqlite.md](conf
 
 1. `git checkout production`, `git pull`
 2. `dotnet publish PMWDS.API -c Release -o .\pmwds-pub`
-3. `$env:VITE_API_BASE_URL="https://pmwds.dharmaatribe.app/api/v1"; cd Client; npm run build`
+3. `$env:VITE_API_BASE_URL="/api/v1"; cd Client; npm run build` — **relative**, so one build serves both the subdomain and the bare IP (§2a)
 4. Package with **`tar`** — never `Compress-Archive` (§2.1)
 5. `scp` both archives, extract on the server, `chown -R www-data:www-data`
 6. **Verify every asset returns `200` with a real size** (§2.2) — a blank page otherwise
@@ -94,7 +97,7 @@ Rules:
    ```
 2. **Build the client with the production API URL** (baked in at build time — `Client/src/api.ts:60`):
    ```powershell
-   $env:VITE_API_BASE_URL="https://pmwds.dharmaatribe.app/api/v1"
+   $env:VITE_API_BASE_URL="/api/v1"
    cd Client; npm run build
    ```
 3. **Package and upload both.**
@@ -198,7 +201,7 @@ Set these on the VPS via the systemd `EnvironmentFile` (`/etc/pmwds/pmwds.env`, 
 | `AzureStorage__LocalUploadPath` | unset | `/var/lib/pmwds/data` |
 | `Email__*` | Mailtrap sandbox | real SMTP |
 | `AI__OpenRouter__ApiKey` | local key | production key |
-| `VITE_API_BASE_URL` | `http://localhost:5177/api/v1` | `https://pmwds.dharmaatribe.app/api/v1` |
+| `VITE_API_BASE_URL` | `http://localhost:5177/api/v1` | `/api/v1` (relative — serves both hosts) |
 
 `EnvFileLoader` (`PMWDS.API/Services/EnvFileLoader.cs`) reads `.env` from the content root or its
 parent, but **only when the variable is not already set** — real environment variables and the
@@ -209,6 +212,54 @@ systemd `EnvironmentFile` always win. Keep `.env` out of the deployed folder.
 Nothing to undo. Dev uses a different SQLite file and `EnsureCreated`. If dev startup fails on
 `SQL Server is required outside Development`, that means `ASPNETCORE_ENVIRONMENT` is not
 `Development` — check the launch profile / `.env`.
+
+---
+
+## 2a. Serving on the bare IP alongside the subdomain
+
+One React build serves both. The client is built with a **relative** API base:
+
+```powershell
+$env:VITE_API_BASE_URL="/api/v1"     # NOT the absolute subdomain URL
+cd Client; npm run build
+```
+
+so it calls whichever origin served it. `appsettings.Production.json` and the systemd
+`EnvironmentFile` are unchanged; only `AllowedOrigins` gained a second entry:
+
+```
+AllowedOrigins__0=https://pmwds.dharmaatribe.app
+AllowedOrigins__1=http://147.93.155.185
+```
+
+nginx adds `/etc/nginx/sites-available/pmwds-ip`, a `listen 80 default_server; server_name _;`
+block serving the same webroot and proxying the same locations. Without `default_server`, a bare-IP
+request matched the first `server` block on port 80 (the Certbot-generated `return 404` stub for
+`dharmaatribe.com`) and returned 404.
+
+### Why HTTP only on the IP
+
+A bare IP cannot get a normal TLS certificate. Options were rejected because:
+
+- **Self-signed** — full-page browser warning on every visit, still interceptable.
+- **Let's Encrypt IP certificates** — exist but are short-lived (~6 days) and certbot 2.9 (the
+  Ubuntu 24.04 version) predates reliable support. Needs an upgrade plus renewal automation or the
+  site breaks weekly.
+
+**Consequence: on `http://147.93.155.185` the login password and JWTs travel in clear text.** Anyone
+on the path can read them. Use the subdomain whenever that matters, and treat the IP as a convenience
+or dev entry point only. Do not put real credentials behind it.
+
+### Avatar and file URLs depend on the API base
+
+`Avatar.tsx` / `Avatark.tsx` derive an origin from `VITE_API_BASE_URL` for `/avatars/...` and
+`/files/...` paths. They previously fell back to `http://localhost:5177` whenever stripping the
+`/api/vN` suffix left an empty string — which is exactly what a relative base produces. On a
+same-origin deployment that silently pointed avatar and file requests at a developer's machine.
+
+They now distinguish the two cases: the base is only replaced with `http://localhost:5177` when
+`VITE_API_BASE_URL` is **unset** (local dev). A configured relative base stays empty, so composed
+paths remain root-relative.
 
 ---
 
@@ -290,7 +341,7 @@ Deployed to `https://pmwds.dharmaatribe.app` on 2026-10-02. What worked, in orde
 1. `aspnetcore-runtime-10.0` installed on the VPS.
 2. `/var/lib/pmwds/{database,data}` created and owned by `www-data`.
 3. API published locally, packaged with `tar`, uploaded, extracted to `app/`.
-4. Client built with `VITE_API_BASE_URL=https://pmwds.dharmaatribe.app/api/v1`, packaged,
+4. Client built with `VITE_API_BASE_URL=/api/v1` (relative), packaged with tar,
    extracted to `html/`.
 5. `/etc/pmwds/pmwds.env` written with mode `0600`, owner `root`, containing a freshly generated
    88-character `Jwt__Secret`.
@@ -321,6 +372,8 @@ Two failures occurred during this deploy, both recorded below because they are e
 | CORS preflight, `https://evil.example` | `204`, **no** `Access-Control-Allow-Origin` |
 | Document upload → restart → list → download | `1` doc before and after, `200`, correct content |
 | `dharmaatribe.com` (neighbouring site) | unaffected |
+| Bare IP `http://147.93.155.185` | root `200`, login `200`, projects + reports list and download all `200` |
+| Both hosts, JS/CSS assets | `200` at full size; stale asset hash correctly `404` |
 
 ---
 
