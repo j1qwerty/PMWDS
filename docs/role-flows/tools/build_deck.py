@@ -112,6 +112,9 @@ d("admin", "project-tasks",
 d("admin", "project-documents",
   "Documents and utilization certificates sit together: the register of project files, and the "
   "proof that released funds were used as intended.")
+d("admin", "project-dependencies",
+  "The dependency chain between phases, showing which work blocks which. Blocked paths surface "
+  "before a team starts something it cannot finish.")
 d("admin", "users",
   "Every user in the organization with role, department, workload and burnout risk — and the "
   "ability to create, edit and deactivate them.")
@@ -144,6 +147,13 @@ d("admin", "activity-log-filters",
   "Filtering by actor, entity and date turns a raw log into an answer.")
 
 # ----------------------------------------------------------------- Manager --
+d("admin", "project-edit-modal",
+  "Project details are editable in place — including for a Manager, but not for a Department Head "
+  "or Team Member.")
+d("admin", "tasks-add-modal",
+  "Tasks are created against a milestone, which is what keeps progress attributable to a phase "
+  "rather than to a person.")
+
 d("manager", "dashboard",
   "The same dashboard, scoped to the projects this Manager is assigned to rather than the whole "
   "organization.")
@@ -184,6 +194,9 @@ d("head", "project-tasks",
   "risk.")
 d("head", "project-documents",
   "The department's view of project documents and utilization certificates.")
+d("head", "activity-logs",
+  "Audit visibility across the department's activity, without the organization-wide or "
+  "system-wide reach of the roles above.")
 d("head", "users",
   "User administration stops at the department boundary — a Head cannot see or manage staff "
   "outside it.")

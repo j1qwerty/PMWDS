@@ -22,12 +22,14 @@ public class RolesController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public RolesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser) : base(mediator)
+    public RolesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _context = context;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -99,6 +101,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return CreatedAtAction(nameof(GetRoles), new { id = role.Id }, new RoleResponse(
             role.Id,
             role.Key,
@@ -164,6 +167,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
@@ -202,6 +206,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return NoContent();
     }
 
@@ -230,6 +235,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return CreatedAtAction(nameof(GetPermissions), new { id = permission.Id }, MapPermission(permission));
     }
 
@@ -258,6 +264,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return Ok(MapPermission(permission));
     }
 
@@ -286,6 +293,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return NoContent();
     }
 

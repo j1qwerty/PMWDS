@@ -22,14 +22,16 @@ public class MilestonesController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly INotificationService _notifications;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public MilestonesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser) : base(mediator)
+    public MilestonesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _db = db;
         _scope = scope;
         _notifications = notifications;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     // ── Milestone Dependency Endpoints ──────────────────────────────────
@@ -139,6 +141,8 @@ public class MilestonesController : BaseApiController
             ProjectId: dto.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, dep.Id.ToString(), dto.ProjectId, ct);
+
         return Ok(MilestoneDependencyDto.FromEntity(loaded));
     }
 
@@ -184,6 +188,8 @@ public class MilestonesController : BaseApiController
             ProjectId: dep.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), dep.ProjectId, ct);
+
         return Ok(MilestoneDependencyDto.FromEntity(dep));
     }
 
@@ -220,6 +226,8 @@ public class MilestonesController : BaseApiController
             },
             ProjectId: projectId
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), projectId, ct);
 
         return NoContent();
     }
@@ -395,6 +403,9 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
@@ -461,6 +472,9 @@ public class MilestonesController : BaseApiController
             },
             ProjectId: milestone.ProjectId
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
 
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
@@ -540,6 +554,9 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
@@ -587,6 +604,11 @@ public class MilestonesController : BaseApiController
             },
             ProjectId: projectId
         );
+
+        // Deleting a milestone cascades its subtasks.
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
 
         return NoContent();
     }

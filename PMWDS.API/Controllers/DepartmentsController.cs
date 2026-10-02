@@ -18,13 +18,15 @@ public class DepartmentsController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public DepartmentsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db, ICurrentUserService currentUser) : base(mediator)
+    public DepartmentsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _scope = scope;
         _db = db;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -163,6 +165,7 @@ public class DepartmentsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Departments, department.Id.ToString(), null, ct);
         return CreatedAtAction(nameof(GetById), new { id = department.Id }, MapDepartment(department));
     }
 
@@ -249,6 +252,7 @@ public class DepartmentsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Departments, department.Id.ToString(), null, ct);
         return Ok(MapDepartment(department));
     }
 
@@ -271,6 +275,7 @@ public class DepartmentsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Departments, id.ToString(), null, ct);
         return NoContent();
     }
 

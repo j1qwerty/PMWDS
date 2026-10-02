@@ -29,6 +29,7 @@ public class TasksController : BaseApiController
     private readonly ITaskWorkflowService _taskWorkflow;
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
+    private readonly IDataChangeNotifier _changes;
 
     public TasksController(
         IMediator mediator,
@@ -38,7 +39,8 @@ public class TasksController : BaseApiController
         IFileStorageService files,
         ITaskWorkflowService taskWorkflow,
         RoleScopeService scope,
-        ApplicationDbContext db) : base(mediator)
+        ApplicationDbContext db,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
@@ -47,6 +49,7 @@ public class TasksController : BaseApiController
         _taskWorkflow = taskWorkflow;
         _scope = scope;
         _db = db;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -277,6 +280,10 @@ public class TasksController : BaseApiController
             ProjectId: result.ProjectId
         );
 
+        // Task counts and completion feed the project rollup.
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, result.Id.ToString(), result.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, result.ProjectId.ToString(), result.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -338,6 +345,9 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, task.ProjectId.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(task));
     }
 
@@ -365,6 +375,12 @@ public class TasksController : BaseApiController
             },
             ProjectId: task?.ProjectId
         );
+
+        if (task is not null)
+        {
+            await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+            await _changes.NotifyAsync(DataChangeScopes.Projects, task.ProjectId.ToString(), task.ProjectId, ct);
+        }
 
         return Ok(result);
     }
@@ -399,6 +415,9 @@ public class TasksController : BaseApiController
             },
             ProjectId: task.ProjectId
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, task.ProjectId.ToString(), task.ProjectId, ct);
 
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
@@ -516,6 +535,8 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(refreshed!));
     }
 
@@ -544,7 +565,9 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        return Ok(await Mediator.Send(new EscalateTaskCommand(id), ct));
+        var result = await Mediator.Send(new EscalateTaskCommand(id), ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), null, ct);
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/comments")]
@@ -620,6 +643,8 @@ public class TasksController : BaseApiController
             },
             ProjectId: task.ProjectId
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Documents, attachment.Id.ToString(), task.ProjectId, ct);
 
         return Ok(new { Message = "Attachment uploaded.", FileName = file.FileName });
     }
@@ -866,6 +891,8 @@ public class TasksController : BaseApiController
             ProjectId: result.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, result.Id.ToString(), result.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -921,6 +948,8 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(task));
     }
 
@@ -935,6 +964,7 @@ public class TasksController : BaseApiController
         var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
+        if (task != null) await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
         return Ok(result);
     }
 
@@ -953,6 +983,7 @@ public class TasksController : BaseApiController
         await _taskWorkflow.ApplyStatusChangeAsync(task, req, ct);
         await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
 
@@ -976,7 +1007,9 @@ public class TasksController : BaseApiController
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
 
-        return Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+        var assignResult = await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+        return Ok(assignResult);
     }
 
     [HttpDelete("subtasks/{id:guid}")]
@@ -1022,6 +1055,11 @@ public class TasksController : BaseApiController
             },
             ProjectId: projectId
         );
+
+        // Deleting a subtask recalculates its parent milestone and the project rollup.
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestoneId?.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
 
         return NoContent();
     }
@@ -1124,6 +1162,8 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDependencyDto.FromEntity(dependency));
     }
 
@@ -1143,6 +1183,7 @@ public class TasksController : BaseApiController
         dependency.UpdateType(dto.Type);
         dependency.UpdateLag(dto.LagDays);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, depId.ToString(), null, ct);
         return Ok(TaskDependencyDto.FromEntity(dependency));
     }
 
@@ -1187,6 +1228,8 @@ public class TasksController : BaseApiController
             },
             ProjectId: projectId
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, depId.ToString(), projectId, ct);
 
         return NoContent();
     }

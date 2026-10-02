@@ -25,6 +25,7 @@ public class ProjectsController : BaseApiController
     private readonly ILocalFileStorageService _localFiles;
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
+    private readonly IDataChangeNotifier _changes;
 
     public ProjectsController(
         IMediator mediator,
@@ -33,7 +34,8 @@ public class ProjectsController : BaseApiController
         ICurrentUserService currentUser,
         ILocalFileStorageService localFiles,
         RoleScopeService scope,
-        ApplicationDbContext db) : base(mediator)
+        ApplicationDbContext db,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _ai = ai;
@@ -41,6 +43,7 @@ public class ProjectsController : BaseApiController
         _localFiles = localFiles;
         _scope = scope;
         _db = db;
+        _changes = changes;
     }
 
     [HttpGet("dashboard")]
@@ -247,6 +250,8 @@ public class ProjectsController : BaseApiController
             ProjectId: result.Id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Projects, result.Id.ToString(), result.Id, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -284,6 +289,8 @@ public class ProjectsController : BaseApiController
             ProjectId: updateResult.Id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Projects, updateResult.Id.ToString(), updateResult.Id, ct);
+
         return Ok(updateResult);
     }
 
@@ -310,6 +317,8 @@ public class ProjectsController : BaseApiController
             },
             ProjectId: statusResult.Id
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Projects, statusResult.Id.ToString(), statusResult.Id, ct);
 
         return Ok(statusResult);
     }
@@ -426,6 +435,8 @@ public class ProjectsController : BaseApiController
             ProjectId: id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
+
         return Ok();
     }
 
@@ -520,6 +531,13 @@ public class ProjectsController : BaseApiController
             },
             ProjectId: id
         );
+
+        // Deleting a project cascades its milestones, tasks and documents, so every
+        // dependent scope has to refetch too.
+        await _changes.NotifyAsync(DataChangeScopes.Projects, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, id.ToString(), null, ct);
 
         return NoContent();
     }

@@ -24,6 +24,7 @@ public class UsersController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly ILocalFileStorageService _localFiles;
     private readonly RoleScopeService _scope;
+    private readonly IDataChangeNotifier _changes;
 
     public UsersController(
         IMediator mediator,
@@ -31,13 +32,15 @@ public class UsersController : BaseApiController
         ICurrentUserService currentUser,
         ApplicationDbContext db,
         ILocalFileStorageService localFiles,
-        RoleScopeService scope) : base(mediator)
+        RoleScopeService scope,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
         _db = db;
         _localFiles = localFiles;
         _scope = scope;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -238,6 +241,8 @@ public class UsersController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Users, user.Id.ToString(), null, ct);
+
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
@@ -332,6 +337,7 @@ public class UsersController : BaseApiController
         );
 
         var created = await _uow.Users.GetByIdWithSkillsAsync(user.Id, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Users, user.Id.ToString(), null, ct);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(created!, UserRoleResolver.Resolve(created!)));
     }
 
@@ -367,6 +373,7 @@ public class UsersController : BaseApiController
         await _uow.SaveChangesAsync(ct);
 
         var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(UserDto.FromEntityWithSkills(refreshed!, UserRoleResolver.Resolve(refreshed!)));
     }
 
@@ -413,6 +420,7 @@ public class UsersController : BaseApiController
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
 
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(new { profilePictureUrl = url, user = UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)) });
     }
 
@@ -441,6 +449,7 @@ public class UsersController : BaseApiController
         user.UpdateAvailability(req.Status, req.AvailabilityPercentage);
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
@@ -494,9 +503,10 @@ public class UsersController : BaseApiController
                 s.ExperienceMonths,
                 s.LastUsed))
             .ToList();
-        return Ok(new
-        {
-            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
+            await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+            return Ok(new
+            {
+                User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
@@ -543,9 +553,10 @@ public class UsersController : BaseApiController
                 s.ExperienceMonths,
                 s.LastUsed))
             .ToList();
-        return Ok(new
-        {
-            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
+            await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+            return Ok(new
+            {
+                User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
@@ -590,9 +601,10 @@ public class UsersController : BaseApiController
                 s.ExperienceMonths,
                 s.LastUsed))
             .ToList();
-        return Ok(new
-        {
-            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
+            await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+            return Ok(new
+            {
+                User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
@@ -674,6 +686,8 @@ public class UsersController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+
         return Ok();
     }
 
@@ -710,6 +724,8 @@ public class UsersController : BaseApiController
                 ["targetUserFullName"] = user.FullName
             }
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
 
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }

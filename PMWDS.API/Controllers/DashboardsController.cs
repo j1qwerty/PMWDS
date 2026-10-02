@@ -12,11 +12,13 @@ public class DashboardsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public DashboardsController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser) : base(mediator)
+    public DashboardsController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -57,6 +59,7 @@ public class DashboardsController : BaseApiController
         dashboard.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.Dashboards.AddAsync(dashboard, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return CreatedAtAction(nameof(GetById), new { id = dashboard.Id }, MapDashboard(dashboard, new List<DashboardWidget>()));
     }
 
@@ -74,6 +77,7 @@ public class DashboardsController : BaseApiController
         await _uow.SaveChangesAsync(ct);
 
         var widgets = (await _uow.DashboardWidgets.FindAsync(w => w.DashboardId == id, ct)).OrderBy(w => w.DisplayOrder).ToList();
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return Ok(MapDashboard(dashboard, widgets));
     }
 
@@ -90,6 +94,7 @@ public class DashboardsController : BaseApiController
         widget.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.DashboardWidgets.AddAsync(widget, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return CreatedAtAction(nameof(GetById), new { id }, MapWidget(widget));
     }
 
@@ -106,6 +111,7 @@ public class DashboardsController : BaseApiController
         widget.SetDisplayOrder(req.DisplayOrder);
         await _uow.DashboardWidgets.UpdateAsync(widget, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return Ok(MapWidget(widget));
     }
 
@@ -124,6 +130,7 @@ public class DashboardsController : BaseApiController
         }
 
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
     }
 
@@ -132,6 +139,7 @@ public class DashboardsController : BaseApiController
     {
         await _uow.DashboardWidgets.DeleteAsync(widgetId, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
     }
 
@@ -140,6 +148,7 @@ public class DashboardsController : BaseApiController
     {
         await _uow.Dashboards.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
     }
 

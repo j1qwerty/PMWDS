@@ -19,13 +19,15 @@ public class OrganizationsController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
     private readonly ApplicationDbContext _db;
+    private readonly IDataChangeNotifier _changes;
 
-    public OrganizationsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db) : base(mediator)
+    public OrganizationsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _scope = scope;
         _currentUser = currentUser;
         _db = db;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -92,6 +94,7 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, organization.Id.ToString(), null, ct);
         return CreatedAtAction(nameof(GetById), new { id = organization.Id }, MapOrganization(organization, new List<Department>(), null));
     }
 
@@ -126,6 +129,7 @@ public class OrganizationsController : BaseApiController
 
         var departments = (await _uow.Departments.FindAsync(d => d.OrganizationId == id, ct)).ToList();
         var directors = await GetDirectorSummariesAsync(new HashSet<Guid> { id }, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
         return Ok(MapOrganization(organization, departments, directors.GetValueOrDefault(id)));
     }
 
@@ -156,6 +160,8 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Departments, departmentId.ToString(), null, ct);
         return NoContent();
     }
 
@@ -189,6 +195,8 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Departments, departmentId.ToString(), null, ct);
         return NoContent();
     }
 
@@ -211,6 +219,7 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
         return NoContent();
     }
 

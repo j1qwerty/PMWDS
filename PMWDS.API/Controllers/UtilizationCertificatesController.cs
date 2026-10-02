@@ -46,6 +46,7 @@ public class UtilizationCertificatesController : ControllerBase
     private readonly ILocalFileStorageService _localFiles;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
     public UtilizationCertificatesController(
         IMediator mediator,
@@ -53,13 +54,15 @@ public class UtilizationCertificatesController : ControllerBase
         IUnitOfWork uow,
         ILocalFileStorageService localFiles,
         RoleScopeService scope,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IDataChangeNotifier changes)
     {
         _db = db;
         _uow = uow;
         _localFiles = localFiles;
         _scope = scope;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     /// <summary>Uploads the certificate file and its finance metadata as a draft.</summary>
@@ -140,6 +143,8 @@ public class UtilizationCertificatesController : ControllerBase
             },
             ProjectId: dto.ProjectId);
 
+        await _changes.NotifyAsync(DataChangeScopes.UtilizationCertificates, certificate.Id.ToString(), certificate.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, certificate.DocumentId.ToString(), certificate.ProjectId, ct);
         return Ok(await ToDtoAsync(new LoadedCertificate(certificate, document), ct));
     }
 
@@ -230,6 +235,8 @@ public class UtilizationCertificatesController : ControllerBase
         await _uow.UtilizationCertificates.UpdateAsync(certificate, ct);
         await _uow.SaveChangesAsync(ct);
 
+        await _changes.NotifyAsync(DataChangeScopes.UtilizationCertificates, certificate.Id.ToString(), certificate.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, certificate.DocumentId.ToString(), certificate.ProjectId, ct);
         return Ok(await ToDtoAsync(loaded, ct));
     }
 
@@ -258,6 +265,8 @@ public class UtilizationCertificatesController : ControllerBase
         await _uow.UtilizationCertificates.UpdateAsync(certificate, ct);
         await _uow.SaveChangesAsync(ct);
 
+        await _changes.NotifyAsync(DataChangeScopes.UtilizationCertificates, certificate.Id.ToString(), certificate.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, certificate.DocumentId.ToString(), certificate.ProjectId, ct);
         return Ok(await ToDtoAsync(loaded, ct));
     }
 
@@ -304,6 +313,8 @@ public class UtilizationCertificatesController : ControllerBase
             },
             ProjectId: certificate.ProjectId);
 
+        await _changes.NotifyAsync(DataChangeScopes.UtilizationCertificates, certificate.Id.ToString(), certificate.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, certificate.DocumentId.ToString(), certificate.ProjectId, ct);
         return Ok(await ToDtoAsync(loaded, ct));
     }
 
@@ -332,6 +343,8 @@ public class UtilizationCertificatesController : ControllerBase
         await _uow.ProjectDocuments.DeleteAsync(certificate.DocumentId, ct);
         await _uow.SaveChangesAsync(ct);
 
+        await _changes.NotifyAsync(DataChangeScopes.UtilizationCertificates, certificate.Id.ToString(), certificate.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, certificate.DocumentId.ToString(), certificate.ProjectId, ct);
         return NoContent();
     }
 

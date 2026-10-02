@@ -16,18 +16,21 @@ public class NotificationsController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
     private readonly RoleScopeService _scope;
+    private readonly IDataChangeNotifier _changes;
 
     public NotificationsController(
         IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         INotificationService notifications,
-        RoleScopeService scope) : base(mediator)
+        RoleScopeService scope,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
         _notifications = notifications;
         _scope = scope;
+        _changes = changes;
     }
 
     [HttpGet]
@@ -93,6 +96,7 @@ public class NotificationsController : BaseApiController
         notification.MarkAsRead();
         await _uow.Notifications.UpdateAsync(notification, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return Ok();
     }
 
@@ -113,6 +117,7 @@ public class NotificationsController : BaseApiController
         }
 
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return Ok();
     }
 
@@ -132,6 +137,7 @@ public class NotificationsController : BaseApiController
 
         await _uow.Notifications.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return NoContent();
     }
 
@@ -193,6 +199,7 @@ public class NotificationsController : BaseApiController
         template.Update(req.TemplateType, req.SubjectTemplate, req.BodyTemplate, req.Variables, req.SupportedChannels);
         await _uow.NotificationTemplates.UpdateAsync(template, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return Ok(MapTemplate(template));
     }
 
@@ -202,6 +209,7 @@ public class NotificationsController : BaseApiController
     {
         await _uow.NotificationTemplates.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return NoContent();
     }
 
@@ -218,6 +226,7 @@ public class NotificationsController : BaseApiController
         rule.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.AlertRules.AddAsync(rule, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return CreatedAtAction(nameof(GetRules), new { id = rule.Id }, MapRule(rule));
     }
 
@@ -234,6 +243,7 @@ public class NotificationsController : BaseApiController
         rule.Update(req.Name, req.ConditionType, req.ConditionExpression, req.ActionType, req.ActionParameters, req.IsEnabled);
         await _uow.AlertRules.UpdateAsync(rule, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return Ok(MapRule(rule));
     }
 
@@ -243,6 +253,7 @@ public class NotificationsController : BaseApiController
     {
         await _uow.AlertRules.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, null, null, ct);
         return NoContent();
     }
 
