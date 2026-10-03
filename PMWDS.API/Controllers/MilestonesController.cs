@@ -633,6 +633,17 @@ public class MilestonesController : BaseApiController
         if (project == null) return;
         project.RecalculateProgressFromMilestones();
         project.RecalculateStatusFromMilestones();
+
+        var goals = await _db.Goals
+            .Include(goal => goal.Milestones)
+            .Where(goal => goal.ProjectId == projectId)
+            .ToListAsync(ct);
+        foreach (var goal in goals)
+        {
+            goal.RecalculateProgressFromMilestones();
+            goal.SetModified("system");
+        }
+
         project.SetModified("system");
         await _uow.Projects.UpdateAsync(project, ct);
         await _uow.SaveChangesAsync(ct);
