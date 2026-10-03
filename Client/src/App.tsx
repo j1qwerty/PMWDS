@@ -41,10 +41,10 @@ import { SettingsPage } from "./pages/settings/settings";
 import { LoginPage } from "./pages/login/login";
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
-  const { pages, loading } = useAppData();
+  const { initialized, loading } = useAppData();
 
   if (!auth) return <Navigate to="/login" />;
-  if (loading && !pages) return <LoadingPage label="Loading workspace permissions..." />;
+  if (!initialized && loading) return <LoadingPage label="Loading workspace permissions..." />;
   return <>{children}</>;
 }
 
