@@ -136,9 +136,77 @@ export interface DependencyStatus {
   dependencies: MilestoneDependency[];
 }
 
+export interface Goal {
+  id: string;
+  projectId: string;
+  assignedDepartmentId: string;
+  assignedDepartmentName?: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDate: string;
+  progressPercentage: number;
+  milestoneCount: number;
+  pendingTransferId?: string | null;
+  pendingTransferToDepartmentId?: string | null;
+}
+
+export interface GoalBudgetAllocation {
+  id: string;
+  goalId: string;
+  departmentId: string;
+  amount: number;
+  status: string;
+  supersedesAllocationId?: string | null;
+  reason?: string | null;
+  createdDate: string;
+}
+
+export interface BudgetRelease {
+  id: string;
+  goalBudgetAllocationId: string;
+  amountRequested: number;
+  amountApproved: number;
+  status: string;
+  requiredConditions: Record<string, boolean>;
+  satisfiedConditions: Record<string, boolean>;
+  justification?: string | null;
+  requestedByUserId: string;
+  requestedOn: string;
+  reviewedByUserId?: string | null;
+  reviewedOn?: string | null;
+  reviewNotes?: string | null;
+}
+
+export interface BudgetExpenditure {
+  id: string;
+  goalBudgetAllocationId: string;
+  budgetReleaseId?: string | null;
+  documentId?: string | null;
+  amount: number;
+  spentOn: string;
+  description: string;
+  invoiceNumber?: string | null;
+  enteredByUserId: string;
+}
+
+export interface BudgetSummary {
+  goalId: string;
+  allocated: number;
+  released: number;
+  spent: number;
+  unreleased: number;
+  unspentReleased: number;
+  allocations: GoalBudgetAllocation[];
+  releases: BudgetRelease[];
+  expenditures: BudgetExpenditure[];
+}
+
 export interface Milestone {
   id: string;
   projectId: string;
+  goalId?: string | null;
   departmentId?: string | null;
   departmentName?: string | null;
   name: string;
