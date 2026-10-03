@@ -187,7 +187,7 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
     public async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
     {
         var scopedProjects = await _scope.ScopeProjectsAsync(
-            _db.Projects.Include(project => project.Department).AsQueryable(),
+            _db.Projects.AsNoTracking(),
             ct);
         return (await scopedProjects.Select(project => project.Id).ToListAsync(ct)).ToHashSet();
     }
