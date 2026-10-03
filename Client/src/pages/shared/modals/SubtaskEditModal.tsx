@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FiMessageSquare, FiTrash2, FiCheck, FiCalendar, FiFlag, FiSave } from "react-icons/fi";
 import type { Task } from "../../../types";
-import { ModalOverlay, useToast } from "..";
+import { ModalOverlay, useToast, DeleteConfirmationModal } from "..";
 import { ProgressStatusEditor } from "../../nested/components/ProgressStatusEditor";
 import { priorities } from "../../constants";
 
@@ -24,6 +24,7 @@ export function SubtaskEditModal({
 }: SubtaskEditModalProps) {
   const { addToast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editProgress, setEditProgress] = useState(subtask.progressPercentage || 0);
   const [editStatus, setEditStatus] = useState(subtask.status);
@@ -31,7 +32,6 @@ export function SubtaskEditModal({
   const [commentText, setCommentText] = useState("");
 
   const handleDelete = async () => {
-    if (!confirm(`Delete subtask "${subtask.title}"?`)) return;
     setIsDeleting(true);
     try {
       await onDelete(subtask.id);
@@ -99,7 +99,7 @@ export function SubtaskEditModal({
           <div className="flex items-center gap-1">
             {mayEdit && (
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={isDeleting}
                 className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                 title="Delete subtask"
@@ -192,6 +192,17 @@ export function SubtaskEditModal({
           )}
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <DeleteConfirmationModal
+          name={subtask.title}
+          title="Delete subtask"
+          description="The subtask will be removed from the active task view."
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          submitting={isDeleting}
+        />
+      )}
     </ModalOverlay>
   );
 }
