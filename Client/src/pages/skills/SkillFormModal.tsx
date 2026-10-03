@@ -35,24 +35,25 @@ export function SkillFormModal({ initialData, onSubmit, onCancel }: SkillFormMod
   const [customCategory, setCustomCategory] = useState(false);
 
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        name: initialData.name || "",
-        category: initialData.category || "",
-        description: initialData.description || "",
-      });
-      // Check if category is custom (not in predefined list)
-      if (initialData.category && !COMMON_CATEGORIES.includes(initialData.category)) {
-        setCustomCategory(true);
-      }
-    }
+    setForm({
+      name: initialData?.name || "",
+      category: initialData?.category || "",
+      description: initialData?.description || "",
+    });
+    setCustomCategory(
+      Boolean(initialData?.category && !COMMON_CATEGORIES.includes(initialData.category)),
+    );
   }, [initialData]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit(form);
+    try {
+      await onSubmit(form);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

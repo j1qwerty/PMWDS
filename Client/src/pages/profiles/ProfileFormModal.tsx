@@ -31,14 +31,18 @@ export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileF
     });
   }, [profile, user]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit({
-      ...form,
-      dateOfBirth: form.dateOfBirth || null,
-    });
+    try {
+      await onSubmit({
+        ...form,
+        dateOfBirth: form.dateOfBirth || null,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
