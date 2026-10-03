@@ -287,32 +287,36 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
           </div>
 
           {confirmTarget && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30" onClick={() => setConfirmTarget(null)}>
-              <div className="bg-white rounded-2xl p-6 w-[400px] max-w-[90vw] shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="material-symbols-outlined text-2xl text-amber-600">info</span>
-                  <h3 className="text-sm font-bold text-slate-900">Cross-Department Assignment</h3>
-                </div>
-                <p className="text-sm text-slate-600 mb-1">
-                  This user is already assigned to: <strong>{confirmTarget.deptNames.join(", ")}</strong>
-                </p>
-                <p className="text-sm text-slate-500 mb-5">Continue to assign to multiple departments?</p>
-                <div className="flex justify-end gap-3">
+            <Dialog
+              title="Confirm multi-department assignment"
+              description="This user already belongs to another department."
+              icon="info"
+              size="sm"
+              onClose={() => setConfirmTarget(null)}
+              footer={
+                <div className="flex justify-end gap-2">
                   <button
+                    type="button"
                     onClick={() => setConfirmTarget(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 font-medium hover:bg-slate-50 transition-colors"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={() => { doToggle(confirmTarget.userId); setConfirmTarget(null); }}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
                   >
                     Continue
                   </button>
                 </div>
-              </div>
-            </div>
+              }
+            >
+              <p className="text-sm leading-6 text-slate-600">
+                This user is already assigned to <strong className="text-slate-900">{confirmTarget.deptNames.join(", ")}</strong>.
+                Continue to assign them to this department as well?
+              </p>
+            </Dialog>
           )}
 
           {error && <div role="alert" className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
