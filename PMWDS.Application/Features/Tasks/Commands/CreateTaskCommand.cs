@@ -1,5 +1,6 @@
 using MediatR;
 using PMWDS.Application.DTOs.Tasks;
+using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 namespace PMWDS.Application.Features.Tasks.Commands;
