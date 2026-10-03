@@ -66,6 +66,7 @@ builder.Services.Configure<IpRateLimitPolicies>(
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 builder.Services.AddMemoryCache(); // Required by AspNetCoreRateLimit
+builder.Services.AddResponseCompression();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<ILoginLockoutService, LoginLockoutService>();
 
@@ -369,6 +370,8 @@ var app = builder.Build();
 
 // nginx terminates TLS and proxies over loopback HTTP. Trust its forwarded headers so
 // UseHttpsRedirection and absolute URL generation see the original scheme instead of looping.
+app.UseResponseCompression();
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
