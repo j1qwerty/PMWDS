@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { Avatar } from "../shared";
+import { Avatar, ModalOverlay } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 import { ROLE_DISPLAY_NAMES, ROLE_LEVELS, RoleKey, normalizeRoleKey, type RoleKeyCode } from "../../permissions";
 
