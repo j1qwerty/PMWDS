@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace PMWDS.Persistence.Migrations;
 
+[Migration("20261003080000_AddGoalsAndBudgetWorkflow")]
 public partial class AddGoalsAndBudgetWorkflow : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
@@ -13,24 +14,24 @@ public partial class AddGoalsAndBudgetWorkflow : Migration
             name: "Goals",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                ProjectId = table.Column<Guid>(type: "TEXT", nullable: false),
-                AssignedDepartmentId = table.Column<Guid>(type: "TEXT", nullable: false),
+                Id = table.Column<Guid>(nullable: false),
+                ProjectId = table.Column<Guid>(nullable: false),
+                AssignedDepartmentId = table.Column<Guid>(nullable: false),
                 Title = table.Column<string>(maxLength: 300, nullable: false),
                 Description = table.Column<string>(maxLength: 4000, nullable: false),
                 Priority = table.Column<string>(maxLength: 20, nullable: false),
                 Status = table.Column<string>(maxLength: 20, nullable: false),
-                DueDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                ProgressPercentage = table.Column<double>(type: "REAL", nullable: false),
-                CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                DueDate = table.Column<DateTime>(nullable: false),
+                ProgressPercentage = table.Column<double>(nullable: false),
+                CreatedDate = table.Column<DateTime>(nullable: false),
                 CreatedBy = table.Column<string>(nullable: false),
-                ModifiedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ModifiedDate = table.Column<DateTime>(nullable: true),
                 ModifiedBy = table.Column<string>(nullable: true),
-                IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                RowVersion = table.Column<int>(type: "INTEGER", nullable: false),
+                IsDeleted = table.Column<bool>(nullable: false),
+                RowVersion = table.Column<int>(nullable: false),
                 Notes = table.Column<string>(nullable: true),
                 Tags = table.Column<string>(nullable: true),
-                IsActive = table.Column<bool>(type: "INTEGER", nullable: false)
+                IsActive = table.Column<bool>(nullable: false)
             },
             constraints: table =>
             {
@@ -48,23 +49,23 @@ public partial class AddGoalsAndBudgetWorkflow : Migration
             name: "GoalTransfers",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                GoalId = table.Column<Guid>(type: "TEXT", nullable: false),
-                FromDepartmentId = table.Column<Guid>(type: "TEXT", nullable: false),
-                ToDepartmentId = table.Column<Guid>(type: "TEXT", nullable: false),
+                Id = table.Column<Guid>(nullable: false),
+                GoalId = table.Column<Guid>(nullable: false),
+                FromDepartmentId = table.Column<Guid>(nullable: false),
+                ToDepartmentId = table.Column<Guid>(nullable: false),
                 RequestedByUserId = table.Column<string>(maxLength: 100, nullable: false),
-                RequestedOn = table.Column<DateTime>(type: "TEXT", nullable: false),
+                RequestedOn = table.Column<DateTime>(nullable: false),
                 Status = table.Column<string>(maxLength: 20, nullable: false),
                 Reason = table.Column<string>(maxLength: 2000, nullable: true),
                 ReviewedByUserId = table.Column<string>(maxLength: 100, nullable: true),
-                ReviewedOn = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ReviewedOn = table.Column<DateTime>(nullable: true),
                 ReviewNotes = table.Column<string>(maxLength: 2000, nullable: true),
-                CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                CreatedDate = table.Column<DateTime>(nullable: false),
                 CreatedBy = table.Column<string>(nullable: false),
-                ModifiedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ModifiedDate = table.Column<DateTime>(nullable: true),
                 ModifiedBy = table.Column<string>(nullable: true),
-                IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                RowVersion = table.Column<int>(type: "INTEGER", nullable: false)
+                IsDeleted = table.Column<bool>(nullable: false),
+                RowVersion = table.Column<int>(nullable: false)
             },
             constraints: table =>
             {
@@ -81,19 +82,19 @@ public partial class AddGoalsAndBudgetWorkflow : Migration
             name: "GoalBudgetAllocations",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                GoalId = table.Column<Guid>(type: "TEXT", nullable: false),
-                DepartmentId = table.Column<Guid>(type: "TEXT", nullable: false),
+                Id = table.Column<Guid>(nullable: false),
+                GoalId = table.Column<Guid>(nullable: false),
+                DepartmentId = table.Column<Guid>(nullable: false),
                 Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                 Status = table.Column<string>(maxLength: 20, nullable: false),
-                SupersedesAllocationId = table.Column<Guid>(type: "TEXT", nullable: true),
+                SupersedesAllocationId = table.Column<Guid>(nullable: true),
                 Reason = table.Column<string>(maxLength: 2000, nullable: true),
-                CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                CreatedDate = table.Column<DateTime>(nullable: false),
                 CreatedBy = table.Column<string>(nullable: false),
-                ModifiedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ModifiedDate = table.Column<DateTime>(nullable: true),
                 ModifiedBy = table.Column<string>(nullable: true),
-                IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                RowVersion = table.Column<int>(type: "INTEGER", nullable: false)
+                IsDeleted = table.Column<bool>(nullable: false),
+                RowVersion = table.Column<int>(nullable: false)
             },
             constraints: table =>
             {
@@ -112,25 +113,25 @@ public partial class AddGoalsAndBudgetWorkflow : Migration
             name: "BudgetReleases",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                GoalBudgetAllocationId = table.Column<Guid>(type: "TEXT", nullable: false),
+                Id = table.Column<Guid>(nullable: false),
+                GoalBudgetAllocationId = table.Column<Guid>(nullable: false),
                 AmountRequested = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                 AmountApproved = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                 Status = table.Column<string>(maxLength: 20, nullable: false),
-                RequiredConditionsJson = table.Column<string>(type: "TEXT", nullable: false),
-                SatisfiedConditionsJson = table.Column<string>(type: "TEXT", nullable: false),
+                RequiredConditionsJson = table.Column<string>(nullable: false),
+                SatisfiedConditionsJson = table.Column<string>(nullable: false),
                 Justification = table.Column<string>(maxLength: 2000, nullable: true),
                 RequestedByUserId = table.Column<string>(maxLength: 100, nullable: false),
-                RequestedOn = table.Column<DateTime>(type: "TEXT", nullable: false),
+                RequestedOn = table.Column<DateTime>(nullable: false),
                 ReviewedByUserId = table.Column<string>(maxLength: 100, nullable: true),
-                ReviewedOn = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ReviewedOn = table.Column<DateTime>(nullable: true),
                 ReviewNotes = table.Column<string>(maxLength: 2000, nullable: true),
-                CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                CreatedDate = table.Column<DateTime>(nullable: false),
                 CreatedBy = table.Column<string>(nullable: false),
-                ModifiedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ModifiedDate = table.Column<DateTime>(nullable: true),
                 ModifiedBy = table.Column<string>(nullable: true),
-                IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                RowVersion = table.Column<int>(type: "INTEGER", nullable: false)
+                IsDeleted = table.Column<bool>(nullable: false),
+                RowVersion = table.Column<int>(nullable: false)
             },
             constraints: table =>
             {
@@ -146,21 +147,21 @@ public partial class AddGoalsAndBudgetWorkflow : Migration
             name: "BudgetExpenditures",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                GoalBudgetAllocationId = table.Column<Guid>(type: "TEXT", nullable: false),
-                BudgetReleaseId = table.Column<Guid>(type: "TEXT", nullable: true),
-                DocumentId = table.Column<Guid>(type: "TEXT", nullable: true),
+                Id = table.Column<Guid>(nullable: false),
+                GoalBudgetAllocationId = table.Column<Guid>(nullable: false),
+                BudgetReleaseId = table.Column<Guid>(nullable: true),
+                DocumentId = table.Column<Guid>(nullable: true),
                 Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                SpentOn = table.Column<DateTime>(type: "TEXT", nullable: false),
+                SpentOn = table.Column<DateTime>(nullable: false),
                 Description = table.Column<string>(maxLength: 4000, nullable: false),
                 InvoiceNumber = table.Column<string>(maxLength: 200, nullable: true),
                 EnteredByUserId = table.Column<string>(maxLength: 100, nullable: false),
-                CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                CreatedDate = table.Column<DateTime>(nullable: false),
                 CreatedBy = table.Column<string>(nullable: false),
-                ModifiedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
+                ModifiedDate = table.Column<DateTime>(nullable: true),
                 ModifiedBy = table.Column<string>(nullable: true),
-                IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                RowVersion = table.Column<int>(type: "INTEGER", nullable: false)
+                IsDeleted = table.Column<bool>(nullable: false),
+                RowVersion = table.Column<int>(nullable: false)
             },
             constraints: table =>
             {
