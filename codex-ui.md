@@ -283,3 +283,26 @@ The shared dialog and project-list PRs are kept separate from backend workflow c
 ### Current remaining UI work
 
 The highest remaining UI work is field-level validation/error mapping, responsive table/modal polish, consistent icon treatment, context-help affordances for complex workflow terms, and migration of less-used detail modals that still use bespoke markup.
+
+
+## Verification findings added during the 2026-10-03 remediation pass
+
+| Finding | PR | Status |
+|---|---|---|
+| Modal submission state after failed API calls | PR #27 | Implemented in review |
+| Project/Milestone/Task core form submission state and validation | PR #28 | Implemented in review |
+| Atomic New Project wizard UI/API integration | PR #29 | Implemented in review |
+| Lower-role delegation control in Role editor/table | PR #34 | Implemented in review; backend dependency on PR #32 |
+
+### UI workflow corrections completed in review
+
+- Create/edit role, permission, notification-rule/template, profile and skill forms now reinitialize correctly when switching between edit and create modes.
+- Mutation forms restore their enabled state after failed async API calls.
+- Project form validation reports invalid dates/name instead of silently returning.
+- Milestone form blocks a due date after the project end date.
+- Project/Milestone/Task dialogs rely more consistently on the shared ModalOverlay rather than nested duplicate card chrome.
+- The New Project wizard keeps its existing visible steps while submitting the complete graph through one atomic endpoint.
+
+### Remaining UI work
+
+Field-level API validation mapping, consistent semantic theme tokens, icon-source consolidation, contextual help for complex workflow terms, responsive/table polish, and less-used bespoke detail modals remain open follow-up tracks.
