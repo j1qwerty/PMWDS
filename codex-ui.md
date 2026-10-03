@@ -233,3 +233,39 @@ For every major modal:
 - buttons cannot double-submit;
 - successful mutation closes only after the API succeeds;
 - realtime/refetch updates the underlying list without a manual page reload.
+# Implementation status after audit verification
+
+| Finding | Current implementation track | Status |
+|---|---|---|
+| H1/H2 Shared dialog lifecycle | PR #8 | Implemented in review |
+| H4/H5 Mutation modal consistency | PR #8 | Implemented in review |
+| Native destructive confirmations | PR #13 | Implemented in review |
+| M4/M5 Project-list pagination/data-flow | PR #15 | Implemented in review |
+| M1/M2 Theme cleanup | Remaining UI cleanup track | Not yet complete |
+| M3 Icon consistency | Remaining UI cleanup track | Not yet complete |
+| M7 Field-level validation mapping | Remaining UI cleanup track | Not yet complete |
+| M10 Context help affordances | Remaining UI cleanup track | Not yet complete |
+
+## Additional findings discovered during implementation verification
+
+### H6. Native browser confirmations bypass the PMWDS dialog system
+
+Task and subtask deletion used window.confirm(), producing a different browser-native interaction from the rest of the application.
+
+**Resolution:** PR #13 routes both destructive actions through the shared delete dialog.
+
+### M11. Project list filtering was correct only for the currently loaded page
+
+The API already paginated project results, while the UI applied search/sort/date/priority filtering after that page was returned. With enough projects, matching records outside the current page could never appear.
+
+**Resolution:** PR #15 moves the filter/search/sort semantics to the API and adds UI pagination while retaining the existing project-card style.
+
+### M12. Build validation exposed broad pre-existing frontend lint debt
+
+The frontend contained a large number of lint failures unrelated to the modal and project-list work. The build itself remains the more useful release gate until that debt is separately reduced.
+
+**Resolution:** PR #11 validates the frontend production build; lint cleanup remains an explicit follow-up.
+
+## Review rule
+
+The shared dialog and project-list PRs are kept separate from backend workflow changes so UI regressions can be verified independently.
