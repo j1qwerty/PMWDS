@@ -11,7 +11,7 @@ export function NotificationList({
 
   if (!itemsArray.length) {
     return (
-      <div className="bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20">
+      <div className="bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[430px] flex flex-col overflow-hidden">
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
@@ -19,7 +19,7 @@ export function NotificationList({
           </div>
           <span className="bg-surface-container text-on-surface-variant text-[10px] font-semibold px-2 py-[2px] rounded-full">0 New</span>
         </div>
-        <div className="flex flex-col items-center justify-center py-lg text-center">
+        <div className="flex flex-col flex-1 items-center justify-center py-lg text-center">
           <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mb-sm">
             <span className="material-symbols-outlined text-outline text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               notifications_off
@@ -85,7 +85,7 @@ export function NotificationList({
   const unreadCount = itemsArray.filter(item => !item.isRead).length;
 
   return (
-    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20">
+    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[430px] flex flex-col overflow-hidden">
       <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
           <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
@@ -97,7 +97,7 @@ export function NotificationList({
           </span>
         )}
       </div>
-      <div className="flex flex-col gap-sm">
+      <div className="flex flex-col gap-sm flex-1 min-h-0 overflow-y-auto pr-1">
         {itemsArray.map((item) => {
           const config = getNotificationType(item);
           
@@ -118,7 +118,7 @@ export function NotificationList({
           return (
             <div 
               key={item.id} 
-              className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30"
+              className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30 shrink-0"
             >
               <div className={`w-9 h-9 rounded-xl ${config.bg} flex items-center justify-center shrink-0 shadow-sm`}>
                 <span className={`material-symbols-outlined ${config.iconColor} text-[18px]`} style={{ fontVariationSettings: "'FILL' 1" }}>

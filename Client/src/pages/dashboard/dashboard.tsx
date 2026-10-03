@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useMemo, type FormEvent } from "react
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone } from "../../types";
+import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone, ActivityLogRecord } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
@@ -65,6 +65,7 @@ export function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogRecord[]>([]);
   const [taskPerformanceTasks, setTaskPerformanceTasks] = useState<Task[]>([]);
   const [taskPerformancePage, setTaskPerformancePage] = useState(1);
   const [taskPerformancePageSize, setTaskPerformancePageSize] = useState(10);
@@ -122,8 +123,9 @@ export function DashboardPage() {
       api.getProjects(auth.token),
       canViewTasks ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       canViewTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+      api.getTeamActivityLogs(auth.token, 200),
     ])
-      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult, activityResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
         if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
@@ -133,6 +135,7 @@ export function DashboardPage() {
         if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
         if (escalatedResult.status === "fulfilled") setEscalatedTasks(escalatedResult.value as Task[]);
+        if (activityResult.status === "fulfilled") setActivityLogs(Array.isArray(activityResult.value) ? activityResult.value : []);
         if (dashboardResult.status === "rejected") {
           setError(dashboardResult.reason instanceof Error ? dashboardResult.reason.message : "Dashboard unavailable");
         }
@@ -242,28 +245,35 @@ export function DashboardPage() {
     });
   }, [departments, users, myTasks]);
 
+  // Real activity: bucket the team's activity log (task created/updated/commented,
+// project and milestone events, ...) by calendar day over the last 7 days. Labels carry
+  // the actual date, so a spike always means something happened that day - unlike the old
+  // weekday buckets, which lumped every event ever created on e.g. a Saturday into one bar.
   const activityData = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    const days: { key: string; label: string; value: number }[] = [];
+    const now = new Date();
+    for (let offset = 6; offset >= 0; offset--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      days.push({ key, label: `${dayNames[d.getDay()]} ${d.getDate()}`, value: 0 });
+    }
+    const byKey = new Map(days.map((d) => [d.key, d]));
 
-    const allTasks = [...myTasks, ...overdue, ...escalatedTasks].filter(
-      (task, index, list) => list.findIndex(t => t.id === task.id) === index
-    );
+    const sourceLogs =
+      selectedActivityFilter === "My Tasks" && auth
+        ? activityLogs.filter((log) => log.userId === auth.userId)
+        : activityLogs;
 
-    const sourceTasks = selectedActivityFilter === "My Tasks"
-      ? myTasks
-      : selectedActivityFilter === "Team Tasks"
-        ? allTasks
-        : allTasks;
-
-    sourceTasks.forEach(task => {
-      const date = new Date(task.createdDate);
-      const dayOfWeek = date.getDay();
-      dayCounts[dayOfWeek]++;
+    sourceLogs.forEach((log) => {
+      const at = new Date(log.timestamp);
+      if (Number.isNaN(at.getTime())) return;
+      const bucket = byKey.get(`${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`);
+      if (bucket) bucket.value++;
     });
 
-    return dayNames.map((day, i) => ({ day, value: dayCounts[i] }));
-  }, [myTasks, overdue, escalatedTasks, selectedActivityFilter]);
+    return days.map(({ label, value }) => ({ day: label, value }));
+  }, [activityLogs, selectedActivityFilter, auth]);
 
   if (loading) return <PageSkeleton />;
   if (error) return <div className="mx-4 my-2"><div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600">{error}</div></div>;
@@ -300,7 +310,7 @@ export function DashboardPage() {
             {SHOW_TIME_TRACKER ? (
               <Timer tasks={myTasks} token={auth?.token ?? ''} />
             ) : (
-              <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+              <NotificationList items={unread} title="Notifications" />
             )}
           </div>
         </section>
@@ -349,7 +359,7 @@ export function DashboardPage() {
 
           {/* right - Notifications */}
           <div className="flex-1 py-4">
-            <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+            <NotificationList items={unread} title="Notifications" />
           </div>
         </section>
         )}
