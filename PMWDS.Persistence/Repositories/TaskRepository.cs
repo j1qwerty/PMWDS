@@ -109,26 +109,17 @@ public class TaskRepository
         .ToListAsync(ct);
 
     public async Task<IReadOnlyList<ProjectTask>> GetActiveTasksBatchAsync(
-    Guid? afterTaskId,
+    int skip,
     int take,
     CancellationToken ct = default)
-    {
-        var query = _dbSet
-            .Where(t =>
-                t.Status != Domain.Enums.TaskStatus.Completed &&
-                t.Status != Domain.Enums.TaskStatus.Cancelled &&
-                !t.IsEscalated);
-
-        if (afterTaskId.HasValue)
-        {
-            query = query.Where(t => t.Id.CompareTo(afterTaskId.Value) > 0);
-        }
-
-        return await query
-            .OrderBy(t => t.Id)
-            .Take(Math.Clamp(take, 1, 500))
-            .ToListAsync(ct);
-    }
+    => await _dbSet
+        .Where(t =>
+            t.Status != Domain.Enums.TaskStatus.Completed &&
+            t.Status != Domain.Enums.TaskStatus.Cancelled)
+        .OrderBy(t => t.Id)
+        .Skip(Math.Max(0, skip))
+        .Take(Math.Clamp(take, 1, 500))
+        .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
     GetByMilestoneAsync(
     Guid milestoneId,
