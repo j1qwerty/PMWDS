@@ -259,6 +259,8 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.OrganizationView,
             PermissionCodes.DepartmentView,
             PermissionCodes.ProjectView,
+            PermissionCodes.GoalView,
+            PermissionCodes.BudgetView,
             PermissionCodes.MilestoneView,
             PermissionCodes.TaskView,
             PermissionCodes.SubtaskView,
