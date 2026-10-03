@@ -95,6 +95,7 @@ public static class PermissionCodes
     public const string IntegrationDelete = "INTEGRATION_DELETE";
 
     public const string AiView = "AI_VIEW";
+    public const string AiOperate = "AI_OPERATE";
     public const string AiManage = "AI_MANAGE";
 
     // Utilization Certificates — formal proof that grant, government or corporate
