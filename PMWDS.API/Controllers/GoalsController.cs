@@ -108,8 +108,8 @@ public sealed class GoalsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Title))
             return BadRequest(new { message = "Goal title is required." });
 
-        if (dto.DueDate < project.PlannedStartDate)
-            return BadRequest(new { message = "Goal due date cannot be before the project start date." });
+        if (dto.DueDate < project.PlannedStartDate || dto.DueDate > project.PlannedEndDate)
+            return BadRequest(new { message = "Goal due date must fall within the project planned timeline." });
 
         var goal = Goal.Create(
             dto.ProjectId,
