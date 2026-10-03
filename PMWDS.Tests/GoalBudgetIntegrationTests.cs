@@ -54,6 +54,54 @@ public sealed class GoalBudgetIntegrationTests
         read.Data.GetProperty("milestoneCount").GetInt32().Should().Be(1);
     }
 
+
+    [Fact]
+    public async Task Goal_department_change_requires_transfer_workflow()
+    {
+        var client = _fixture.SuperAdmin.Client;
+        var firstDepartment = await WizardFlowTests.FirstDepartmentAsync(client);
+        var departments = (await client.GetAsync<JsonElement>("/api/v1/departments")).Data
+            .EnumerateArray()
+            .Select(item => item.GetGuid("id"))
+            .ToList();
+        var secondDepartment = departments.First(id => id != firstDepartment);
+
+        var project = await new WizardBuilder(client)
+            .WithName("Goal Transfer Integrity Project")
+            .WithDepartments(firstDepartment)
+            .BuildAsync();
+
+        try
+        {
+            var goal = await client.PostAsync<JsonElement>("/api/v1/goals", new
+            {
+                projectId = project.ProjectId,
+                assignedDepartmentId = firstDepartment,
+                title = "Transfer-controlled goal",
+                description = "Department changes require transfer.",
+                priority = "High",
+                dueDate = new DateTime(2026, 11, 20),
+            });
+            goal.Status.Should().Be(HttpStatusCode.Created);
+            var goalId = goal.Data.GetGuid("id");
+
+            var update = await client.PutAsync<JsonElement>($"/api/v1/goals/{goalId}", new
+            {
+                assignedDepartmentId = secondDepartment,
+                title = "Attempted direct transfer",
+                description = "This should not bypass review.",
+                priority = "High",
+                dueDate = new DateTime(2026, 11, 20),
+            });
+
+            update.Status.Should().Be(HttpStatusCode.Conflict);
+        }
+        finally
+        {
+            await client.DeleteAsync<JsonElement>($"/api/v1/projects/{project.ProjectId}");
+        }
+    }
+
     [Fact]
     public async Task Goal_budget_supports_allocation_release_partial_approval_and_expenditure()
     {
