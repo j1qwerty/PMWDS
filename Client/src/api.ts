@@ -230,6 +230,42 @@ export const api = {
       query: filters,
     });
   },
+  async getAllProjects(
+    token: string,
+    filters: {
+      departmentId?: string | null;
+      organizationId?: string | null;
+      status?: string | null;
+      priority?: string | null;
+      search?: string | null;
+      dateField?: string | null;
+      dateFrom?: string | null;
+      dateTo?: string | null;
+      overdueOnly?: boolean;
+      sortBy?: string | null;
+      sortDirection?: "asc" | "desc" | null;
+    } = {},
+  ) {
+    const items: Project[] = [];
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= totalPages) {
+      const result = await request<PaginatedResponse<Project>>("projects", {
+        token,
+        query: {
+          ...filters,
+          page,
+          pageSize: 500,
+        },
+      });
+      items.push(...result.items);
+      totalPages = result.totalPages;
+      page += 1;
+    }
+
+    return items;
+  },
   getProject(token: string, id: string) {
     return request<Project>(`projects/${id}`, { token });
   },
