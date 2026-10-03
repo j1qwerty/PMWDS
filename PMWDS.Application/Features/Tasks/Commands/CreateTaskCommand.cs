@@ -36,6 +36,24 @@ public class CreateTaskCommandHandler
         .GetByIdAsync(dto.ProjectId, ct)
         ?? throw new NotFoundException(
         "Project", dto.ProjectId);
+
+        if (dto.MilestoneId.HasValue)
+        {
+            var milestone = await _uow.Milestones.GetByIdAsync(dto.MilestoneId.Value, ct)
+                ?? throw new NotFoundException("Milestone", dto.MilestoneId.Value);
+            if (milestone.ProjectId != dto.ProjectId)
+                throw new ConflictException("The selected milestone must belong to the selected project.");
+        }
+
+        if (dto.ParentTaskId.HasValue)
+        {
+            var parentTask = await _uow.Tasks.GetByIdAsync(dto.ParentTaskId.Value, ct)
+                ?? throw new NotFoundException("Task", dto.ParentTaskId.Value);
+            if (parentTask.ProjectId != dto.ProjectId)
+                throw new ConflictException("The parent task must belong to the selected project.");
+            if (parentTask.ParentTaskId.HasValue)
+                throw new ConflictException("Nested subtasks are not supported.");
+        }
         var task = ProjectTask.Create(
         dto.ProjectId,
         dto.Title,
