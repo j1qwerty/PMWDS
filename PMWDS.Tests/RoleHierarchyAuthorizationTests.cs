@@ -43,8 +43,6 @@ public sealed class RoleHierarchyAuthorizationTests
 
         response.Status.Should().Be(HttpStatusCode.Forbidden);
     }
-}
-
 
     [Fact]
     public async Task Delegating_role_can_create_a_lower_role()
@@ -70,3 +68,26 @@ public sealed class RoleHierarchyAuthorizationTests
 
         await client.DeleteAsync<JsonElement>($"/api/v1/roles/{roleId}");
     }
+
+    [Fact]
+    public async Task Delegating_role_cannot_assign_a_permission_it_does_not_have()
+    {
+        var client = _fixture.ProjectManager.Client;
+        var permissions = await client.GetAsync<JsonElement>("/api/v1/roles/permissions");
+        var systemAdmin = permissions.Data.EnumerateArray()
+            .First(p => p.GetString("code") == "SYSTEM_ADMIN")
+            .GetGuid("id");
+
+        var response = await client.PostAsync<JsonElement>("/api/v1/roles", new
+        {
+            name = $"DeniedPerm-{Guid.NewGuid():N}",
+            description = "Must not receive a permission outside the caller's permission set.",
+            permissionLevel = 20,
+            canAssignLowerRoles = false,
+            paginationPageSize = 10,
+            permissionIds = new[] { systemAdmin },
+        });
+
+        response.Status.Should().Be(HttpStatusCode.Forbidden);
+    }
+}
