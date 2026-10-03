@@ -175,9 +175,10 @@ public class DashboardsController : BaseApiController
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
             return null;
 
-        return await _uow.Dashboards
-            .FindAsync(dashboard => dashboard.Id == id && dashboard.UserId == userId, ct)
-            .ContinueWith(task => task.Result.FirstOrDefault(), ct);
+        var dashboards = await _uow.Dashboards.FindAsync(
+            dashboard => dashboard.Id == id && dashboard.UserId == userId,
+            ct);
+        return dashboards.FirstOrDefault();
     }
 
     private async Task<DashboardWidget?> GetOwnedWidgetAsync(Guid widgetId, CancellationToken ct)
