@@ -10,16 +10,23 @@ public class RoleScopeService
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private ScopeSnapshot? _scopeSnapshot;
     private HashSet<string>? _permissionSnapshot;
 
-    public RoleScopeService(ApplicationDbContext db, ICurrentUserService currentUser)
+    public RoleScopeService(
+        ApplicationDbContext db,
+        ICurrentUserService currentUser,
+        IHttpContextAccessor httpContextAccessor)
     {
         _db = db;
         _currentUser = currentUser;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    public bool IsSuperAdmin => _currentUser.IsInRole(RoleKeys.SuperAdmin);
+    public bool IsSuperAdmin =>
+        _currentUser.IsInRole(RoleKeys.SuperAdmin) ||
+        HasPermissionClaim(PermissionCodes.SystemAdmin);
     public bool IsDirector => _currentUser.IsInRole(RoleKeys.Director);
     public bool IsDepartmentHead => _currentUser.IsInRole(RoleKeys.DepartmentHead);
     public bool IsProjectManager => _currentUser.IsInRole(RoleKeys.ProjectManager);
@@ -164,7 +171,22 @@ public class RoleScopeService
     }
 
     public async Task<bool> CanManageOrganizationAsync(Guid organizationId, CancellationToken ct)
-        => IsSuperAdmin || (IsDirector && await CanAccessOrganizationAsync(organizationId, ct));
+    {
+        if (IsSuperAdmin)
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct,
+            PermissionCodes.OrganizationManage,
+            PermissionCodes.OrganizationEdit,
+            PermissionCodes.OrganizationDelete))
+        {
+            return false;
+        }
+
+        return await CanAccessOrganizationAsync(organizationId, ct);
+    }
 
     public async Task<bool> CanManageDepartmentAsync(Guid departmentId, CancellationToken ct)
     {
@@ -183,14 +205,21 @@ public class RoleScopeService
             return false;
         }
 
-        if (IsDirector && department.OrganizationId.HasValue &&
+        if (!await HasAnyPermissionAsync(ct,
+            PermissionCodes.DepartmentManage,
+            PermissionCodes.DepartmentEdit,
+            PermissionCodes.DepartmentDelete))
+        {
+            return false;
+        }
+
+        if (department.OrganizationId.HasValue &&
             await CanAccessOrganizationAsync(department.OrganizationId.Value, ct))
         {
             return true;
         }
 
-        return IsDepartmentHead &&
-            CurrentUserId?.ToString() == department.DepartmentHeadUserId;
+        return CurrentUserId?.ToString() == department.DepartmentHeadUserId;
     }
 
     public async Task<bool> CanManageProjectAsync(Guid projectId, CancellationToken ct)
@@ -222,33 +251,27 @@ public class RoleScopeService
             return false;
         }
 
+        // Resource scope is evaluated only after the requested action permission is
+        // present. This prevents a broad Manager/Director policy or a built-in role
+        // key from granting an operation that the user's dynamic permission set does
+        // not actually contain.
+        if (!await HasAnyPermissionAsync(ct,
+            PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectEdit,
+            PermissionCodes.ProjectDelete,
+            PermissionCodes.ProjectPrimaryDepartmentManage))
+        {
+            return false;
+        }
+
+        if (await CanAccessProjectAsync(projectId, ct))
+        {
+            return true;
+        }
+
         if (IsProjectManager && CurrentUserId == project.ProjectManagerId)
         {
             return true;
-        }
-
-        if (IsDepartmentHead && !IsDirector)
-        {
-            var departmentIds = await GetDepartmentIdsAsync(ct);
-            return departmentIds.Contains(project.DepartmentId) &&
-                await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct);
-        }
-
-        if (IsDirector && project.OrganizationId.HasValue &&
-            await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
-        {
-            return true;
-        }
-
-        if (IsDirector)
-        {
-            foreach (var organizationId in project.AssignedOrganizationIds)
-            {
-                if (await CanAccessOrganizationAsync(organizationId, ct))
-                {
-                    return true;
-                }
-            }
         }
 
         return false;
@@ -323,7 +346,7 @@ public class RoleScopeService
             return true;
         }
 
-        if (!IsDepartmentHead || !await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
+        if (!await HasAnyPermissionAsync(ct, PermissionCodes.ProjectPrimaryDepartmentManage))
         {
             return false;
         }
@@ -363,7 +386,22 @@ public class RoleScopeService
             return true;
         }
 
-        return IsDirector && await CanAccessUserAsync(userId, ct);
+        if (!await HasAnyPermissionAsync(ct,
+            PermissionCodes.UserManage,
+            PermissionCodes.UserEdit,
+            PermissionCodes.UserDelete))
+        {
+            return false;
+        }
+
+        return await CanAccessUserAsync(userId, ct);
+    }
+
+    private bool HasPermissionClaim(string permissionCode)
+    {
+        var principal = _httpContextAccessor.HttpContext?.User;
+        return principal?.FindAll(PermissionCodes.PermissionClaimType)
+            .Any(claim => claim.Value.Equals(permissionCode, StringComparison.OrdinalIgnoreCase)) == true;
     }
 
     private async Task<ScopeSnapshot> GetScopeSnapshotAsync(CancellationToken ct)
