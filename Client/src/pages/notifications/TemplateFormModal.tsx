@@ -19,15 +19,13 @@ export function TemplateFormModal({ initialData, onSubmit, onCancel }: TemplateF
   });
 
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        templateType: initialData.templateType || "",
-        subjectTemplate: initialData.subjectTemplate || "",
-        bodyTemplate: initialData.bodyTemplate || "",
-        variables: initialData.variables?.join("\n") || "",
-        supportedChannels: initialData.supportedChannels?.join("\n") || "",
-      });
-    }
+    setForm({
+      templateType: initialData?.templateType || "",
+      subjectTemplate: initialData?.subjectTemplate || "",
+      bodyTemplate: initialData?.bodyTemplate || "",
+      variables: initialData?.variables?.join("\n") || "",
+      supportedChannels: initialData?.supportedChannels?.join("\n") || "",
+    });
   }, [initialData]);
 
   const handleSubmit = (e: FormEvent) => {
