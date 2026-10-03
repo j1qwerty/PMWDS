@@ -82,6 +82,7 @@ export interface RoleRecord {
   name: string;
   description: string;
   permissionLevel: number;
+  canAssignLowerRoles?: boolean;
   permissions: PermissionRecord[];
 }
 

@@ -8,6 +8,7 @@ public class Role : AuditableEntity
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public int PermissionLevel { get; private set; }
+    public bool CanAssignLowerRoles { get; private set; }
     public int PaginationPageSize { get; private set; } = 10;
     public ICollection<Permission> Permissions { get; private set; } = new List<Permission>();
     public ICollection<ApplicationUser> Users { get; private set; } = new List<ApplicationUser>();
@@ -28,12 +29,16 @@ public class Role : AuditableEntity
         };
     }
 
-    public void Update(string name, string description, int permissionLevel)
+    public void Update(string name, string description, int permissionLevel, bool canAssignLowerRoles = false)
     {
         Name = name.Trim();
         Description = description.Trim();
         PermissionLevel = permissionLevel;
+        CanAssignLowerRoles = canAssignLowerRoles;
     }
+
+    public void SetCanAssignLowerRoles(bool enabled)
+        => CanAssignLowerRoles = enabled;
 
     public void EnsureKey(string key)
     {

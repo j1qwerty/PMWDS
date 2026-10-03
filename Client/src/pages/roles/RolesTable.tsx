@@ -33,6 +33,7 @@ export function RolesTable({ roles, onEdit, onDelete, onCreate, isAdmin }: Roles
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Name</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Level</th>
               <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Permissions</th>
+              <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Delegation</th>
               <th className="text-right px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -74,6 +75,16 @@ export function RolesTable({ roles, onEdit, onDelete, onCreate, isAdmin }: Roles
                     </div>
                   ) : (
                     <span className="text-xs text-slate-400 italic">No permissions</span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  {role.canAssignLowerRoles ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700">
+                      <span className="material-symbols-outlined text-xs">subdirectory_arrow_right</span>
+                      Lower roles
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">No</span>
                   )}
                 </td>
                 <td className="px-6 py-4 text-right">
