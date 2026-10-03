@@ -68,6 +68,7 @@ public class PagesController : BaseApiController
             ct);
         var projectsQuery = await _scope.ScopeProjectsAsync(
             _db.Projects.AsNoTracking()
+                .AsSplitQuery()
                 .Include(p => p.Department)
                 .Include(p => p.ProjectDepartments).ThenInclude(pd => pd.Department)
                 .Include(p => p.Tasks)
@@ -75,6 +76,7 @@ public class PagesController : BaseApiController
             ct);
         var usersQuery = await _scope.ScopeUsersAsync(
             _db.Users.AsNoTracking()
+                .AsSplitQuery()
                 .Include(u => u.Department)
                 .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department!).ThenInclude(d => d.Organization)
                 .Include(u => u.Profile)
