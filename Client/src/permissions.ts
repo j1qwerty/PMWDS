@@ -92,6 +92,7 @@ export const Permission = {
   IntegrationDelete: "INTEGRATION_DELETE",
 
   AiView: "AI_VIEW",
+  AiOperate: "AI_OPERATE",
   AiManage: "AI_MANAGE",
 
   UtilizationCertificateManage: "UTILIZATION_CERTIFICATE_MANAGE",
@@ -217,6 +218,7 @@ export const PERMISSION_GROUPS = {
   },
   ai: {
     view: Permission.AiView,
+    operate: Permission.AiOperate,
     manage: Permission.AiManage,
   },
   utilizationCertificate: {

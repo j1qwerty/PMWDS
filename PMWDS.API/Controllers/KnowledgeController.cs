@@ -12,29 +12,51 @@ public class KnowledgeController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly RoleScopeService _scope;
+    private readonly ITaskWorkflowService _taskWorkflow;
 
-    public KnowledgeController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser) : base(mediator)
+    public KnowledgeController(
+        IMediator mediator,
+        IUnitOfWork uow,
+        ICurrentUserService currentUser,
+        RoleScopeService scope,
+        ITaskWorkflowService taskWorkflow) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _scope = scope;
+        _taskWorkflow = taskWorkflow;
     }
 
     [HttpGet("articles")]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeView)]
     public async Task<IActionResult> GetArticles([FromQuery] Guid? projectId, CancellationToken ct)
     {
+        if (projectId.HasValue && !await _scope.CanAccessProjectAsync(projectId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         var articles = projectId.HasValue
-            ? await _uow.KnowledgeArticles.FindAsync(a => a.ProjectId == projectId, ct)
-            : await _uow.KnowledgeArticles.GetAllAsync(ct);
+            ? await _uow.KnowledgeArticles.FindAsync(a => a.ProjectId == projectId.Value, ct)
+            : await _uow.KnowledgeArticles.FindAsync(a => !a.ProjectId.HasValue || allowedProjectIds.Contains(a.ProjectId.Value), ct);
         return Ok(articles.OrderByDescending(a => a.LastUpdated).Select(MapArticle));
     }
 
     [HttpGet("articles/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeView)]
     public async Task<IActionResult> GetArticle(Guid id, CancellationToken ct)
     {
         var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
         if (article == null)
         {
             return NotFound();
+        }
+
+        if (article.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(article.ProjectId.Value, ct))
+        {
+            return Forbid();
         }
 
         article.IncrementViewCount();
@@ -44,6 +66,7 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPost("articles")]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeCreate)]
     public async Task<IActionResult> CreateArticle([FromBody] UpsertKnowledgeArticleRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -59,12 +82,18 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPut("articles/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeEdit)]
     public async Task<IActionResult> UpdateArticle(Guid id, [FromBody] UpsertKnowledgeArticleRequest req, CancellationToken ct)
     {
         var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
         if (article == null)
         {
             return NotFound();
+        }
+
+        if (article.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(article.ProjectId.Value, ct))
+        {
+            return Forbid();
         }
 
         article.Update(req.Title, req.Content, req.Category, req.Tags, req.RelevanceScore);
@@ -74,26 +103,50 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpDelete("articles/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeDelete)]
     public async Task<IActionResult> DeleteArticle(Guid id, CancellationToken ct)
     {
+        var article = await _uow.KnowledgeArticles.GetByIdAsync(id, ct);
+        if (article == null)
+        {
+            return NotFound();
+        }
+
+        if (article.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(article.ProjectId.Value, ct))
+        {
+            return Forbid();
+        }
+
         await _uow.KnowledgeArticles.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
 
     [HttpGet("lessons")]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeView)]
     public async Task<IActionResult> GetLessons([FromQuery] Guid? projectId, CancellationToken ct)
     {
+        if (projectId.HasValue && !await _scope.CanAccessProjectAsync(projectId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var allowedProjectIds = await _scope.GetAccessibleProjectIdsAsync(ct);
         var lessons = projectId.HasValue
-            ? await _uow.LessonsLearned.FindAsync(l => l.ProjectId == projectId, ct)
-            : await _uow.LessonsLearned.GetAllAsync(ct);
+            ? await _uow.LessonsLearned.FindAsync(l => l.ProjectId == projectId.Value, ct)
+            : await _uow.LessonsLearned.FindAsync(l => allowedProjectIds.Contains(l.ProjectId), ct);
         return Ok(lessons.OrderByDescending(l => l.RecordedDate).Select(MapLesson));
     }
 
     [HttpPost("lessons")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeCreate)]
     public async Task<IActionResult> CreateLesson([FromBody] UpsertLessonLearnedRequest req, CancellationToken ct)
     {
+        if (!await _scope.CanAccessProjectAsync(req.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
         var lesson = LessonLearned.Create(req.ProjectId, req.Title, req.Description, req.Category, req.Impact, req.Keywords);
         lesson.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.LessonsLearned.AddAsync(lesson, ct);
@@ -102,13 +155,18 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpPut("lessons/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeEdit)]
     public async Task<IActionResult> UpdateLesson(Guid id, [FromBody] UpsertLessonLearnedRequest req, CancellationToken ct)
     {
         var lesson = await _uow.LessonsLearned.GetByIdAsync(id, ct);
         if (lesson == null)
         {
             return NotFound();
+        }
+
+        if (!await _scope.CanAccessProjectAsync(lesson.ProjectId, ct))
+        {
+            return Forbid();
         }
 
         lesson.Update(req.Title, req.Description, req.Category, req.Impact, req.Keywords);
@@ -118,9 +176,20 @@ public class KnowledgeController : BaseApiController
     }
 
     [HttpDelete("lessons/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.KnowledgeDelete)]
     public async Task<IActionResult> DeleteLesson(Guid id, CancellationToken ct)
     {
+        var lesson = await _uow.LessonsLearned.GetByIdAsync(id, ct);
+        if (lesson == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _scope.CanAccessProjectAsync(lesson.ProjectId, ct))
+        {
+            return Forbid();
+        }
+
         await _uow.LessonsLearned.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();

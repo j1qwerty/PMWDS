@@ -37,7 +37,7 @@ public class DashboardsController : BaseApiController
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var dashboard = await _uow.Dashboards.GetByIdAsync(id, ct);
+        var dashboard = await GetOwnedDashboardAsync(id, ct);
         if (dashboard == null)
         {
             return NotFound();
@@ -66,7 +66,7 @@ public class DashboardsController : BaseApiController
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertDashboardRequest req, CancellationToken ct)
     {
-        var dashboard = await _uow.Dashboards.GetByIdAsync(id, ct);
+        var dashboard = await GetOwnedDashboardAsync(id, ct);
         if (dashboard == null)
         {
             return NotFound();
@@ -84,7 +84,7 @@ public class DashboardsController : BaseApiController
     [HttpPost("{id:guid}/widgets")]
     public async Task<IActionResult> AddWidget(Guid id, [FromBody] UpsertDashboardWidgetRequest req, CancellationToken ct)
     {
-        var dashboard = await _uow.Dashboards.GetByIdAsync(id, ct);
+        var dashboard = await GetOwnedDashboardAsync(id, ct);
         if (dashboard == null)
         {
             return NotFound();
@@ -101,7 +101,7 @@ public class DashboardsController : BaseApiController
     [HttpPut("widgets/{widgetId:guid}")]
     public async Task<IActionResult> UpdateWidget(Guid widgetId, [FromBody] UpsertDashboardWidgetRequest req, CancellationToken ct)
     {
-        var widget = await _uow.DashboardWidgets.GetByIdAsync(widgetId, ct);
+        var widget = await GetOwnedWidgetAsync(widgetId, ct);
         if (widget == null)
         {
             return NotFound();
@@ -118,6 +118,12 @@ public class DashboardsController : BaseApiController
     [HttpPatch("{id:guid}/widgets/reorder")]
     public async Task<IActionResult> ReorderWidgets(Guid id, [FromBody] ReorderDashboardWidgetsRequest req, CancellationToken ct)
     {
+        var dashboard = await GetOwnedDashboardAsync(id, ct);
+        if (dashboard == null)
+        {
+            return NotFound();
+        }
+
         var widgets = (await _uow.DashboardWidgets.FindAsync(w => w.DashboardId == id, ct)).ToList();
         var positions = req.WidgetIds.Select((widgetId, index) => new { widgetId, index }).ToDictionary(x => x.widgetId, x => x.index);
         foreach (var widget in widgets)
@@ -137,6 +143,12 @@ public class DashboardsController : BaseApiController
     [HttpDelete("widgets/{widgetId:guid}")]
     public async Task<IActionResult> DeleteWidget(Guid widgetId, CancellationToken ct)
     {
+        var widget = await GetOwnedWidgetAsync(widgetId, ct);
+        if (widget == null)
+        {
+            return NotFound();
+        }
+
         await _uow.DashboardWidgets.DeleteAsync(widgetId, ct);
         await _uow.SaveChangesAsync(ct);
         await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
@@ -146,10 +158,37 @@ public class DashboardsController : BaseApiController
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var dashboard = await GetOwnedDashboardAsync(id, ct);
+        if (dashboard == null)
+        {
+            return NotFound();
+        }
+
         await _uow.Dashboards.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
+    }
+
+    private async Task<Dashboard?> GetOwnedDashboardAsync(Guid id, CancellationToken ct)
+    {
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return null;
+
+        var dashboards = await _uow.Dashboards.FindAsync(
+            dashboard => dashboard.Id == id && dashboard.UserId == userId,
+            ct);
+        return dashboards.FirstOrDefault();
+    }
+
+    private async Task<DashboardWidget?> GetOwnedWidgetAsync(Guid widgetId, CancellationToken ct)
+    {
+        var widget = await _uow.DashboardWidgets.GetByIdAsync(widgetId, ct);
+        if (widget == null)
+            return null;
+
+        var dashboard = await GetOwnedDashboardAsync(widget.DashboardId, ct);
+        return dashboard == null ? null : widget;
     }
 
     private static DashboardResponse MapDashboard(Dashboard dashboard, List<DashboardWidget> widgets)

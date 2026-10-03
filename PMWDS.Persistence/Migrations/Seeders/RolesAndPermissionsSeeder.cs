@@ -94,6 +94,7 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.IntegrationEdit, "Edit Integrations", "Update integrations and webhooks.", "Integrations", true),
             (PermissionCodes.IntegrationDelete, "Delete Integrations", "Delete integrations and webhooks.", "Integrations", true),
             (PermissionCodes.AiView, "View AI", "View AI insights and predictions.", "AI", false),
+            (PermissionCodes.AiOperate, "Use AI analysis and recommendations", "Run AI analysis, recommendations, predictions and resource optimization.", "AI", false),
             (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true),
             (PermissionCodes.UtilizationCertificateView, "View Utilization Certificates", "View utilization certificates proving funds were spent as intended.", "Utilization Certificates", false),
             (PermissionCodes.UtilizationCertificateCreate, "Submit Utilization Certificates", "Upload and submit a utilization certificate against a project milestone or task.", "Utilization Certificates", false),
@@ -175,6 +176,8 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
+            PermissionCodes.AiView,
+            PermissionCodes.AiOperate,
             PermissionCodes.UserManage,
             PermissionCodes.NotificationManage,
             PermissionCodes.ActivityLogManage,
@@ -182,6 +185,7 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
+            PermissionCodes.AiOperate,
             PermissionCodes.AiManage,
             PermissionCodes.UtilizationCertificateManage
         };
@@ -196,6 +200,8 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.UserView,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogCreate,
+            PermissionCodes.AiView,
+            PermissionCodes.AiOperate,
             PermissionCodes.UtilizationCertificateView,
             PermissionCodes.UtilizationCertificateCreate,
             PermissionCodes.UtilizationCertificateEdit
