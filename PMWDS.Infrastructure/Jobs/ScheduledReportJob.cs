@@ -63,6 +63,10 @@ public sealed class ScheduledReportJob : IScheduledReportJob
                 var data = await GenerateAsync(report, schedule, ct);
                 report.ReplaceData(data);
 
+                // Persist the regenerated report independently from email delivery so a
+                // transient mail failure does not lose the latest report contents.
+                await _uow.SaveChangesAsync(ct);
+
                 var recipients = ParseStringArray(schedule.RecipientsJson);
                 if (recipients.Count == 0)
                 {
@@ -73,10 +77,8 @@ public sealed class ScheduledReportJob : IScheduledReportJob
 
                 if (recipients.Count == 0)
                 {
-                    _logger.LogWarning(
-                        "Schedule {ScheduleId} generated report {ReportId} but has no recipients.",
-                        schedule.Id,
-                        report.Id);
+                    throw new InvalidOperationException(
+                        $"Schedule {schedule.Id} has no recipients and the report owner has no email address.");
                 }
                 else
                 {
