@@ -98,22 +98,38 @@ public class DocumentsAndCertificatesTests
     }
 
     [Fact]
-    public async Task Document_upload_rejects_a_disallowed_content_type()
+    public async Task Document_upload_rejects_an_executable_file()
     {
         var client = _fixture.SuperAdmin.Client;
         await using var project = await TestProject.CreateAsync(client, "Bad Upload Project");
 
         using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("plain text"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
-        form.Add(file, "file", "notes.txt");
+        var file = new ByteArrayContent("not an executable"u8.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(file, "file", "payload.exe");
 
         var response = await client.PostFormAsync<JsonElement>(
             $"/api/v1/projects/{project.ProjectId}/documents", form);
 
-        // Project documents accept any type, so this one is expected to succeed. The strict
-        // content-type list belongs to utilization certificates, covered separately below.
-        response.Status.Should().Be(HttpStatusCode.OK);
+        response.Status.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Task_attachment_rejects_an_unsupported_file_type()
+    {
+        var client = _fixture.SuperAdmin.Client;
+        await using var project = await TestProject.CreateAsync(client, "Attachment Validation Project");
+        var taskId = await project.CreateTaskAsync("Attachment Task");
+
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent("not an executable"u8.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(file, "file", "payload.exe");
+
+        var response = await client.PostFormAsync<JsonElement>(
+            $"/api/v1/tasks/{taskId}/attachments", form);
+
+        response.Status.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
