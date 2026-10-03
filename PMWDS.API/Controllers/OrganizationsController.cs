@@ -272,15 +272,32 @@ public class OrganizationsController : BaseApiController
             return new Dictionary<Guid, OrganizationDirectorResponse>();
         }
 
-        var users = await _uow.Users.GetAllAsync(ct);
-        return users
-            .Where(user => UserRoleResolver.ResolveKeys(user).Contains(RoleKeys.Director) &&
+        var rows = await _db.Users
+            .AsNoTracking()
+            .Where(user =>
+                user.Roles.Any(role => role.Key == RoleKeys.Director) &&
                 user.DepartmentAssignments.Any(assignment =>
-                    assignment.Department?.OrganizationId is { } organizationId &&
-                    organizationIds.Contains(organizationId)))
-            .GroupBy(user => user.DepartmentAssignments
-                .Select(assignment => assignment.Department?.OrganizationId)
-                .First(organizationId => organizationId.HasValue && organizationIds.Contains(organizationId.Value))!.Value)
+                    assignment.Department != null &&
+                    assignment.Department.OrganizationId.HasValue &&
+                    organizationIds.Contains(assignment.Department.OrganizationId.Value)))
+            .SelectMany(user => user.DepartmentAssignments
+                .Where(assignment =>
+                    assignment.Department != null &&
+                    assignment.Department.OrganizationId.HasValue &&
+                    organizationIds.Contains(assignment.Department.OrganizationId.Value))
+                .Select(assignment => new
+                {
+                    OrganizationId = assignment.Department!.OrganizationId!.Value,
+                    user.Id,
+                    user.FirstName,
+                    user.LastName,
+                    user.Email,
+                    user.ProfilePictureUrl
+                }))
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(row => row.OrganizationId)
             .ToDictionary(
                 group => group.Key,
                 group =>
@@ -288,7 +305,7 @@ public class OrganizationsController : BaseApiController
                     var director = group.First();
                     return new OrganizationDirectorResponse(
                         director.Id,
-                        director.FullName,
+                        director.FirstName + " " + director.LastName,
                         director.Email,
                         director.ProfilePictureUrl);
                 });
