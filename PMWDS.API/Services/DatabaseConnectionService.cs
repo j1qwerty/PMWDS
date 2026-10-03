@@ -52,7 +52,9 @@ public static class DatabaseConnectionService
                     opt.UseSqlServer(sqlServerConnection, sql =>
                     {
                         sql.MigrationsAssembly("PMWDS.Persistence");
-                        sql.EnableRetryOnFailure();
+                        sql.EnableRetryOnFailure(
+                            maxRetryCount: 1,
+                            maxRetryDelay: TimeSpan.FromSeconds(2));
                     });
                     break;
                 case ActiveDatabaseProvider.Sqlite:
