@@ -58,6 +58,7 @@ export function ProjectFormModal({
 
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   // The budget field is typed in lakhs while `form.plannedBudget` holds rupees. Keeping the
   // raw text locally stops the leading zero from sticking: with value={0} the browser edits
@@ -68,6 +69,7 @@ export function ProjectFormModal({
 
   useEffect(() => {
     if (open) {
+      setValidationError("");
       setBudgetLakhs(form.plannedBudget > 0 ? String(rupeesToLakhs(form.plannedBudget)) : "");
     }
   }, [open, form.plannedBudget]);
@@ -95,8 +97,16 @@ export function ProjectFormModal({
     if (submitting) return;
 
     if (form.plannedStartDate && form.plannedEndDate && form.plannedEndDate < form.plannedStartDate) {
+      setValidationError("End date must be on or after the start date.");
       return;
     }
+
+    if (!form.name.trim()) {
+      setValidationError("Project name is required.");
+      return;
+    }
+
+    setValidationError("");
 
     setSubmitting(true);
     try {
@@ -235,6 +245,13 @@ export function ProjectFormModal({
               </div>
             )}
           </div>
+          {validationError && (
+            <div className="md:col-span-2 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs text-red-700">
+              <span className="material-symbols-outlined text-base">error</span>
+              <span>{validationError}</span>
+            </div>
+          )}
+
           <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600">
               Cancel
