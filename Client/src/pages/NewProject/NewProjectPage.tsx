@@ -246,70 +246,53 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
       const projectCode = `${sanitized}-${ts}-${rand}`;
 
-      const project = await api.createProject(auth.token, {
-        projectCode,
-        name,
-        description: description || "",
-        category: "Monitoring",
-        plannedStartDate: startDate,
-        plannedEndDate: endDate || "",
-        // The budget field is in lakhs; the API stores rupees.
-        plannedBudget: lakhsToRupees(budget),
-        organizationId: "",
-        departmentId: execPrimaryDeptId,
-        departmentIds: assignedDepartmentIds,
-        projectManagerId: "",
-        priority,
-      });
-
-      const projectId = project.id;
-
-      // Create milestones sequentially, collecting real IDs
-      const createdMilestoneIds: Record<string, string> = {};
-      for (const ms of milestones) {
-        const created = await api.createMilestone(auth.token, {
-          name: ms.name,
-          description: ms.description || "",
-          dueDate: ms.dueDate || "",
-          isCritical: ms.isCritical,
-          departmentId: ms.departmentId || null,
-          projectId,
-        });
-        createdMilestoneIds[ms.id] = created.id;
-      }
-
-      // Create milestone dependencies
-      for (const dep of dependencies) {
-        await api.createMilestoneDependency(auth.token, {
-          projectId,
-          prerequisiteMilestoneId: createdMilestoneIds[dep.prerequisiteMilestoneId],
-          dependentMilestoneId: createdMilestoneIds[dep.dependentMilestoneId],
-          type: dep.type,
-          thresholdPercentage: dep.type === "ProgressThreshold" ? dep.thresholdPercentage : null,
-        });
-      }
-
-      // Create tasks
-      for (const task of tasks) {
-        const taskPayload: Record<string, unknown> = {
+      const result = await api.createProjectWizard(auth.token, {
+        project: {
+          projectCode,
+          name,
+          description: description || "",
+          category: "Monitoring",
+          plannedStartDate: startDate,
+          plannedEndDate: endDate || "",
+          // The budget field is in lakhs; the API stores rupees.
+          plannedBudget: lakhsToRupees(budget),
+          organizationId: "",
+          departmentId: execPrimaryDeptId,
+          departmentIds: assignedDepartmentIds,
+          projectManagerId: "",
+          priority,
+        },
+        milestones: milestones.map((milestone) => ({
+          clientId: milestone.id,
+          name: milestone.name,
+          description: milestone.description || "",
+          dueDate: milestone.dueDate || "",
+          isCritical: milestone.isCritical,
+          departmentId: milestone.departmentId || null,
+        })),
+        dependencies: dependencies.map((dependency) => ({
+          prerequisiteMilestoneClientId: dependency.prerequisiteMilestoneId,
+          dependentMilestoneClientId: dependency.dependentMilestoneId,
+          type: dependency.type,
+          thresholdPercentage:
+            dependency.type === "ProgressThreshold"
+              ? dependency.thresholdPercentage
+              : null,
+        })),
+        tasks: tasks.map((task) => ({
           title: task.title,
           description: task.description || "",
           priority: task.priority,
           estimatedHours: task.estimatedHours,
-          projectId,
+          startDate: task.startDate,
+          dueDate: task.dueDate,
+          milestoneClientId: task.milestoneId || null,
           assignedToUserIds: task.assignedToUserIds,
-        };
-        if (task.startDate) taskPayload.startDate = task.startDate;
-        if (task.dueDate) taskPayload.dueDate = task.dueDate;
-        const actualMilestoneId = createdMilestoneIds[task.milestoneId];
-        if (actualMilestoneId) {
-          taskPayload.milestoneId = actualMilestoneId;
-        }
-        if (task.assignedToUserIds[0]) {
-          taskPayload.assignedToUserId = task.assignedToUserIds[0];
-        }
-        await api.createTask(auth.token, taskPayload);
-      }
+        })),
+      });
+
+      const project = result.project;
+      const projectId = project.id;
 
       await refresh();
       addToast("Project created successfully!");

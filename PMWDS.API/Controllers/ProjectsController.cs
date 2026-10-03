@@ -7,6 +7,10 @@ using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Projects;
+using PMWDS.Application.Exceptions;
+using PMWDS.Application.Validation;
+using PMWDS.Application.Features.Projects.Commands;
+using System.Data;
 using PMWDS.Application.Features.Projects.Commands;
 using PMWDS.Application.Features.Projects.Queries;
 using PMWDS.Application.Interfaces.Services;
@@ -26,6 +30,8 @@ public class ProjectsController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
     private readonly IDataChangeNotifier _changes;
+    private readonly ITaskAiEnrichmentQueue _aiEnrichment;
+    private readonly INotificationService _notifications;
 
     public ProjectsController(
         IMediator mediator,
@@ -35,7 +41,9 @@ public class ProjectsController : BaseApiController
         ILocalFileStorageService localFiles,
         RoleScopeService scope,
         ApplicationDbContext db,
-        IDataChangeNotifier changes) : base(mediator)
+        IDataChangeNotifier changes,
+        ITaskAiEnrichmentQueue aiEnrichment,
+        INotificationService notifications) : base(mediator)
     {
         _uow = uow;
         _ai = ai;
@@ -44,6 +52,8 @@ public class ProjectsController : BaseApiController
         _scope = scope;
         _db = db;
         _changes = changes;
+        _aiEnrichment = aiEnrichment;
+        _notifications = notifications;
     }
 
     [HttpGet("dashboard")]
@@ -209,6 +219,320 @@ public class ProjectsController : BaseApiController
         }
 
         return Ok(await Mediator.Send(new GetProjectDetailsQuery(id), ct));
+    }
+
+    [HttpPost("wizard")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    public async Task<IActionResult> CreateWizard(
+        [FromBody] CreateProjectWizardRequest request,
+        CancellationToken ct)
+    {
+        var dto = request.Project;
+        if (request.Milestones == null ||
+            request.Dependencies == null ||
+            request.Tasks == null)
+        {
+            return BadRequest(new { message = "Wizard collections cannot be null." });
+        }
+
+        var departmentIds = ResolveDepartmentIds(dto.DepartmentId, dto.DepartmentIds);
+        if (departmentIds.Count == 0)
+            return BadRequest(new { message = "At least one project department is required." });
+
+        if (!await AreDepartmentsInScopeAsync(departmentIds, ct))
+            return Forbid();
+
+        if (!string.IsNullOrWhiteSpace(dto.ProjectManagerId) &&
+            !await IsUserInDepartmentOrganizationsAsync(dto.ProjectManagerId, departmentIds, ct))
+        {
+            return BadRequest(new
+            {
+                message = "Project manager must belong to one of the selected department organizations."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            return BadRequest(new { message = "Project name is required." });
+
+        if (dto.PlannedStartDate > dto.PlannedEndDate)
+            return BadRequest(new { message = "Project end date must be on or after the start date." });
+
+        if (dto.PlannedBudget < 0)
+            return BadRequest(new { message = "Project budget cannot be negative." });
+
+        var milestoneClientIds = request.Milestones
+            .Select(milestone => milestone.ClientId?.Trim())
+            .ToList();
+
+        if (milestoneClientIds.Any(string.IsNullOrWhiteSpace))
+            return BadRequest(new { message = "Every wizard milestone must have a client id." });
+
+        if (milestoneClientIds.Count != milestoneClientIds.Distinct(StringComparer.OrdinalIgnoreCase).Count())
+            return BadRequest(new { message = "Wizard milestone client ids must be unique." });
+
+        var milestoneMap = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        var createdTaskIds = new List<Guid>();
+        ProjectDto? projectDto = null;
+
+        var executionStrategy = _db.Database.CreateExecutionStrategy();
+
+        await executionStrategy.ExecuteAsync(async () =>
+        {
+            await using var transaction =
+                await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+
+            projectDto = await Mediator.Send(new CreateProjectCommand(dto), ct);
+            var projectId = projectDto.Id;
+
+            // Re-read the tracked project so child validation uses the real persisted
+            // departments and dates from the same transaction.
+            var project = await _db.Projects
+                .Include(item => item.ProjectDepartments)
+                .FirstAsync(item => item.Id == projectId, ct);
+
+            var projectDepartmentSet = project.ProjectDepartments
+                .Select(item => item.DepartmentId)
+                .Append(project.DepartmentId)
+                .ToHashSet();
+
+            var validMilestoneDepartments = request.Milestones
+                .Where(item => item.DepartmentId.HasValue)
+                .Select(item => item.DepartmentId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (validMilestoneDepartments.Any(id => !projectDepartmentSet.Contains(id)))
+                throw new System.ComponentModel.DataAnnotations.ValidationException("Every milestone department must be assigned to the project.");
+
+            if (request.Milestones.Any(item =>
+                item.DueDate < project.PlannedStartDate ||
+                item.DueDate > project.PlannedEndDate))
+            {
+                throw new ValidationException(
+                    "Every milestone due date must fall inside the project planned timeline.");
+            }
+
+            for (var index = 0; index < request.Milestones.Count; index++)
+            {
+                var input = request.Milestones.ElementAt(index);
+                if (string.IsNullOrWhiteSpace(input.Name))
+                    throw new ValidationException("Milestone name is required.");
+
+                var milestone = Milestone.Create(
+                    projectId,
+                    input.Name.Trim(),
+                    input.Description?.Trim() ?? string.Empty,
+                    input.DueDate,
+                    index,
+                    input.IsCritical,
+                    input.DepartmentId);
+                milestone.SetCreatedBy(_currentUser.UserId ?? "system");
+                await _db.Milestones.AddAsync(milestone, ct);
+                await _db.SaveChangesAsync(ct);
+                milestoneMap[input.ClientId.Trim()] = milestone.Id;
+            }
+
+            var wizardDependencyEdges = new List<(Guid From, Guid To)>();
+
+            foreach (var input in request.Dependencies)
+            {
+                if (!milestoneMap.TryGetValue(input.PrerequisiteMilestoneClientId?.Trim() ?? string.Empty, out var prerequisiteId) ||
+                    !milestoneMap.TryGetValue(input.DependentMilestoneClientId?.Trim() ?? string.Empty, out var dependentId))
+                {
+                    throw new ValidationException("A wizard dependency references an unknown milestone.");
+                }
+
+                if (prerequisiteId == dependentId)
+                    throw new ValidationException("A milestone cannot depend on itself.");
+
+                if (input.Type == MilestoneDependencyType.ProgressThreshold &&
+                    (!input.ThresholdPercentage.HasValue ||
+                     input.ThresholdPercentage < 0 ||
+                     input.ThresholdPercentage > 100))
+                {
+                    throw new ValidationException(
+                        "ProgressThreshold dependencies require a threshold between 0 and 100.");
+                }
+
+                var duplicate = await _db.MilestoneDependencies.AnyAsync(
+                    dependency =>
+                        dependency.ProjectId == projectId &&
+                        dependency.PrerequisiteMilestoneId == prerequisiteId &&
+                        dependency.DependentMilestoneId == dependentId,
+                    ct);
+                if (duplicate)
+                    throw new ValidationException("Duplicate milestone dependency.");
+
+                var dep = MilestoneDependency.Create(
+                    projectId,
+                    prerequisiteId,
+                    dependentId,
+                    input.Type,
+                    input.ThresholdPercentage);
+
+                wizardDependencyEdges.Add((prerequisiteId, dependentId));
+                dep.SetCreatedBy(_currentUser.UserId ?? "system");
+                await _db.MilestoneDependencies.AddAsync(dep, ct);
+            }
+
+            foreach (var input in request.Tasks)
+            {
+                Guid? milestoneId = null;
+                if (!string.IsNullOrWhiteSpace(input.MilestoneClientId))
+                {
+                    if (!milestoneMap.TryGetValue(input.MilestoneClientId.Trim(), out var resolvedMilestoneId))
+                        throw new ValidationException("A wizard task references an unknown milestone.");
+                    milestoneId = resolvedMilestoneId;
+                }
+
+                if (input.StartDate > input.DueDate)
+                    throw new ValidationException($"Task '{input.Title}' due date must be on or after its start date.");
+
+                if (input.StartDate < project.PlannedStartDate ||
+                    input.DueDate > project.PlannedEndDate)
+                {
+                    throw new ValidationException(
+                        $"Task '{input.Title}' must fall inside the project planned timeline.");
+                }
+
+                if (milestoneId.HasValue)
+                {
+                    var milestone = request.Milestones
+                        .First(item => string.Equals(
+                            item.ClientId,
+                            input.MilestoneClientId,
+                            StringComparison.OrdinalIgnoreCase));
+
+                    if (input.DueDate > milestone.DueDate)
+                    {
+                        throw new ValidationException(
+                            $"Task '{input.Title}' cannot extend beyond its milestone due date.");
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(input.Title))
+                    throw new ValidationException("Task title is required.");
+
+                if (input.EstimatedHours <= 0)
+                    throw new ValidationException($"Task '{input.Title}' must have positive estimated hours.");
+
+                var assigneeIds = (input.AssignedToUserIds ?? Array.Empty<string>())
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(id => id.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                var parsedAssignees = new List<Guid>();
+                foreach (var assignee in assigneeIds)
+                {
+                    if (!Guid.TryParse(assignee, out var assigneeId))
+                        throw new ValidationException($"Task '{input.Title}' has an invalid assignee id.");
+
+                    if (!await IsUserInDepartmentOrganizationsAsync(
+                        assignee,
+                        departmentIds,
+                        ct))
+                    {
+                        throw new ValidationException(
+                            $"Task '{input.Title}' has an assignee outside the project department organizations.");
+                    }
+
+                    parsedAssignees.Add(assigneeId);
+                }
+
+                var task = ProjectTask.Create(
+                    projectId,
+                    input.Title.Trim(),
+                    input.Description?.Trim() ?? string.Empty,
+                    input.Priority,
+                    input.StartDate,
+                    input.DueDate,
+                    checked((int)Math.Round(input.EstimatedHours)),
+                    milestoneId);
+                task.SetCreatedBy(_currentUser.UserId ?? "system");
+
+                await _db.Tasks.AddAsync(task, ct);
+                await _db.SaveChangesAsync(ct);
+
+                if (parsedAssignees.Count > 0)
+                {
+                    task.AssignTo(parsedAssignees[0], Guid.Parse(_currentUser.UserId!));
+
+                    foreach (var assigneeId in parsedAssignees)
+                    {
+                        var assignment = TaskAssignment.Create(task.Id, assigneeId);
+                        assignment.SetCreatedBy(_currentUser.UserId ?? "system");
+                        await _db.TaskAssignments.AddAsync(assignment, ct);
+                    }
+
+                    await _db.SaveChangesAsync(ct);
+                }
+
+                createdTaskIds.Add(task.Id);
+            }
+
+            project.RecalculateProgressFromMilestones();
+            project.RecalculateStatusFromMilestones();
+            project.SetModified(_currentUser.UserId ?? "system");
+            await _db.SaveChangesAsync(ct);
+
+            await transaction.CommitAsync(ct);
+        });
+
+        // Notifications and AI enrichment happen only after the transaction commits.
+        foreach (var taskId in createdTaskIds)
+        {
+            var task = await _db.Tasks
+                .AsNoTracking()
+                .Include(item => item.Assignments)
+                .FirstAsync(item => item.Id == taskId, ct);
+
+            foreach (var assignment in task.Assignments.Where(item => item.IsActive))
+            {
+                try
+                {
+                    await _notifications.SendTaskAssignmentAlertAsync(
+                        task.Id,
+                        assignment.UserId.ToString(),
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    HttpContext.RequestServices
+                        .GetRequiredService<ILogger<ProjectsController>>()
+                        .LogWarning(
+                            ex,
+                            "Wizard-created task {TaskId} committed, but assignment notification failed.",
+                            task.Id);
+                }
+            }
+
+            await _aiEnrichment.QueueAsync(taskId, ct);
+        }
+
+        if (projectDto == null)
+            throw new InvalidOperationException("Project wizard completed without a project result.");
+
+        await _changes.NotifyAsync(
+            DataChangeScopes.Projects,
+            projectDto.Id.ToString(),
+            projectDto.Id,
+            ct);
+        await _changes.NotifyAsync(
+            DataChangeScopes.Milestones,
+            projectDto.Id.ToString(),
+            projectDto.Id,
+            ct);
+        await _changes.NotifyAsync(
+            DataChangeScopes.Tasks,
+            projectDto.Id.ToString(),
+            projectDto.Id,
+            ct);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = projectDto.Id },
+            new ProjectWizardResultDto(projectDto, milestoneMap, createdTaskIds));
     }
 
     [HttpPost]
