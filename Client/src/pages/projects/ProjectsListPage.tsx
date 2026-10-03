@@ -12,8 +12,6 @@ import {
   useNavHeader,
   usePermission,
   useToast,
-  projectBelongsToAnyDepartment,
-  projectBelongsToDepartment,
   getStatusColor,
   getPriorityColor,
 } from "../shared";
@@ -23,6 +21,7 @@ import { NewProjectPage } from "../NewProject/NewProjectPage";
 import { Avatark } from "../shared/Avatark";
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../ui";
+import { priorities } from "../constants";
 
 type SortKey =
   | "newest"
@@ -74,12 +73,6 @@ function formatShortDate(value?: string | null): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/**
- * "Now" is captured once at module load instead of during render, so the
- * derived filters stay pure and stable between renders.
- */
-const SESSION_NOW = Date.now();
-
 const FILTER_INPUT =
   "h-10 px-3 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-colors";
 
@@ -98,6 +91,10 @@ export function ProjectsListPage() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalProjectCount, setTotalProjectCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 12;
+  const [metadataLoaded, setMetadataLoaded] = useState(false);
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -137,32 +134,72 @@ export function ProjectsListPage() {
     });
   }, [setNavHeader, canManageProjects]);
 
-  const loadProjects = useCallback(async () => {
+  const loadMetadata = useCallback(async () => {
     if (!auth) return;
-    setLoading(true);
     try {
-      const [projectData, deptData, orgData, userData] = await Promise.all([
-        api.getProjects(auth.token),
+      const [deptData, orgData, userData] = await Promise.all([
         api.getDepartments(auth.token),
         api.getOrganizations(auth.token),
         api.getUsers(auth.token),
       ]);
-      setProjects(projectData);
       setDepartments(deptData);
       setOrganizations(orgData);
       setUsers(userData as User[]);
+      setMetadataLoaded(true);
     } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to load projects", "error");
-    } finally {
+      addToast(e instanceof Error ? e.message : "Failed to load project filters", "error");
       setLoading(false);
     }
   }, [auth, addToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadMetadata();
+  }, [loadMetadata]);
+
+  const loadProjects = useCallback(async () => {
+    if (!auth || !metadataLoaded) return;
+    setLoading(true);
+    try {
+      const result = await api.getProjectsPage(auth.token, {
+        organizationId: effectiveOrgId || null,
+        departmentId: deptId || null,
+        status: statusFilter || null,
+        priority: priorityFilter || null,
+        search: query.trim() || null,
+        dateField,
+        dateFrom: dateFrom || null,
+        dateTo: dateTo || null,
+        overdueOnly,
+        sortBy: sortKey,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setProjects(result.items);
+      setTotalProjectCount(result.totalCount);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to load projects", "error");
+      setProjects([]);
+      setTotalProjectCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    auth, metadataLoaded, effectiveOrgId, deptId, statusFilter, priorityFilter,
+    query, dateField, dateFrom, dateTo, overdueOnly, sortKey, page, addToast,
+  ]);
+
+  useEffect(() => {
+    if (!metadataLoaded) return;
+    if (page !== 1) {
+      setPage(1);
+      return;
+    }
     void loadProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token]);
+  }, [
+    metadataLoaded, page, query, statusFilter, priorityFilter, effectiveOrgId, deptId,
+    dateField, dateFrom, dateTo, overdueOnly, sortKey, loadProjects,
+  ]);
+
 
   // Role-based org scope wins over the explicit filter, so derive it instead of
   // syncing it into state after render.
@@ -197,167 +234,19 @@ export function ProjectsListPage() {
   const statusOptions = useMemo(
     () => [
       { value: "", label: "All Statuses" },
-      ...[...new Set(projects.map((p) => p.status).filter(Boolean))].map((s) => ({
-        value: s,
-        label: STATUS_LABELS[s] || s,
-      })),
+      ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
     ],
-    [projects]
+    []
   );
 
   const priorityOptions = useMemo(
     () => [
       { value: "", label: "All Priorities" },
-      ...[...new Set(projects.map((p) => p.priority).filter(Boolean))].map((p) => ({
-        value: p,
-        label: p,
-      })),
+      ...priorities.map((value) => ({ value, label: value })),
     ],
-    [projects]
+    []
   );
 
-  const filteredProjects = useMemo(() => {
-    const term = query.trim().toLowerCase();
-
-    let list = projects;
-
-    // Organization scope (role based first, then the explicit filter).
-    if (effectiveOrgId) {
-      const orgDeptIds = departments.filter((d) => d.organizationId === effectiveOrgId).map((d) => d.id);
-      list = list.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
-    }
-    if (deptId) {
-      list = list.filter((p) => projectBelongsToDepartment(p, deptId));
-    }
-
-    if (statusFilter) list = list.filter((p) => p.status === statusFilter);
-    if (priorityFilter) list = list.filter((p) => p.priority === priorityFilter);
-
-    if (overdueOnly) {
-      list = list.filter(
-        (p) =>
-          p.status !== "Completed" &&
-          !!p.plannedEndDate &&
-          new Date(p.plannedEndDate).getTime() < SESSION_NOW
-      );
-    }
-
-    if (dateFrom || dateTo) {
-      list = list.filter((p) => {
-        const raw =
-          dateField === "created"
-            ? p.createdDate
-            : dateField === "plannedStart"
-              ? p.plannedStartDate
-              : p.plannedEndDate;
-        if (!raw) return false;
-        const value = toIsoDate(raw);
-        if (dateFrom && value < dateFrom) return false;
-        if (dateTo && value > dateTo) return false;
-        return true;
-      });
-    }
-
-    if (term) {
-      list = list.filter((p) => {
-        const haystack = [
-          p.name,
-          p.projectCode,
-          p.description,
-          p.category,
-          p.departmentName,
-          p.projectManagerName,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(term);
-      });
-    }
-
-    const byName = (a: Project, b: Project) => a.name.localeCompare(b.name);
-    const byCreated = (a: Project, b: Project) =>
-      new Date(a.createdDate ?? 0).getTime() - new Date(b.createdDate ?? 0).getTime();
-    const byStart = (a: Project, b: Project) =>
-      new Date(a.plannedStartDate ?? 0).getTime() - new Date(b.plannedStartDate ?? 0).getTime();
-    const byEnd = (a: Project, b: Project) =>
-      new Date(a.plannedEndDate ?? 0).getTime() - new Date(b.plannedEndDate ?? 0).getTime();
-    const byProgress = (a: Project, b: Project) =>
-      (a.progressPercentage ?? 0) - (b.progressPercentage ?? 0);
-
-    const sorted = [...list];
-    switch (sortKey) {
-      case "newest":
-        sorted.sort((a, b) => -byCreated(a, b));
-        break;
-      case "oldest":
-        sorted.sort(byCreated);
-        break;
-      case "nameAsc":
-        sorted.sort(byName);
-        break;
-      case "nameDesc":
-        sorted.sort((a, b) => -byName(a, b));
-        break;
-      case "startAsc":
-        sorted.sort(byStart);
-        break;
-      case "endAsc":
-        sorted.sort(byEnd);
-        break;
-      case "progressDesc":
-        sorted.sort((a, b) => -byProgress(a, b));
-        break;
-      case "progressAsc":
-        sorted.sort(byProgress);
-        break;
-    }
-    return sorted;
-  }, [
-    projects,
-    departments,
-    query,
-    statusFilter,
-    priorityFilter,
-    effectiveOrgId,
-    deptId,
-    overdueOnly,
-    dateField,
-    dateFrom,
-    dateTo,
-    sortKey,
-  ]);
-
-  const applyDatePreset = (preset: "all" | "thisMonth" | "next30" | "createdThisMonth") => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    switch (preset) {
-      case "all":
-        setDateFrom("");
-        setDateTo("");
-        setOverdueOnly(false);
-        break;
-      case "thisMonth":
-        setDateField("plannedEnd");
-        setDateFrom(toIsoDate(monthStart.toISOString()));
-        setDateTo(toIsoDate(monthEnd.toISOString()));
-        break;
-      case "next30": {
-        const end = new Date(now);
-        end.setDate(end.getDate() + 30);
-        setDateField("plannedEnd");
-        setDateFrom(toIsoDate(now.toISOString()));
-        setDateTo(toIsoDate(end.toISOString()));
-        break;
-      }
-      case "createdThisMonth":
-        setDateField("created");
-        setDateFrom(toIsoDate(monthStart.toISOString()));
-        setDateTo(toIsoDate(monthEnd.toISOString()));
-        break;
-    }
-  };
 
   const activeFilterCount =
     (query ? 1 : 0) +
@@ -623,8 +512,12 @@ export function ProjectsListPage() {
       {/* ── Results meta ── */}
       <div className="relative z-10 mb-3 flex items-center justify-between text-xs text-slate-500">
         <span>
-          Showing <strong className="text-slate-700">{filteredProjects.length}</strong> of{" "}
-          {projects.length} projects
+          Showing{" "}
+          <strong className="text-slate-700">
+            {totalProjectCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}
+            {totalProjectCount > 0 ? "–" + Math.min(page * PAGE_SIZE, totalProjectCount) : ""}
+          </strong>{" "}
+          of <strong className="text-slate-700">{totalProjectCount}</strong> projects
         </span>
       </div>
 
@@ -653,6 +546,30 @@ export function ProjectsListPage() {
               onOpen={() => navigate(`/projects/${project.id}`)}
             />
           ))}
+        </div>
+      )}
+
+      {totalProjectCount > PAGE_SIZE && (
+        <div className="relative z-10 flex items-center justify-center gap-2 pb-10">
+          <button
+            type="button"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span className="px-2 text-xs font-semibold text-slate-500">
+            Page {page} of {Math.ceil(totalProjectCount / PAGE_SIZE)}
+          </span>
+          <button
+            type="button"
+            disabled={page >= Math.ceil(totalProjectCount / PAGE_SIZE) || loading}
+            onClick={() => setPage((current) => current + 1)}
+            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Next
+          </button>
         </div>
       )}
 
