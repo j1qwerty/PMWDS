@@ -40,6 +40,7 @@ public static class PermissionPolicyRegistry
             PermissionCodes.SubtaskCreate,
             PermissionCodes.SubtaskEdit));
 
+        AddCrud(options, "Integrations", PermissionCodes.IntegrationView, PermissionCodes.IntegrationCreate, PermissionCodes.IntegrationEdit, PermissionCodes.IntegrationDelete);
         AddCrud(options, "Organizations", PermissionCodes.OrganizationManage, PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete);
         AddCrud(options, "Departments", PermissionCodes.DepartmentManage, PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete);
         AddCrud(options, "Projects", PermissionCodes.ProjectManage, PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete);
