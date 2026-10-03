@@ -42,6 +42,9 @@ public class BudgetRelease : BaseEntity
             Justification = justification?.Trim()
         };
 
+    public void SetSatisfiedConditions(IReadOnlyDictionary<string, bool> satisfiedConditions)
+        => SatisfiedConditionsJson = System.Text.Json.JsonSerializer.Serialize(satisfiedConditions);
+
     public bool AreAllConditionsSatisfied()
     {
         var required = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(RequiredConditionsJson)
@@ -49,8 +52,10 @@ public class BudgetRelease : BaseEntity
         var satisfied = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(SatisfiedConditionsJson)
             ?? new Dictionary<string, bool>();
 
-        return required.All(condition =>
-            satisfied.TryGetValue(condition.Key, out var value) && value);
+        return required
+            .Where(condition => condition.Value)
+            .All(condition =>
+                satisfied.TryGetValue(condition.Key, out var value) && value);
     }
 
     public void Approve(decimal amountApproved, string reviewerUserId, string? notes)
