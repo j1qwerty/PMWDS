@@ -21,18 +21,16 @@ export function RuleFormModal({ initialData, onSubmit, onCancel }: RuleFormModal
   });
 
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        name: initialData.name || "",
-        conditionType: initialData.conditionType || "",
-        conditionExpression: initialData.conditionExpression || "",
-        actionType: initialData.actionType || "",
-        actionParameters: typeof initialData.actionParameters === "string" 
-          ? initialData.actionParameters 
-          : JSON.stringify(initialData.actionParameters || {}, null, 2),
-        isEnabled: initialData.isEnabled ?? true,
-      });
-    }
+    setForm({
+      name: initialData?.name || "",
+      conditionType: initialData?.conditionType || "",
+      conditionExpression: initialData?.conditionExpression || "",
+      actionType: initialData?.actionType || "",
+      actionParameters: typeof initialData?.actionParameters === "string"
+        ? initialData.actionParameters
+        : JSON.stringify(initialData?.actionParameters || {}, null, 2),
+      isEnabled: initialData?.isEnabled ?? true,
+    });
   }, [initialData]);
 
   const handleSubmit = (e: FormEvent) => {
