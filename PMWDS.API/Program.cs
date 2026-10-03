@@ -195,6 +195,10 @@ builder.Services.AddScoped<IDeadlineCheckerJob, DeadlineCheckerJob>();
 builder.Services.AddScoped<IEscalationCheckerJob, EscalationCheckerJob>();
 builder.Services.AddScoped<IAIModelTrainingJob, AIModelTrainingJob>();
 builder.Services.AddScoped<IScheduledReportJob, ScheduledReportJob>();
+builder.Services.AddSingleton<TaskAiEnrichmentQueue>();
+builder.Services.AddSingleton<PMWDS.Application.Interfaces.Services.ITaskAiEnrichmentQueue>(
+    sp => sp.GetRequiredService<TaskAiEnrichmentQueue>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TaskAiEnrichmentQueue>());
 
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<
