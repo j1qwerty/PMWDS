@@ -53,11 +53,19 @@ public class AssignTaskCommandHandler
         ?? throw new NotFoundException(
         "User", finalAssigneeId);
         var oldAssignee = task.AssignedToUserId;
+        foreach (var active in task.Assignments.Where(a => a.IsActive && a.UserId != finalAssigneeGuid))
+        {
+            active.Release();
+        }
+
         task.AssignTo(
         finalAssigneeGuid,
         assignedBy);
-        var assignment = Domain.Entities.TaskAssignment.Create(task.Id, finalAssigneeGuid);
-        await _uow.TaskAssignments.AddAsync(assignment, ct);
+        if (task.Assignments.All(a => a.UserId != finalAssigneeGuid || !a.IsActive))
+        {
+            var assignment = Domain.Entities.TaskAssignment.Create(task.Id, finalAssigneeGuid);
+            await _uow.TaskAssignments.AddAsync(assignment, ct);
+        }
         await _uow.SaveChangesAsync(ct);
         await _notifications.SendTaskAssignmentAlertAsync(
         task.Id, finalAssigneeId, ct);
