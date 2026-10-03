@@ -33,24 +33,31 @@ export function RuleFormModal({ initialData, onSubmit, onCancel }: RuleFormModal
     });
   }, [initialData]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
-    setSubmitting(true);
-    let actionParams;
+
+    let actionParams: unknown;
     try {
       actionParams = JSON.parse(form.actionParameters);
     } catch {
-      actionParams = {};
+      setSubmitting(false);
+      return;
     }
-    onSubmit({
-      name: form.name,
-      conditionType: form.conditionType,
-      conditionExpression: form.conditionExpression,
-      actionType: form.actionType,
-      actionParameters: actionParams,
-      isEnabled: form.isEnabled,
-    });
+
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        name: form.name,
+        conditionType: form.conditionType,
+        conditionExpression: form.conditionExpression,
+        actionType: form.actionType,
+        actionParameters: actionParams,
+        isEnabled: form.isEnabled,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
