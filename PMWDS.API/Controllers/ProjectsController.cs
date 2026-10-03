@@ -301,7 +301,7 @@ public class ProjectsController : BaseApiController
                 .ToList();
 
             if (validMilestoneDepartments.Any(id => !projectDepartmentSet.Contains(id)))
-                throw new ValidationException("Every milestone department must be assigned to the project.");
+                throw new System.ComponentModel.DataAnnotations.ValidationException("Every milestone department must be assigned to the project.");
 
             if (request.Milestones.Any(item =>
                 item.DueDate < project.PlannedStartDate ||
