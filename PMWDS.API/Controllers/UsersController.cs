@@ -180,9 +180,7 @@ public class UsersController : BaseApiController
                 Email: row.Email,
                 ProfilePictureUrl: row.ProfilePictureUrl,
                 JobTitle: row.JobTitle,
-                OrganizationId: row.OrganizationId ??
-                    departmentRows.FirstOrDefault(assignment =>
-                        assignment.UserId == row.Id && assignment.IsPrimary)?.OrganizationId,
+                OrganizationId: row.OrganizationId,
                 Department: row.DepartmentName,
                 DepartmentId: row.DepartmentId,
                 Departments: departmentsByUser.GetValueOrDefault(row.Id) ?? [],
