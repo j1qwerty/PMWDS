@@ -8,6 +8,7 @@ using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Exceptions;
+using PMWDS.Application.Validation;
 using PMWDS.Application.Features.Projects.Commands;
 using System.Data;
 using PMWDS.Application.Features.Projects.Commands;
@@ -331,6 +332,8 @@ public class ProjectsController : BaseApiController
                 milestoneMap[input.ClientId.Trim()] = milestone.Id;
             }
 
+            var wizardDependencyEdges = new List<(Guid From, Guid To)>();
+
             foreach (var input in request.Dependencies)
             {
                 if (!milestoneMap.TryGetValue(input.PrerequisiteMilestoneClientId?.Trim() ?? string.Empty, out var prerequisiteId) ||
@@ -366,6 +369,8 @@ public class ProjectsController : BaseApiController
                     dependentId,
                     input.Type,
                     input.ThresholdPercentage);
+
+                wizardDependencyEdges.Add((prerequisiteId, dependentId));
                 dep.SetCreatedBy(_currentUser.UserId ?? "system");
                 await _db.MilestoneDependencies.AddAsync(dep, ct);
             }
