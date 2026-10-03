@@ -34,7 +34,7 @@ public class AssignTaskCommandHandler
     CancellationToken ct)
     {
         var task = await _uow.Tasks
-        .GetByIdAsync(req.TaskId, ct)
+        .GetWithDetailsAsync(req.TaskId, ct)
         ?? throw new NotFoundException(
         "Task", req.TaskId);
         string finalAssigneeId = req.AssigneeId;
