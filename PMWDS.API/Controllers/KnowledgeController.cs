@@ -13,16 +13,19 @@ public class KnowledgeController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly RoleScopeService _scope;
+    private readonly ITaskWorkflowService _taskWorkflow;
 
     public KnowledgeController(
         IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
-        RoleScopeService scope) : base(mediator)
+        RoleScopeService scope,
+        ITaskWorkflowService taskWorkflow) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
         _scope = scope;
+        _taskWorkflow = taskWorkflow;
     }
 
     [HttpGet("articles")]
@@ -34,7 +37,7 @@ public class KnowledgeController : BaseApiController
             return Forbid();
         }
 
-        var allowedProjectIds = await _scope.GetAccessibleProjectIdsAsync(ct);
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         var articles = projectId.HasValue
             ? await _uow.KnowledgeArticles.FindAsync(a => a.ProjectId == projectId.Value, ct)
             : await _uow.KnowledgeArticles.FindAsync(a => !a.ProjectId.HasValue || allowedProjectIds.Contains(a.ProjectId.Value), ct);
