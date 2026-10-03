@@ -21,6 +21,141 @@ public class WizardFlowTests
     /// Steps 1-4 of the wizard for an executive: project, milestones, dependencies. This is
     /// the sequence NewProjectPage.handleFinish issues, in the same order.
     /// </summary>
+
+    [Fact]
+    public async Task Atomic_wizard_creates_project_graph_in_one_request()
+    {
+        var client = _fixture.SuperAdmin.Client;
+        var department = await FirstDepartmentAsync(client);
+        var milestoneClientId = "m-" + Guid.NewGuid().ToString("N");
+
+        var result = await client.PostAsync<JsonElement>("/api/v1/projects/wizard", new
+        {
+            project = new
+            {
+                projectCode = $"ATOMIC-{Guid.NewGuid().ToString("N")[..8]}",
+                name = "Atomic Wizard Project",
+                description = "Created through the transactional wizard endpoint.",
+                category = "Monitoring",
+                plannedStartDate = new DateTime(2026, 10, 1),
+                plannedEndDate = new DateTime(2026, 12, 31),
+                plannedBudget = 250000m,
+                departmentId = department,
+                departmentIds = new[] { department },
+                projectManagerId = "",
+                priority = "High",
+            },
+            milestones = new[]
+            {
+                new
+                {
+                    clientId = milestoneClientId,
+                    name = "Atomic Milestone",
+                    description = "Transactional milestone.",
+                    dueDate = new DateTime(2026, 12, 15),
+                    isCritical = true,
+                    departmentId = department,
+                },
+            },
+            dependencies = Array.Empty<object>(),
+            tasks = new[]
+            {
+                new
+                {
+                    title = "Atomic Task",
+                    description = "Task inside transactional wizard.",
+                    startDate = new DateTime(2026, 10, 5),
+                    dueDate = new DateTime(2026, 12, 1),
+                    estimatedHours = 8,
+                    milestoneClientId,
+                    priority = "Medium",
+                    assignedToUserIds = Array.Empty<string>(),
+                },
+            },
+        });
+
+        result.Status.Should().Be(HttpStatusCode.Created);
+        var projectId = result.Data.GetProperty("project").GetGuid("id");
+
+        try
+        {
+            result.Data.GetProperty("milestoneIds").GetProperty(milestoneClientId).GetGuid().Should().NotBeEmpty();
+            result.Data.GetProperty("taskIds").GetArrayLength().Should().Be(1);
+
+            var milestones = await client.GetAsync<JsonElement>($"/api/v1/milestones/by-project/{projectId}");
+            milestones.Status.Should().Be(HttpStatusCode.OK);
+            milestones.Data.GetArrayLength().Should().Be(1);
+
+            var tasks = await client.GetAsync<JsonElement>($"/api/v1/tasks/by-project/{projectId}");
+            tasks.Status.Should().Be(HttpStatusCode.OK);
+            tasks.Data.GetArrayLength().Should().Be(1);
+        }
+        finally
+        {
+            await client.DeleteAsync<JsonElement>($"/api/v1/projects/{projectId}");
+        }
+    }
+
+    [Fact]
+    public async Task Atomic_wizard_rolls_back_project_and_milestones_when_dependency_validation_fails()
+    {
+        var client = _fixture.SuperAdmin.Client;
+        var department = await FirstDepartmentAsync(client);
+        var projectCode = $"ATOMIC-ROLLBACK-{Guid.NewGuid().ToString("N")[..8]}";
+        var milestoneClientId = "m-" + Guid.NewGuid().ToString("N");
+
+        var result = await client.PostAsync<JsonElement>("/api/v1/projects/wizard", new
+        {
+            project = new
+            {
+                projectCode,
+                name = "Atomic Rollback Project",
+                description = "Must not leave partial rows behind.",
+                category = "Monitoring",
+                plannedStartDate = new DateTime(2026, 10, 1),
+                plannedEndDate = new DateTime(2026, 12, 31),
+                plannedBudget = 100000m,
+                departmentId = department,
+                departmentIds = new[] { department },
+                projectManagerId = "",
+                priority = "Medium",
+            },
+            milestones = new[]
+            {
+                new
+                {
+                    clientId = milestoneClientId,
+                    name = "Rollback Milestone",
+                    description = "Should be rolled back.",
+                    dueDate = new DateTime(2026, 12, 15),
+                    isCritical = false,
+                    departmentId = department,
+                },
+            },
+            dependencies = new[]
+            {
+                new
+                {
+                    prerequisiteMilestoneClientId = milestoneClientId,
+                    dependentMilestoneClientId = "missing-milestone",
+                    type = "CompletionBased",
+                    thresholdPercentage = (double?)null,
+                },
+            },
+            tasks = Array.Empty<object>(),
+        });
+
+        result.Status.Should().Be(HttpStatusCode.BadRequest);
+
+        var projects = await client.GetAsync<JsonElement>("/api/v1/projects");
+        projects.Status.Should().Be(HttpStatusCode.OK);
+
+        projects.Data.GetProperty("items")
+            .EnumerateArray()
+            .Should()
+            .NotContain(item => item.GetString("projectCode") == projectCode);
+    }
+
     [Fact]
     public async Task Wizard_creates_project_then_milestones_then_dependencies()
     {
