@@ -52,6 +52,7 @@ public class RolesController : BaseApiController
             r.Name,
             r.Description,
             r.PermissionLevel,
+            r.CanAssignLowerRoles,
             r.PaginationPageSize,
             VisiblePermissions(r.Permissions).Select(MapPermission).ToList())));
     }
@@ -129,7 +130,8 @@ public class RolesController : BaseApiController
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
 
             if (role.PermissionLevel >= userMaxLevel ||
-                req.PermissionLevel >= userMaxLevel)
+                req.PermissionLevel >= userMaxLevel ||
+                !await GetCurrentUserCanAssignLowerRolesAsync(ct))
             {
                 return Forbid();
             }
@@ -140,7 +142,7 @@ public class RolesController : BaseApiController
             return BadRequest(new { message = "Custom role permission level must be between 0 and 99. Only SuperAdmin may use the system level 100." });
         }
 
-        role.Update(req.Name, req.Description, req.PermissionLevel);
+        role.Update(req.Name, req.Description, req.PermissionLevel, req.CanAssignLowerRoles);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
         var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
@@ -175,7 +177,7 @@ public class RolesController : BaseApiController
         );
 
         await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
-        return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
+        return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.CanAssignLowerRoles, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
     [HttpDelete("{id:guid}")]
