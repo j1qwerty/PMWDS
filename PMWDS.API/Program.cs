@@ -377,30 +377,26 @@ if (exposeApiDocs)
 }
 
 app.UseHttpsRedirection();
-// Serve everything under the one resolved root: /files exposes the documents and seeded
-// profile images the seeder writes, /avatars exposes uploaded avatars. Both are served from
-// storageRoot so what was written is always what is served.
-//
-// storageRoot, azureStorageSettings and fileStorageSettings are resolved once, before
-// builder.Build(), at line ~339, and PostConfigure pins FileStorage:BasePath to it. That
-// single resolution is deliberate: resolving the root again per consumer is how the two halves
-// end up disagreeing about where uploads are written versus where they are served from.
+// Only avatars are directly public. Project documents stay behind the authenticated
+// /projects/{id}/documents/{docId}/download endpoint, which verifies project scope before
+// opening the stored file. Mounting the whole storage root at /files would bypass that
+// authorization check and expose uploaded project documents by guessing/directly reading URLs.
 var filesRequestPath = azureStorageSettings.LocalBaseUrl ?? "/files";
 Directory.CreateDirectory(storageRoot);
-Directory.CreateDirectory(Path.Combine(storageRoot, fileStorageSettings.DocumentsPath));
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(storageRoot),
-    RequestPath = filesRequestPath
-});
+Directory.CreateDirectory(Path.Combine(storageRoot, fileStorageSettings.AvatarsPath));
 
 var avatarsRoot = Path.Combine(storageRoot, fileStorageSettings.AvatarsPath);
-Directory.CreateDirectory(avatarsRoot);
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(avatarsRoot),
     RequestPath = "/avatars"
 });
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(avatarsRoot),
+    RequestPath = $"{filesRequestPath.TrimEnd('/')}/avatars"
+});
+
 app.UseSerilogRequestLogging();
 app.UseCors("PMWDSCors");
 app.UseAuthentication();
