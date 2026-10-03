@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { OrganizationRecord } from "../../../types";
+import type { OrganizationRecord } from "../../../types";\nimport { ModalOverlay } from "../../shared";
 
 interface UserFormModalProps {
   organizations: OrganizationRecord[];
