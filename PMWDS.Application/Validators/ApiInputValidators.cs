@@ -3,6 +3,7 @@ using PMWDS.Application.DTOs.Controllers;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.DTOs.Tasks;
 using PMWDS.Application.DTOs.Users;
+using PMWDS.Domain.Enums;
 
 namespace PMWDS.Application.Validators;
 
@@ -221,5 +222,29 @@ public sealed class UpdateSkillDtoValidator : AbstractValidator<UpdateSkillDto>
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Category).NotEmpty().MaximumLength(100);
+    }
+}
+
+public sealed class ReportGenerateRequestValidator : AbstractValidator<PMWDS.Application.DTOs.Reports.ReportGenerateRequest>
+{
+    public ReportGenerateRequestValidator()
+    {
+        RuleFor(x => x)
+            .Must(x => !x.StartDate.HasValue || !x.EndDate.HasValue || x.StartDate.Value <= x.EndDate.Value)
+            .WithMessage("StartDate must be earlier than or equal to EndDate.");
+
+        RuleFor(x => x.Status)
+            .Must(status => string.IsNullOrWhiteSpace(status) ||
+                Enum.TryParse<TaskStatus>(status, true, out _))
+            .WithMessage("Status must be a valid task status.");
+    }
+}
+
+public sealed class DepartmentWorkloadRequestValidator : AbstractValidator<DepartmentWorkloadRequest>
+{
+    public DepartmentWorkloadRequestValidator()
+    {
+        RuleFor(x => x.DepartmentId).NotEmpty();
+        RuleFor(x => x.StartDate).LessThanOrEqualTo(x => x.EndDate);
     }
 }
