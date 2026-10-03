@@ -51,6 +51,16 @@ public static class PermissionPolicyRegistry
         AddCrud(options, "Permissions", PermissionCodes.PermissionManage, PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
         AddCrud(options, "Notifications", PermissionCodes.NotificationManage, PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage);
         AddCrud(options, "UtilizationCertificates", PermissionCodes.UtilizationCertificateManage, PermissionCodes.UtilizationCertificateView, PermissionCodes.UtilizationCertificateCreate, PermissionCodes.UtilizationCertificateEdit, PermissionCodes.UtilizationCertificateDelete);
+        AddCrud(options, "Knowledge", PermissionCodes.KnowledgeManage, PermissionCodes.KnowledgeView, PermissionCodes.KnowledgeCreate, PermissionCodes.KnowledgeEdit, PermissionCodes.KnowledgeDelete);
+        options.AddPolicy(AuthorizationPolicies.AIView, policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.AiManage,
+            PermissionCodes.AiView));
+        options.AddPolicy(AuthorizationPolicies.AIManage, policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.AiManage));
 
         // Review is deliberately NOT part of AddCrud: a contributor must never be able
         // to approve their own utilization certificate.
