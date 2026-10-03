@@ -8,6 +8,7 @@ public interface ILocalFileStorageService
 {
     Task<string> UploadAvatarAsync(Stream stream, string userCode, string extension, CancellationToken ct = default);
     Task<string> UploadDocumentAsync(Stream stream, string projectCode, string projectName, string extension, string contentType, CancellationToken ct = default);
+    Task DeleteDocumentAsync(string filePath, CancellationToken ct = default);
     Task<Stream> DownloadFileAsync(string filePath, CancellationToken ct = default);
 }
 
@@ -49,6 +50,21 @@ public class LocalFileStorageService : ILocalFileStorageService
         var relativePath = $"avatars/{fileName}";
         _logger.LogDebug("[LocalFileStorage] Avatar saved: {Path}", relativePath);
         return relativePath;
+    }
+
+    public Task DeleteDocumentAsync(string filePath, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return Task.CompletedTask;
+
+        var fullPath = ResolvePath(filePath);
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+            _logger.LogDebug("[LocalFileStorage] Deleted document: {Path}", fullPath);
+        }
+
+        return Task.CompletedTask;
     }
 
     public async Task<string> UploadDocumentAsync(
