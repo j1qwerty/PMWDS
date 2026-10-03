@@ -39,32 +39,41 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
     public async Task RecalculateTaskMilestoneAsync(ProjectTask task, CancellationToken ct)
     {
         if (!task.MilestoneId.HasValue) return;
-        await _uow.BeginTransactionAsync(ct);
-        try
+        // SQL Server is configured with EnableRetryOnFailure, whose execution strategy
+        // forbids user-initiated transactions started outside it. Run the whole unit of
+        // work inside the strategy so a transient failure retries the transaction as one
+        // unit instead of throwing InvalidOperationException. _uow wraps this same scoped
+        // DbContext, so the strategy and the transaction share a connection.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            var milestone = await _db.Milestones
-                .Include(m => m.Tasks)
-                .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
-            if (milestone == null)
+            await _uow.BeginTransactionAsync(ct);
+            try
+            {
+                var milestone = await _db.Milestones
+                    .Include(m => m.Tasks)
+                    .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
+                if (milestone == null)
+                {
+                    await _uow.RollbackTransactionAsync(ct);
+                    return;
+                }
+
+                milestone.RecalculateProgressFromTasks();
+                milestone.RecalculateStatusFromTasks();
+                milestone.SetModified(_currentUser.UserId ?? "system");
+                await _milestones.UpdateAsync(milestone, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
+                await _uow.CommitTransactionAsync(ct);
+            }
+            catch
             {
                 await _uow.RollbackTransactionAsync(ct);
-                return;
+                throw;
             }
-
-            milestone.RecalculateProgressFromTasks();
-            milestone.RecalculateStatusFromTasks();
-            milestone.SetModified(_currentUser.UserId ?? "system");
-            await _milestones.UpdateAsync(milestone, ct);
-            await _uow.SaveChangesAsync(ct);
-
-            await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
-            await _uow.CommitTransactionAsync(ct);
-        }
-        catch
-        {
-            await _uow.RollbackTransactionAsync(ct);
-            throw;
-        }
+        });
     }
 
     public async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)
@@ -91,35 +100,41 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
             task.MarkSubtaskCompleted();
         }
 
-        await _uow.BeginTransactionAsync(ct);
-        try
+        // Same execution-strategy requirement as above: this transaction must run inside
+        // CreateExecutionStrategy so SQL Server's retry policy does not reject it.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            task.SetModified(_currentUser.UserId ?? "system");
-            await _tasks.UpdateAsync(task, ct);
-            await _uow.SaveChangesAsync(ct);
-
-            if (task.ParentTaskId.HasValue)
+            await _uow.BeginTransactionAsync(ct);
+            try
             {
-                var parent = await _tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
-                if (parent != null)
-                {
-                    parent.RecalculateProgressFromSubtasks();
-                    if (parent.ProgressPercentage >= 100)
-                    {
-                        parent.MarkSubtaskCompleted();
-                    }
-                    parent.SetModified(_currentUser.UserId ?? "system");
-                    await _uow.SaveChangesAsync(ct);
-                }
-            }
+                task.SetModified(_currentUser.UserId ?? "system");
+                await _tasks.UpdateAsync(task, ct);
+                await _uow.SaveChangesAsync(ct);
 
-            await _uow.CommitTransactionAsync(ct);
-        }
-        catch
-        {
-            await _uow.RollbackTransactionAsync(ct);
-            throw;
-        }
+                if (task.ParentTaskId.HasValue)
+                {
+                    var parent = await _tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
+                    if (parent != null)
+                    {
+                        parent.RecalculateProgressFromSubtasks();
+                        if (parent.ProgressPercentage >= 100)
+                        {
+                            parent.MarkSubtaskCompleted();
+                        }
+                        parent.SetModified(_currentUser.UserId ?? "system");
+                        await _uow.SaveChangesAsync(ct);
+                    }
+                }
+
+                await _uow.CommitTransactionAsync(ct);
+            }
+            catch
+            {
+                await _uow.RollbackTransactionAsync(ct);
+                throw;
+            }
+        });
     }
 
     public async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
