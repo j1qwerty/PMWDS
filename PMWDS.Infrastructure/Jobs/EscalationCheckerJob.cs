@@ -41,6 +41,9 @@ public class EscalationCheckerJob : IEscalationCheckerJob
 
             foreach (var task in activeTasks)
             {
+                if (task.IsEscalated)
+                    continue;
+
                 try
                 {
                     var prediction = await _ai.PredictTaskDelayAsync(task.Id, ct);
