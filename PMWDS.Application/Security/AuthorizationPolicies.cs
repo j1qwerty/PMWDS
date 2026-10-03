@@ -8,6 +8,14 @@ public static class AuthorizationPolicies
     public const string Manager = "Manager";
     public const string TaskEditor = "TaskEditor";
 
+    public const string KnowledgeView = "Knowledge.View";
+    public const string KnowledgeCreate = "Knowledge.Create";
+    public const string KnowledgeEdit = "Knowledge.Edit";
+    public const string KnowledgeDelete = "Knowledge.Delete";
+
+    public const string AIView = "AI.View";
+    public const string AIManage = "AI.Manage";
+
     public const string ActivityLogsView = "ActivityLogs.View";
     public const string ActivityLogsCreate = "ActivityLogs.Create";
     public const string ActivityLogsManage = "ActivityLogs.Manage";
