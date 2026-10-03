@@ -73,6 +73,7 @@ public record CreateMilestoneDto(
     DateTime DueDate,
     int Order,
     Guid? DepartmentId = null,
+    Guid? GoalId = null,
     bool IsCritical = false);
 
 public record UpdateMilestoneDto(
@@ -82,7 +83,8 @@ public record UpdateMilestoneDto(
     int Order,
     bool IsCritical,
     Guid? DepartmentId,
-    double ProgressPercentage);
+    double ProgressPercentage,
+    Guid? GoalId = null);
 
 public record CreateMilestoneDependencyDto(
     Guid ProjectId,
