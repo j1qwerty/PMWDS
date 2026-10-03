@@ -119,7 +119,6 @@ public class WorkspaceController : BaseApiController
                 user.AvailabilityPercentage,
                 user.AIWorkloadScore,
                 user.AIBurnoutRiskScore,
-                user.AIBurnoutRiskScore,
                 user.AIPerformanceScore,
                 user.TaskAssignments.Count(assignment => assignment.Task != null &&
                     assignment.Task.Status == Domain.Enums.TaskStatus.InProgress),
