@@ -152,43 +152,124 @@ public class ProjectsController : BaseApiController
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] Guid? departmentId,
-        [FromQuery] ProjectStatus? status,
-        [FromQuery] PaginationQuery pagination,
+        [FromQuery] ProjectListQuery filters,
         CancellationToken ct)
     {
-        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        if (filters.DepartmentId.HasValue &&
+            !await _scope.CanAccessDepartmentAsync(filters.DepartmentId.Value, ct))
         {
             return Forbid();
         }
 
         var query = _db.Projects
+            .AsNoTracking()
             .Include(p => p.Department)
-            .Include(p => p.ProjectDepartments).ThenInclude(assignment => assignment.Department)
+            .Include(p => p.ProjectDepartments)
+                .ThenInclude(assignment => assignment.Department)
             .Include(p => p.Tasks)
             .Include(p => p.Milestones)
             .AsQueryable();
 
-        if (departmentId.HasValue)
+        if (filters.DepartmentId.HasValue)
         {
             query = query.Where(p =>
-                p.DepartmentId == departmentId.Value ||
-                p.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId.Value));
+                p.DepartmentId == filters.DepartmentId.Value ||
+                p.ProjectDepartments.Any(assignment => assignment.DepartmentId == filters.DepartmentId.Value));
+        }
+
+        if (filters.OrganizationId.HasValue)
+        {
+            query = query.Where(p =>
+                (p.Department != null && p.Department.OrganizationId == filters.OrganizationId.Value) ||
+                p.ProjectDepartments.Any(assignment =>
+                    assignment.Department != null &&
+                    assignment.Department.OrganizationId == filters.OrganizationId.Value));
         }
 
         query = await _scope.ScopeProjectsAsync(query, ct);
 
-        if (status.HasValue)
+        if (filters.Status.HasValue)
+            query = query.Where(p => p.Status == filters.Status.Value);
+
+        if (filters.Priority.HasValue)
+            query = query.Where(p => p.Priority == filters.Priority.Value);
+
+        var search = filters.Search?.Trim();
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(p => p.Status == status.Value);
+            var pattern = $"%{search}%";
+            query = query.Where(p =>
+                EF.Functions.Like(p.Name, pattern) ||
+                EF.Functions.Like(p.ProjectCode, pattern) ||
+                EF.Functions.Like(p.Description ?? string.Empty, pattern) ||
+                EF.Functions.Like(p.Category, pattern) ||
+                (p.Department != null && EF.Functions.Like(p.Department.Name, pattern)) ||
+                p.ProjectDepartments.Any(assignment =>
+                    assignment.Department != null &&
+                    EF.Functions.Like(assignment.Department.Name, pattern)) ||
+                (p.ProjectManagerId.HasValue &&
+                 _db.Users.Any(user =>
+                    user.Id == p.ProjectManagerId.Value &&
+                    (EF.Functions.Like(user.FirstName, pattern) ||
+                     EF.Functions.Like(user.LastName, pattern) ||
+                     EF.Functions.Like(user.Email, pattern)))));
         }
 
+        if (filters.DateFrom.HasValue || filters.DateTo.HasValue)
+        {
+            var field = (filters.DateField ?? "plannedEnd").Trim().ToLowerInvariant();
+
+            if (filters.DateFrom.HasValue)
+            {
+                var startDate = filters.DateFrom.Value.Date;
+                query = field switch
+                {
+                    "created" => query.Where(p => p.CreatedDate >= startDate),
+                    "plannedstart" => query.Where(p => p.PlannedStartDate >= startDate),
+                    _ => query.Where(p => p.PlannedEndDate >= startDate)
+                };
+            }
+
+            if (filters.DateTo.HasValue)
+            {
+                var endExclusive = filters.DateTo.Value.Date.AddDays(1);
+                query = field switch
+                {
+                    "created" => query.Where(p => p.CreatedDate < endExclusive),
+                    "plannedstart" => query.Where(p => p.PlannedStartDate < endExclusive),
+                    _ => query.Where(p => p.PlannedEndDate < endExclusive)
+                };
+            }
+        }
+
+        if (filters.OverdueOnly)
+        {
+            var now = DateTime.UtcNow;
+            query = query.Where(p =>
+                p.Status != ProjectStatus.Completed &&
+                p.Status != ProjectStatus.Cancelled &&
+                p.PlannedEndDate < now);
+        }
+
+        query = (filters.SortBy ?? "newest").Trim().ToLowerInvariant() switch
+        {
+            "oldest" => query.OrderBy(p => p.CreatedDate),
+            "nameasc" => query.OrderBy(p => p.Name),
+            "namedesc" => query.OrderByDescending(p => p.Name),
+            "startasc" => query.OrderBy(p => p.PlannedStartDate),
+            "endasc" => query.OrderBy(p => p.PlannedEndDate),
+            "progressdesc" => query.OrderByDescending(p => p.ProgressPercentage),
+            "progressasc" => query.OrderBy(p => p.ProgressPercentage),
+            _ => query.OrderByDescending(p => p.CreatedDate)
+        };
+
         var totalCount = await query.CountAsync(ct);
+        var pagination = filters.Pagination;
         var projects = await query
-            .OrderByDescending(p => p.CreatedDate)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
             .ToListAsync(ct);
+
         var managerNames = await ResolveProjectManagerNamesAsync(projects, ct);
         var items = projects
             .Select(project => ProjectDto.FromEntity(
@@ -197,6 +278,7 @@ public class ProjectsController : BaseApiController
                     ? managerNames.GetValueOrDefault(project.ProjectManagerId.Value)
                     : null))
             .ToList();
+
         return Ok(PaginatedResponse<ProjectDto>.Create(items, pagination, totalCount));
     }
 

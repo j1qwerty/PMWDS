@@ -210,6 +210,26 @@ export const api = {
       query: filters ?? {},
     });
   },
+  getProjectsPage(token: string, filters: {
+    departmentId?: string | null;
+    organizationId?: string | null;
+    status?: string | null;
+    priority?: string | null;
+    search?: string | null;
+    dateField?: string | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
+    overdueOnly?: boolean;
+    sortBy?: string | null;
+    sortDirection?: "asc" | "desc" | null;
+    page?: number;
+    pageSize?: number;
+  } = {}) {
+    return request<PaginatedResponse<Project>>("projects", {
+      token,
+      query: filters,
+    });
+  },
   getProject(token: string, id: string) {
     return request<Project>(`projects/${id}`, { token });
   },
