@@ -42,7 +42,7 @@ export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileF
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[600px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+    <div className="w-full min-h-0">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Avatar person={user} size="lg" className="rounded-xl" />

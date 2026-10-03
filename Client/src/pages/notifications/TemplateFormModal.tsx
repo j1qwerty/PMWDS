@@ -44,7 +44,7 @@ export function TemplateFormModal({ initialData, onSubmit, onCancel }: TemplateF
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+    <div className="w-full min-h-0">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
           <Icon name={initialData ? "edit" : "description"} size={22} className="text-indigo-600" />

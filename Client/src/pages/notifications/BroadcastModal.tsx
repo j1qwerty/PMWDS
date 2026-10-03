@@ -24,7 +24,7 @@ export function BroadcastModal({ departments, onSubmit, onCancel }: BroadcastMod
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200">
+    <div className="w-full p-1">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
           <span className="material-symbols-outlined text-indigo-600 text-2xl">campaign</span>

@@ -51,7 +51,7 @@ export function PermissionFormModal({ initialData, onSubmit, onCancel }: Permiss
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[540px] max-w-[95vw] shadow-xl border border-slate-200">
+    <div className="w-full p-1">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center">
           <span className="material-symbols-outlined text-violet-600 text-2xl">
