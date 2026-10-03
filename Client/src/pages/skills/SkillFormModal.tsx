@@ -45,11 +45,15 @@ export function SkillFormModal({ initialData, onSubmit, onCancel }: SkillFormMod
     );
   }, [initialData]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit(form);
+    try {
+      await onSubmit(form);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
