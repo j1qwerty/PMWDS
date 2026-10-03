@@ -163,6 +163,8 @@ public class ProjectsController : BaseApiController
         }
 
         var query = _db.Projects
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(p => p.Department)
             .Include(p => p.ProjectDepartments).ThenInclude(assignment => assignment.Department)
             .Include(p => p.Tasks)
