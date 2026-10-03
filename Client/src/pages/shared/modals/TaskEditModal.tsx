@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FiAlertTriangle, FiClock, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
-import { ModalOverlay, useToast, AvatarStack, PriorityBadge } from "..";
+import { ModalOverlay, useToast, AvatarStack, PriorityBadge, DeleteConfirmationModal } from "..";
 import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
 import { ProgressStatusEditor } from "../../nested/components/ProgressStatusEditor";
 import { InfoChip } from "../../nested/components/InfoChip";
@@ -40,6 +40,7 @@ export function TaskEditModal({
   const { addToast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editProgress, setEditProgress] = useState(Math.round(task.progressPercentage || 0));
   const [editStatus, setEditStatus] = useState(task.status);
   const [editPriority, setEditPriority] = useState(task.priority || "Medium");
@@ -90,7 +91,6 @@ export function TaskEditModal({
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete task "${task.title}"?`)) return;
     setIsDeleting(true);
     try {
       await onDelete(task.id);
@@ -192,7 +192,7 @@ export function TaskEditModal({
                 </button>
               )}
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={isDeleting}
                 className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                 title="Delete task"
@@ -310,6 +310,17 @@ export function TaskEditModal({
           )}
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <DeleteConfirmationModal
+          name={task.title}
+          title="Delete task"
+          description="The task will be removed from the active project view."
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          submitting={isDeleting}
+        />
+      )}
     </ModalOverlay>
   );
 }
