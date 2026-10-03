@@ -42,7 +42,7 @@ public class RolesController : BaseApiController
             .OrderBy(r => r.PermissionLevel)
             .ToListAsync(ct);
 
-        var filtered = User.IsInRole(RoleKeys.SuperAdmin)
+        var filtered = IsSuperAdminEffective()
             ? roles
             : roles.Where(r => r.PermissionLevel < userMaxLevel).ToList();
 
@@ -69,7 +69,7 @@ public class RolesController : BaseApiController
             return Conflict(new { message = $"Role '{req.Name}' already exists." });
         }
 
-        if (!User.IsInRole(RoleKeys.SuperAdmin))
+        if (!IsSuperAdminEffective())
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (req.PermissionLevel >= userMaxLevel)
@@ -124,7 +124,7 @@ public class RolesController : BaseApiController
             return NotFound();
         }
 
-        if (!User.IsInRole(RoleKeys.SuperAdmin))
+        if (!IsSuperAdminEffective())
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -183,7 +183,7 @@ public class RolesController : BaseApiController
             return BadRequest(new { message = $"The built-in role '{role.Key}' cannot be deleted." });
         }
 
-        if (!User.IsInRole(RoleKeys.SuperAdmin))
+        if (!IsSuperAdminEffective())
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -297,6 +297,12 @@ public class RolesController : BaseApiController
         return NoContent();
     }
 
+    private bool IsSuperAdminEffective()
+        => User.IsInRole(RoleKeys.SuperAdmin) ||
+           User.Claims.Any(claim =>
+               claim.Type == PermissionCodes.PermissionClaimType &&
+               claim.Value.Equals(PermissionCodes.SystemAdmin, StringComparison.OrdinalIgnoreCase));
+
     private static PermissionResponse MapPermission(Permission permission)
         => new(permission.Id, permission.Code, permission.Name, permission.Description, permission.Module, permission.IsGlobal);
 
@@ -324,7 +330,7 @@ public class RolesController : BaseApiController
 
     private async Task<HashSet<string>> GetCurrentUserPermissionCodesAsync(CancellationToken ct)
     {
-        if (User.IsInRole(RoleKeys.SuperAdmin))
+        if (IsSuperAdminEffective())
         {
             var all = await _context.Permissions.Select(p => p.Code).ToListAsync(ct);
             return new HashSet<string>(all, StringComparer.OrdinalIgnoreCase);
@@ -362,7 +368,7 @@ public class RolesController : BaseApiController
 
         var assignable = selected
             .Where(p => userPermissions.Contains(p.Code))
-            .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !PermissionCatalog.AdminOnlyModules.Contains(p.Module))
+            .Where(p => IsSuperAdminEffective() || !PermissionCatalog.AdminOnlyModules.Contains(p.Module))
             .ToList();
 
         var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
