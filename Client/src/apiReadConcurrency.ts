@@ -45,12 +45,12 @@ function acquireRead(): Promise<void> {
  * reads in flight lets SQL Server complete each heavy read instead of queueing seven
  * simultaneous grant requests.
  */
-export function installApiReadConcurrencyLimit(maxConcurrentReads = DEFAULT_MAX_CONCURRENT_READS): () => void {
-  if (typeof window === "undefined" || maxConcurrentReads < 1) return () => undefined;
+export function installApiReadConcurrencyLimit(limit = DEFAULT_MAX_CONCURRENT_READS): () => void {
+  if (typeof window === "undefined" || limit < 1) return () => undefined;
 
   const originalFetch = window.fetch.bind(window);
   const previousMaxConcurrentReads = maxConcurrentReads;
-  maxConcurrentReads = Math.floor(maxConcurrentReads);
+  maxConcurrentReads = Math.floor(limit);
   let installed = true;
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
