@@ -1,3 +1,22 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Middleware;
+using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
+using PMWDS.Domain.Entities;
+using PMWDS.Persistence.Context;
+
+namespace PMWDS.API.Controllers;
+
+public class RolesController : BaseApiController
+{
+    private static readonly HashSet<string> ProtectedRoleKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        RoleKeys.SuperAdmin
     };
 
     private readonly IUnitOfWork _uow;
@@ -69,7 +88,13 @@
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? 10);
         role.SetCreatedBy("system");
 
-        var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        var assignment = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        if (assignment.DeniedCodes.Count > 0)
+        {
+            return Forbid();
+        }
+
+        var permissions = assignment.Permissions;
         foreach (var permission in permissions)
         {
             role.AddPermission(permission);
@@ -132,7 +157,13 @@
         role.Update(req.Name, req.Description, req.PermissionLevel, req.CanAssignLowerRoles);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
-        var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        var assignment = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        if (assignment.DeniedCodes.Count > 0)
+        {
+            return Forbid();
+        }
+
+        var permissions = assignment.Permissions;
         var selectedCodes = permissions.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (role.Key == RoleKeys.SuperAdmin && !selectedCodes.Contains(PermissionCodes.SystemAdmin))
         {
@@ -164,7 +195,7 @@
         );
 
         await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
-        return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.CanAssignLowerRoles, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
+        return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
     [HttpDelete("{id:guid}")]
@@ -179,7 +210,7 @@
             return BadRequest(new { message = $"The built-in role '{role.Key}' cannot be deleted." });
         }
 
-        if (!User.IsInRole(RoleKeys.SuperAdmin))
+        if (!IsSuperAdminEffective())
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -280,3 +311,164 @@
         await _uow.SaveChangesAsync(ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Permission Deleted",
+            Description: $"{_currentUser.FullName} deleted permission \"{permName}\" ({permCode})",
+            Metadata: new Dictionary<string, object>
+            {
+                ["permissionName"] = permName,
+                ["permissionCode"] = permCode
+            }
+        );
+
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
+        return NoContent();
+    }
+
+    private static PermissionResponse MapPermission(Permission permission)
+        => new(permission.Id, permission.Code, permission.Name, permission.Description, permission.Module, permission.IsGlobal);
+
+    private IQueryable<Permission> VisiblePermissionQuery()
+    {
+        var visibleModules = PermissionCatalog.VisibleModules.ToArray();
+        return _context.Permissions.Where(permission => visibleModules.Contains(permission.Module));
+    }
+
+    private static IEnumerable<Permission> VisiblePermissions(IEnumerable<Permission> permissions)
+        => permissions.Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module));
+
+    private bool IsSuperAdminEffective()
+        => User.IsInRole(RoleKeys.SuperAdmin) ||
+           User.Claims.Any(claim =>
+               claim.Type == PermissionCodes.PermissionClaimType &&
+               claim.Value.Equals(PermissionCodes.SystemAdmin, StringComparison.OrdinalIgnoreCase));
+
+    private async Task<bool> GetCurrentUserCanAssignLowerRolesAsync(CancellationToken ct)
+    {
+        if (IsSuperAdminEffective())
+            return true;
+
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return false;
+
+        return await _context.Users
+            .Where(user => user.Id == userId)
+            .SelectMany(user => user.Roles)
+            .AnyAsync(role => role.CanAssignLowerRoles, ct);
+    }
+
+    private async Task<int> GetCurrentUserMaxLevelAsync(CancellationToken ct)
+    {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var parsedId))
+            return 0;
+
+        var user = await _context.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == parsedId, ct);
+
+        return user?.Roles.Max(r => r.PermissionLevel) ?? 0;
+    }
+
+    private async Task<HashSet<string>> GetCurrentUserPermissionCodesAsync(CancellationToken ct)
+    {
+        if (IsSuperAdminEffective())
+        {
+            var all = await _context.Permissions.Select(p => p.Code).ToListAsync(ct);
+            return new HashSet<string>(all, StringComparer.OrdinalIgnoreCase);
+        }
+
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var parsedId))
+            return new HashSet<string>();
+
+        var codes = await _context.Users
+            .Where(u => u.Id == parsedId)
+            .SelectMany(u => u.Roles.SelectMany(r => r.Permissions.Select(p => p.Code)))
+            .Distinct()
+            .ToListAsync(ct);
+
+        var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
+        foreach (var manageCode in codes)
+        {
+            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
+            {
+                foreach (var c in covered) expanded.Add(c);
+            }
+        }
+
+        return expanded;
+    }
+
+    private async Task<(List<Permission> Permissions, List<string> DeniedCodes)> LoadAssignablePermissionsAsync(
+        IReadOnlyCollection<Guid> permissionIds,
+        CancellationToken ct)
+    {
+        var requestedIds = permissionIds.Distinct().ToHashSet();
+        var userPermissions = await GetCurrentUserPermissionCodesAsync(ct);
+
+        var selected = await _context.Permissions
+            .Where(permission => requestedIds.Contains(permission.Id))
+            .ToListAsync(ct);
+
+        var assignable = selected
+            .Where(permission => userPermissions.Contains(permission.Code))
+            .Where(permission => IsSuperAdminEffective() || !PermissionCatalog.AdminOnlyModules.Contains(permission.Module))
+            .ToList();
+
+        var deniedCodes = selected
+            .Where(permission => !assignable.Any(item => item.Id == permission.Id))
+            .Select(permission => permission.Code)
+            .ToList();
+
+        deniedCodes.AddRange(
+            requestedIds
+                .Except(selected.Select(permission => permission.Id))
+                .Select(_ => "unknown permission id"));
+
+        var selectedCodes = assignable
+            .Select(permission => permission.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
+            .Where(pair => selectedCodes.Contains(pair.Key))
+            .SelectMany(pair => pair.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return (
+            assignable
+                .Where(permission => !coveredCodes.Contains(permission.Code))
+                .ToList(),
+            deniedCodes
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList());
+    }
+
+    private async Task<bool> WouldRemoveOwnSystemAdminAsync(
+        Guid editedRoleId,
+        HashSet<string> replacementPermissionCodes,
+        CancellationToken ct)
+    {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
+        {
+            return false;
+        }
+
+        var currentUser = await _context.Users
+            .Include(user => user.Roles)
+            .ThenInclude(role => role.Permissions)
+            .FirstOrDefaultAsync(user => user.Id == parsedUserId, ct);
+        if (currentUser == null || currentUser.Roles.All(role => role.Id != editedRoleId))
+        {
+            return false;
+        }
+
+        var remainingCodes = currentUser.Roles
+            .Where(role => role.Id != editedRoleId)
+            .SelectMany(role => role.Permissions)
+            .Select(permission => permission.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        remainingCodes.UnionWith(replacementPermissionCodes);
+        return !remainingCodes.Contains(PermissionCodes.SystemAdmin);
+    }
+}
