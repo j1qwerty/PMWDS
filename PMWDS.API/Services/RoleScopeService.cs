@@ -10,13 +10,18 @@ public class RoleScopeService
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
     private ScopeSnapshot? _scopeSnapshot;
     private HashSet<string>? _permissionSnapshot;
 
-    public RoleScopeService(ApplicationDbContext db, ICurrentUserService currentUser)
+    public RoleScopeService(
+        ApplicationDbContext db,
+        ICurrentUserService currentUser,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
     {
         _db = db;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public bool IsSuperAdmin => _currentUser.IsInRole(RoleKeys.SuperAdmin);
@@ -379,6 +384,13 @@ public class RoleScopeService
             return _scopeSnapshot;
         }
 
+        var cacheKey = $"pmwds:user-scope:{userId:N}";
+        if (_cache.TryGetValue(cacheKey, out ScopeSnapshot? cachedScope) && cachedScope != null)
+        {
+            _scopeSnapshot = cachedScope;
+            return _scopeSnapshot;
+        }
+
         var userScope = await _db.Users
             .Where(user => user.Id == userId)
             .Select(user => new
@@ -434,6 +446,7 @@ public class RoleScopeService
         }
 
         _scopeSnapshot = new ScopeSnapshot(organizationIds, departmentIds);
+        _cache.Set(cacheKey, _scopeSnapshot, TimeSpan.FromSeconds(5));
         return _scopeSnapshot;
     }
 
@@ -493,6 +506,13 @@ public class RoleScopeService
             return _permissionSnapshot;
         }
 
+        var cacheKey = $"pmwds:user-permissions:{userId:N}";
+        if (_cache.TryGetValue(cacheKey, out HashSet<string>? cachedPermissions) && cachedPermissions != null)
+        {
+            _permissionSnapshot = new HashSet<string>(cachedPermissions, StringComparer.OrdinalIgnoreCase);
+            return _permissionSnapshot;
+        }
+
         var permissions = await _db.Users
             .Where(user => user.Id == userId && user.IsActive)
             .SelectMany(user => user.Roles)
@@ -502,6 +522,7 @@ public class RoleScopeService
             .ToListAsync(ct);
 
         _permissionSnapshot = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _cache.Set(cacheKey, _permissionSnapshot, TimeSpan.FromSeconds(5));
         return _permissionSnapshot;
     }
 
