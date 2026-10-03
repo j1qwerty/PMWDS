@@ -25,14 +25,12 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
   );
 
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        name: initialData.name || "",
-        description: initialData.description || "",
-        permissionLevel: initialData.permissionLevel || 10,
-      });
-      setSelectedPermissions(new Set(initialData.permissions?.map(p => p.id) || []));
-    }
+    setForm({
+      name: initialData?.name || "",
+      description: initialData?.description || "",
+      permissionLevel: initialData?.permissionLevel || 10,
+    });
+    setSelectedPermissions(new Set(initialData?.permissions?.map(p => p.id) || []));
   }, [initialData]);
 
   // Memoize grouped permissions to prevent recalculation on every render
