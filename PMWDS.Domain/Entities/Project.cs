@@ -173,11 +173,13 @@ public class Project : AuditableEntity, IHasDomainEvents
             Status = ProjectStatus.NotStarted;
             ActualStartDate = null;
             ActualEndDate = null;
+            DelayJustification = null;
             break;
          case ProjectStatus.InProgress:
             if (Status == ProjectStatus.NotStarted)
                ActualStartDate = DateTime.UtcNow;
             Status = ProjectStatus.InProgress;
+            DelayJustification = null;
             break;
          case ProjectStatus.OnHold:
             Status = ProjectStatus.OnHold;
@@ -187,6 +189,7 @@ public class Project : AuditableEntity, IHasDomainEvents
             Status = ProjectStatus.Completed;
             ActualEndDate = DateTime.UtcNow;
             ProgressPercentage = 100;
+            DelayJustification = null;
             break;
          case ProjectStatus.Cancelled:
             Status = newStatus;
