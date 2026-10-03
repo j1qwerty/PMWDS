@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
 using PMWDS.Application.DTOs.Common;
@@ -54,6 +55,11 @@ public class ExceptionMiddleware
         {
             statusCode = HttpStatusCode.Conflict;
             message = ex.Message;
+        }
+        else if (ex is DbUpdateConcurrencyException)
+        {
+            statusCode = HttpStatusCode.Conflict;
+            message = "This record was changed by another user. Refresh the data and retry your change.";
         }
         else
         {
