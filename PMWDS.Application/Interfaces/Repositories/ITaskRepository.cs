@@ -12,6 +12,19 @@ public interface ITaskRepository : IRepository<ProjectTask>
    Task<IEnumerable<ProjectTask>> GetByAssigneeAsync(
    Guid userId,
    CancellationToken ct = default);
+   Task<IEnumerable<ProjectTask>> GetForReportAsync(
+      Guid? projectId,
+      Guid? departmentId,
+      DateTime? startDate,
+      DateTime? endDate,
+      TaskStatus? status,
+      CancellationToken ct = default);
+   Task<IEnumerable<ProjectTask>> GetForDepartmentWorkloadAsync(
+      Guid departmentId,
+      IReadOnlyCollection<Guid> userIds,
+      DateTime startDate,
+      DateTime endDate,
+      CancellationToken ct = default);
    Task<IEnumerable<ProjectTask>> GetOverdueTasksAsync(
    CancellationToken ct = default);
    Task<IEnumerable<ProjectTask>> GetByMilestoneAsync(

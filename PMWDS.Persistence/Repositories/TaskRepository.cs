@@ -69,6 +69,61 @@ public class TaskRepository
     .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
+    public async Task<IEnumerable<ProjectTask>> GetForReportAsync(
+    Guid? projectId,
+    Guid? departmentId,
+    DateTime? startDate,
+    DateTime? endDate,
+    TaskStatus? status,
+    CancellationToken ct = default)
+    {
+        var query = _dbSet
+            .AsNoTracking()
+            .Include(t => t.Project)
+            .Include(t => t.Assignments)
+            .AsQueryable();
+
+        if (projectId.HasValue)
+            query = query.Where(t => t.ProjectId == projectId.Value);
+        if (departmentId.HasValue)
+            query = query.Where(t => t.Project != null && t.Project.DepartmentId == departmentId.Value);
+        if (startDate.HasValue)
+            query = query.Where(t => t.CreatedDate >= startDate.Value);
+        if (endDate.HasValue)
+            query = query.Where(t => t.CreatedDate <= endDate.Value);
+        if (status.HasValue)
+            query = query.Where(t => t.Status == status.Value);
+
+        return await query
+            .OrderByDescending(t => t.CreatedDate)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IEnumerable<ProjectTask>> GetForDepartmentWorkloadAsync(
+    Guid departmentId,
+    IReadOnlyCollection<Guid> userIds,
+    DateTime startDate,
+    DateTime endDate,
+    CancellationToken ct = default)
+    {
+        var query = _dbSet
+            .AsNoTracking()
+            .Include(t => t.Project)
+            .Include(t => t.Assignments)
+            .Where(t =>
+                t.CreatedDate >= startDate &&
+                t.CreatedDate <= endDate &&
+                (
+                    (t.Project != null && t.Project.DepartmentId == departmentId) ||
+                    (t.AssignedToUserId.HasValue && userIds.Contains(t.AssignedToUserId.Value)) ||
+                    t.Assignments.Any(a => a.IsActive && userIds.Contains(a.UserId))
+                ));
+
+        return await query
+            .OrderByDescending(t => t.CreatedDate)
+            .ToListAsync(ct);
+    }
+
     public async Task<IEnumerable<ProjectTask>>
     GetOverdueTasksAsync(
     CancellationToken ct = default)

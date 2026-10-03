@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using PMWDS.Application.DTOs.Reports;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 
 namespace PMWDS.Infrastructure.Services;
 
@@ -144,21 +145,21 @@ public class ReportService : IReportService
     public async Task<AiReportResponse> GenerateTaskCompletionReportJsonAsync(
         ReportGenerateRequest filters, CancellationToken ct = default)
     {
-        var query = await _uow.Tasks.GetAllAsync(ct);
-        var tasks = query.AsEnumerable();
-
-        if (filters.ProjectId.HasValue)
-            tasks = tasks.Where(t => t.ProjectId == filters.ProjectId.Value);
-        if (filters.DepartmentId.HasValue)
-            tasks = tasks.Where(t => t.Project?.DepartmentId == filters.DepartmentId.Value);
-        if (filters.StartDate.HasValue)
-            tasks = tasks.Where(t => t.CreatedDate >= filters.StartDate.Value);
-        if (filters.EndDate.HasValue)
-            tasks = tasks.Where(t => t.CreatedDate <= filters.EndDate.Value);
+        TaskStatus? status = null;
         if (!string.IsNullOrWhiteSpace(filters.Status))
-            tasks = tasks.Where(t => t.Status.ToString().Equals(filters.Status, StringComparison.OrdinalIgnoreCase));
+        {
+            if (!Enum.TryParse<TaskStatus>(filters.Status, true, out var parsedStatus))
+                throw new ArgumentException($"Invalid task status '{filters.Status}'.", nameof(filters));
+            status = parsedStatus;
+        }
 
-        var taskList = tasks.ToList();
+        var taskList = (await _uow.Tasks.GetForReportAsync(
+            filters.ProjectId,
+            filters.DepartmentId,
+            filters.StartDate,
+            filters.EndDate,
+            status,
+            ct)).ToList();
 
         var byStatus = taskList
             .GroupBy(t => t.Status)
@@ -204,12 +205,14 @@ public class ReportService : IReportService
             ?? throw new InvalidOperationException($"Department {departmentId} not found.");
 
         var users = (await _uow.Users.GetByDepartmentWithSkillsAsync(departmentId, ct)).ToList();
+        var userIds = users.Select(u => u.Id).ToHashSet();
 
-        var allTasks = await _uow.Tasks.GetAllAsync(ct);
-        var relevantTasks = allTasks
-            .Where(t => t.Project?.DepartmentId == departmentId ||
-                        (t.AssignedToUserId != null && users.Any(u => u.Id == t.AssignedToUserId)))
-            .ToList();
+        var relevantTasks = (await _uow.Tasks.GetForDepartmentWorkloadAsync(
+            departmentId,
+            userIds,
+            dateRange.StartDate,
+            dateRange.EndDate,
+            ct)).ToList();
 
         var userWorkloads = users.Select(u => new
         {
@@ -220,10 +223,11 @@ public class ReportService : IReportService
             u.AIBurnoutRiskScore,
             u.AIPerformanceScore,
             ActiveTasks = relevantTasks.Count(t =>
-                t.AssignedToUserId == u.Id &&
-                t.Status != Domain.Enums.TaskStatus.Completed),
+                IsAssignedToUser(t, u.Id) &&
+                t.Status != Domain.Enums.TaskStatus.Completed &&
+                t.Status != Domain.Enums.TaskStatus.Cancelled),
             CompletedTasks = relevantTasks.Count(t =>
-                t.AssignedToUserId == u.Id &&
+                IsAssignedToUser(t, u.Id) &&
                 t.Status == Domain.Enums.TaskStatus.Completed),
         }).ToList();
 
@@ -255,20 +259,21 @@ public class ReportService : IReportService
     public async Task<AiReportResponse> GenerateDelayAnalysisReportJsonAsync(
         ReportGenerateRequest filters, CancellationToken ct = default)
     {
-        var overdueTasks = await _uow.Tasks.GetOverdueTasksAsync(ct);
-        var highRiskTasks = await _uow.Tasks.GetHighRiskTasksAsync(0.7, ct);
-
-        var allOverdue = overdueTasks.AsEnumerable();
-        var allHighRisk = highRiskTasks.AsEnumerable();
-
-        if (filters.ProjectId.HasValue)
+        TaskStatus? status = null;
+        if (!string.IsNullOrWhiteSpace(filters.Status))
         {
-            allOverdue = allOverdue.Where(t => t.ProjectId == filters.ProjectId.Value);
-            allHighRisk = allHighRisk.Where(t => t.ProjectId == filters.ProjectId.Value);
+            if (!Enum.TryParse<TaskStatus>(filters.Status, true, out var parsedStatus))
+                throw new ArgumentException($"Invalid task status '{filters.Status}'.", nameof(filters));
+            status = parsedStatus;
         }
 
-        var overdueList = allOverdue.ToList();
-        var highRiskList = allHighRisk.ToList();
+        var overdueList = (await _uow.Tasks.GetOverdueTasksAsync(ct))
+            .Where(t => MatchesReportFilters(t, filters, status))
+            .ToList();
+
+        var highRiskList = (await _uow.Tasks.GetHighRiskTasksAsync(0.7, ct))
+            .Where(t => MatchesReportFilters(t, filters, status))
+            .ToList();
 
         var context = new
         {
@@ -305,7 +310,12 @@ public class ReportService : IReportService
                         ProjectName = t.Project?.Name ?? "Unknown"
                     })
             },
-            TotalEscalated = overdueList.Count(t => t.IsEscalated) + highRiskList.Count(t => t.IsEscalated),
+            TotalEscalated = overdueList
+                .Concat(highRiskList)
+                .Where(t => t.IsEscalated)
+                .Select(t => t.Id)
+                .Distinct()
+                .Count(),
             AverageDelayProbability = highRiskList.Count > 0
                 ? highRiskList.Average(t => t.AIDelayProbability)
                 : 0,
@@ -357,6 +367,31 @@ public class ReportService : IReportService
         var genFilter = new ReportGenerateRequest(filter.ProjectId, filter.DepartmentId, filter.StartDate, filter.EndDate, filter.Status);
         var report = await GenerateDelayAnalysisReportJsonAsync(genFilter, ct);
         return await RenderToFormatAsync(report, format, ct);
+    }
+
+    private static bool IsAssignedToUser(ProjectTask task, Guid userId)
+        => task.AssignedToUserId == userId ||
+           task.Assignments.Any(a => a.IsActive && a.UserId == userId);
+
+    private static bool MatchesReportFilters(
+        ProjectTask task,
+        ReportGenerateRequest filters,
+        TaskStatus? status)
+    {
+        if (filters.ProjectId.HasValue && task.ProjectId != filters.ProjectId.Value)
+            return false;
+
+        if (filters.DepartmentId.HasValue &&
+            task.Project?.DepartmentId != filters.DepartmentId.Value)
+            return false;
+
+        if (filters.StartDate.HasValue && task.CreatedDate < filters.StartDate.Value)
+            return false;
+
+        if (filters.EndDate.HasValue && task.CreatedDate > filters.EndDate.Value)
+            return false;
+
+        return !status.HasValue || task.Status == status.Value;
     }
 
     // ──────────────────────────────────────────────
