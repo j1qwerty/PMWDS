@@ -210,8 +210,8 @@ public class ReportService : IReportService
         var relevantTasks = (await _uow.Tasks.GetForDepartmentWorkloadAsync(
             departmentId,
             userIds,
-            dateRange.StartDate,
-            dateRange.EndDate,
+            dateRange.Start,
+            dateRange.End,
             ct)).ToList();
 
         var userWorkloads = users.Select(u => new
