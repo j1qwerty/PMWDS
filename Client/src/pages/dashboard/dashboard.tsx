@@ -19,7 +19,7 @@ import DashboardStats from "./dashboardStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
 import Timer from "../shared/dash/Timer";
-import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
+import { ProjectFormModal, type ProjectFormState } from "../projects/components/ProjectFormModal";
 
 // Temporarily hidden dashboard widgets. Kept behind flags (not deleted) so
 // they can be restored by flipping these back to true.
