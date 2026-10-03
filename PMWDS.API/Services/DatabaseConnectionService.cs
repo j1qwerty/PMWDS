@@ -240,10 +240,29 @@ public static class DatabaseConnectionService
             return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, true, attempts);
         }
 
-        if (CanConnectToSqlServer(sqlServerConnection))
+        if (settings.EnableSqlServer)
         {
-            attempts.Add("SQL Server connection succeeded.");
-            return CreateStatus(ActiveDatabaseProvider.SqlServer, "SQL Server", "ConnectionStrings:Default", sqlServerConnection!, false, attempts);
+            if (CanConnectToSqlServer(sqlServerConnection))
+            {
+                attempts.Add("SQL Server connection succeeded.");
+                return CreateStatus(ActiveDatabaseProvider.SqlServer, "SQL Server", "ConnectionStrings:Default", sqlServerConnection!, false, attempts);
+            }
+
+            attempts.Add("SQL Server unavailable or not configured.");
+        }
+        else
+        {
+            // Not a fallback: this deployment was configured for SQLite only. Deliberately
+            // placed before the probe so the probe never runs.
+            attempts.Add("SQL Server disabled by Database:EnableSqlServer=false - not probed.");
+
+            if (!sqlitePermitted)
+            {
+                throw new InvalidOperationException(
+                    "Database:EnableSqlServer=false selects SQLite, so set Database:AllowSqliteInProduction=true to run it outside Development.");
+            }
+
+            return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, false, attempts);
         }
 
         attempts.Add("SQL Server unavailable or not configured.");

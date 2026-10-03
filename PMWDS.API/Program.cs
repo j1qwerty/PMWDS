@@ -227,6 +227,13 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
         Console.WriteLine($"[PMWDS] WARNING: Redis connection failed ({redisConnectionString}): {ex.Message}. Caching falls back to in-memory.");
     }
 }
+else
+{
+    // An empty ConnectionStrings:Redis means Redis is not part of this deployment, which is
+    // different from Redis being configured and down. Say so, so the in-memory fallback below
+    // is never mistaken for a failure.
+    Console.WriteLine("[PMWDS] Redis disabled (ConnectionStrings:Redis is empty). Caching uses in-memory.");
+}
 
 if (redisAvailable)
 {

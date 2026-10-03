@@ -101,6 +101,23 @@ public class DatabaseSettings
     /// unless a deployment deliberately opts in (single-instance hosting, no Hangfire).
     /// </summary>
     public bool AllowSqliteInProduction { get; set; } = false;
+
+    /// <summary>
+    /// Whether SQL Server is a candidate provider at all. True by default, which preserves the
+    /// existing probe-then-fallback behaviour.
+    ///
+    /// Set false on a deployment that has no SQL Server instance and no intention of gaining
+    /// one. Two things change. The startup connectivity probe is skipped, so the app does not
+    /// spend a connect timeout every boot waiting for something that is never there and does
+    /// not print a misleading "SQL Server unavailable or not configured" line. And SQL Server
+    /// cannot be selected even if a reachable instance happens to be listening on the default
+    /// port - which would otherwise be a silent, unplanned promotion of a deployment to a
+    /// database nobody backed up.
+    ///
+    /// Not a replacement for AllowSqliteInProduction: turning SQL Server off still requires
+    /// SQLite to be permitted for the environment.
+    /// </summary>
+    public bool EnableSqlServer { get; set; } = true;
 }
 
 public class LocalFileStorageSettings

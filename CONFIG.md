@@ -150,8 +150,48 @@ public class DatabaseSettings
 {
     public bool ForceSqlite { get; set; } = false;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+
+    public bool AllowSqliteInProduction { get; set; } = false;
+
+    /// <summary>Whether SQL Server is a candidate provider at all. Defaults to true.</summary>
+    public bool EnableSqlServer { get; set; } = true;
 }
 ```
+
+#### `Database:EnableSqlServer`
+
+Defaults to `true`, which preserves probe-then-fallback behaviour. Set it to `false` on a
+deployment with no SQL Server and no plans for one — the sqlite production variant on the
+VPS does exactly this. Two effects:
+
+- **The startup connectivity probe is skipped.** Without this the app pays a connect timeout
+  on every boot waiting for an instance that is never there, and logs a misleading
+  "SQL Server unavailable or not configured" line that reads like a fault.
+- **SQL Server cannot be selected even if something is listening on 1433.** This matters more
+  than it looks: without it, pointing a SQLite deployment at a host that happens to run SQL
+  Server would silently promote it to a database nobody is backing up.
+
+It is not a substitute for `AllowSqliteInProduction` — turning SQL Server off still requires
+SQLite to be permitted for the environment, and throws at startup if it is not.
+
+The startup banner then says which provider was chosen and why, so there is never ambiguity:
+
+```
+[PMWDS] Using SQLite database (/var/lib/pmwds-sqlite/database/pmwds.sqlite).
+[PMWDS] Database selection: SQL Server disabled by Database:EnableSqlServer=false - not probed.
+```
+
+#### Redis
+
+`ConnectionStrings:Redis` empty means Redis is **not part of this deployment** and the app logs
+`Redis disabled ... Caching uses in-memory` rather than probing. Unreachable means it is
+configured and down, which logs a warning and also falls back to in-memory.
+
+Note that all three of `appsettings.json`, `appsettings.Development.json` and
+`appsettings.Production.json` default `ConnectionStrings:Redis` to `localhost:6379`. Only an
+environment variable overrides those, so a deployment without Redis must set it **explicitly
+to an empty value**. Be aware that in PowerShell `$env:VAR = ""` deletes the variable rather
+than setting it empty, which silently restores the appsettings default.
 
 ### EF Core Commands
 

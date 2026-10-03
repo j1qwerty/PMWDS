@@ -497,6 +497,69 @@ port, not a database. That is deliberate: a bad deploy of one must not be able t
 /etc/pmwds/pmwds-sqlite.env               # secrets, 0600 root
 ```
 
+#### Environment file — `/etc/pmwds/pmwds-sqlite.env`
+
+This deployment has **no SQL Server and no Redis**, and that is a decision rather than an
+accident, so both are switched off explicitly rather than left to fail a connectivity probe
+on every boot:
+
+```ini
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://127.0.0.1:5001
+DOTNET_ENVIRONMENT=Production
+
+Jwt__Secret=<long random secret, different from the mssql variant>
+Jwt__Issuer=PMWDS
+Jwt__Audience=PMWDS_Users
+Jwt__ExpiryMinutes=1440
+
+# SQLite is the intended provider, not a fallback. EnableSqlServer=false means the app never
+# opens a connection to port 1433, and cannot silently promote itself to SQL Server if some
+# other service happens to be listening there.
+Database__EnableSqlServer=false
+Database__AllowSqliteInProduction=true
+Database__SqliteConnectionString=Data Source=/var/lib/pmwds-sqlite/database/pmwds.sqlite
+
+# Must be set, even though it looks redundant. appsettings.json, appsettings.Development.json
+# and appsettings.Production.json all default this to "localhost:6379", and an environment
+# variable is the only thing that overrides them. Without an explicit empty value here the app
+# probes Redis on every start and prints a large connection-failure warning for a service this
+# deployment does not have. An empty value here is not the same as an absent variable - see
+# the note below.
+ConnectionStrings__Redis=
+ConnectionStrings__Hangfire=
+
+FileStorage__BasePath=/var/lib/pmwds-sqlite/data
+AzureStorage__LocalUploadPath=/var/lib/pmwds-sqlite/data
+AzureStorage__LocalBaseUrl=/files
+
+Email__ClientBaseUrl=http://147.93.155.185
+AllowedOrigins__0=http://147.93.155.185
+AllowedOrigins__1=https://pmwds.dharmaatribe.app
+
+Serilog__MinimumLevel__Default=Information
+AI__DefaultProvider=OpenRouter
+AI__OpenRouter__ApiKey=<key>
+AI__OpenRouter__BaseUrl=https://openrouter.ai/api/v1
+AI__OpenRouter__DefaultModel=nvidia/nemotron-3-ultra-550b-a55b:free
+```
+
+The resulting startup banner is unambiguous, which matters because a silent provider change is
+how the SQLite deployment was previously mistaken for the SQL Server one:
+
+```
+[PMWDS] Using SQLite database (/var/lib/pmwds-sqlite/database/pmwds.sqlite).
+[PMWDS] Database selection: SQL Server disabled by Database:EnableSqlServer=false - not probed.
+[PMWDS] Redis disabled (ConnectionStrings:Redis is empty). Caching uses in-memory.
+```
+
+> **Gotcha: an empty variable is not the same as an absent one, depending on the shell.**
+> systemd writes `ConnectionStrings__Redis=` to the process environment as an *empty* value,
+> and .NET reads that as an override, so the appsettings default is correctly replaced. But in
+> PowerShell, `$env:X = ""` **deletes** the variable rather than setting it empty, which
+> silently restores the appsettings default. Locally, use a single space or test with .env
+> moved aside.
+
 ### MSSQL variant — `https://pmwds.dharmaatribe.app`, branch `prod-mssql`
 
 ```
