@@ -146,11 +146,15 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
     return module.regularPermissions.filter(p => selectedPermissions.has(p.id)).length;
   }, [groupedPermissions, selectedPermissions]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit({ ...form, permissionIds: Array.from(selectedPermissions) });
+    try {
+      await onSubmit({ ...form, permissionIds: Array.from(selectedPermissions) });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalSelected = selectedPermissions.size;
