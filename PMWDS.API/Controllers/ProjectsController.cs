@@ -447,7 +447,7 @@ public class ProjectsController : BaseApiController
             {
                 try
                 {
-                    await _localFiles.DeleteDocumentAsync(filePath, ct);
+                    await _localFiles.DeleteFileAsync(filePath, ct);
                 }
                 catch (Exception cleanupException)
                 {
