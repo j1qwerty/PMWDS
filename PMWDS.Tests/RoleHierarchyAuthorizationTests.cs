@@ -72,7 +72,7 @@ public sealed class RoleHierarchyAuthorizationTests
     [Fact]
     public async Task Delegating_role_cannot_assign_a_permission_it_does_not_have()
     {
-        var client = _fixture.ProjectManager.Client;
+        var client = _fixture.Director.Client;
         var permissions = await client.GetAsync<JsonElement>("/api/v1/roles/permissions");
         var systemAdmin = permissions.Data.EnumerateArray()
             .First(p => p.GetString("code") == "SYSTEM_ADMIN")
