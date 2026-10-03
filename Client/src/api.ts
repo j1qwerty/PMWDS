@@ -252,6 +252,13 @@ export const api = {
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
   },
+  setProjectDocumentApproval(token: string, projectId: string, docId: string, approved: boolean, notes?: string) {
+    return request<ProjectDocument>(`projects/${projectId}/documents/${docId}/approval`, {
+      token,
+      method: "PATCH",
+      body: { approved, notes: notes ?? null },
+    });
+  },
   getProjectUtilizationCertificates(token: string, projectId: string) {
     return request<UtilizationCertificate[]>(`utilization-certificates/project/${projectId}`, { token });
   },
