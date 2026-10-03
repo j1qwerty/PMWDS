@@ -40,6 +40,10 @@ public class ProjectConfiguration
         b.Property(e => e.AIInsightsSummary)
         .HasMaxLength(4000);
         // Relationships
+        b.HasMany(e => e.Goals)
+        .WithOne(g => g.Project)
+        .HasForeignKey(g => g.ProjectId)
+        .OnDelete(DeleteBehavior.Cascade);
         b.HasMany(e => e.Milestones)
         .WithOne(m => m.Project)
         .HasForeignKey(m => m.ProjectId)
