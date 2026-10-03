@@ -269,3 +269,17 @@ The frontend contained a large number of lint failures unrelated to the modal an
 ## Review rule
 
 The shared dialog and project-list PRs are kept separate from backend workflow changes so UI regressions can be verified independently.
+### Current implementation queue additions
+
+| Finding | PR | Status |
+|---|---|---|
+| Shared Dialog primitive/lifecycle | PR #8 | Implemented in review |
+| Native task/subtask confirmations | PR #13 | Implemented in review |
+| Remaining duplicate modal card chrome | PR #21 | Implemented in review |
+| Project-list server pagination/filter contract | PR #15 | Implemented in review |
+| Project-picker completeness after pagination | PR #22 | Implemented in review |
+| Document approval evidence flow | PR #20 | Implemented in review |
+
+### Current remaining UI work
+
+The highest remaining UI work is field-level validation/error mapping, responsive table/modal polish, consistent icon treatment, context-help affordances for complex workflow terms, and migration of less-used detail modals that still use bespoke markup.
