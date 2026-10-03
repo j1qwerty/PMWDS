@@ -134,6 +134,11 @@ export function ProjectsListPage() {
     });
   }, [setNavHeader, canManageProjects]);
 
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+
+  const effectiveOrgId =
+    shouldFilterByOrg && userOrganizationId ? userOrganizationId : orgId;
+
   const loadMetadata = useCallback(async () => {
     if (!auth) return;
     try {
