@@ -22,6 +22,19 @@ export const Permission = {
   ProjectEdit: "PROJECT_EDIT",
   ProjectDelete: "PROJECT_DELETE",
 
+  GoalManage: "GOAL_MANAGE",
+  GoalView: "GOAL_VIEW",
+  GoalCreate: "GOAL_CREATE",
+  GoalEdit: "GOAL_EDIT",
+  GoalDelete: "GOAL_DELETE",
+
+  BudgetManage: "BUDGET_MANAGE",
+  BudgetView: "BUDGET_VIEW",
+  BudgetCreate: "BUDGET_CREATE",
+  BudgetEdit: "BUDGET_EDIT",
+  BudgetApprove: "BUDGET_APPROVE",
+  BudgetDelete: "BUDGET_DELETE",
+
   MilestoneManage: "MILESTONE_MANAGE",
   MilestoneView: "MILESTONE_VIEW",
   MilestoneCreate: "MILESTONE_CREATE",
@@ -133,6 +146,21 @@ export const PERMISSION_GROUPS = {
     delete: Permission.ProjectDelete,
     manage: Permission.ProjectManage,
     primaryDepartmentManage: Permission.ProjectPrimaryDepartmentManage,
+  },
+  goal: {
+    view: Permission.GoalView,
+    create: Permission.GoalCreate,
+    edit: Permission.GoalEdit,
+    delete: Permission.GoalDelete,
+    manage: Permission.GoalManage,
+  },
+  budget: {
+    view: Permission.BudgetView,
+    create: Permission.BudgetCreate,
+    edit: Permission.BudgetEdit,
+    approve: Permission.BudgetApprove,
+    delete: Permission.BudgetDelete,
+    manage: Permission.BudgetManage,
   },
   milestone: {
     view: Permission.MilestoneView,
@@ -251,6 +279,19 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
     Permission.ProjectEdit,
     Permission.ProjectDelete,
     Permission.ProjectPrimaryDepartmentManage,
+  ],
+  [Permission.GoalManage]: [
+    Permission.GoalView,
+    Permission.GoalCreate,
+    Permission.GoalEdit,
+    Permission.GoalDelete,
+  ],
+  [Permission.BudgetManage]: [
+    Permission.BudgetView,
+    Permission.BudgetCreate,
+    Permission.BudgetEdit,
+    Permission.BudgetApprove,
+    Permission.BudgetDelete,
   ],
   [Permission.MilestoneManage]: [
     Permission.MilestoneView,
