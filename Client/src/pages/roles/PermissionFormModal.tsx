@@ -41,11 +41,15 @@ export function PermissionFormModal({ initialData, onSubmit, onCancel }: Permiss
     });
   }, [initialData]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit({ ...form, code: form.code || undefined });
+    try {
+      await onSubmit({ ...form, code: form.code || undefined });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
