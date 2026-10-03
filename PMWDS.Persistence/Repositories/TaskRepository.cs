@@ -81,6 +81,45 @@ public class TaskRepository
     .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
+
+    public async Task<IEnumerable<ProjectTask>> GetOverdueUnescalatedTasksAsync(
+    CancellationToken ct = default)
+    => await _dbSet
+        .Where(t =>
+            t.DueDate < DateTime.UtcNow &&
+            !t.IsEscalated &&
+            t.Status != Domain.Enums.TaskStatus.Completed &&
+            t.Status != Domain.Enums.TaskStatus.Cancelled)
+        .OrderBy(t => t.DueDate)
+        .ToListAsync(ct);
+
+    public async Task<IEnumerable<ProjectTask>> GetDeadlineReminderCandidatesAsync(
+    DateTime now,
+    DateTime horizon,
+    CancellationToken ct = default)
+    => await _dbSet
+        .AsNoTracking()
+        .Where(t =>
+            t.AssignedToUserId != null &&
+            t.DueDate > now &&
+            t.DueDate <= horizon &&
+            t.Status != Domain.Enums.TaskStatus.Completed &&
+            t.Status != Domain.Enums.TaskStatus.Cancelled)
+        .OrderBy(t => t.DueDate)
+        .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ProjectTask>> GetActiveTasksBatchAsync(
+    int skip,
+    int take,
+    CancellationToken ct = default)
+    => await _dbSet
+        .Where(t =>
+            t.Status != Domain.Enums.TaskStatus.Completed &&
+            t.Status != Domain.Enums.TaskStatus.Cancelled)
+        .OrderBy(t => t.Id)
+        .Skip(Math.Max(0, skip))
+        .Take(Math.Clamp(take, 1, 500))
+        .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
     GetByMilestoneAsync(
     Guid milestoneId,
