@@ -18,6 +18,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
     name: initialData?.name || "",
     description: initialData?.description || "",
     permissionLevel: initialData?.permissionLevel || 10,
+    canAssignLowerRoles: initialData?.canAssignLowerRoles ?? false,
   });
   
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
@@ -30,6 +31,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
         name: initialData.name || "",
         description: initialData.description || "",
         permissionLevel: initialData.permissionLevel || 10,
+        canAssignLowerRoles: initialData.canAssignLowerRoles ?? false,
       });
       setSelectedPermissions(new Set(initialData.permissions?.map(p => p.id) || []));
     }
@@ -219,6 +221,27 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                 placeholder="10"
               />
             </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.canAssignLowerRoles}
+                onChange={(e) =>
+                  setForm({ ...form, canAssignLowerRoles: e.target.checked })
+                }
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-slate-700">
+                  Can assign lower roles
+                </span>
+                <span className="block text-xs text-slate-500">
+                  Allows holders of this role to create or edit roles below their own permission level.
+                </span>
+              </span>
+            </label>
           </div>
 
           <div>
