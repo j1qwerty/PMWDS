@@ -61,7 +61,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
   const hasTasks = initialData?.hasTasks ?? false;
   const isEditMode = !!initialData;
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setValidationError("");
@@ -72,6 +72,10 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
     }
     if (!form.dueDate) {
       setValidationError("Due date is required");
+      return;
+    }
+    if (projectEndDate && form.dueDate > projectEndDate) {
+      setValidationError("Due date cannot be after the project end date.");
       return;
     }
 
@@ -85,12 +89,16 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
       projectId,
     };
     payload.progressPercentage = 0;
-    onSubmit(payload);
+    try {
+      await onSubmit(payload);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <ModalOverlay onClose={onClose} showCloseButton={false}>
-      <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200 relative">
+      <div className="w-full p-2 relative">
         <button
           type="button"
           onClick={onClose}

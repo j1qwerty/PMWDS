@@ -29,7 +29,7 @@ interface ProjectFormModalProps {
   organizations: OrganizationRecord[];
   showOrganizationFilter?: boolean;
   users: User[];
-  onSubmit: (e: FormEvent) => void;
+  onSubmit: (e: FormEvent) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -58,6 +58,7 @@ export function ProjectFormModal({
 
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   // The budget field is typed in lakhs while `form.plannedBudget` holds rupees. Keeping the
   // raw text locally stops the leading zero from sticking: with value={0} the browser edits
@@ -68,6 +69,7 @@ export function ProjectFormModal({
 
   useEffect(() => {
     if (open) {
+      setValidationError("");
       setBudgetLakhs(form.plannedBudget > 0 ? String(rupeesToLakhs(form.plannedBudget)) : "");
     }
   }, [open, form.plannedBudget]);
@@ -90,9 +92,35 @@ export function ProjectFormModal({
     });
   };
 
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    if (form.plannedStartDate && form.plannedEndDate && form.plannedEndDate < form.plannedStartDate) {
+      setValidationError("End date must be on or after the start date.");
+      return;
+    }
+
+    if (!form.name.trim()) {
+      setValidationError("Project name is required.");
+      return;
+    }
+
+    setValidationError("");
+
+    setSubmitting(true);
+    try {
+      await onSubmit(e);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) return null;
+
   return (
-    <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
+    <ModalOverlay onClose={onClose} widthClassName="max-w-2xl" ariaLabel={title}>
+      <div className="w-full p-2">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-indigo-600 text-2xl">folder</span>
@@ -101,7 +129,7 @@ export function ProjectFormModal({
             <h2 className="text-xl font-bold text-slate-900">{title}</h2>
           </div>
         </div>
-        <form onSubmit={(e) => { if (submitting) return; setSubmitting(true); onSubmit(e); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Field label="Name" required>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" required />
@@ -146,8 +174,18 @@ export function ProjectFormModal({
           <Field label="Start">
             <input type="date" value={form.plannedStartDate} onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
           </Field>
-          <Field label="End">
-            <input type="date" value={form.plannedEndDate} onChange={(e) => setForm({ ...form, plannedEndDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
+          <Field label="End" required>
+            <input
+              type="date"
+              value={form.plannedEndDate}
+              min={form.plannedStartDate || undefined}
+              onChange={(e) => setForm({ ...form, plannedEndDate: e.target.value })}
+              className="w-full border border-slate-200 rounded-lg p-2 text-sm"
+              required
+            />
+            {form.plannedStartDate && form.plannedEndDate && form.plannedEndDate < form.plannedStartDate && (
+              <span className="text-xs text-red-600">End date must be on or after the start date.</span>
+            )}
           </Field>
         
           {showOrganizationFilter && (
@@ -207,6 +245,13 @@ export function ProjectFormModal({
               </div>
             )}
           </div>
+          {validationError && (
+            <div className="md:col-span-2 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs text-red-700">
+              <span className="material-symbols-outlined text-base">error</span>
+              <span>{validationError}</span>
+            </div>
+          )}
+
           <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600">
               Cancel
