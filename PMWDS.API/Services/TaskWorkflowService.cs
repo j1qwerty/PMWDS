@@ -166,7 +166,7 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
             {
                 item.ProjectId,
                 item.AssignedToUserId,
-                HasAssignment = currentUserId != null && item.Assignments.Any(assignment => assignment.UserId == currentUserId)
+                HasAssignment = currentUserId != null && item.Assignments.Any(assignment => assignment.UserId == currentUserId && assignment.IsActive)
             })
             .FirstOrDefaultAsync(ct);
 
