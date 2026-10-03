@@ -204,7 +204,7 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("recommendations/{taskId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.AIManage)]
+    [Authorize(Policy = AuthorizationPolicies.AIOperate)]
     public async Task<IActionResult> GenerateRecommendation(Guid taskId, CancellationToken ct)
     {
         if (!await CanManageTaskAsync(taskId, ct))
@@ -224,12 +224,12 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("recommendations/{recommendationId:guid}/accept")]
-    [Authorize(Policy = AuthorizationPolicies.AIManage)]
+    [Authorize(Policy = AuthorizationPolicies.AIOperate)]
     public async Task<IActionResult> AcceptRecommendation(Guid recommendationId, CancellationToken ct)
         => Ok(await _recommendations.AcceptRecommendationAsync(recommendationId, ct));
 
     [HttpPost("recommendations/{recommendationId:guid}/reject")]
-    [Authorize(Policy = AuthorizationPolicies.AIManage)]
+    [Authorize(Policy = AuthorizationPolicies.AIOperate)]
     public async Task<IActionResult> RejectRecommendation(
         Guid recommendationId,
         [FromBody] RejectRecommendationRequest request,
@@ -270,7 +270,7 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("predictions/{taskId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.AIManage)]
+    [Authorize(Policy = AuthorizationPolicies.AIOperate)]
     public async Task<IActionResult> GenerateDelayPrediction(Guid taskId, CancellationToken ct)
     {
         if (!await CanManageTaskAsync(taskId, ct))
@@ -290,7 +290,7 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("projects/{projectId:guid}/predictions")]
-    [Authorize(Policy = AuthorizationPolicies.AIManage)]
+    [Authorize(Policy = AuthorizationPolicies.AIOperate)]
     public async Task<IActionResult> PredictProjectDelays(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(projectId, ct))
@@ -340,7 +340,7 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("optimize-resources/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.AIManage)]
+    [Authorize(Policy = AuthorizationPolicies.AIOperate)]
     public async Task<IActionResult> OptimizeResources(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(projectId, ct))
