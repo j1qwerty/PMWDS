@@ -458,10 +458,12 @@ using (var scope = app.Services.CreateScope())
             "ai-model-training",
             j => j.ExecuteAsync(CancellationToken.None),
             Cron.Daily(2));
+        // The job evaluates each persisted schedule's NextRun, so its polling cadence
+        // must be at least as frequent as the smallest supported schedule interval.
         RecurringJob.AddOrUpdate<IScheduledReportJob>(
             "scheduled-reports",
             j => j.ExecuteAsync(CancellationToken.None),
-            Cron.Weekly(DayOfWeek.Monday, 7));
+            Cron.Hourly);
     }
 }
 
