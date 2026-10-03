@@ -37,7 +37,7 @@ public class UpdateProjectStatusCommandHandler
         ?? throw new NotFoundException(
         "Project", req.Id);
         var oldStatus = project.Status;
-        project.UpdateStatus(req.NewStatus);
+        project.UpdateStatus(req.NewStatus, req.Justification);
         project.SetModified(
         _currentUser.UserId ?? "system");
         await _uow.Projects.UpdateAsync(project, ct);
