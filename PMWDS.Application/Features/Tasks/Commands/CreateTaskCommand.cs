@@ -13,19 +13,19 @@ public class CreateTaskCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IAuditService _audit;
     private readonly INotificationService _notifications;
-    private readonly IPredictionService _ai;
+    private readonly ITaskAiEnrichmentQueue _aiQueue;
     public CreateTaskCommandHandler(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
     IAuditService audit,
     INotificationService notifications,
-    IPredictionService ai)
+    ITaskAiEnrichmentQueue aiQueue)
     {
         _uow = uow;
         _currentUser = currentUser;
         _audit = audit;
         _notifications = notifications;
-        _ai = ai;
+        _aiQueue = aiQueue;
     }
     public async Task<TaskDto> Handle(
     CreateTaskCommand req,
@@ -77,15 +77,12 @@ public class CreateTaskCommandHandler
             }
         }
         await _uow.SaveChangesAsync(ct);
-        var prediction = await _ai
-        .PredictTaskDelayAsync(task.Id, ct);
-        task.UpdateAIPrediction(
-        prediction.DelayProbability,
-        prediction.PredictedCompletionDate ?? task.DueDate,
-        string.Join("; ",
-        prediction.ContributingFactors));
-        await _uow.Tasks.UpdateAsync(task, ct);
-        await _uow.SaveChangesAsync(ct);
+
+        // AI enrichment is deliberately outside the create request. Task creation
+        // is a transactional business operation; prediction is advisory work that
+        // can be retried independently after the task exists.
+        await _aiQueue.QueueAsync(task.Id);
+
         await _audit.LogAsync(
         _currentUser.UserId ?? "system",
         "Create", "Task",
