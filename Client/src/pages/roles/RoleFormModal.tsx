@@ -179,7 +179,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 max-w-[100vw] shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
+    <div className="w-full min-h-0 flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 flex-shrink-0">
         <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
