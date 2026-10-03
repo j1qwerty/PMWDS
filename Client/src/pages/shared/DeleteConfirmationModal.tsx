@@ -1,45 +1,69 @@
+import { Dialog } from "./Dialog";
+
 interface DeleteConfirmationModalProps {
   name: string;
   warning?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
   submitting?: boolean;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 }
 
-export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel, submitting = false }: DeleteConfirmationModalProps) {
+export function DeleteConfirmationModal({
+  name,
+  warning,
+  onConfirm,
+  onCancel,
+  submitting = false,
+  title = "Confirm deletion",
+  description = "This removes the selected record from the current workspace.",
+  confirmLabel = "Delete",
+}: DeleteConfirmationModalProps) {
   return (
-    <div className="bg-white rounded-2xl p-8  w-full shadow-xl border border-slate-200">
-      <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-5">
-        <span className="material-symbols-outlined text-red-500 text-[28px]">warning</span>
-      </div>
-      
-      <h3 className="text-lg font-bold text-slate-900 mb-2">Confirm Deletion</h3>
-      <p className="text-sm text-slate-600 mb-4">
-        Are you sure you want to permanently delete <strong className="text-slate-900">{name}</strong>? This action cannot be undone.
-      </p>
-      
-      {warning && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-700 mb-4 flex items-start gap-2">
-          <span className="material-symbols-outlined text-sm shrink-0 mt-0.5">info</span>
-          {warning}
+    <Dialog
+      title={title}
+      description={description}
+      icon="warning"
+      size="sm"
+      onClose={onCancel}
+      closeOnBackdrop={!submitting}
+      showCloseButton={!submitting}
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={submitting}
+            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Deleting…" : confirmLabel}
+          </button>
         </div>
-      )}
-      
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-        <button
-          onClick={onCancel}
-          className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={submitting}
-          className="px-5 py-2.5 rounded-xl border-none bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {submitting ? "Deleting..." : "Delete Permanently"}
-        </button>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-sm leading-6 text-slate-600">
+          Are you sure you want to delete{" "}
+          <strong className="font-semibold text-slate-900">{name}</strong>?
+        </p>
+
+        {warning && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-800">
+            <span className="material-symbols-outlined mt-0.5 shrink-0 text-base">info</span>
+            <span>{warning}</span>
+          </div>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }

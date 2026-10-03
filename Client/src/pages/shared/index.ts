@@ -3,6 +3,7 @@ export { Avatar, AvatarStack, getAvatarUrl } from "./Avatar";
 export { GlassCard } from "./GlassCard";
 export { GradientButton } from "./GradientButton";
 
+export { Dialog } from "./Dialog";
 export { ModalOverlay } from "./ModalOverlay";
 export { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 export { BgControls, BgRenderer, type BgConfig, type BgPreset, DEFAULT_CONFIG } from "./bg/index";
