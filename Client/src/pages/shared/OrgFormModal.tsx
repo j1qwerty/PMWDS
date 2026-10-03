@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from "react";
 import type { OrganizationRecord } from "../../types";
 import { InputF } from "./InputF";
+import { Dialog } from "./Dialog";
 
 interface OrgFormModalProps {
   initialData?: OrganizationRecord;
-  onSubmit: (data: Record<string, unknown>) => void;
+  onSubmit: (data: Record<string, unknown>) => void | Promise<void>;
   onCancel: () => void;
 }
 
 export function OrgFormModal({ initialData, onSubmit, onCancel }: OrgFormModalProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: initialData?.name || "",
     taxId: initialData?.taxId || "",
@@ -19,60 +21,66 @@ export function OrgFormModal({ initialData, onSubmit, onCancel }: OrgFormModalPr
     foundedDate: initialData?.foundedDate?.slice(0, 10) || "",
   });
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
     if (submitting) return;
+
     setSubmitting(true);
-    onSubmit(form);
+    setError("");
+    try {
+      await onSubmit({
+        ...form,
+        name: form.name.trim(),
+        taxId: form.taxId.trim() || null,
+        address: form.address.trim() || null,
+        contactEmail: form.contactEmail.trim() || null,
+        contactPhone: form.contactPhone.trim() || null,
+        foundedDate: form.foundedDate || null,
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Failed to save the organization.");
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="bg-white rounded-2xl p-8 w-[520px] max-w-[95vw] shadow-xl border border-slate-200">
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-          <span className="material-symbols-outlined text-indigo-600 text-2xl">
-            {initialData ? "edit_business" : "add_business"}
-          </span>
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">
-            {initialData ? "Edit Organization" : "Create Organization"}
-          </h2>
-          <p className="text-sm text-slate-500">
-            {initialData ? "Update organization details" : "Add a new organization to your structure"}
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <InputF label="Organization Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
-        
-        <div className="grid grid-cols-2 gap-4">
-          <InputF label="Tax ID" value={form.taxId} onChange={(v) => setForm({ ...form, taxId: v })} />
-          <InputF label="Phone" value={form.contactPhone} onChange={(v) => setForm({ ...form, contactPhone: v })} />
-        </div>
-        
-        <InputF label="Email" type="email" value={form.contactEmail} onChange={(v) => setForm({ ...form, contactEmail: v })} />
-        <InputF label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
-        <InputF label="Founded Date" type="date" value={form.foundedDate} onChange={(v) => setForm({ ...form, foundedDate: v })} />
-
-        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
-          >
+    <Dialog
+      title={initialData ? "Edit organization" : "Create organization"}
+      description={initialData ? "Update organization details." : "Add an organization to your structure."}
+      icon={initialData ? "edit_business" : "add_business"}
+      size="md"
+      onClose={onCancel}
+      closeOnBackdrop={!submitting}
+      showCloseButton={!submitting}
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onCancel} disabled={submitting} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Saving..." : (initialData ? "Update Organization" : "Create Organization")}
+          <button type="submit" form="organization-form" disabled={submitting} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {submitting ? "Saving…" : initialData ? "Update organization" : "Create organization"}
           </button>
         </div>
+      }
+    >
+      <form id="organization-form" onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm leading-5 text-red-700">
+            {error}
+          </div>
+        )}
+
+        <InputF label="Organization name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InputF label="Tax ID" value={form.taxId} onChange={(value) => setForm({ ...form, taxId: value })} />
+          <InputF label="Phone" value={form.contactPhone} onChange={(value) => setForm({ ...form, contactPhone: value })} />
+        </div>
+
+        <InputF label="Email" type="email" value={form.contactEmail} onChange={(value) => setForm({ ...form, contactEmail: value })} />
+        <InputF label="Address" value={form.address} onChange={(value) => setForm({ ...form, address: value })} />
+        <InputF label="Founded date" type="date" value={form.foundedDate} onChange={(value) => setForm({ ...form, foundedDate: value })} />
       </form>
-    </div>
+    </Dialog>
   );
 }
