@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
@@ -10,13 +11,15 @@ public class RoleScopeService
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IMemoryCache _cache;
     private ScopeSnapshot? _scopeSnapshot;
     private HashSet<string>? _permissionSnapshot;
 
-    public RoleScopeService(ApplicationDbContext db, ICurrentUserService currentUser)
+    public RoleScopeService(ApplicationDbContext db, ICurrentUserService currentUser, IMemoryCache cache)
     {
         _db = db;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public bool IsSuperAdmin => _currentUser.IsInRole(RoleKeys.SuperAdmin);
@@ -379,32 +382,72 @@ public class RoleScopeService
             return _scopeSnapshot;
         }
 
-        var userScope = await _db.Users
-            .Where(user => user.Id == userId)
-            .Select(user => new
-            {
-                user.OrganizationId,
-                user.DepartmentId,
-                PrimaryDepartmentOrganizationId = user.Department != null
-                    ? user.Department.OrganizationId
-                    : null,
-                Assignments = user.DepartmentAssignments
-                    .Select(assignment => new
-                    {
-                        assignment.DepartmentId,
-                        OrganizationId = assignment.Department != null
-                            ? assignment.Department.OrganizationId
-                            : null
-                    })
-                    .ToList()
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (userScope == null)
+        var cacheKey = $"pmwds:user-scope:{userId:N}";
+        if (!_cache.TryGetValue(cacheKey, out ScopeSnapshot? cachedScope))
         {
-            _scopeSnapshot = ScopeSnapshot.Empty;
-            return _scopeSnapshot;
+            var userScope = await _db.Users
+                .AsNoTracking()
+                .Where(user => user.Id == userId)
+                .Select(user => new
+                {
+                    user.OrganizationId,
+                    user.DepartmentId,
+                    PrimaryDepartmentOrganizationId = user.Department != null
+                        ? user.Department.OrganizationId
+                        : null,
+                    Assignments = user.DepartmentAssignments
+                        .Select(assignment => new
+                        {
+                            assignment.DepartmentId,
+                            OrganizationId = assignment.Department != null
+                                ? assignment.Department.OrganizationId
+                                : null
+                        })
+                        .ToList()
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (userScope == null)
+            {
+                cachedScope = ScopeSnapshot.Empty;
+            }
+            else
+            {
+                var organizationIds = new HashSet<Guid>();
+                var departmentIds = new HashSet<Guid>();
+
+                if (userScope.OrganizationId.HasValue)
+                {
+                    organizationIds.Add(userScope.OrganizationId.Value);
+                }
+
+                if (userScope.PrimaryDepartmentOrganizationId.HasValue)
+                {
+                    organizationIds.Add(userScope.PrimaryDepartmentOrganizationId.Value);
+                }
+
+                if (userScope.DepartmentId.HasValue)
+                {
+                    departmentIds.Add(userScope.DepartmentId.Value);
+                }
+
+                foreach (var assignment in userScope.Assignments)
+                {
+                    departmentIds.Add(assignment.DepartmentId);
+                    if (assignment.OrganizationId.HasValue)
+                    {
+                        organizationIds.Add(assignment.OrganizationId.Value);
+                    }
+                }
+
+                cachedScope = new ScopeSnapshot(organizationIds, departmentIds);
+            }
+
+            _cache.Set(cacheKey, cachedScope, TimeSpan.FromSeconds(5));
         }
+
+        _scopeSnapshot = cachedScope ?? ScopeSnapshot.Empty;
+        return _scopeSnapshot;
 
         var organizationIds = new HashSet<Guid>();
         var departmentIds = new HashSet<Guid>();
@@ -493,15 +536,25 @@ public class RoleScopeService
             return _permissionSnapshot;
         }
 
-        var permissions = await _db.Users
-            .Where(user => user.Id == userId && user.IsActive)
-            .SelectMany(user => user.Roles)
-            .SelectMany(role => role.Permissions)
-            .Select(permission => permission.Code)
-            .Distinct()
-            .ToListAsync(ct);
+        var cacheKey = $"pmwds:user-permissions:{userId:N}";
+        if (!_cache.TryGetValue(cacheKey, out HashSet<string>? cachedPermissions))
+        {
+            var permissions = await _db.Users
+                .AsNoTracking()
+                .Where(user => user.Id == userId && user.IsActive)
+                .SelectMany(user => user.Roles)
+                .SelectMany(role => role.Permissions)
+                .Select(permission => permission.Code)
+                .Distinct()
+                .ToListAsync(ct);
 
-        _permissionSnapshot = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            cachedPermissions = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            _cache.Set(cacheKey, cachedPermissions, TimeSpan.FromSeconds(5));
+        }
+
+        _permissionSnapshot = new HashSet<string>(
+            cachedPermissions ?? Enumerable.Empty<string>(),
+            StringComparer.OrdinalIgnoreCase);
         return _permissionSnapshot;
     }
 
