@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import type { Department, User } from "../../../types";
 import { Avatar } from "../../shared";
+import { Dialog } from "../../shared/Dialog";
 import { RoleKey, hasRoleKey } from "../../../permissions";
 
 interface DepartmentUsersModalProps {
@@ -77,6 +78,7 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(currentUserIds);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("current");
   const [confirmTarget, setConfirmTarget] = useState<{ userId: string; deptNames: string[] } | null>(null);
@@ -132,6 +134,7 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
 
   const handleSave = async () => {
     setSaving(true);
+    setError("");
     try {
       for (const user of orgUsers) {
         const isCurrentlyAssigned = currentUserIds.has(user.id);
@@ -148,6 +151,8 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
         }
       }
       onCancel();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Failed to update department users.");
     } finally {
       setSaving(false);
     }
@@ -186,18 +191,26 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/20" onClick={onCancel}>
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <span className="material-symbols-outlined text-indigo-600 text-2xl">group</span>
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Manage Users</h2>
-              <p className="text-sm text-slate-400">{department.name}</p>
-            </div>
+    <Dialog
+      title="Manage department users"
+      description={department.name}
+      icon="group"
+      size="lg"
+      onClose={onCancel}
+      closeOnBackdrop={!saving}
+      showCloseButton={!saving}
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-400">
+            {selectedIds.size} user{selectedIds.size !== 1 ? "s" : ""} selected
           </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={onCancel} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>
+          </div>
+        </div>
+      }
+    >
 
           <div className="relative mb-4">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
@@ -302,30 +315,7 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-3 px-1">
-            <span className="text-xs text-slate-400">{selectedIds.size} user{selectedIds.size !== 1 ? "s" : ""}</span>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={saving}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          {error && <div role="alert" className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+    </Dialog>
   );
 }
