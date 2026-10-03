@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 interface ModalOverlayProps {
   children: ReactNode;
@@ -7,7 +7,11 @@ interface ModalOverlayProps {
   closeOnBackdrop?: boolean;
   contentClassName?: string;
   widthClassName?: string;
+  ariaLabel?: string;
 }
+
+let modalLockCount = 0;
+let previousBodyOverflow = "";
 
 export function ModalOverlay({
   children,
@@ -16,33 +20,76 @@ export function ModalOverlay({
   closeOnBackdrop = true,
   contentClassName = "",
   widthClassName = "max-w-2xl",
+  ariaLabel = "Dialog",
 }: ModalOverlayProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
   useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
+    if (modalLockCount === 0) {
+      previousBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    modalLockCount += 1;
+
+    const previousActiveElement = document.activeElement as HTMLElement | null;
+    const focusFrame = requestAnimationFrame(() => {
+      const firstFocusable = contentRef.current?.querySelector<HTMLElement>(
+        "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+      );
+      firstFocusable?.focus();
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", onKeyDown);
+      modalLockCount = Math.max(0, modalLockCount - 1);
+      if (modalLockCount === 0) {
+        document.body.style.overflow = previousBodyOverflow;
+      }
+      previousActiveElement?.focus?.();
+    };
+  }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 bg-black/35 backdrop-blur-md z-1000 animate-[fadeIn_0.2s_ease] overflow-y-auto overscroll-contain"
-      onClick={closeOnBackdrop ? onClose : undefined}
+      className="fixed inset-0 z-[1000] overflow-y-auto overscroll-contain bg-slate-950/40 p-4 backdrop-blur-sm animate-[fadeIn_0.18s_ease-out]"
+      role="presentation"
+      onMouseDown={closeOnBackdrop ? onClose : undefined}
     >
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="flex min-h-full items-center justify-center sm:p-2">
         <div
-          onClick={(e) => e.stopPropagation()}
-          className={`relative w-full ${widthClassName} animate-[slideUp_0.3s_ease] flex justify-center`}
+          ref={contentRef}
+          className={`relative w-full ${widthClassName} max-h-[calc(100vh-2rem)] overflow-hidden animate-[slideUp_0.2s_ease-out] ${contentClassName}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+          aria-labelledby={titleId}
+          onMouseDown={(event) => event.stopPropagation()}
         >
           {showCloseButton && (
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close modal"
-              className="absolute -top-2 -right-2 z-10 w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+              aria-label="Close dialog"
+              className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-xl border border-slate-200/90 bg-white/95 text-slate-500 shadow-sm backdrop-blur transition-colors hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <span className="material-symbols-outlined text-lg">close</span>
+              <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
           )}
-          <div className={`w-full ${contentClassName}`}>{children}</div>
+          <div id={titleId} className="sr-only">
+            {ariaLabel}
+          </div>
+          {children}
         </div>
       </div>
     </div>
