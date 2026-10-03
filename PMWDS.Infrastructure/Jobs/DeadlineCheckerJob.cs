@@ -28,14 +28,11 @@ public class DeadlineCheckerJob : IDeadlineCheckerJob
         _logger.LogInformation(
         "DeadlineCheckerJob started at {Time}",
         DateTime.UtcNow);
-        var tasks = (await _uow.Tasks.GetAllAsync(ct))
-        .Where(t =>
-        t.AssignedToUserId != null
-        && t.Status != Domain.Enums.TaskStatus.Completed
-        && t.Status != Domain.Enums.TaskStatus.Cancelled
-        && t.DueDate > DateTime.UtcNow
-        && t.DueDate <= DateTime.UtcNow.AddHours(48))
-        .ToList();
+        var now = DateTime.UtcNow;
+        var tasks = (await _uow.Tasks.GetDeadlineReminderCandidatesAsync(
+            now,
+            now.AddHours(48),
+            ct)).ToList();
         foreach (var task in tasks)
         {
             try
@@ -55,28 +52,39 @@ public class DeadlineCheckerJob : IDeadlineCheckerJob
                 task.Id);
             }
         }
-        var overdue = (await _uow.Tasks
-        .GetOverdueTasksAsync(ct)).ToList();
-        foreach (var task in overdue
-        .Where(t => !t.IsEscalated))
+        var overdue = (await _uow.Tasks.GetOverdueUnescalatedTasksAsync(ct)).ToList();
+        foreach (var task in overdue)
         {
             try
             {
                 task.Escalate();
                 await _uow.Tasks.UpdateAsync(task, ct);
-                await _notifications
-                .SendEscalationAlertAsync(
-                task.Id,
-               task.EscalationLevel, ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                "Failed to escalate overdue " +
-                "task {TaskId}", task.Id);
+                "Failed to prepare escalation for overdue task {TaskId}", task.Id);
             }
         }
+
         await _uow.SaveChangesAsync(ct);
+
+        foreach (var task in overdue.Where(task => task.IsEscalated))
+        {
+            try
+            {
+                await _notifications.SendEscalationAlertAsync(
+                    task.Id,
+                    task.EscalationLevel,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to send escalation alert for task {TaskId}",
+                    task.Id);
+            }
+        }
         _logger.LogInformation(
         "DeadlineCheckerJob completed. " +
         "Reminders: {Reminders}, " +
