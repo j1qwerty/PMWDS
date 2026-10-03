@@ -184,3 +184,22 @@ public record UpdateProjectDto(
  string ProjectManagerId,
  Domain.Enums.ProjectPriority Priority,
  IReadOnlyCollection<Guid>? DepartmentIds = null);
+
+
+public sealed record ProjectListQuery(
+    Guid? DepartmentId = null,
+    Guid? OrganizationId = null,
+    PMWDS.Domain.Enums.ProjectStatus? Status = null,
+    PMWDS.Domain.Enums.ProjectPriority? Priority = null,
+    string? Search = null,
+    string? DateField = null,
+    DateTime? DateFrom = null,
+    DateTime? DateTo = null,
+    bool OverdueOnly = false,
+    string SortBy = "newest",
+    string SortDirection = "asc",
+    int Page = 1,
+    int PageSize = 12)
+{
+    public PaginationQuery Pagination => new(Page, PageSize);
+}
