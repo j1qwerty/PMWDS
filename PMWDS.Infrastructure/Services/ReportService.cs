@@ -166,13 +166,25 @@ public class ReportService : IReportService
             .ToDictionary(g => g.Key.ToString(), g => g.Count());
 
         var byAssignee = taskList
-            .Where(t => t.AssignedToUserId != null)
-            .GroupBy(t => t.AssignedToUserId!.Value)
+            .SelectMany(task =>
+            {
+                var activeAssignments = task.Assignments
+                    .Where(assignment => assignment.IsActive)
+                    .Select(assignment => assignment.UserId)
+                    .Distinct()
+                    .ToList();
+
+                if (activeAssignments.Count == 0 && task.AssignedToUserId.HasValue)
+                    activeAssignments.Add(task.AssignedToUserId.Value);
+
+                return activeAssignments.Select(userId => new { Task = task, UserId = userId });
+            })
+            .GroupBy(item => item.UserId)
             .ToDictionary(g => g.Key.ToString(), g => new
             {
                 Total = g.Count(),
-                Completed = g.Count(t => t.Status == Domain.Enums.TaskStatus.Completed),
-                Overdue = g.Count(t => t.IsOverdue())
+                Completed = g.Count(item => item.Task.Status == Domain.Enums.TaskStatus.Completed),
+                Overdue = g.Count(item => item.Task.IsOverdue())
             });
 
         var context = new
@@ -210,8 +222,8 @@ public class ReportService : IReportService
         var relevantTasks = (await _uow.Tasks.GetForDepartmentWorkloadAsync(
             departmentId,
             userIds,
-            dateRange.StartDate,
-            dateRange.EndDate,
+            dateRange.Start,
+            dateRange.End,
             ct)).ToList();
 
         var userWorkloads = users.Select(u => new
