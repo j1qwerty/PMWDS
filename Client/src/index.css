@@ -68,8 +68,8 @@
   /* Status Colors */
   --color-success: #10B981;
   --color-warning: #F59E0B;
-  --success-bg: #dcfce7;
-  --warning-bg: #fef9c3;
+  --color-success-bg: #dcfce7;
+  --color-warning-bg: #fef9c3;
 
   /* Font */
   --font-sans: "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
@@ -105,7 +105,7 @@
 }
 
 html {
-  background: #f7f9fb;
+  background: var(--color-background);
   font-family: "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
 }
 
@@ -113,8 +113,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #f7f9fb;
-  color: #191c1e;
+  background: var(--color-background);
+  color: var(--color-on-background);
   font-family: "Inter", sans-serif;
   overflow-x: hidden;
 }
@@ -147,7 +147,7 @@ html, body {
 
 /* Primary Gradient for Progress Bars */
 .primary-gradient {
-  background: linear-gradient(90deg, #4648d4 0%, #8127cf 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
 }
 
 /* Status Pulse Animation */
@@ -223,9 +223,9 @@ html, body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--surface-container-high) 0%,
-    var(--surface-container-low) 50%,
-    var(--surface-container-high) 100%
+    var(--color-surface-container-high) 0%,
+    var(--color-surface-container-low) 50%,
+    var(--color-surface-container-high) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
