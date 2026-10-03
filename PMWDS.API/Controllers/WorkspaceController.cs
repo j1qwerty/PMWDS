@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.DTOs.Workspace;
-using PMWDS.Application.DTOs.Workspace;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
 using PMWDS.Persistence.Context;
@@ -71,7 +70,7 @@ public class WorkspaceController : BaseApiController
             _db.Organizations.AsNoTracking().OrderBy(organization => organization.Name),
             ct);
         var organizations = await organizationsQuery
-            .Take(referencePageSize)
+            .Take(500)
             .Select(organization => new WorkspaceOrganizationDto(
                 organization.Id,
                 organization.Name,
@@ -87,7 +86,7 @@ public class WorkspaceController : BaseApiController
             _db.Departments.AsNoTracking().OrderBy(department => department.Name),
             ct);
         var departments = await departmentsQuery
-            .Take(Math.Clamp(referencePageSize * 2, 20, 200))
+            .Take(500)
             .Select(department => new WorkspaceDepartmentDto(
                 department.Id,
                 department.Name,
@@ -104,7 +103,7 @@ public class WorkspaceController : BaseApiController
             _db.Users.AsNoTracking().OrderBy(user => user.FirstName).ThenBy(user => user.LastName),
             ct);
         var users = await usersQuery
-            .Take(Math.Clamp(referencePageSize * 2, 20, 200))
+            .Take(500)
             .Select(user => new WorkspaceUserDto(
                 user.Id.ToString(),
                 user.FirstName,
