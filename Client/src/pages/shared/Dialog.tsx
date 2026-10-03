@@ -47,6 +47,8 @@ export function Dialog({
   const titleId = useId();
   const descriptionId = useId();
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     restoreFocusRef.current = document.activeElement instanceof HTMLElement
@@ -70,7 +72,7 @@ export function Dialog({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (closeOnBackdrop) onClose();
+        if (closeOnBackdrop) onCloseRef.current();
         return;
       }
 
@@ -110,13 +112,13 @@ export function Dialog({
       }
       restoreFocusRef.current?.focus?.();
     };
-  }, [closeOnBackdrop, initialFocusRef, onClose]);
+  }, [closeOnBackdrop, initialFocusRef]);
 
   return (
     <div
       className="fixed inset-0 z-[1000] overflow-y-auto overscroll-contain bg-slate-950/35 p-4 backdrop-blur-md motion-safe:animate-[fadeIn_0.18s_ease-out]"
       onMouseDown={(event) => {
-        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+        if (closeOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
       }}
       aria-hidden={false}
     >
