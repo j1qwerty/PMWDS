@@ -135,11 +135,17 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.ActivityLogsCreate)]
     public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
         {
             return Unauthorized();
+        }
+
+        if (req.ProjectId.HasValue && !await _scope.CanAccessProjectAsync(req.ProjectId.Value, ct))
+        {
+            return Forbid();
         }
 
         var log = ActivityLog.Create(userId, req.ActivityType, req.Description, req.Metadata, req.ProjectId);
