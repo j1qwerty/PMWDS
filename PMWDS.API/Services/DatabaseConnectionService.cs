@@ -52,7 +52,15 @@ public static class DatabaseConnectionService
                     opt.UseSqlServer(sqlServerConnection, sql =>
                     {
                         sql.MigrationsAssembly("PMWDS.Persistence");
-                        sql.EnableRetryOnFailure();
+                        // Keep transient retry behaviour, but do not allow repeated long backoffs
+                        // to turn an already-slow SQL Server request into a 30+ second failure.
+                        // The local constrained Express instance can spend ~20s waiting on
+                        // RESOURCE_SEMAPHORE before a command times out; a single short retry is
+                        // enough to cover a transient connection fault without masking the real
+                        // query-pressure problem.
+                        sql.EnableRetryOnFailure(
+                            maxRetryCount: 1,
+                            maxRetryDelay: TimeSpan.FromSeconds(2));
                     });
                     break;
                 case ActiveDatabaseProvider.Sqlite:
