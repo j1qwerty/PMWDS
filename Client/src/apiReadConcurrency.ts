@@ -6,6 +6,7 @@ type Waiter = {
 };
 
 let activeReads = 0;
+let maxConcurrentReads = DEFAULT_MAX_CONCURRENT_READS;
 const queue: Waiter[] = [];
 
 function isApiReadRequest(input: RequestInfo | URL, init?: RequestInit): boolean {
@@ -25,7 +26,7 @@ function releaseNextRead(): void {
 }
 
 function acquireRead(): Promise<void> {
-  if (activeReads < DEFAULT_MAX_CONCURRENT_READS) {
+  if (activeReads < maxConcurrentReads) {
     activeReads += 1;
     return Promise.resolve();
   }
@@ -48,6 +49,8 @@ export function installApiReadConcurrencyLimit(maxConcurrentReads = DEFAULT_MAX_
   if (typeof window === "undefined" || maxConcurrentReads < 1) return () => undefined;
 
   const originalFetch = window.fetch.bind(window);
+  const previousMaxConcurrentReads = maxConcurrentReads;
+  maxConcurrentReads = Math.floor(maxConcurrentReads);
   let installed = true;
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -65,6 +68,7 @@ export function installApiReadConcurrencyLimit(maxConcurrentReads = DEFAULT_MAX_
 
   return () => {
     installed = false;
+    maxConcurrentReads = previousMaxConcurrentReads;
     window.fetch = originalFetch;
   };
 }
