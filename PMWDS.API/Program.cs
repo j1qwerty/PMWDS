@@ -66,6 +66,7 @@ builder.Services.Configure<IpRateLimitPolicies>(
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 builder.Services.AddMemoryCache(); // Required by AspNetCoreRateLimit
+builder.Services.AddResponseCompression();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<ILoginLockoutService, LoginLockoutService>();
 
@@ -128,14 +129,26 @@ builder.Services
                     return;
                 }
 
-                var db = ctx.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
-                var user = await db.Users
-                    .AsNoTracking()
-                    .Where(u => u.Id == userId)
-                    .Select(u => new { u.IsActive, u.AccessTokenVersion })
-                    .FirstOrDefaultAsync(ctx.HttpContext.RequestAborted);
+                var cache = ctx.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                var cacheKey = $"pmwds:jwt-validation:{userId:N}:{tokenVersion}";
 
-                if (user == null || !user.IsActive || user.AccessTokenVersion != tokenVersion)
+                if (!cache.TryGetValue(cacheKey, out bool isTokenValid))
+                {
+                    var db = ctx.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                    var user = await db.Users
+                        .AsNoTracking()
+                        .Where(u => u.Id == userId)
+                        .Select(u => new { u.IsActive, u.AccessTokenVersion })
+                        .FirstOrDefaultAsync(ctx.HttpContext.RequestAborted);
+
+                    isTokenValid = user != null &&
+                        user.IsActive &&
+                        user.AccessTokenVersion == tokenVersion;
+
+                    cache.Set(cacheKey, isTokenValid, TimeSpan.FromSeconds(5));
+                }
+
+                if (!isTokenValid)
                 {
                     ctx.Fail("Token has been revoked.");
                 }
@@ -357,6 +370,8 @@ var app = builder.Build();
 
 // nginx terminates TLS and proxies over loopback HTTP. Trust its forwarded headers so
 // UseHttpsRedirection and absolute URL generation see the original scheme instead of looping.
+app.UseResponseCompression();
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto

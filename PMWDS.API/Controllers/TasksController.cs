@@ -78,7 +78,6 @@ public class TasksController : BaseApiController
         var query = _db.Tasks.AsNoTracking()
             .Where(task => allowedProjectIds.Contains(task.ProjectId) && task.ParentTaskId == null)
             .Include(task => task.Project)
-                .ThenInclude(project => project!.ProjectDepartments)
             .Include(task => task.Milestone)
             .Include(task => task.Assignments)
                 .ThenInclude(assignment => assignment.User)
@@ -184,33 +183,21 @@ public class TasksController : BaseApiController
 
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         IQueryable<ProjectTask> query = _db.Tasks.AsNoTracking()
-            .Where(t => allowedProjectIds.Contains(t.ProjectId));
-        if (_scope.IsSuperAdmin)
+            .Where(t => allowedProjectIds.Contains(t.ProjectId))
+            .Include(t => t.Assignments)
+                .ThenInclude(assignment => assignment.User)
+            .Include(t => t.SubTasks)
+            .Include(t => t.Project)
+            .Include(t => t.Milestone);
+
+        if (!_scope.IsSuperAdmin)
         {
-            query = query
-                .Include(t => t.Assignments)
-                .Include(t => t.SubTasks)
-                .Include(t => t.Comments)
-                .Include(t => t.Attachments)
-                .Include(t => t.Dependencies)
-                .Include(t => t.TimeEntries)
-                .Include(t => t.Project);
+            query = query.Where(t =>
+                (t.AssignedToUserId == currentUserId ||
+                 t.Assignments.Any(a => a.UserId == currentUserId && a.IsActive)) &&
+                t.Status != TaskStatus.Completed &&
+                t.Status != TaskStatus.Cancelled);
         }
-        else
-        {
-            query = query
-                .Where(t => (t.AssignedToUserId == currentUserId ||
-                    t.Assignments.Any(a => a.UserId == currentUserId && a.IsActive)) &&
-                    t.Status != TaskStatus.Completed &&
-                    t.Status != TaskStatus.Cancelled)
-                .Include(t => t.Assignments)
-                .Include(t => t.SubTasks)
-                .Include(t => t.Comments)
-                .Include(t => t.Attachments)
-                .Include(t => t.Dependencies)
-                .Include(t => t.TimeEntries)
-                .Include(t => t.Project)
-                .Include(t => t.Milestone);
         }
 
         var totalCount = await query.CountAsync(ct);

@@ -219,6 +219,51 @@ export interface WorkspaceBootstrap {
   userPageSize: number;
 }
 
+export interface WorkspaceSnapshot {
+  generatedAt: string;
+  currentUser: User;
+  permissions: string[];
+  projects: ProjectNavigationItem[];
+  organizations: WorkspaceOrganizationSnapshot[];
+  departments: Department[];
+  users: WorkspaceUserSnapshot[];
+  unreadNotificationCount: number;
+  userPageSize: number;
+}
+
+export interface WorkspaceOrganizationSnapshot {
+  id: string;
+  name: string;
+  taxId?: string | null;
+  address?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  foundedDate?: string | null;
+  departmentCount: number;
+}
+
+export interface WorkspaceUserSnapshot {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  profilePictureUrl?: string | null;
+  jobTitle?: string | null;
+  organizationId?: string | null;
+  department?: string | null;
+  departmentId?: string | null;
+  availabilityPercentage: number;
+  aiWorkloadScore: number;
+  aiBurnoutRiskScore: number;
+  aiPerformanceScore: number;
+  activeTaskCount: number;
+  isActive: boolean;
+  roles: string[];
+  roleKeys: RoleKey[];
+}
+
+
 export interface Task {
   id: string;
   title: string;

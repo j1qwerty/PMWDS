@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PMWDS.Application.DTOs.Controllers;
 using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Repositories;
@@ -16,6 +17,7 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
     private readonly ITaskRepository _tasks;
     private readonly IRepository<Milestone> _milestones;
     private readonly RoleScopeService _scope;
+    private readonly IMemoryCache _cache;
     private readonly ICurrentUserService _currentUser;
 
     public TaskWorkflowService(
@@ -25,7 +27,8 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
         ITaskRepository tasks,
         IRepository<Milestone> milestones,
         RoleScopeService scope,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IMemoryCache cache)
     {
         _db = db;
         _uow = uow;
@@ -33,6 +36,7 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
         _tasks = tasks;
         _milestones = milestones;
         _scope = scope;
+        _cache = cache;
         _currentUser = currentUser;
     }
 
@@ -186,10 +190,27 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
 
     public async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
     {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return [];
+        }
+
+        var cacheKey = $"pmwds:accessible-project-ids:{userId}";
+        if (_cache.TryGetValue(cacheKey, out HashSet<Guid>? cachedProjectIds))
+        {
+            return new HashSet<Guid>(cachedProjectIds!);
+        }
+
         var scopedProjects = await _scope.ScopeProjectsAsync(
-            _db.Projects.Include(project => project.Department).AsQueryable(),
+            _db.Projects.AsNoTracking(),
             ct);
-        return (await scopedProjects.Select(project => project.Id).ToListAsync(ct)).ToHashSet();
+        var projectIds = (await scopedProjects
+            .Select(project => project.Id)
+            .ToListAsync(ct))
+            .ToHashSet();
+
+        _cache.Set(cacheKey, projectIds, TimeSpan.FromSeconds(5));
+        return new HashSet<Guid>(projectIds);
     }
 
     public async Task<bool> IsUserInProjectOrganizationAsync(string userId, Guid projectId, CancellationToken ct)
