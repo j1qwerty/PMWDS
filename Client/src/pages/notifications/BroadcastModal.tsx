@@ -16,11 +16,19 @@ export function BroadcastModal({ departments, onSubmit, onCancel }: BroadcastMod
     actionUrl: "",
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit({ ...form, departmentId: form.departmentId || null, actionUrl: form.actionUrl || null });
+    try {
+      await onSubmit({
+        ...form,
+        departmentId: form.departmentId || null,
+        actionUrl: form.actionUrl || null,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
