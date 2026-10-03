@@ -14,6 +14,7 @@ public static class AuthorizationPolicies
     public const string KnowledgeDelete = "Knowledge.Delete";
 
     public const string AIView = "AI.View";
+    public const string AIOperate = "AI.Operate";
     public const string AIManage = "AI.Manage";
 
     public const string ActivityLogsView = "ActivityLogs.View";
