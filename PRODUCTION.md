@@ -11,20 +11,24 @@ Host: Contabo VPS `147.93.155.185` (`ssh contabo`), Ubuntu 24.04, nginx 1.24, `a
 4 vCPU / 7.8 GiB RAM.
 
 Related: [README.md](README.md), [CONFIG.md](CONFIG.md), [config-sqlite.md](config-sqlite.md),
-[mssql-issue.md](mssql-issue.md), [vps.md](vps.md).
+[mssql-issue.md](mssql-issue.md), [vps.md](vps.md),
+[vps-mssqlserver.md](vps-mssqlserver.md) (how SQL Server and Redis are installed on the VPS,
+what broke on the way, and how to connect SSMS to it through an SSH tunnel).
 
-> ### ⚠ Read this before deploying the MSSQL variant
+> ⚠ **Read this before deploying the MSSQL variant**
 >
-> **`mssql-issue.md` is an open, unresolved problem.** On a machine of this size, SQL Server
-> makes **every authenticated request take ~25 seconds**. The cause is memory-grant
-> starvation: seven client requests fire in parallel, `max degree of parallelism = 0` lets
-> each take up to eight worker threads, and the buffer pool only has ~261 MB, so every
-> request suspends on `RESOURCE_SEMAPHORE` having read nothing.
+> **`mssql-issue.md` documents the 25-second request latency this variant suffered and how it
+> was fixed.** The two settings below are the fix, and they are load-bearing — an instance
+> without them will serve requests in ~25 seconds:
 >
-> The two configuration fixes that would resolve it — `MAXDOP = 1` and capping
-> `max server memory` — are **blocked** on the local instance (advanced options are locked).
-> On this 4-vCPU VPS the same contention should be expected. Measure before declaring the
-> MSSQL deployment healthy.
+> ```
+> max degree of parallelism = 1
+> max server memory (MB)    = 2048
+> ```
+>
+> Full procedure, the Ubuntu 24.04 OpenLDAP problem you will hit on a fresh install, the SA
+> password traps, and how to point SSMS at the VPS through an SSH tunnel:
+> **[vps-mssqlserver.md](vps-mssqlserver.md)**.
 
 > **Never deploy one variant's paths, service or port using the other variant's settings.**
 > `deploy.ps1` keeps them in a single table and will warn loudly on a branch/variant mismatch.

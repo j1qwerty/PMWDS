@@ -1,9 +1,65 @@
 # MSSQL performance issue — 25+ second request latency
 
-**Status:** open, root cause identified, primary fix blocked
-**Severity:** high — makes the SQL Server path unusable for development and would make it unusable in production
+**Status: RESOLVED.** Root cause confirmed, and the two settings that fix it were blocked on
+Windows but accepted on Linux. Measured improvement: **33.01 s → 0.30 s** for the parallel
+seven-request burst, with `RESOURCE_SEMAPHORE` waits eliminated entirely.
+
+**Severity:** was high — the SQL Server path was unusable
 **Affects:** any deployment using `ActiveDatabaseProvider.SqlServer`
-**Does not affect:** the SQLite path, which is fast
+**Does not affect:** the SQLite path, which was always fast
+
+---
+
+## 0. Resolution summary
+
+The fix is two instance settings:
+
+```
+max degree of parallelism = 1
+max server memory (MB)    = 2048
+```
+
+Both were refused by `sp_configure` on the Windows dev instance (§4.2). They were accepted on
+the Ubuntu VPS once `mssql-conf` was used to turn on advanced options. Before and after, same
+seven-request parallel burst, same box size (4 vCPU / 7.8 GiB):
+
+| | Windows dev, before | Ubuntu VPS, after |
+|---|---|---|
+| parallel burst, 7 requests | **33.01 s** | **0.30 s** |
+| `/users?pageSize=500` sequential | 25.7 s | 0.03 s |
+| `/organizations` sequential | 25.7 s | 0.07 s |
+| `RESOURCE_SEMAPHORE` max wait | 19,988 ms | **0 ms** |
+| `SOS_SCHEDULER_YIELD` max wait | 25,015 ms | 80 ms |
+
+The rest of this document is the investigation that got there. Sections 1–3 are the original
+symptom and diagnosis and are kept as written because the reasoning is what identifies the
+cause. Sections 4.2 and 4.3 are updated to record the outcome, and §5 lists what remains.
+
+### How to apply it
+
+```bash
+sudo /opt/mssql/bin/mssql-conf set memory.memorylimitmb 2048
+sudo /opt/mssql/bin/mssql-conf set network.ipaddress 127.0.0.1
+sudo systemctl restart mssql-server
+
+# then, as sa:
+EXEC sp_configure 'show advanced options', 1; RECONFIGURE;
+EXEC sp_configure 'max degree of parallelism', 1; RECONFIGURE;
+```
+
+Verify with:
+
+```sql
+SELECT name, value_in_use FROM sys.configurations
+WHERE name IN ('max degree of parallelism','max server memory (MB)');
+```
+
+`max degree of parallelism = 1` is the important one. It stops each query claiming up to eight
+worker threads; with seven concurrent requests that was up to 56 threads for 4 physical cores,
+which is what starved the memory grants.
+
+**Leave headroom.** 2048 MB leaves roughly 2 GB for nginx, two API processes, Redis and the OS
+on a 7.8 GB box. Raising it invites the paging behaviour that caused the original problem.
 
 ---
 
@@ -203,11 +259,11 @@ Verified live in `HangFire.Server.Data`: `{"WorkerCount":4,...}` (was `20`).
 arguably worse. Hangfire was not the bottleneck. The change is still correct on its own
 merits (20 workers for four daily jobs is waste), but it does not address this issue.
 
-### 4.2 Attempted — `MAXDOP = 1` (BLOCKED)
+### 4.2 `MAXDOP = 1` — BLOCKED on Windows, WORKS on Linux ✅
 
 Expected to be the single biggest win: stops each query claiming 8 threads.
 
-**Failed on this instance.** Every route was tried:
+**Failed on the Windows instance.** Every route was tried:
 
 | Attempt | Result |
 |---|---|
@@ -218,31 +274,86 @@ Expected to be the single biggest win: stops each query claiming 8 threads.
 | `ALTER DATABASE [PMWDS] SET MAXDOP = 1;` | `Incorrect syntax near 'MAXDOP'.` |
 | `ALTER DATABASE [PMWDS] SET (MAXDOP = 1);` | `Incorrect syntax near '('.` |
 
-Diagnosis of the blocker:
+Supporting evidence that this was not a privilege problem:
 
-- `sys.databases` has **no `max_dop` column** at all
-- `sys.configurations` lists `max degree of parallelism` but it is unreadable as an
-  advanced option
-- Compatibility level is **160**, so `MAXDOP` *should* be supported
-- `HKLM:\SOFTWARE\Policies\Microsoft\Microsoft SQL Server` has **no group policy** entries
-- The connection is `O4\os`, confirmed `IS_SRVROLEMEMBER('sysadmin') = 1`
+- `sys.databases` had **no `max_dop` column** at all
+- `sys.configurations` listed `max degree of parallelism` but it was unreadable as an advanced option
+- Compatibility level was **160**, so `MAXDOP` *should* be supported
+- `HKLM:\SOFTWARE\Policies\Microsoft\Microsoft SQL Server` had **no group policy** entries
+- The connection was `O4\os`, confirmed `IS_SRVROLEMEMBER('sysadmin') = 1`
 
-Advanced options on this Express instance appear to be locked. The only remaining route is
-the **`-m` startup parameter**, which requires registry write access this session does not
-have:
+**Succeeded on the Ubuntu VPS**, where `mssql-conf` writes `/var/opt/mssql/mssql.conf` instead
+of going through `sp_configure`:
 
 ```
-HKLM:\SYSTEM\CurrentControlSet\Services\MSSQLSERVER\Parameters\SQLServiceStart
+show advanced options      : 0 -> 1     OK
+max degree of parallelism  : 0 -> 1     OK   (survives restart)
 ```
 
-Add `-m1024` there and restart the service. **Not yet attempted — needs elevation.**
+Both were refused *until* `mssql-conf` had been used to set `memory.memorylimitmb`, which
+implicitly enables advanced options on Linux. After that, `sp_configure` accepted both. Every
+query now reports `max_dop = 1`.
 
-### 4.3 Attempted — cap `max server memory` (BLOCKED)
+**If you must fix the Windows instance**, the remaining route is the `-m` startup parameter,
+which needs an elevated shell:
 
-Same `sp_configure` failure as 4.2. Currently `max server memory (MB) = 2147483647`
-while `target server memory` is only 261 MB — the grant logic is aiming at memory it can
-never have, which is part of why grants fail. Capping to ~1024 MB would give it a realistic
-target. Requires the same `-m` startup parameter and a service restart.
+```
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\MSSQLSERVER\Parameters\SQLServiceStart" ^
+    /v SQLServiceStart /t REG_EXPAND_SZ /d "-m1024" /f
+Restart-Service MSSQLSERVER
+```
+
+Never attempted — the session had no elevation.
+
+### 4.3 Cap `max server memory` — BLOCKED on Windows, WORKS on Linux ✅
+
+Same `sp_configure` failure as 4.2. It was `2147483647` (effectively 2 PB) while `target
+server memory` was only 261 MB — the grant logic aimed at memory it could never have, which is
+part of why grants were refused.
+
+On Linux, via `mssql-conf`:
+
+```
+sudo /opt/mssql/bin/mssql-conf set memory.memorylimitmb 2048
+```
+
+```
+max server memory (MB) : 2147483647 -> 2048   OK   (survives restart)
+```
+
+### 4.3b The Ubuntu 24.04 install problem (found while deploying this fix)
+
+SQL Server 2022 will not start on Ubuntu 24.04 out of the box, and the error is misleading:
+
+```
+/opt/mssql/bin/sqlservr: error while loading shared libraries:
+  liblber-2.5.so.0: cannot open shared object file
+```
+
+Ubuntu 24.04 replaced OpenLDAP 2.5 with 2.6. **Symlinking does not work** — the binary
+requires the *symbol version* `OPENLDAP_2.5`, so a symlink to the 2.6 library still fails:
+
+```
+version `OPENLDAP_2.5' not found (required by /opt/mssql/bin/sqlservr)
+```
+
+The fix is the genuine 2.5 runtime libraries, which coexist because the sonames differ:
+
+```bash
+curl -fsSL http://archive.ubuntu.com/ubuntu/pool/main/o/openldap/libldap-2.5-0_2.5.20+dfsg-0ubuntu0.22.04.1_amd64.deb -o /tmp/libldap.deb
+sudo dpkg -i /tmp/libldap.deb
+sudo ldconfig
+```
+
+`liblber-2.5-0` **does not exist as a separate package** — both libraries ship inside
+`libldap-2.5-0`. Hunting for a `liblber` package wastes time.
+
+Two other install traps on this platform:
+
+- `mssql-tools18` lives in Microsoft's separate `prod` repo, not the `mssql-server` one
+- `mssql-conf setup` silently keeps the previously configured SA password unless
+  `MSSQL_SA_PASSWORD` is supplied, and it refuses to run while the service is up — so the
+  password must be set with the service stopped or it is lost
 
 ### 4.4 Recommended, not yet done — reduce query cost (provider-independent)
 
@@ -269,15 +380,21 @@ short-lived cache, removing one query per request.
 
 ## 5. What is still outstanding
 
-- [ ] **MAXDOP = 1** — blocked, needs `-m`-style admin access
-- [ ] **cap `max server memory`** — blocked, same
-- [ ] **understand why advanced options are locked** on this instance
-- [ ] **slim the list queries** (§4.4)
-- [ ] **stop the 7 parallel requests** (§4.5)
+- [x] **MAXDOP = 1** — done on the VPS (§4.2). Still blocked on the Windows dev instance.
+- [x] **cap `max server memory`** — done on the VPS (§4.3). Still blocked on Windows.
+- [ ] **understand why advanced options are locked** on the *Windows* instance. The Linux VPS
+      accepts both, so this is specific to that install, not to SQL Server.
+- [ ] **slim the list queries** (§4.4) — worth doing, they are still the heaviest thing
+      (2,200–3,200 logical reads each) even though they are now fast
+- [ ] **stop the 7 parallel requests** (§4.5) — no longer urgent for latency; still a lot of
+      avoidable concurrent load on a 4-core box
 - [ ] **remove the per-request token query** (§4.6)
 - [ ] **bound `EnableRetryOnFailure`** so a transient failure fails fast instead of
       parking a request for 31 s
 - [ ] **fix the failing Hangfire job** — see §6
+- [ ] **`/pages?page=1` first call** still measures ~3.9 s over the internet on the VPS
+      against ~0.6 s on SQLite. That is query compilation and a 290 KB payload, not
+      memory-grant starvation — the waits are gone.
 
 ---
 
@@ -399,3 +516,36 @@ done regardless.
 
 Server-side instance configuration is not stored in this repository. It must be applied by
 hand on whichever machine runs the SQL Server deployment.
+
+---
+
+## 9. Read this if you are deploying on Linux, not Windows
+
+Everything above describes a **Windows** instance, and a lot of it will mislead you if you are
+standing on the VPS. Specifically, these are **Windows-only problems that do not exist on the
+VPS** — do not spend time on them there:
+
+| Problem on Windows | On the VPS |
+|---|---|
+| `sp_configure 'show advanced options', 1` reports success and silently reverts | **Works.** Advanced options turn on via `mssql-conf` and stay on |
+| `sp_configure 'max degree of parallelism'` refused as an advanced option | **Works.** Set to 1 and survives restart |
+| `sp_configure 'max server memory (MB)'` refused | **Works.** Set to 2048 |
+| `ALTER DATABASE SET MAXDOP` is a syntax error | Not needed — the instance setting covers it |
+| `sys.databases` has no `max_dop` column | Cosmetic only; the instance setting is what matters |
+| Needs `-m` startup parameter + registry write + elevation | Not needed |
+| Needs an elevated Windows shell | `sudo` is enough |
+
+What genuinely applies to **both** platforms:
+
+- **`max degree of parallelism = 1` and a capped `max server memory` are the fix.** They took
+  the parallel seven-request burst from 33 s to 0.30 s.
+- The heavy list queries and the AI projections are still the largest single cost
+  (~2,200–3,200 logical reads each).
+- The client still fires seven requests in parallel on every page load.
+- `OnTokenValidated` still runs a query on every authenticated request.
+- `EnableRetryOnFailure()` still uses defaults that can park one request for 31 s.
+
+And what the Linux install adds that Windows never had to deal with — SQL Server 2022 does not
+run on Ubuntu 24.04 without the genuine OpenLDAP 2.5 libraries, because the binary requires the
+`OPENLDAP_2.5` symbol version and a symlink to the 2.6 library is not enough. See §4.3b, and
+[vps-mssqlserver.md](vps-mssqlserver.md) for the full procedure.

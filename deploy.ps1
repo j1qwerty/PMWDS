@@ -672,13 +672,37 @@ try {
         if ($logCount -eq '0') { Write-Ok 'no unhandled exceptions in the last 3 minutes' }
         else { Write-Err "$logCount unhandled exception(s) in journal"; $allOk = $false }
 
-        Write-Running 'checking API startup log for "Now listening"'
-        $listening = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
-            "journalctl -u $ServiceName --since '-3min' --no-pager | grep -c 'Now listening'; exit 0") `
-            -What 'listen check' -OnSuccessPatterns @('\d+') -StreamOutput -OutputLabel 'check'
-        $listenCount = ($listening -split "`r?`n" | Where-Object { $_ -match '^\d+$' } | Select-Object -First 1)
-        if ([int]$listenCount -ge 1) { Write-Ok "API reports Now listening (expected http://127.0.0.1:$($V.ApiPort))" }
-        else { Write-Err 'API did not report listening'; $allOk = $false }
+        # `systemctl is-active` returning active only means the process launched, not that
+        # it is serving. On a cold start the app runs migrations first, which took 19s on
+        # the MSSQL variant, so an immediate check reports a false failure. Poll instead.
+        Write-Running 'waiting for the API to report "Now listening"'
+        $listening = $false
+        for ($i = 1; $i -le 12; $i++) {
+            $probe = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
+                "journalctl -u $ServiceName --since '-10min' --no-pager | grep -c 'Now listening'; exit 0") `
+                -What 'listen check' -OnSuccessPatterns @('\d+') 6>$null
+            $n = ($probe -split "`r?`n" | Where-Object { $_ -match '^\d+$' } | Select-Object -First 1)
+            if ($n -and [int]$n -ge 1) { $listening = $true; break }
+            Write-Detail "  not listening yet ($i/12), waiting 5s"
+            Start-Sleep -Seconds 5
+        }
+        if ($listening) {
+            Write-Ok "API reports Now listening (expected http://127.0.0.1:$($V.ApiPort))"
+            # Confirm it really is this variant's port and not a stale line from an earlier
+            # boot of the same unit.
+            $actual = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
+                "journalctl -u $ServiceName --since '-10min' --no-pager | grep 'Now listening' | tail -1") `
+                -What 'port check' 6>$null
+            if ($actual -match ":$($V.ApiPort)\b") {
+                Write-Ok "listening on the expected port $($V.ApiPort)"
+            } else {
+                Write-Err "reported a port other than $($V.ApiPort): $($actual.Trim())"
+                $allOk = $false
+            }
+        } else {
+            Write-Err 'API did not report listening within 60s'
+            $allOk = $false
+        }
     }
 } finally {
     Remove-Item $tmpCurl -Force -ErrorAction SilentlyContinue

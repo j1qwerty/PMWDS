@@ -10,7 +10,10 @@ The API entry point is `PMWDS.API`. The frontend lives in `Client`.
 |------|---------|
 | [CONFIG.md](CONFIG.md) | Full setup, configuration, build, deployment, and operations guide |
 | [config-sqlite.md](config-sqlite.md) | Combined SQLite config guide with verified implementation and remediation |
-| [responsive.md](responsive.md) | Responsive design properties by category — layout, breakpoints, and clamp values |
+| [responsive.md](responsive.md) | Responsive design properties by category - layout, breakpoints, and clamp values |
+| [mssql-issue.md](mssql-issue.md) | The 25-second SQL Server latency problem, its root cause, and the fix |
+| [vps-mssqlserver.md](vps-mssqlserver.md) | Installing SQL Server and Redis on the VPS, and connecting SSMS to it |
+| [vps.md](vps.md) | What is installed on the Contabo VPS and where |
 
 
 ## Tech Stack
@@ -226,7 +229,7 @@ On first run, the API seeds representative data across the full product surface:
 - SQLite is a development fallback and is bootstrapped with `EnsureCreated` style schema creation because older SQL Server migrations are not fully portable to SQLite.
 - Hangfire is disabled when SQLite is active.
 - The API startup path creates or rebuilds the SQLite development database if the expected schema is missing or stale.
-- Direct `dotnet ef database update` against the existing SQLite file is not the recommended flow for this repo. See [sqlite.md](sqlite.md), [issue-sqlite.md](issue-sqlite.md), and [config-sqlite.md](config-sqlite.md).
+- Direct `dotnet ef database update` against the existing SQLite file is not the recommended flow for this repo. See [config-sqlite.md](config-sqlite.md).
 - When running with Docker SQL Server, EF Core migrations (`database.MigrateAsync`) run automatically on startup.
 - The app auto-detects the database provider in order: SQL Server → SQLite fallback in Development. Run `docker-compose up -d` before starting the API to use SQL Server.
 
