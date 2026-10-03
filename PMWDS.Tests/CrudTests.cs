@@ -212,6 +212,48 @@ public class CrudTests
         }
     }
 
+
+    [Fact]
+    public async Task Milestone_dependency_rejects_an_indirect_cycle()
+    {
+        var client = _fixture.SuperAdmin.Client;
+        var department = await WizardFlowTests.FirstDepartmentAsync(client);
+
+        var graph = await new WizardBuilder(client)
+            .WithName("Indirect Cycle Project")
+            .WithCode($"CRUD-CY-{Guid.NewGuid().ToString("N")[..8]}")
+            .WithDepartments(department)
+            .WithMilestone("A", new DateTime(2026, 3, 31))
+            .WithMilestone("B", new DateTime(2026, 6, 30))
+            .WithMilestone("C", new DateTime(2026, 9, 30))
+            .WithMilestoneDependency("A", "B")
+            .WithMilestoneDependency("B", "C")
+            .BuildAsync();
+
+        try
+        {
+            var milestones = (await client.GetAsync<JsonElement>(
+                $"/api/v1/milestones/by-project/{graph.ProjectId}")).Data
+                .EnumerateArray()
+                .ToDictionary(m => m.GetString("name"), m => m.GetGuid("id"));
+
+            var response = await client.PostAsync<JsonElement>("/api/v1/milestones/dependencies", new
+            {
+                projectId = graph.ProjectId,
+                prerequisiteMilestoneId = milestones["C"],
+                dependentMilestoneId = milestones["A"],
+                type = "CompletionBased",
+            });
+
+            response.Status.Should().Be(HttpStatusCode.BadRequest);
+            response.ErrorMessage.Should().Contain("Circular");
+        }
+        finally
+        {
+            await client.DeleteAsync<JsonElement>($"/api/v1/projects/{graph.ProjectId}");
+        }
+    }
+
     [Fact]
     public async Task Milestone_dependency_rejects_an_invalid_threshold()
     {
