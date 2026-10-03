@@ -118,3 +118,9 @@ status\api-build
 # Docker
 .env
 docker-compose.yml
+
+# Local artifacts / scratch dirs
+docs/role-flows/
+pmwds-api.tar.gz
+pmwds-web.tar.gz
+pmwds-pub/
