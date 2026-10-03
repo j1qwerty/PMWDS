@@ -340,3 +340,18 @@ The first CI run showed the backend build and integration tests passing, while f
 ## Review rule
 
 Implementation PRs remain unmerged so they can be tested and merged in dependency order. PR #2 contains the audit documents and is already merged.
+### Current implementation queue additions
+
+| Finding | PR | Status |
+|---|---|---|
+| M3 synchronous task AI enrichment | PR #18 | Implemented in review |
+| M4 broad background-job loads | PR #19 | Implemented in review |
+| H2 caller-controlled budget conditions | PR #20 | Implemented in review |
+| M8 project-list server pagination/filter contract | PR #15 | Implemented in review |
+| Project-picker consumers of paginated API | PR #22 | Implemented in review |
+| Dynamic resource-scope authorization | PR #16 | Implemented in review |
+| CI build/test baseline | PR #11 | Implemented; latest CI run green |
+
+### CI verification
+
+The repository CI workflow completed successfully after the frontend lint gate was removed: the backend restore/build/integration-test job passed and the frontend production build passed. The initial lint-only failure reported 203 pre-existing lint errors; lint debt remains a separate cleanup track.
