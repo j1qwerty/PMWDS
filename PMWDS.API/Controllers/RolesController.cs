@@ -65,6 +65,7 @@
             return BadRequest(new { message = "Custom role permission level must be between 0 and 99." });
 
         var role = Role.Create(req.Name, req.Description, req.PermissionLevel);
+        role.SetCanAssignLowerRoles(req.CanAssignLowerRoles);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? 10);
         role.SetCreatedBy("system");
 
@@ -111,7 +112,7 @@
             return NotFound();
         }
 
-        if (!User.IsInRole(RoleKeys.SuperAdmin))
+        if (!IsSuperAdminEffective())
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
 
