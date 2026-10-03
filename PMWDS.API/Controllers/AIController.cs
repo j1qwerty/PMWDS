@@ -196,17 +196,32 @@ public class AIController : BaseApiController
     [HttpGet("recommend-assignee/{taskId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> RecommendAssignee(Guid taskId, CancellationToken ct)
-        => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(taskId), ct));
+    {
+        if (!await CanAccessTaskAsync(taskId, ct))
+            return Forbid();
+
+        return Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(taskId), ct));
+    }
 
     [HttpPost("recommendations/{taskId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GenerateRecommendation(Guid taskId, CancellationToken ct)
-        => Ok(await _recommendations.GenerateRecommendationAsync(taskId, ct));
+    {
+        if (!await CanManageTaskAsync(taskId, ct))
+            return Forbid();
+
+        return Ok(await _recommendations.GenerateRecommendationAsync(taskId, ct));
+    }
 
     [HttpGet("recommendations/{taskId:guid}/history")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetRecommendationHistory(Guid taskId, CancellationToken ct)
-        => Ok(await _recommendations.GetRecommendationHistoryAsync(taskId, ct));
+    {
+        if (!await CanAccessTaskAsync(taskId, ct))
+            return Forbid();
+
+        return Ok(await _recommendations.GetRecommendationHistoryAsync(taskId, ct));
+    }
 
     [HttpPost("recommendations/{recommendationId:guid}/accept")]
     [Authorize(Policy = AuthorizationPolicies.AIManage)]
@@ -229,7 +244,12 @@ public class AIController : BaseApiController
     [HttpGet("tasks/{taskId:guid}/analysis")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> AnalyzeTask(Guid taskId, CancellationToken ct)
-        => Ok(await _recommendations.AnalyzeTaskForAllocationAsync(taskId, ct));
+    {
+        if (!await CanAccessTaskAsync(taskId, ct))
+            return Forbid();
+
+        return Ok(await _recommendations.AnalyzeTaskForAllocationAsync(taskId, ct));
+    }
 
     [HttpGet("predict-delay/{taskId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
@@ -252,17 +272,32 @@ public class AIController : BaseApiController
     [HttpPost("predictions/{taskId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GenerateDelayPrediction(Guid taskId, CancellationToken ct)
-        => Ok(await _predictions.GenerateDelayPredictionAsync(taskId, ct));
+    {
+        if (!await CanManageTaskAsync(taskId, ct))
+            return Forbid();
+
+        return Ok(await _predictions.GenerateDelayPredictionAsync(taskId, ct));
+    }
 
     [HttpGet("predictions/{taskId:guid}/history")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetPredictionHistory(Guid taskId, CancellationToken ct)
-        => Ok(await _predictions.GetPredictionHistoryAsync(taskId, ct));
+    {
+        if (!await CanAccessTaskAsync(taskId, ct))
+            return Forbid();
+
+        return Ok(await _predictions.GetPredictionHistoryAsync(taskId, ct));
+    }
 
     [HttpPost("projects/{projectId:guid}/predictions")]
     [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> PredictProjectDelays(Guid projectId, CancellationToken ct)
-        => Ok(await _predictions.PredictProjectDelaysAsync(projectId, ct));
+    {
+        if (!await _scope.CanManageProjectAsync(projectId, ct))
+            return Forbid();
+
+        return Ok(await _predictions.PredictProjectDelaysAsync(projectId, ct));
+    }
 
     [HttpGet("prediction-results")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
@@ -270,7 +305,27 @@ public class AIController : BaseApiController
         [FromQuery] Guid? taskId,
         [FromQuery] Guid? modelId,
         CancellationToken ct)
-        => Ok(await _predictions.GetPredictionResultsAsync(taskId, modelId, ct));
+    {
+        if (taskId.HasValue && !await CanAccessTaskAsync(taskId.Value, ct))
+            return Forbid();
+
+        var results = await _predictions.GetPredictionResultsAsync(taskId, modelId, ct);
+        if (taskId.HasValue)
+            return Ok(results);
+
+        var accessibleProjectIds = await _scope.ScopeProjectsAsync(
+            _db.Projects.AsNoTracking().Select(project => project).AsQueryable(),
+            ct);
+
+        var projectIds = await accessibleProjectIds.Select(project => project.Id).ToListAsync(ct);
+        var allowedTaskIds = await _db.Tasks
+            .AsNoTracking()
+            .Where(task => projectIds.Contains(task.ProjectId))
+            .Select(task => task.Id)
+            .ToHashSetAsync(ct);
+
+        return Ok(results.Where(result => allowedTaskIds.Contains(result.TaskId)).ToList());
+    }
 
     [HttpGet("project-health/{projectId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
@@ -287,7 +342,12 @@ public class AIController : BaseApiController
     [HttpPost("optimize-resources/{projectId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> OptimizeResources(Guid projectId, CancellationToken ct)
-        => Ok(await _projectHealth.OptimizeResourceAllocationAsync(projectId, ct));
+    {
+        if (!await _scope.CanManageProjectAsync(projectId, ct))
+            return Forbid();
+
+        return Ok(await _projectHealth.OptimizeResourceAllocationAsync(projectId, ct));
+    }
 
     [HttpGet("burnout-risk")]
     [Authorize(Policy = AuthorizationPolicies.AIView)]
@@ -420,6 +480,30 @@ public class AIController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GetModelPerformance(CancellationToken ct)
         => Ok(await _models.GetModelPerformanceAsync(ct));
+
+    private async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
+    {
+        var projectId = await _db.Tasks
+            .AsNoTracking()
+            .Where(task => task.Id == taskId)
+            .Select(task => task.ProjectId)
+            .FirstOrDefaultAsync(ct);
+
+        return projectId != Guid.Empty &&
+               await _scope.CanAccessProjectAsync(projectId, ct);
+    }
+
+    private async Task<bool> CanManageTaskAsync(Guid taskId, CancellationToken ct)
+    {
+        var projectId = await _db.Tasks
+            .AsNoTracking()
+            .Where(task => task.Id == taskId)
+            .Select(task => task.ProjectId)
+            .FirstOrDefaultAsync(ct);
+
+        return projectId != Guid.Empty &&
+               await _scope.CanManageProjectAsync(projectId, ct);
+    }
 
     private static List<string> GetBurnoutRecommendations(double burnoutRisk)
         => burnoutRisk switch
