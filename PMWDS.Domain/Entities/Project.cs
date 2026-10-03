@@ -103,6 +103,7 @@ public class Project : AuditableEntity, IHasDomainEvents
       Status = ProjectStatus.Completed;
       ActualEndDate = DateTime.UtcNow;
       ProgressPercentage = 100;
+      DelayJustification = null;
       _domainEvents.Add(new ProjectStatusChangedEvent(
       Id, ProjectStatus.InProgress, ProjectStatus.Completed));
    }
