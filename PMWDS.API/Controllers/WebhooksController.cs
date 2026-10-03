@@ -123,11 +123,13 @@ public class WebhooksController : BaseApiController
         return NoContent();
     }
 
-    private Task<bool> IntegrationExistsAsync(Guid? integrationId, CancellationToken ct)
-        => !integrationId.HasValue
-            ? Task.FromResult(true)
-            : _uow.Integrations.GetByIdAsync(integrationId.Value, ct)
-                .ContinueWith(task => task.Result != null, ct);
+    private async Task<bool> IntegrationExistsAsync(Guid? integrationId, CancellationToken ct)
+    {
+        if (!integrationId.HasValue)
+            return true;
+
+        return await _uow.Integrations.GetByIdAsync(integrationId.Value, ct) != null;
+    }
 
     internal static WebhookResponse MapWebhook(Webhook webhook)
         => new(
