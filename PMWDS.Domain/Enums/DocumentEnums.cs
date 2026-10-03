@@ -16,6 +16,14 @@ public enum DocumentCategory
     UtilizationCertificate = 6
 }
 
+public enum DocumentApprovalStatus
+{
+    NotRequired = 0,
+    Pending = 1,
+    Approved = 2,
+    Rejected = 3
+}
+
 /// <summary>
 /// Review lifecycle for a Utilization Certificate.
 /// A UC is a formal proof that grant, government or corporate funds were spent
