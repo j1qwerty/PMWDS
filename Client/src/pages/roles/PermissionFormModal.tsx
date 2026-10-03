@@ -32,15 +32,13 @@ export function PermissionFormModal({ initialData, onSubmit, onCancel }: Permiss
   });
 
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        code: initialData.code || "",
-        name: initialData.name || "",
-        description: initialData.description || "",
-        module: initialData.module || "",
-        isGlobal: initialData.isGlobal || false,
-      });
-    }
+    setForm({
+      code: initialData?.code || "",
+      name: initialData?.name || "",
+      description: initialData?.description || "",
+      module: initialData?.module || "",
+      isGlobal: initialData?.isGlobal || false,
+    });
   }, [initialData]);
 
   const handleSubmit = (e: FormEvent) => {
