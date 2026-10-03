@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 interface ModalOverlayProps {
   children: ReactNode;
@@ -17,8 +17,6 @@ export function ModalOverlay({
   contentClassName = "",
   widthClassName = "max-w-2xl",
 }: ModalOverlayProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -28,7 +26,6 @@ export function ModalOverlay({
     };
 
     document.addEventListener("keydown", onKeyDown);
-    contentRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
