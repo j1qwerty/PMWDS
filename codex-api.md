@@ -401,3 +401,13 @@ All implementation PRs are still open and unmerged. Source-level review has been
 - PR #15 → PR #22.
 - PR #32 → PR #34 → PR #35.
 - PR #18 → PR #29.
+
+
+### Additional security findings: integrations and file serving
+
+| Finding | PR | Status |
+|---|---|---|
+| Integration configuration/API-key exposure through Manager GET responses | PR #36 | Implemented in review |
+| Public /files static-file bypass for project documents | PR #37 | Implemented in review |
+
+These fixes keep sensitive integration configuration redacted at the API boundary and ensure project documents remain behind the existing project-scope authorization check.
