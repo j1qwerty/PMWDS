@@ -97,7 +97,7 @@ public class ReportService : IReportService
             "project-status",
             "You are a project status analyst. Analyze the following project data and return a structured JSON report.",
             "Generate a comprehensive Project Status Report with metrics for health, progress, task completion, milestone tracking, and risks.",
-            context, ct);
+            context, new { projectId }, ct);
     }
 
     public async Task<AiReportResponse> GenerateBudgetVarianceReportJsonAsync(
@@ -139,7 +139,7 @@ public class ReportService : IReportService
             "budget-variance",
             "You are a budget analyst. Analyze the following budget and spending data and return a structured JSON report.",
             "Generate a detailed Budget Variance Report with cost metrics, variance analysis, spending patterns, and recommendations.",
-            context, ct);
+            context, new { projectId }, ct);
     }
 
     public async Task<AiReportResponse> GenerateTaskCompletionReportJsonAsync(
@@ -195,7 +195,7 @@ public class ReportService : IReportService
             "task-completion",
             "You are a task productivity analyst. Analyze the following task completion data and return a structured JSON report.",
             "Generate a Task Completion Report with productivity metrics, completion rates, assignee performance, and efficiency analysis.",
-            context, ct);
+            context, filters, ct);
     }
 
     public async Task<AiReportResponse> GenerateDepartmentWorkloadReportJsonAsync(
@@ -253,7 +253,7 @@ public class ReportService : IReportService
             "department-workload",
             "You are a workforce analyst. Analyze the following department workload data and return a structured JSON report.",
             "Generate a Department Workload Report with capacity metrics, workload distribution, burnout risk, and rebalancing recommendations.",
-            context, ct);
+            context, new { departmentId, startDate = dateRange.Start, endDate = dateRange.End }, ct);
     }
 
     public async Task<AiReportResponse> GenerateDelayAnalysisReportJsonAsync(
@@ -325,7 +325,7 @@ public class ReportService : IReportService
             "delay-analysis",
             "You are a delay and risk analyst. Analyze the following delay and risk data and return a structured JSON report.",
             "Generate a Delay Analysis Report with delay metrics, root cause analysis, risk assessment, critical path impact, and mitigation strategies.",
-            context, ct);
+            context, filters, ct);
     }
 
     // ──────────────────────────────────────────────
@@ -403,6 +403,7 @@ public class ReportService : IReportService
         string systemRole,
         string taskDescription,
         object contextData,
+        object? reportParameters,
         CancellationToken ct)
     {
         var reportId = Guid.NewGuid();
@@ -460,7 +461,7 @@ You MUST respond with ONLY valid JSON matching this schema:
                 parsed.recommendations,
                 DateTime.UtcNow);
 
-            await StoreReportAsync(reportType, report, ct);
+            await StoreReportAsync(reportType, report, reportParameters, ct);
             return report;
         }
         catch (Exception ex)
@@ -469,7 +470,7 @@ You MUST respond with ONLY valid JSON matching this schema:
             // provider/model pairing stays diagnosable.
             _logger.LogError(ex, "AI report generation failed for report type {ReportType}", reportType);
             var fallback = BuildFallbackReport(reportId, reportType, ex);
-            await StoreReportAsync(reportType, fallback, ct);
+            await StoreReportAsync(reportType, fallback, reportParameters, ct);
             return fallback;
         }
     }
@@ -643,7 +644,11 @@ You MUST respond with ONLY valid JSON matching this schema:
         _ => "Report"
     };
 
-    private async Task StoreReportAsync(string reportType, AiReportResponse report, CancellationToken ct)
+    private async Task StoreReportAsync(
+        string reportType,
+        AiReportResponse report,
+        object? reportParameters,
+        CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
             return;
@@ -652,7 +657,7 @@ You MUST respond with ONLY valid JSON matching this schema:
         var entity = Report.Create(
             report.Title,
             reportType,
-            new { generatedAt = report.GeneratedAt },
+            reportParameters ?? new { generatedAt = report.GeneratedAt },
             "json",
             data,
             userId);
