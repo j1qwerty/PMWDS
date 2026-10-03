@@ -134,8 +134,6 @@ export function ProjectsListPage() {
     });
   }, [setNavHeader, canManageProjects]);
 
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
-
   const effectiveOrgId =
     shouldFilterByOrg && userOrganizationId ? userOrganizationId : orgId;
 
@@ -206,11 +204,6 @@ export function ProjectsListPage() {
   ]);
 
 
-  // Role-based org scope wins over the explicit filter, so derive it instead of
-  // syncing it into state after render.
-  const effectiveOrgId =
-    shouldFilterByOrg && userOrganizationId ? userOrganizationId : orgId;
-
   const visibleOrganizations = useMemo(() => {
     if (shouldFilterByOrg && userOrganizationId) {
       return organizations.filter((org) => org.id === userOrganizationId);
@@ -257,6 +250,7 @@ export function ProjectsListPage() {
     (query ? 1 : 0) +
     (statusFilter ? 1 : 0) +
     (priorityFilter ? 1 : 0) +
+    (orgId ? 1 : 0) +
     (deptId ? 1 : 0) +
     (dateFrom || dateTo ? 1 : 0) +
     (overdueOnly ? 1 : 0);
@@ -269,6 +263,7 @@ export function ProjectsListPage() {
     setQuery("");
     setStatusFilter("");
     setPriorityFilter("");
+    setOrgId("");
     setDeptId("");
     setDateFrom("");
     setDateTo("");
@@ -527,7 +522,7 @@ export function ProjectsListPage() {
       </div>
 
       {/* ── Project cards ── */}
-      {filteredProjects.length === 0 ? (
+      {projects.length === 0 ? (
         <div className="relative z-10 flex flex-col items-center justify-center py-24 text-slate-400 rounded-2xl border border-dashed border-slate-200 bg-white/60">
           <Icon name="folder_open" size={48} className="mb-3" />
           <p className="text-sm font-medium">No projects match your filters</p>
@@ -543,7 +538,7 @@ export function ProjectsListPage() {
         </div>
       ) : (
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-10">
-          {filteredProjects.map((project) => (
+          {projects.map((project) => (
             <ProjectSummaryCard
               key={project.id}
               project={project}
@@ -575,6 +570,38 @@ export function ProjectsListPage() {
           >
             Next
           </button>
+        </div>
+      )}
+
+
+      {totalProjectCount > PAGE_SIZE && (
+        <div className="relative z-10 flex items-center justify-between gap-3 border-t border-slate-200/70 pt-4 pb-10">
+          <span className="text-xs text-slate-500">
+            Page <strong className="text-slate-700">{page}</strong> of{" "}
+            <strong className="text-slate-700">{Math.ceil(totalProjectCount / PAGE_SIZE)}</strong>
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={page === 1 || loading}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setPage((current) =>
+                  Math.min(Math.ceil(totalProjectCount / PAGE_SIZE), current + 1)
+                )
+              }
+              disabled={page >= Math.ceil(totalProjectCount / PAGE_SIZE) || loading}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 
