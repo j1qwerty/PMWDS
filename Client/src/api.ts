@@ -13,6 +13,11 @@ import type {
   ChatResponse,
   DashboardData,
   DatabaseStatus,
+  Goal,
+  GoalBudgetAllocation,
+  BudgetRelease,
+  BudgetExpenditure,
+  BudgetSummary,
   DashboardRecord,
   DelayPrediction,
   DelayPredictionRecord,
@@ -167,6 +172,15 @@ async function requestList<T>(path: string, options: ApiOptions = {}): Promise<T
   return Array.isArray(result) ? result : result.items;
 }
 
+async function requestPage<T>(path: string, options: ApiOptions = {}): Promise<PaginatedResponse<T>> {
+  const result = await request<T[] | PaginatedResponse<T>>(path, options);
+  if (Array.isArray(result)) {
+    const pageSize = result.length;
+    return { items: result, page: 1, pageSize, totalCount: result.length, totalPages: result.length ? 1 : 0 };
+  }
+  return result;
+}
+
 export const api = {
   login(email: string, password: string) {
     return request<AuthResponse>("auth/login", {
@@ -310,6 +324,83 @@ export const api = {
   },
   deleteProject(token: string, id: string) {
     return request<void>(`projects/${id}`, { token, method: "DELETE" });
+  },
+  getGoalsByProject(token: string, projectId: string) {
+    return requestList<Goal>(`goals/project/${projectId}`, { token });
+  },
+  getGoal(token: string, id: string) {
+    return request<Goal>(`goals/${id}`, { token });
+  },
+  createGoal(token: string, payload: {
+    projectId: string;
+    assignedDepartmentId: string;
+    title: string;
+    description?: string | null;
+    priority: string;
+    dueDate: string;
+  }) {
+    return request<Goal>("goals", { token, method: "POST", body: payload });
+  },
+  updateGoal(token: string, id: string, payload: {
+    assignedDepartmentId: string;
+    title: string;
+    description?: string | null;
+    priority: string;
+    dueDate: string;
+  }) {
+    return request<Goal>(`goals/${id}`, { token, method: "PUT", body: payload });
+  },
+  deleteGoal(token: string, id: string) {
+    return request<void>(`goals/${id}`, { token, method: "DELETE" });
+  },
+  requestGoalTransfer(token: string, id: string, toDepartmentId: string, reason?: string) {
+    return request<Record<string, unknown>>(`goals/${id}/transfer`, {
+      token,
+      method: "POST",
+      body: { toDepartmentId, reason: reason ?? null },
+    });
+  },
+  reviewGoalTransfer(token: string, transferId: string, acknowledge: boolean, notes?: string) {
+    return request<Record<string, unknown>>(
+      `goals/transfers/${transferId}/${acknowledge ? "acknowledge" : "reject"}`,
+      { token, method: "POST", body: { notes: notes ?? null } },
+    );
+  },
+  getBudgetSummary(token: string, goalId: string) {
+    return request<BudgetSummary>(`budgets/goals/${goalId}/summary`, { token });
+  },
+  createGoalBudgetAllocation(token: string, payload: { goalId: string; amount: number; reason?: string | null }) {
+    return request<GoalBudgetAllocation>("budgets/allocations", { token, method: "POST", body: payload });
+  },
+  amendGoalBudgetAllocation(token: string, id: string, payload: { amount: number; reason?: string | null }) {
+    return request<GoalBudgetAllocation>(`budgets/allocations/${id}/amend`, { token, method: "POST", body: payload });
+  },
+  requestBudgetRelease(token: string, payload: {
+    goalBudgetAllocationId: string;
+    amountRequested: number;
+    requiredConditions?: Record<string, boolean>;
+    satisfiedConditions?: Record<string, boolean>;
+    justification?: string | null;
+  }) {
+    return request<BudgetRelease>("budgets/releases", { token, method: "POST", body: payload });
+  },
+  reviewBudgetRelease(token: string, id: string, decision: "Approved" | "Withheld" | "Rejected", approvedAmount: number, notes?: string) {
+    return request<BudgetRelease>(`budgets/releases/${id}/review`, {
+      token,
+      method: "POST",
+      body: { decision, approvedAmount, notes: notes ?? null },
+    });
+  },
+  createBudgetExpenditure(token: string, payload: {
+    goalBudgetAllocationId: string;
+    budgetReleaseId?: string | null;
+    documentId?: string | null;
+    amount: number;
+    spentOn: string;
+    description: string;
+    invoiceNumber?: string | null;
+  }) {
+    return request<BudgetExpenditure>("budgets/expenditures", { token, method: "POST", body: payload });
   },
   getMilestonesByProject(token: string, projectId: string) {
     return request<Milestone[]>(`milestones/by-project/${projectId}`, { token });
