@@ -608,6 +608,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/attachments")]
+    [RequestSizeLimit(FileUploadValidation.TaskAttachmentMaxBytes)]
     public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -619,18 +620,49 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        await using var stream = file.OpenReadStream();
-        var filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
+        if (!FileUploadValidation.Validate(
+            file?.FileName ?? string.Empty,
+            file?.ContentType ?? string.Empty,
+            file?.Length ?? 0,
+            FileUploadValidation.TaskAttachmentMaxBytes,
+            out var fileError))
+        {
+            return BadRequest(new { message = fileError });
+        }
 
-        var attachment = TaskAttachment.Create(
-            id,
-            file.FileName,
-            filePath,
-            file.ContentType,
-            file.Length,
-            _currentUser.UserId ?? "system");
-        await _uow.TaskAttachments.AddAsync(attachment, ct);
-        await _uow.SaveChangesAsync(ct);
+        string? filePath = null;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            filePath = await _files.UploadAsync(stream, file.FileName, file.ContentType, ct);
+
+            var attachment = TaskAttachment.Create(
+                id,
+                file.FileName,
+                filePath,
+                file.ContentType,
+                file.Length,
+                _currentUser.UserId ?? "system");
+            await _uow.TaskAttachments.AddAsync(attachment, ct);
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            if (!string.IsNullOrWhiteSpace(filePath))
+            {
+                try
+                {
+                    await _files.DeleteAsync(filePath, ct);
+                }
+                catch
+                {
+                    // Preserve the original operation failure; the cleanup can be
+                    // reconciled separately by storage cleanup.
+                }
+            }
+
+            throw;
+        }
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Attachment Uploaded",
