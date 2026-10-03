@@ -200,7 +200,7 @@ public class UsersController : BaseApiController
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
                 Skills: skillsByUser.GetValueOrDefault(row.Id)?.Select(skill => skill.SkillName).ToList(),
-                SkillDetails: skillsByUser.GetValueOrDefault(row.Id))
+                SkillDetails: skillsByUser.GetValueOrDefault(row.Id));
         }).ToList();
 
         return Ok(PaginatedResponse<UserDto>.Create(items, pagination, totalCount));

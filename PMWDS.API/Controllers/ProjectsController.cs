@@ -227,7 +227,8 @@ public class ProjectsController : BaseApiController
                     t.DueDate < DateTime.UtcNow),
                 TotalMilestones = p.Milestones.Count,
                 CompletedMilestones = p.Milestones.Count(m =>
-                    m.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed)
+                    m.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed),
+                p.CreatedDate
             })
             .ToListAsync(ct);
 

@@ -95,7 +95,11 @@ public class WorkspaceController : BaseApiController
                 department.ParentDepartmentId,
                 department.DepartmentHeadUserId,
                 department.MaxCapacity,
-                department.CapacityUtilization))
+                // Mirrors Department.CalculateCapacityUtilization(), expressed so EF
+                // can translate it into the SQL projection.
+                department.MaxCapacity == 0
+                    ? 0
+                    : (double)department.Members.Count() / department.MaxCapacity * 100))
             .ToListAsync(ct);
 
         var usersQuery = await _scope.ScopeUsersAsync(

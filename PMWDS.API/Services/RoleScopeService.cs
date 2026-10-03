@@ -448,6 +448,7 @@ public class RoleScopeService
 
         _scopeSnapshot = cachedScope ?? ScopeSnapshot.Empty;
         return _scopeSnapshot;
+    }
 
     private async Task<bool> HasPermissionAsync(string permissionCode, CancellationToken ct)
     {

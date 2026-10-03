@@ -54,7 +54,8 @@ public static class DatabaseConnectionService
                         sql.MigrationsAssembly("PMWDS.Persistence");
                         sql.EnableRetryOnFailure(
                             maxRetryCount: 1,
-                            maxRetryDelay: TimeSpan.FromSeconds(2));
+                            maxRetryDelay: TimeSpan.FromSeconds(2),
+                            errorNumbersToAdd: null);
                     });
                     break;
                 case ActiveDatabaseProvider.Sqlite:

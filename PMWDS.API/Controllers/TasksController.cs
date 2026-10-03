@@ -198,7 +198,6 @@ public class TasksController : BaseApiController
                 t.Status != TaskStatus.Completed &&
                 t.Status != TaskStatus.Cancelled);
         }
-        }
 
         var totalCount = await query.CountAsync(ct);
         var items = await query
