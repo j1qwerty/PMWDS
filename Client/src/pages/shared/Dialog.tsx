@@ -11,6 +11,7 @@ interface DialogProps {
   footer?: ReactNode;
   onClose: () => void;
   closeOnBackdrop?: boolean;
+  closeOnEscape?: boolean;
   showCloseButton?: boolean;
   size?: DialogSize;
   className?: string;
@@ -38,6 +39,7 @@ export function Dialog({
   footer,
   onClose,
   closeOnBackdrop = true,
+  closeOnEscape = true,
   showCloseButton = true,
   size = "md",
   className = "",
@@ -72,7 +74,7 @@ export function Dialog({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (closeOnBackdrop) onCloseRef.current();
+        if (closeOnEscape) onCloseRef.current();
         return;
       }
 
@@ -112,7 +114,7 @@ export function Dialog({
       }
       restoreFocusRef.current?.focus?.();
     };
-  }, [closeOnBackdrop, initialFocusRef]);
+  }, [closeOnEscape, initialFocusRef]);
 
   return (
     <div
