@@ -162,12 +162,7 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        var query = _db.Projects
-            .Include(p => p.Department)
-            .Include(p => p.ProjectDepartments).ThenInclude(assignment => assignment.Department)
-            .Include(p => p.Tasks)
-            .Include(p => p.Milestones)
-            .AsQueryable();
+        var query = _db.Projects.AsNoTracking();
 
         if (departmentId.HasValue)
         {
@@ -184,19 +179,167 @@ public class ProjectsController : BaseApiController
         }
 
         var totalCount = await query.CountAsync(ct);
-        var projects = await query
+        var rows = await query
             .OrderByDescending(p => p.CreatedDate)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
+            .Select(p => new
+            {
+                p.Id,
+                p.ProjectCode,
+                p.Name,
+                p.Description,
+                p.Category,
+                p.Status,
+                p.Priority,
+                p.PlannedStartDate,
+                p.PlannedEndDate,
+                p.ActualStartDate,
+                p.ActualEndDate,
+                p.PlannedBudget,
+                p.ActualCost,
+                p.ProgressPercentage,
+                p.AIHealthScore,
+                p.AIDelayRiskScore,
+                p.AIBudgetRiskScore,
+                p.AIInsightsSummary,
+                p.DepartmentId,
+                DepartmentName = p.Department != null ? p.Department.Name : null,
+                p.ProjectManagerId,
+                ProjectManagerName = p.ProjectManagerId.HasValue
+                    ? _db.Users
+                        .Where(u => u.Id == p.ProjectManagerId.Value)
+                        .Select(u => u.FirstName + " " + u.LastName)
+                        .FirstOrDefault()
+                    : null,
+                TotalTasks = p.Tasks.Count,
+                CompletedTasks = p.Tasks.Count(t => t.Status == PMWDS.Domain.Enums.TaskStatus.Completed),
+                OverdueTasks = p.Tasks.Count(t =>
+                    t.Status != PMWDS.Domain.Enums.TaskStatus.Completed &&
+                    t.DueDate < DateTime.UtcNow),
+                TotalMilestones = p.Milestones.Count,
+                CompletedMilestones = p.Milestones.Count(m =>
+                    m.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed)
+            })
             .ToListAsync(ct);
-        var managerNames = await ResolveProjectManagerNamesAsync(projects, ct);
-        var items = projects
-            .Select(project => ProjectDto.FromEntity(
-                project,
-                project.ProjectManagerId.HasValue
-                    ? managerNames.GetValueOrDefault(project.ProjectManagerId.Value)
-                    : null))
-            .ToList();
+
+        var projectIds = rows.Select(row => row.Id).ToList();
+
+        var departmentRows = await _db.ProjectDepartments
+            .AsNoTracking()
+            .Where(assignment => projectIds.Contains(assignment.ProjectId))
+            .Select(assignment => new
+            {
+                assignment.ProjectId,
+                assignment.DepartmentId,
+                DepartmentName = assignment.Department != null ? assignment.Department.Name : null,
+                assignment.IsPrimary
+            })
+            .ToListAsync(ct);
+
+        var milestoneRows = await _db.Milestones
+            .AsNoTracking()
+            .Where(milestone => projectIds.Contains(milestone.ProjectId))
+            .Select(milestone => new
+            {
+                milestone.ProjectId,
+                milestone.Status,
+                milestone.ProgressPercentage
+            })
+            .ToListAsync(ct);
+
+        var departmentsByProject = departmentRows
+            .GroupBy(row => row.ProjectId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .GroupBy(row => row.DepartmentId)
+                    .Select(departmentGroup =>
+                        new ProjectDepartmentDto(
+                            departmentGroup.Key,
+                            departmentGroup.Select(row => row.DepartmentName).FirstOrDefault(),
+                            departmentGroup.Any(row => row.IsPrimary)))
+                    .ToList());
+
+        var milestonesByProject = milestoneRows
+            .GroupBy(row => row.ProjectId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        var items = rows.Select(row =>
+        {
+            var milestones = milestonesByProject.GetValueOrDefault(row.Id) ?? [];
+            var progress = row.ProgressPercentage;
+            var projectStatus = row.Status;
+
+            if (milestones.Count > 0)
+            {
+                progress = Math.Round(milestones.Average(milestone =>
+                    Math.Clamp(milestone.ProgressPercentage, 0, 100)), 1);
+
+                if (milestones.All(milestone =>
+                    milestone.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed))
+                {
+                    projectStatus = PMWDS.Domain.Enums.ProjectStatus.Completed;
+                    progress = 100;
+                }
+                else if (milestones.Any(milestone =>
+                    milestone.Status == PMWDS.Domain.Enums.MilestoneStatus.Delayed))
+                {
+                    projectStatus = PMWDS.Domain.Enums.ProjectStatus.Delayed;
+                }
+                else if (projectStatus == PMWDS.Domain.Enums.ProjectStatus.NotStarted &&
+                         milestones.Any(milestone =>
+                             milestone.ProgressPercentage > 0 ||
+                             milestone.Status == PMWDS.Domain.Enums.MilestoneStatus.InProgress))
+                {
+                    projectStatus = PMWDS.Domain.Enums.ProjectStatus.InProgress;
+                }
+            }
+
+            var projectDepartments = departmentsByProject.GetValueOrDefault(row.Id) ?? [];
+            if (projectDepartments.Count == 0)
+            {
+                projectDepartments =
+                [
+                    new ProjectDepartmentDto(row.DepartmentId, row.DepartmentName, true)
+                ];
+            }
+
+            return new ProjectDto(
+                Id: row.Id,
+                ProjectCode: row.ProjectCode,
+                Name: row.Name,
+                Description: row.Description,
+                Category: row.Category,
+                Status: projectStatus.ToString(),
+                Priority: row.Priority.ToString(),
+                PlannedStartDate: row.PlannedStartDate,
+                PlannedEndDate: row.PlannedEndDate,
+                ActualStartDate: row.ActualStartDate,
+                ActualEndDate: row.ActualEndDate,
+                PlannedBudget: row.PlannedBudget,
+                ActualCost: row.ActualCost,
+                BudgetVariance: row.PlannedBudget - row.ActualCost,
+                ProgressPercentage: progress,
+                AIHealthScore: row.AIHealthScore,
+                AIDelayRiskScore: row.AIDelayRiskScore,
+                AIBudgetRiskScore: row.AIBudgetRiskScore,
+                AIInsightsSummary: row.AIInsightsSummary,
+                DepartmentId: row.DepartmentId,
+                DepartmentName: row.DepartmentName,
+                DepartmentIds: projectDepartments.Select(department => department.DepartmentId).Distinct().ToList(),
+                Departments: projectDepartments,
+                ProjectManagerId: row.ProjectManagerId?.ToString() ?? string.Empty,
+                ProjectManagerName: row.ProjectManagerName,
+                TotalTasks: row.TotalTasks,
+                CompletedTasks: row.CompletedTasks,
+                OverdueTasks: row.OverdueTasks,
+                TotalMilestones: row.TotalMilestones,
+                CompletedMilestones: row.CompletedMilestones,
+                CreatedDate: row.CreatedDate)
+            ;
+        }).ToList();
+
         return Ok(PaginatedResponse<ProjectDto>.Create(items, pagination, totalCount));
     }
 
