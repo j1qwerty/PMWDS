@@ -30,6 +30,7 @@ const focusableSelector =
 
 let openDialogCount = 0;
 let previousBodyOverflow = "";
+const dialogStack: symbol[] = [];
 
 export function Dialog({
   title,
@@ -63,6 +64,9 @@ export function Dialog({
       document.body.style.overflow = "hidden";
     }
 
+    const instanceId = Symbol("dialog");
+    dialogStack.push(instanceId);
+
     const focusTarget = initialFocusRef?.current;
     const timer = window.setTimeout(() => {
       const target = focusTarget ?? dialogRef.current?.querySelector<HTMLElement>(
@@ -74,7 +78,8 @@ export function Dialog({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (closeOnEscape) onCloseRef.current();
+        const isTopmost = dialogStack[dialogStack.length - 1] === instanceId;
+        if (isTopmost && closeOnEscape) onCloseRef.current();
         return;
       }
 
@@ -108,6 +113,8 @@ export function Dialog({
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("keydown", handleKeyDown);
+      const index = dialogStack.lastIndexOf(instanceId);
+      if (index >= 0) dialogStack.splice(index, 1);
       openDialogCount = Math.max(0, openDialogCount - 1);
       if (openDialogCount === 0) {
         document.body.style.overflow = previousBodyOverflow;
