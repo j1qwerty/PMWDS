@@ -503,6 +503,9 @@ public class ProjectsController : BaseApiController
         }
 
         var projectName = project.Name;
+        var deletedBy = _currentUser.UserId ?? "system";
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
         var milestoneIds = await _db.Milestones
             .Where(m => m.ProjectId == id)
@@ -518,8 +521,55 @@ public class ProjectsController : BaseApiController
         }
 
         await _uow.Tasks.DeleteTasksByProjectAsync(id, ct);
+
+        // Project is soft-deleted, so database ON DELETE CASCADE does not execute.
+        // Explicitly soft-delete every project-owned descendant that participates in the
+        // soft-delete model so direct child endpoints and future restores cannot expose
+        // records belonging to a deleted project.
+        var goals = await _db.Goals.Where(goal => goal.ProjectId == id).ToListAsync(ct);
+        foreach (var goal in goals)
+            goal.SoftDelete(deletedBy);
+
+        var milestones = await _db.Milestones.Where(milestone => milestone.ProjectId == id).ToListAsync(ct);
+        foreach (var milestone in milestones)
+            milestone.SoftDelete(deletedBy);
+
+        var documents = await _db.ProjectDocuments.Where(document => document.ProjectId == id).ToListAsync(ct);
+        foreach (var document in documents)
+            document.SoftDelete(deletedBy);
+
+        // Financial descendants must be hidden with the deleted project as well. Keep the
+        // rows for auditability rather than physically deleting the ledger.
+        var goalIds = goals.Select(goal => goal.Id).ToList();
+        if (goalIds.Count > 0)
+        {
+            var allocationIds = await _db.GoalBudgetAllocations
+                .Where(allocation => goalIds.Contains(allocation.GoalId))
+                .Select(allocation => allocation.Id)
+                .ToListAsync(ct);
+
+            var allocations = await _db.GoalBudgetAllocations
+                .Where(allocation => allocationIds.Contains(allocation.Id))
+                .ToListAsync(ct);
+            foreach (var allocation in allocations)
+                allocation.SoftDelete(deletedBy);
+
+            var releases = await _db.BudgetReleases
+                .Where(release => allocationIds.Contains(release.GoalBudgetAllocationId))
+                .ToListAsync(ct);
+            foreach (var release in releases)
+                release.SoftDelete(deletedBy);
+
+            var expenditures = await _db.BudgetExpenditures
+                .Where(expenditure => allocationIds.Contains(expenditure.GoalBudgetAllocationId))
+                .ToListAsync(ct);
+            foreach (var expenditure in expenditures)
+                expenditure.SoftDelete(deletedBy);
+        }
+
         await _uow.Projects.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Project Deleted",

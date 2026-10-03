@@ -242,36 +242,44 @@ public class CascadeTests
         remaining.Data.GetArrayLength().Should().Be(0);
     }
 
-    /// <summary>
-    /// Documents the soft-delete consequence of the Project -> Milestone FK being NoAction.
-    /// </summary>
-    /// <remarks>
-    /// Deleting a project soft-deletes the project row, so no database cascade can fire.
-    /// The controller deletes tasks and milestone dependencies explicitly but does NOT touch
-    /// milestones, and Milestone -> Project is configured NoAction. The milestone rows
-    /// therefore survive with <c>IsDeleted = false</c>, still attached to a project that no
-    /// longer appears in any list.
-    ///
-    /// This test asserts what actually happens so the behaviour is pinned and visible. If
-    /// someone later fixes it by cascading the milestone soft-delete, the assertion flips
-    /// and the test tells them.
-    /// </remarks>
     [Fact]
-    public async Task Deleting_a_project_leaves_its_milestones_undeleted_today()
+    public async Task Deleting_a_project_soft_deletes_its_milestones_and_financial_descendants()
     {
         var client = _fixture.SuperAdmin.Client;
+        var department = await WizardFlowTests.FirstDepartmentAsync(client);
         var project = await TestProject.CreateAsync(client, "Cascade Project Milestones");
         var projectId = project.ProjectId;
+
+        var goal = await client.PostAsync<JsonElement>("/api/v1/goals", new
+        {
+            projectId,
+            assignedDepartmentId = department,
+            title = "Cascade Goal",
+            description = "Goal should be hidden with its project.",
+            priority = "Medium",
+            dueDate = new DateTime(2026, 12, 15),
+        });
+        goal.Status.Should().Be(HttpStatusCode.Created);
+        var goalId = goal.Data.GetGuid("id");
+
+        var allocation = await client.PostAsync<JsonElement>("/api/v1/budgets/allocations", new
+        {
+            goalId,
+            amount = 25000m,
+            reason = "Cascade allocation",
+        });
+        allocation.Status.Should().Be(HttpStatusCode.OK);
+
         var milestoneId = (await project.MilestoneIdsAsync())[0];
 
         await client.DeleteAsync<JsonElement>($"/api/v1/projects/{projectId}");
 
-        var milestones = await client.GetAsync<JsonElement>($"/api/v1/milestones/by-project/{projectId}");
-
-        // Known gap, not an endorsed behaviour. See the remarks on this test.
-        milestones.Data.GetArrayLength().Should().Be(3,
-            "milestones are currently orphaned by a project delete: the project row is only " +
-            "soft-deleted so the NoAction FK never cascades");
+        (await client.GetAsync<JsonElement>($"/api/v1/milestones/{milestoneId}")).Status
+            .Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync<JsonElement>($"/api/v1/goals/{goalId}")).Status
+            .Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync<JsonElement>($"/api/v1/budgets/goals/{goalId}/summary")).Status
+            .Should().Be(HttpStatusCode.NotFound);
 
         await project.DisposeAsync();
     }
