@@ -64,7 +64,6 @@ public class WorkspaceController : BaseApiController
             .ToListAsync(ct);
 
         var userPageSize = ResolveUserPageSize(currentUser);
-        var referencePageSize = Math.Clamp(userPageSize * 2, 10, 100);
 
         var organizationsQuery = await _scope.ScopeOrganizationsAsync(
             _db.Organizations.AsNoTracking().OrderBy(organization => organization.Name),
@@ -120,7 +119,7 @@ public class WorkspaceController : BaseApiController
                 user.AIBurnoutRiskScore,
                 user.AIPerformanceScore,
                 user.TaskAssignments.Count(assignment => assignment.Task != null &&
-                    assignment.Task.Status == Domain.Enums.TaskStatus.InProgress),
+                    assignment.Task.Status == PMWDS.Domain.Enums.TaskStatus.InProgress),
                 user.IsActive,
                 user.Roles.Select(role => role.Name).ToList(),
                 user.Roles.Select(role => role.Key).Where(key => !string.IsNullOrWhiteSpace(key)).ToList()))
