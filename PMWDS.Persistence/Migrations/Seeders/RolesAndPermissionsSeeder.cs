@@ -222,7 +222,10 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
+            PermissionCodes.GoalManage,
             PermissionCodes.MilestoneManage,
+            PermissionCodes.BudgetManage,
+            PermissionCodes.BudgetApprove,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
             PermissionCodes.UserManage,
@@ -241,6 +244,7 @@ internal static class RolesAndPermissionsSeeder
         var teamMemberPermissionCodes = new[]
         {
             PermissionCodes.ProjectView,
+            PermissionCodes.GoalView,
             PermissionCodes.MilestoneView,
             PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
             PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
