@@ -11,6 +11,11 @@
 .PARAMETER Target
     api | web | both. Prompted for when omitted.
 
+.PARAMETER Variant
+    sqlite | mssql. Prompted for when omitted, defaulting to whichever one the current
+    branch owns. The two variants are separate deployments on separate branches and must
+    never be pointed at each other's paths, service or database.
+
 .PARAMETER SkipConfirm
     Deploy without the interactive y/N confirmation.
 
@@ -23,12 +28,16 @@
 .EXAMPLE
     .\deploy.ps1
     .\deploy.ps1 -Target both
-    .\deploy.ps1 -Target web -SkipConfirm
+    .\deploy.ps1 -Variant mssql -Target both
+    .\deploy.ps1 -Variant sqlite -Target web -SkipConfirm
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('api', 'web', 'both')]
     [string] $Target,
+
+    [ValidateSet('sqlite', 'mssql')]
+    [string] $Variant,
 
     [switch] $SkipConfirm,
     [switch] $SkipVerify,
@@ -45,15 +54,50 @@ $DistDir     = Join-Path $RepoRoot 'Client\dist'
 $ApiArchive  = Join-Path $RepoRoot 'pmwds-api.tar.gz'
 $WebArchive  = Join-Path $RepoRoot 'pmwds-web.tar.gz'
 
-$RemoteApp   = '/var/www/pmwds.dharmaatribe.app/app'
-$RemoteWeb   = '/var/www/pmwds.dharmaatribe.app/html'
-$ServiceName = 'pmwds.dharmaatribe.app'
 $WebUser     = 'www-data'
 
-$PublicHosts = @(
-    @{ Label = 'IP       '; Url = 'http://147.93.155.185'  ; Insecure = $false },
-    @{ Label = 'subdomain'; Url = 'https://pmwds.dharmaatribe.app'; Insecure = $false }
-)
+# ── Variant resolution ──────────────────────────────────────────────────
+# Two independent deployments live on the same VPS. They must never share a service, a
+# directory, a database or a port, because deploying one must not be able to disturb the
+# other.
+#
+#   sqlite  branch prod-sqlite  -> bare IP, HTTP only (a bare IP cannot get a TLS cert,
+#                                  so the login password and JWT travel in clear text)
+#   mssql   branch prod-mssql   -> the subdomain over HTTPS, which is the only host where
+#                                  sending credentials in clear text is acceptable
+#
+# The bare IP is therefore the SQLite variant and the subdomain is the MSSQL variant, which
+# is the opposite of the previous single-app layout and is what PRODUCTION.md now documents.
+$VariantTable = @{
+    sqlite = @{
+        Label       = 'sqlite (bare IP)'
+        RemoteApp   = '/var/www/pmwds-sqlite/app'
+        RemoteWeb   = '/var/www/pmwds-sqlite/html'
+        ServiceName = 'pmwds-sqlite'
+        EnvFile     = '/etc/pmwds/pmwds-sqlite.env'
+        DataDir     = '/var/lib/pmwds-sqlite'
+        ApiPort     = 5001
+        PublicHost  = 'http://147.93.155.185'
+        HostLabel   = 'IP       '
+        Branch      = 'prod-sqlite'
+        Tls         = $false
+    }
+    mssql = @{
+        Label       = 'mssql (subdomain, HTTPS)'
+        RemoteApp   = '/var/www/pmwds-mssql/app'
+        RemoteWeb   = '/var/www/pmwds-mssql/html'
+        ServiceName = 'pmwds-mssql'
+        EnvFile     = '/etc/pmwds/pmwds-mssql.env'
+        DataDir     = '/var/lib/pmwds-mssql'
+        ApiPort     = 5002
+        PublicHost  = 'https://pmwds.dharmaatribe.app'
+        HostLabel   = 'subdomain'
+        Branch      = 'prod-mssql'
+        Tls         = $true
+    }
+}
+
+# ── Output helpers ──────────────────────────────────────────────────────
 
 # ── Output helpers ──────────────────────────────────────────────────────
 $script:StepNo = 0
@@ -196,9 +240,47 @@ Invoke-Checked ssh @('-o','BatchMode=yes','-o','ConnectTimeout=10',$Host_,'echo 
              -What "ssh $Host_" -OnSuccessPatterns @('ok') | Out-Null
 Write-Ok "ssh $Host_ reachable"
 
-# ── Choose what to deploy ───────────────────────────────────────────────
-Write-Step 'Select target'
-Write-Running 'selecting API, web, or both'
+# ── Choose variant and target ───────────────────────────────────────────
+Write-Step 'Select variant and target'
+Write-Running 'selecting which deployment, and whether to ship the API, the client, or both'
+
+# Which deployment does this branch own? Each branch is one variant's source of truth, so
+# defaulting to it means the common case needs no argument at all. An explicit -Variant on
+# the "wrong" branch is allowed but loudly flagged, because that is how the wrong
+# deployment gets overwritten.
+$branchVariant = if ($branch -like 'prod-sqlite*') { 'sqlite' } else { 'mssql' }
+
+if (-not $Variant) {
+    Write-Host ''
+    Write-Host '       Which deployment?' -ForegroundColor White
+    Write-Host "         [1] sqlite - bare IP  http://147.93.155.185            (branch $branch owns this)" -ForegroundColor Gray
+    Write-Host "         [2] mssql  - subdomain https://pmwds.dharmaatribe.app" -ForegroundColor Gray
+    Write-Host ''
+    $vchoice = Read-Host "       Choice [$branchVariant]"
+    switch ($vchoice.Trim()) {
+        '1'        { $Variant = 'sqlite' }
+        '2'        { $Variant = 'mssql'  }
+        ''         { $Variant = $branchVariant }
+        default    { Fail "unrecognised choice '$vchoice'" }
+    }
+}
+
+$V = $VariantTable[$Variant]
+
+if ($branch -ne $V.Branch) {
+    Write-Warn2 "branch '$branch' does not own the '$Variant' variant (expected '$($V.Branch)')"
+    Write-Detail '  you are deploying to the OTHER deployment. This is only correct if you'
+    Write-Detail "  intend to update $Variant from this checkout. Nothing is inferred from the branch."
+}
+
+$RemoteApp   = $V.RemoteApp
+$RemoteWeb   = $V.RemoteWeb
+$ServiceName = $V.ServiceName
+$DataDir     = $V.DataDir
+
+$PublicHosts = @(
+    @{ Label = $V.HostLabel; Url = $V.PublicHost; Insecure = $false }
+)
 
 if (-not $Target) {
     Write-Host ''
@@ -217,7 +299,8 @@ if (-not $Target) {
 
 $doApi = $Target -in @('api', 'both')
 $doWeb = $Target -in @('web', 'both')
-Write-Info "target: $Target"
+Write-Info "variant: $Variant  ->  $($V.Label)"
+Write-Info "target:  $Target"
 
 # ── Build ───────────────────────────────────────────────────────────────
 $apiAssets = @()
@@ -302,10 +385,19 @@ Write-Running 'waiting for deployment confirmation'
 
 Write-Host ''
 Write-Host '       About to deploy to:' -ForegroundColor White
+Write-Host "         variant    $($V.Label)" -ForegroundColor Gray
 Write-Host "         target     $Target" -ForegroundColor Gray
-Write-Host "         host       $Host_" -ForegroundColor Gray
-if ($doApi) { Write-Host '         service    will be restarted' -ForegroundColor Gray }
-Write-Host '         database   /var/lib/pmwds (untouched)' -ForegroundColor Gray
+Write-Host "         host       $Host_   ->  $($V.PublicHost)" -ForegroundColor Gray
+Write-Host "         service    $ServiceName   (port $($V.ApiPort))" -ForegroundColor Gray
+Write-Host "         api dir    $RemoteApp" -ForegroundColor Gray
+Write-Host "         web dir    $RemoteWeb" -ForegroundColor Gray
+Write-Host "         data dir   $DataDir  (never touched by this script)" -ForegroundColor Gray
+if (-not $V.Tls) {
+    Write-Host ''
+    Write-Host '         NOTE: this variant is served over plain HTTP on a bare IP.' -ForegroundColor Yellow
+    Write-Host '               Login passwords and JWTs travel in clear text.' -ForegroundColor Yellow
+}
+if ($doApi) { Write-Host '         restart    yes' -ForegroundColor Gray }
 Write-Host ''
 
 if (-not $SkipConfirm) {
@@ -361,27 +453,33 @@ Write-Step 'Deploy on server'
 Write-Running 'remote extraction, permissions, and service restart are running. Server output will appear live below.'
 
 # Written to a script file rather than inlined: $ and quoting behave differently
-# when a command crosses the Windows -> ssh boundary.
+# when a command crosses the Windows -> ssh boundary. The variant's paths and service name
+# are passed as arguments rather than baked in, so one script body serves both deployments.
 $remoteScript = @'
 set -e
-APP=/var/www/pmwds.dharmaatribe.app/app
-WEB=/var/www/pmwds.dharmaatribe.app/html
-TARGET="$1"
+APP="$1"
+WEB="$2"
+SERVICE="$3"
+DATA="$4"
+TARGET="$5"
 
 if [ -f /tmp/pmwds-api.tar.gz ]; then
-  echo "extracting api"
+  echo "extracting api -> $APP"
+  mkdir -p "$APP" "$DATA"
   rm -rf /tmp/dep-api && mkdir -p /tmp/dep-api
   tar -xzf /tmp/pmwds-api.tar.gz -C /tmp/dep-api
-  rm -rf "$APP"/*
+  # Clear the previous build but keep the directory itself, so a bind mount or an open
+  # handle on it cannot turn the restart into a "no such file" failure.
+  find "$APP" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
   cp -a /tmp/dep-api/. "$APP"/
-  chown -R www-data:www-data "$APP"
+  chown -R www-data:www-data "$APP" "$DATA"
   chmod -R 755 "$APP"
   rm -rf /tmp/dep-api
   echo "api: $(ls "$APP" | wc -l) entries"
 fi
 
 if [ -f /tmp/pmwds-web.tar.gz ]; then
-  echo "extracting web"
+  echo "extracting web -> $WEB"
   rm -rf /tmp/dep-web && mkdir -p /tmp/dep-web
   tar -xzf /tmp/pmwds-web.tar.gz -C /tmp/dep-web
   rm -rf "$WEB"
@@ -396,18 +494,18 @@ fi
 rm -f /tmp/pmwds-api.tar.gz /tmp/pmwds-web.tar.gz
 
 if [ "$TARGET" = "api" ] || [ "$TARGET" = "both" ]; then
-  echo "restarting service"
-  systemctl restart pmwds.dharmaatribe.app
+  echo "restarting $SERVICE"
+  systemctl restart "$SERVICE"
   echo "service startup: waiting up to 50s for active state"
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    status=$(systemctl is-active pmwds.dharmaatribe.app 2>/dev/null || true)
+    status=$(systemctl is-active "$SERVICE" 2>/dev/null || true)
     echo "service startup check $i/10: $status"
     if [ "$status" = "active" ]; then
       break
     fi
     sleep 5
   done
-  echo "service: $(systemctl is-active pmwds.dharmaatribe.app 2>/dev/null || true)"
+  echo "service: $(systemctl is-active "$SERVICE" 2>/dev/null || true)"
 fi
 '@
 
@@ -416,11 +514,12 @@ $tmpScript = Join-Path ([System.IO.Path]::GetTempPath()) ("pmwds-deploy-" + [gui
 try {
     scp -o BatchMode=yes -o ConnectTimeout=10 $tmpScript "${Host_}:/tmp/pmwds-deploy.sh" | Out-Null
 
-    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-deploy.sh $Target") `
+    $remoteArgs = "bash /tmp/pmwds-deploy.sh '$RemoteApp' '$RemoteWeb' '$ServiceName' '$DataDir' '$Target'"
+    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, $remoteArgs) `
         -What 'remote deploy' -StreamOutput -OutputLabel 'server'
 
     $out | Select-String -Pattern 'service: active' | Out-Null
-    if (-not $?) { Fail 'service did not report active after restart' }
+    if (-not $?) { Fail "$ServiceName did not report active after restart" }
     Write-Ok 'remote deploy complete'
 } finally {
     Remove-Item $tmpScript -Force -ErrorAction SilentlyContinue
@@ -487,13 +586,34 @@ try {
         }
     }
 
-    # Deep link proves the SPA fallback works.
+    # Deep link proves the SPA fallback works on this variant's host.
     Write-Running 'checking SPA deep link /projects'
-    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, 'bash /tmp/pmwds-curl.sh https://pmwds.dharmaatribe.app/projects') `
+    $deepUrl = $V.PublicHost + '/projects'
+    $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-curl.sh $deepUrl") `
         -What 'deep link' -StreamOutput -OutputLabel 'check'
     $deep = ($out -split "`r?`n") | Where-Object { $_ -match '^\d{3} \d+' } | Select-Object -First 1
-    if ($deep -match '^200 ') { Write-Ok 'SPA deep link /projects -> 200' }
+    if ($deep -match '^200 ') { Write-Ok "SPA deep link $deepUrl -> 200" }
     else { Write-Err "SPA deep link failed: $deep"; $allOk = $false }
+
+    # The other variant shares this box. A deploy must not be able to take it down without
+    # that being noticed, so assert it is still serving after we are done.
+    $otherKey = if ($Variant -eq 'sqlite') { 'mssql' } else { 'sqlite' }
+    $O = $VariantTable[$otherKey]
+    if ($O.ServiceName) {
+        Write-Running "checking the other variant ($otherKey) is untouched"
+        $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
+            "systemctl is-active $($O.ServiceName) 2>/dev/null || echo not-installed") `
+            -What 'other variant' -StreamOutput -OutputLabel 'check'
+        $otherState = (($out -split "`r?`n") | Where-Object { $_ -match '\S' } | Select-Object -Last 1).Trim()
+        if ($otherState -eq 'active') {
+            Write-Ok "$($O.ServiceName) still active"
+        } else {
+            # Not installed is a legitimate state, especially on a fresh box. Only a
+            # service that exists but is not active is a problem worth failing over.
+            if ($otherState -eq 'not-installed') { Write-Warn2 "$($O.ServiceName) not installed yet" }
+            else { Write-Err "$($O.ServiceName) is '$otherState'"; $allOk = $false }
+        }
+    }
 
     # The SignalR handshake must be checked explicitly. Every other check here can pass
     # while live updates are completely broken: GET / and the SPA deep link are served
@@ -547,7 +667,7 @@ try {
             "journalctl -u $ServiceName --since '-3min' --no-pager | grep -c 'Now listening'; exit 0") `
             -What 'listen check' -OnSuccessPatterns @('\d+') -StreamOutput -OutputLabel 'check'
         $listenCount = ($listening -split "`r?`n" | Where-Object { $_ -match '^\d+$' } | Select-Object -First 1)
-        if ([int]$listenCount -ge 1) { Write-Ok 'API reports "Now listening on: http://127.0.0.1:5001"' }
+        if ([int]$listenCount -ge 1) { Write-Ok "API reports Now listening (expected http://127.0.0.1:$($V.ApiPort))" }
         else { Write-Err 'API did not report listening'; $allOk = $false }
     }
 } finally {
@@ -559,10 +679,11 @@ Write-Banner
 if ($allOk) {
     Write-Host '  Deploy succeeded.' -ForegroundColor Green
     Write-Host ''
-    Write-Host "   API      $RemoteApp" -ForegroundColor Gray
-    Write-Host "   Web      $RemoteWeb" -ForegroundColor Gray
-    Write-Host "   IP       http://147.93.155.185" -ForegroundColor Gray
-    Write-Host "   Sub      https://pmwds.dharmaatribe.app" -ForegroundColor Gray
+    Write-Host "   Variant   $Variant  ($($V.Label))" -ForegroundColor Gray
+    Write-Host "   Host      $($V.PublicHost)" -ForegroundColor Gray
+    Write-Host "   Service   $ServiceName" -ForegroundColor Gray
+    Write-Host "   API       $RemoteApp" -ForegroundColor Gray
+    Write-Host "   Web       $RemoteWeb" -ForegroundColor Gray
     Write-Host ''
     exit 0
 } else {
