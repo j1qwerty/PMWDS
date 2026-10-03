@@ -7,9 +7,9 @@ This guide describes the configuration required to build, run, and deploy PMWDS.
 | File | Purpose |
 |------|---------|
 | [README.md](README.md) | Project overview, local setup, credentials, and operational notes |
-| [sqlite.md](sqlite.md) | SQLite fallback behavior and development database notes |
-| [issue-sqlite.md](issue-sqlite.md) | Detailed SQLite migration issue and production-ready remediation options |
 | [config-sqlite.md](config-sqlite.md) | Combined SQLite config guide with verified implementation and remediation paths |
+| [mssql-issue.md](mssql-issue.md) | Why SQL Server made requests take 25 seconds, and the two settings that fixed it |
+| [vps-mssqlserver.md](vps-mssqlserver.md) | SQL Server and Redis on the VPS, and connecting SSMS to it |
 
 ## Configuration File Order
 
@@ -139,7 +139,7 @@ Note: there is no `Database:EnableSqliteFallback` setting. Some `.env` copies co
 `Database__EnableSqliteFallback=true`, which is read by nothing. The real control is
 `Database:AllowSqliteInProduction`, which permits SQLite outside Development.
 
-See [sqlite.md](sqlite.md), [issue-sqlite.md](issue-sqlite.md), and [config-sqlite.md](config-sqlite.md) before changing this flow.
+See [config-sqlite.md](config-sqlite.md) and [mssql-issue.md](mssql-issue.md) before changing this flow.
 
 ### Database Settings Class
 
