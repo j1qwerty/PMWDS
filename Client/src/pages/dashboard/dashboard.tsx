@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useMemo, type FormEvent } from "react
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone } from "../../types";
+import type { NotificationItem, Task, User, Project, Milestone } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
@@ -19,7 +19,7 @@ import DashboardStats from "./dashboardStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
 import Timer from "../shared/dash/Timer";
-import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
+import { ProjectFormModal, type ProjectFormState } from "../projects/components/ProjectFormModal";
 
 // Temporarily hidden dashboard widgets. Kept behind flags (not deleted) so
 // they can be restored by flipping these back to true.
@@ -51,7 +51,7 @@ export function DashboardPage() {
   const { auth } = useAuth();
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
-  const { refresh: refreshAppData } = useAppData();
+  const { data: appData, refresh: refreshAppData } = useAppData();
   const { addToast } = useToast();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
   const canViewTasks = perm.has(PERMISSION_GROUPS.task.view);
@@ -59,9 +59,7 @@ export function DashboardPage() {
   const [myTasks, setMyTasks] = useState<Task[]>([]);
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const { departments, organizations, users } = appData;
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
@@ -112,27 +110,25 @@ export function DashboardPage() {
   useEffect(() => {
     if (!auth) return;
     setLoading(true);
+    setError("");
+
     Promise.allSettled([
       api.getDashboard(auth.token),
       api.getMyTasks(auth.token),
       api.getNotifications(auth.token, true),
-      api.getDepartments(auth.token),
-      api.getOrganizations(auth.token),
-      api.getUsers(auth.token),
-      api.getProjects(auth.token),
       canViewTasks ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       canViewTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+      api.getProjects(auth.token),
     ])
-      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, overdueResult, escalatedResult, projectsResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
-        if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
-        if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
-        if (organizationsResult.status === "fulfilled") setOrganizations(organizationsResult.value as OrganizationRecord[]);
-        if (usersResult.status === "fulfilled") setUsers(usersResult.value);
-        if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
+        if (notificationsResult.status === "fulfilled") {
+          setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
+        }
         if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
         if (escalatedResult.status === "fulfilled") setEscalatedTasks(escalatedResult.value as Task[]);
+        if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
         if (dashboardResult.status === "rejected") {
           setError(dashboardResult.reason instanceof Error ? dashboardResult.reason.message : "Dashboard unavailable");
         }

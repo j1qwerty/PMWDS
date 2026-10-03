@@ -54,7 +54,8 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
-        var query = UserGraph(includeSkills: true);
+        var query = _db.Users.AsNoTracking();
+
         if (departmentId.HasValue)
         {
             query = query.Where(u =>
@@ -63,18 +64,146 @@ public class UsersController : BaseApiController
         }
 
         query = await _scope.ScopeUsersAsync(query, ct);
+
         var totalCount = await query.CountAsync(ct);
-        var users = await query
+        var rows = await query
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
+            .Select(u => new
+            {
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.ProfilePictureUrl,
+                JobTitle = u.Profile != null ? (u.Profile.JobTitle ?? u.JobTitle) : u.JobTitle,
+                u.OrganizationId,
+                DepartmentName = u.Department != null ? u.Department.Name : null,
+                u.DepartmentId,
+                ProfileId = u.Profile != null ? u.Profile.Id : (Guid?)null,
+                Bio = u.Profile != null ? u.Profile.Bio : null,
+                u.AvailabilityStatus,
+                u.AvailabilityPercentage,
+                u.AIWorkloadScore,
+                u.AIBurnoutRiskScore,
+                u.AIPerformanceScore,
+                ActiveTaskCount = u.TaskAssignments.Count(assignment =>
+                    assignment.Task != null &&
+                    assignment.Task.Status == PMWDS.Domain.Enums.TaskStatus.InProgress),
+                u.IsActive
+            })
             .ToListAsync(ct);
 
-        return Ok(PaginatedResponse<UserDto>.Create(
-            users.Select(u => UserDto.FromEntityWithSkills(u, UserRoleResolver.Resolve(u))).ToList(),
-            pagination,
-            totalCount));
+        var userIds = rows.Select(row => row.Id).ToList();
+
+        var roleRows = await _db.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .SelectMany(u => u.Roles.Select(role => new
+            {
+                UserId = u.Id,
+                role.Name,
+                role.Key
+            }))
+            .ToListAsync(ct);
+
+        var departmentRows = await _db.UserDepartments
+            .AsNoTracking()
+            .Where(assignment => userIds.Contains(assignment.UserId))
+            .Select(assignment => new
+            {
+                assignment.UserId,
+                assignment.DepartmentId,
+                DepartmentName = assignment.Department.Name,
+                DepartmentCode = assignment.Department.Code,
+                OrganizationId = assignment.Department.OrganizationId,
+                OrganizationName = assignment.Department.Organization != null
+                    ? assignment.Department.Organization.Name
+                    : null,
+                assignment.IsPrimary
+            })
+            .ToListAsync(ct);
+
+        var skillRows = await _db.UserSkills
+            .AsNoTracking()
+            .Where(skill => userIds.Contains(skill.UserId))
+            .Select(skill => new
+            {
+                skill.UserId,
+                skill.SkillId,
+                SkillName = skill.Skill != null ? skill.Skill.Name : "",
+                skill.ProficiencyLevel,
+                skill.ExperienceMonths,
+                skill.LastUsed
+            })
+            .ToListAsync(ct);
+
+        var rolesByUser = roleRows
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToList());
+
+        var departmentsByUser = departmentRows
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(row => new UserDepartmentDto(
+                    row.DepartmentId,
+                    row.DepartmentName,
+                    row.DepartmentCode,
+                    row.OrganizationId,
+                    row.OrganizationName,
+                    row.IsPrimary)).ToList());
+
+        var skillsByUser = skillRows
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(row => new UserSkillDto(
+                    row.SkillId,
+                    row.SkillName,
+                    row.ProficiencyLevel,
+                    row.ExperienceMonths,
+                    row.LastUsed)).ToList());
+
+        var items = rows.Select(row =>
+        {
+            var roles = rolesByUser.GetValueOrDefault(row.Id) ?? [];
+            return new UserDto(
+                Id: row.Id.ToString(),
+                FirstName: row.FirstName,
+                LastName: row.LastName,
+                FullName: row.FirstName + " " + row.LastName,
+                Email: row.Email,
+                ProfilePictureUrl: row.ProfilePictureUrl,
+                JobTitle: row.JobTitle,
+                OrganizationId: row.OrganizationId,
+                Department: row.DepartmentName,
+                DepartmentId: row.DepartmentId,
+                Departments: departmentsByUser.GetValueOrDefault(row.Id) ?? [],
+                ProfileId: row.ProfileId,
+                Bio: row.Bio,
+                AvailabilityStatus: row.AvailabilityStatus.ToString(),
+                AvailabilityPercentage: row.AvailabilityPercentage,
+                AIWorkloadScore: row.AIWorkloadScore,
+                AIBurnoutRiskScore: row.AIBurnoutRiskScore,
+                AIPerformanceScore: row.AIPerformanceScore,
+                ActiveTaskCount: row.ActiveTaskCount,
+                IsActive: row.IsActive,
+                LastLoginDate: null,
+                Roles: roles.Select(role => role.Name).ToList(),
+                RoleKeys: roles.Select(role => role.Key)
+                    .Where(key => !string.IsNullOrWhiteSpace(key))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                Skills: skillsByUser.GetValueOrDefault(row.Id)?.Select(skill => skill.SkillName).ToList(),
+                SkillDetails: skillsByUser.GetValueOrDefault(row.Id))
+        }).ToList();
+
+        return Ok(PaginatedResponse<UserDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id}")]

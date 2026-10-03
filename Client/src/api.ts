@@ -1,3 +1,4 @@
+import { runCoordinatedRead } from "./api/requestCoordinator";
 import type {
   AiReportResponse,
   AIModel,
@@ -50,6 +51,7 @@ import type {
   WebhookDetailRecord,
   WebhookRecord,
   WorkspaceBootstrap,
+  WorkspaceSnapshot,
   WorkloadReport,
   SubmitUtilizationCertificatePayload,
   UpdateUtilizationCertificatePayload,
@@ -130,36 +132,49 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     body = JSON.stringify(body);
   }
 
-  const response = await fetch(url.toString(), {
-    method: options.method ?? "GET",
-    headers,
-    body,
-  });
+  const method = (options.method ?? "GET").toUpperCase();
+  const execute = async () => {
+    const response = await fetch(url.toString(), {
+      method,
+      headers,
+      body,
+    });
 
-if (!response.ok) {
-    const text = await response.text();
-    let message = text;
-    try {
-      const json = JSON.parse(text);
-      message = json.error?.message || json.message || json.error || text;
-    } catch {}
-    throw new ApiError(message || `Request failed with status ${response.status}`, response.status);
-  }
-
-  if (options.responseType === 'blob') {
-    return (await response.blob()) as T;
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const json = await response.json();
-    if (json && typeof json === "object" && "success" in json && "data" in json) {
-      return json.data as T;
+    if (!response.ok) {
+      const responseText = await response.text();
+      let message = responseText;
+      try {
+        const json = JSON.parse(responseText);
+        message = json.error?.message || json.message || json.error || responseText;
+      } catch {}
+      throw new ApiError(message || `Request failed with status ${response.status}`, response.status);
     }
-    return json as T;
+
+    if (options.responseType === 'blob') {
+      return (await response.blob()) as T;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const json = await response.json();
+      if (json && typeof json === "object" && "success" in json && "data" in json) {
+        return json.data as T;
+      }
+      return json as T;
+    }
+
+    return (await response.blob()) as T;
+  };
+
+  if ((method === "GET" || method === "HEAD") && options.responseType !== "blob") {
+    return runCoordinatedRead(
+      `${method}:${url.toString()}:${options.token ?? ""}`,
+      execute,
+    );
   }
 
-  return (await response.blob()) as T;
+  return execute();
+
 }
 
 async function requestList<T>(path: string, options: ApiOptions = {}): Promise<T[]> {
@@ -1078,6 +1093,9 @@ export const api = {
   },
   getWorkspaceBootstrap(token: string) {
     return request<WorkspaceBootstrap>("workspace/bootstrap", { token });
+  },
+  getWorkspaceSnapshot(token: string) {
+    return request<WorkspaceSnapshot>("workspace/snapshot", { token });
   },
   saveAISettings(token: string, settings: AISettingsRequest) {
     return request<{ success: boolean; message: string }>("ai/settings", {

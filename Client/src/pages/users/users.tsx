@@ -21,6 +21,7 @@ import { UserFormModal } from "../NewProject/components/UserFormModal";
 export function UsersPage() {
   const { auth } = useAuth();
   const perm = usePermission();
+  const { data: appData } = useAppData();
   const isAdmin = perm.isAdmin;
   const canManageUsers = perm.has(PERMISSION_GROUPS.user.manage);
 
@@ -30,8 +31,7 @@ export function UsersPage() {
   }, [auth]);
 
   const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const { departments, organizations } = appData;
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -71,14 +71,10 @@ export function UsersPage() {
     setLoading(true);
     Promise.all([
       api.getUsers(auth.token),
-      api.getDepartments(auth.token),
-      api.getOrganizations(auth.token),
       api.getSkills(auth.token),
     ])
-      .then(([userData, departmentData, orgData, skillData]) => {
+      .then(([userData, skillData]) => {
         setUsers(userData);
-        setDepartments(departmentData);
-        setOrganizations(orgData);
         setSkills(skillData);
       })
       .catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to load users.", "error"))

@@ -56,8 +56,8 @@ public class ProjectsController : BaseApiController
 
         var now = DateTime.UtcNow;
         var query = _db.Projects
-            .AsNoTracking()
-            .AsQueryable();
+            .AsNoTracking();
+
         if (departmentId.HasValue)
         {
             query = query.Where(project =>
@@ -66,19 +66,24 @@ public class ProjectsController : BaseApiController
         }
 
         query = await _scope.ScopeProjectsAsync(query, ct);
-        var totalProjects = await query.CountAsync(ct);
-        var activeProjects = await query.CountAsync(project => project.Status == ProjectStatus.InProgress, ct);
-        var completedProjects = await query.CountAsync(project => project.Status == ProjectStatus.Completed, ct);
-        var overdueProjects = await query.CountAsync(project =>
-            (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
-            (!project.ActualEndDate.HasValue && now > project.PlannedEndDate),
-            ct);
-        var highRiskProjects = await query.CountAsync(project => project.AIDelayRiskScore >= 0.7, ct);
-        var averageHealthScore = totalProjects > 0
-            ? await query.AverageAsync(project => project.AIHealthScore, ct)
-            : 0;
-        var totalBudget = await query.SumAsync(project => project.PlannedBudget, ct);
-        var totalActualCost = await query.SumAsync(project => project.ActualCost, ct);
+
+        var metrics = await query
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalProjects = group.Count(),
+                ActiveProjects = group.Count(project => project.Status == ProjectStatus.InProgress),
+                CompletedProjects = group.Count(project => project.Status == ProjectStatus.Completed),
+                OverdueProjects = group.Count(project =>
+                    (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
+                    (!project.ActualEndDate.HasValue && now > project.PlannedEndDate)),
+                HighRiskProjects = group.Count(project => project.AIDelayRiskScore >= 0.7),
+                AverageHealthScore = group.Average(project => project.AIHealthScore),
+                TotalBudget = group.Sum(project => project.PlannedBudget),
+                TotalActualCost = group.Sum(project => project.ActualCost)
+            })
+            .FirstOrDefaultAsync(ct);
+
         var recentProjectRows = await query
             .OrderByDescending(project => project.CreatedDate)
             .Take(5)
@@ -95,6 +100,7 @@ public class ProjectsController : BaseApiController
                 project.PlannedEndDate
             })
             .ToListAsync(ct);
+
         var atRiskProjectRows = await query
             .Where(project => project.AIDelayRiskScore >= 0.7)
             .OrderByDescending(project => project.AIDelayRiskScore)
@@ -112,6 +118,7 @@ public class ProjectsController : BaseApiController
                 project.PlannedEndDate
             })
             .ToListAsync(ct);
+
         var recentProjects = recentProjectRows
             .Select(project => new ProjectSummaryDto(
                 project.Id,
@@ -119,11 +126,12 @@ public class ProjectsController : BaseApiController
                 project.Name,
                 project.Status.ToString(),
                 project.ProgressPercentage,
-                (double)project.AIHealthScore,
-                (double)project.AIDelayRiskScore,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
                 GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
                 project.PlannedEndDate))
             .ToList();
+
         var atRiskProjects = atRiskProjectRows
             .Select(project => new ProjectSummaryDto(
                 project.Id,
@@ -131,21 +139,21 @@ public class ProjectsController : BaseApiController
                 project.Name,
                 project.Status.ToString(),
                 project.ProgressPercentage,
-                (double)project.AIHealthScore,
-                (double)project.AIDelayRiskScore,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
                 GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
                 project.PlannedEndDate))
             .ToList();
 
         return Ok(new ProjectDashboardDto(
-            TotalProjects: totalProjects,
-            ActiveProjects: activeProjects,
-            CompletedProjects: completedProjects,
-            OverdueProjects: overdueProjects,
-            HighRiskProjects: highRiskProjects,
-            AverageHealthScore: averageHealthScore,
-            TotalBudget: totalBudget,
-            TotalActualCost: totalActualCost,
+            TotalProjects: metrics?.TotalProjects ?? 0,
+            ActiveProjects: metrics?.ActiveProjects ?? 0,
+            CompletedProjects: metrics?.CompletedProjects ?? 0,
+            OverdueProjects: metrics?.OverdueProjects ?? 0,
+            HighRiskProjects: metrics?.HighRiskProjects ?? 0,
+            AverageHealthScore: metrics?.AverageHealthScore ?? 0,
+            TotalBudget: metrics?.TotalBudget ?? 0,
+            TotalActualCost: metrics?.TotalActualCost ?? 0,
             RecentProjects: recentProjects,
             AtRiskProjects: atRiskProjects));
     }
@@ -162,12 +170,7 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        var query = _db.Projects
-            .Include(p => p.Department)
-            .Include(p => p.ProjectDepartments).ThenInclude(assignment => assignment.Department)
-            .Include(p => p.Tasks)
-            .Include(p => p.Milestones)
-            .AsQueryable();
+        var query = _db.Projects.AsNoTracking();
 
         if (departmentId.HasValue)
         {
@@ -184,19 +187,167 @@ public class ProjectsController : BaseApiController
         }
 
         var totalCount = await query.CountAsync(ct);
-        var projects = await query
+        var rows = await query
             .OrderByDescending(p => p.CreatedDate)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
+            .Select(p => new
+            {
+                p.Id,
+                p.ProjectCode,
+                p.Name,
+                p.Description,
+                p.Category,
+                p.Status,
+                p.Priority,
+                p.PlannedStartDate,
+                p.PlannedEndDate,
+                p.ActualStartDate,
+                p.ActualEndDate,
+                p.PlannedBudget,
+                p.ActualCost,
+                p.ProgressPercentage,
+                p.AIHealthScore,
+                p.AIDelayRiskScore,
+                p.AIBudgetRiskScore,
+                p.AIInsightsSummary,
+                p.DepartmentId,
+                DepartmentName = p.Department != null ? p.Department.Name : null,
+                p.ProjectManagerId,
+                ProjectManagerName = p.ProjectManagerId.HasValue
+                    ? _db.Users
+                        .Where(u => u.Id == p.ProjectManagerId.Value)
+                        .Select(u => u.FirstName + " " + u.LastName)
+                        .FirstOrDefault()
+                    : null,
+                TotalTasks = p.Tasks.Count,
+                CompletedTasks = p.Tasks.Count(t => t.Status == PMWDS.Domain.Enums.TaskStatus.Completed),
+                OverdueTasks = p.Tasks.Count(t =>
+                    t.Status != PMWDS.Domain.Enums.TaskStatus.Completed &&
+                    t.DueDate < DateTime.UtcNow),
+                TotalMilestones = p.Milestones.Count,
+                CompletedMilestones = p.Milestones.Count(m =>
+                    m.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed)
+            })
             .ToListAsync(ct);
-        var managerNames = await ResolveProjectManagerNamesAsync(projects, ct);
-        var items = projects
-            .Select(project => ProjectDto.FromEntity(
-                project,
-                project.ProjectManagerId.HasValue
-                    ? managerNames.GetValueOrDefault(project.ProjectManagerId.Value)
-                    : null))
-            .ToList();
+
+        var projectIds = rows.Select(row => row.Id).ToList();
+
+        var departmentRows = await _db.ProjectDepartments
+            .AsNoTracking()
+            .Where(assignment => projectIds.Contains(assignment.ProjectId))
+            .Select(assignment => new
+            {
+                assignment.ProjectId,
+                assignment.DepartmentId,
+                DepartmentName = assignment.Department != null ? assignment.Department.Name : null,
+                assignment.IsPrimary
+            })
+            .ToListAsync(ct);
+
+        var milestoneRows = await _db.Milestones
+            .AsNoTracking()
+            .Where(milestone => projectIds.Contains(milestone.ProjectId))
+            .Select(milestone => new
+            {
+                milestone.ProjectId,
+                milestone.Status,
+                milestone.ProgressPercentage
+            })
+            .ToListAsync(ct);
+
+        var departmentsByProject = departmentRows
+            .GroupBy(row => row.ProjectId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .GroupBy(row => row.DepartmentId)
+                    .Select(departmentGroup =>
+                        new ProjectDepartmentDto(
+                            departmentGroup.Key,
+                            departmentGroup.Select(row => row.DepartmentName).FirstOrDefault(),
+                            departmentGroup.Any(row => row.IsPrimary)))
+                    .ToList());
+
+        var milestonesByProject = milestoneRows
+            .GroupBy(row => row.ProjectId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        var items = rows.Select(row =>
+        {
+            var milestones = milestonesByProject.GetValueOrDefault(row.Id) ?? [];
+            var progress = row.ProgressPercentage;
+            var projectStatus = row.Status;
+
+            if (milestones.Count > 0)
+            {
+                progress = Math.Round(milestones.Average(milestone =>
+                    Math.Clamp(milestone.ProgressPercentage, 0, 100)), 1);
+
+                if (milestones.All(milestone =>
+                    milestone.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed))
+                {
+                    projectStatus = PMWDS.Domain.Enums.ProjectStatus.Completed;
+                    progress = 100;
+                }
+                else if (milestones.Any(milestone =>
+                    milestone.Status == PMWDS.Domain.Enums.MilestoneStatus.Delayed))
+                {
+                    projectStatus = PMWDS.Domain.Enums.ProjectStatus.Delayed;
+                }
+                else if (projectStatus == PMWDS.Domain.Enums.ProjectStatus.NotStarted &&
+                         milestones.Any(milestone =>
+                             milestone.ProgressPercentage > 0 ||
+                             milestone.Status == PMWDS.Domain.Enums.MilestoneStatus.InProgress))
+                {
+                    projectStatus = PMWDS.Domain.Enums.ProjectStatus.InProgress;
+                }
+            }
+
+            var projectDepartments = departmentsByProject.GetValueOrDefault(row.Id) ?? [];
+            if (projectDepartments.Count == 0)
+            {
+                projectDepartments =
+                [
+                    new ProjectDepartmentDto(row.DepartmentId, row.DepartmentName, true)
+                ];
+            }
+
+            return new ProjectDto(
+                Id: row.Id,
+                ProjectCode: row.ProjectCode,
+                Name: row.Name,
+                Description: row.Description,
+                Category: row.Category,
+                Status: projectStatus.ToString(),
+                Priority: row.Priority.ToString(),
+                PlannedStartDate: row.PlannedStartDate,
+                PlannedEndDate: row.PlannedEndDate,
+                ActualStartDate: row.ActualStartDate,
+                ActualEndDate: row.ActualEndDate,
+                PlannedBudget: row.PlannedBudget,
+                ActualCost: row.ActualCost,
+                BudgetVariance: row.PlannedBudget - row.ActualCost,
+                ProgressPercentage: progress,
+                AIHealthScore: row.AIHealthScore,
+                AIDelayRiskScore: row.AIDelayRiskScore,
+                AIBudgetRiskScore: row.AIBudgetRiskScore,
+                AIInsightsSummary: row.AIInsightsSummary,
+                DepartmentId: row.DepartmentId,
+                DepartmentName: row.DepartmentName,
+                DepartmentIds: projectDepartments.Select(department => department.DepartmentId).Distinct().ToList(),
+                Departments: projectDepartments,
+                ProjectManagerId: row.ProjectManagerId?.ToString() ?? string.Empty,
+                ProjectManagerName: row.ProjectManagerName,
+                TotalTasks: row.TotalTasks,
+                CompletedTasks: row.CompletedTasks,
+                OverdueTasks: row.OverdueTasks,
+                TotalMilestones: row.TotalMilestones,
+                CompletedMilestones: row.CompletedMilestones,
+                CreatedDate: row.CreatedDate)
+            ;
+        }).ToList();
+
         return Ok(PaginatedResponse<ProjectDto>.Create(items, pagination, totalCount));
     }
 
