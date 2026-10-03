@@ -23,10 +23,11 @@ public class ReportSchedule : AuditableEntity
         object? deliveryOptions,
         bool isActive = true)
     {
+        var normalizedFrequency = NormalizeFrequency(frequency);
         var schedule = new ReportSchedule
         {
             ReportId = reportId,
-            Frequency = frequency.Trim(),
+            Frequency = normalizedFrequency,
             NextRun = nextRun,
             RecipientsJson = JsonSerializer.Serialize(recipients ?? Enumerable.Empty<string>()),
             DeliveryOptionsJson = JsonSerializer.Serialize(deliveryOptions ?? new Dictionary<string, object>())
@@ -47,7 +48,7 @@ public class ReportSchedule : AuditableEntity
         object? deliveryOptions,
         bool isActive)
     {
-        Frequency = frequency.Trim();
+        Frequency = NormalizeFrequency(frequency);
         NextRun = nextRun;
         RecipientsJson = JsonSerializer.Serialize(recipients ?? Enumerable.Empty<string>());
         DeliveryOptionsJson = JsonSerializer.Serialize(deliveryOptions ?? new Dictionary<string, object>());
@@ -65,5 +66,20 @@ public class ReportSchedule : AuditableEntity
     {
         LastRun = DateTime.UtcNow;
         NextRun = nextRun;
+    }
+
+    private static string NormalizeFrequency(string frequency)
+    {
+        var normalized = frequency.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "hourly" => "hourly",
+            "daily" => "daily",
+            "weekly" => "weekly",
+            "monthly" => "monthly",
+            _ => throw new ArgumentException(
+                "Frequency must be hourly, daily, weekly or monthly.",
+                nameof(frequency))
+        };
     }
 }
