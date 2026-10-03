@@ -140,10 +140,26 @@ public sealed class GoalsController : ControllerBase
             .FirstOrDefaultAsync(item => item.Id == goal.ProjectId, ct);
         if (project == null)
             return NotFound(new { message = "Project not found." });
+        if (dto.AssignedDepartmentId != goal.AssignedDepartmentId)
+        {
+            return Conflict(new
+            {
+                message = "Changing the assigned department requires a goal transfer request. Submit /goals/{id}/transfer and wait for the receiving department to acknowledge it."
+            });
+        }
+
         if (!IsProjectDepartment(project, dto.AssignedDepartmentId))
             return BadRequest(new { message = "A goal must be assigned to a department assigned to the project." });
 
-        goal.Update(dto.AssignedDepartmentId, dto.Title, dto.Description ?? string.Empty, dto.Priority, dto.DueDate);
+        if (dto.DueDate < project.PlannedStartDate || dto.DueDate > project.PlannedEndDate)
+            return BadRequest(new { message = "Goal due date must fall within the project planned timeline." });
+
+        goal.Update(
+            dto.AssignedDepartmentId,
+            dto.Title,
+            dto.Description ?? string.Empty,
+            dto.Priority,
+            dto.DueDate);
         goal.SetModified(_currentUser.UserId ?? "system");
         await _db.SaveChangesAsync(ct);
 
