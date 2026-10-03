@@ -173,10 +173,11 @@ public sealed class ScheduledReportJob : IScheduledReportJob
     private static ReportFilterDto BuildFilter(
         IReadOnlyDictionary<string, JsonElement> parameters)
         => new(
-            TryGuid(parameters, "projectId"),
-            TryGuid(parameters, "departmentId"),
             TryDate(parameters, "startDate"),
             TryDate(parameters, "endDate"),
+            TryGuid(parameters, "departmentId"),
+            TryString(parameters, "employeeId"),
+            TryGuid(parameters, "projectId"),
             TryString(parameters, "status"));
 
     private static DateTime CalculateNextRun(DateTime scheduledRun, string frequency)
