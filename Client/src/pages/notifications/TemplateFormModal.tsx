@@ -28,17 +28,21 @@ export function TemplateFormModal({ initialData, onSubmit, onCancel }: TemplateF
     });
   }, [initialData]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit({
-      templateType: form.templateType,
-      subjectTemplate: form.subjectTemplate,
-      bodyTemplate: form.bodyTemplate,
-      variables: form.variables.split("\n").filter(v => v.trim()),
-      supportedChannels: form.supportedChannels.split("\n").filter(c => c.trim()),
-    });
+    try {
+      await onSubmit({
+        templateType: form.templateType,
+        subjectTemplate: form.subjectTemplate,
+        bodyTemplate: form.bodyTemplate,
+        variables: form.variables.split("\n").filter(v => v.trim()),
+        supportedChannels: form.supportedChannels.split("\n").filter(c => c.trim()),
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
