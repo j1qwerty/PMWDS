@@ -248,7 +248,19 @@ if (databaseStatus.Provider == ActiveDatabaseProvider.SqlServer)
            .UseSimpleAssemblyNameTypeSerializer()
            .UseRecommendedSerializerSettings()
            .UseSqlServerStorage(builder.Configuration.GetConnectionString("Hangfire")));
-    builder.Services.AddHangfireServer();
+    // Hangfire defaults to 20 worker threads. There are only four jobs here, two hourly
+    // and two daily, so 20 workers buys nothing and costs a lot: they contend with HTTP
+    // requests for both the thread pool and SQL Server connections. On a small machine
+    // that contention is visible as page-load latency, so scale with the core count and
+    // stay well below it to leave headroom for serving requests. Override with
+    // Hangfire:WorkerCount if a deployment genuinely needs more.
+    var hangfireWorkerCount = builder.Configuration.GetValue("Hangfire:WorkerCount", 0);
+    if (hangfireWorkerCount <= 0)
+    {
+        hangfireWorkerCount = Math.Clamp(Environment.ProcessorCount / 2, 2, 8);
+    }
+
+    builder.Services.AddHangfireServer(options => options.WorkerCount = hangfireWorkerCount);
 }
 
 builder.Services.AddSignalR();

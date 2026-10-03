@@ -189,10 +189,19 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   // Live-update status. Shown as a hint rather than an error: while the socket is down
   // the app still updates via focus-refetch and the 60s poll, just not instantly.
-  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("disconnected");
+  //
+  // The initial state is "connecting", not "disconnected". Starting at "disconnected"
+  // claimed the socket was dead before a single attempt had been made, so every page load
+  // painted the offline dot for the first second or two and it read as permanently broken.
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
   useEffect(() => onStatusChanged(setRealtimeStatus), []);
 
   const realtimeConnected = realtimeStatus === "connected";
+  // The dot means "you are not getting live updates right now". It is deliberately hidden
+  // while the very first connection is still being negotiated, because that is not yet a
+  // fault and showing it there is what made the indicator untrustworthy.
+  const realtimeOffline =
+    realtimeStatus === "disconnected" || realtimeStatus === "reconnecting";
 
   // Track screen size for responsive behavior
   const [isMobile, setIsMobile] = useState(false);
@@ -645,7 +654,11 @@ function Layout({ children }: { children: React.ReactNode }) {
                   title={
                     realtimeConnected
                       ? "Live updates connected. Click to refresh now."
-                      : "Live updates offline - data refreshes every 60s and on focus. Click to refresh now."
+                      : realtimeStatus === "connecting"
+                        ? "Connecting live updates. Click to refresh now."
+                        : realtimeStatus === "reconnecting"
+                          ? "Live updates reconnecting - data refreshes every 60s and on focus. Click to refresh now."
+                          : "Live updates offline - data refreshes every 60s and on focus. Click to refresh now."
                   }
                   className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110 disabled:opacity-50 disabled:hover:scale-100"
                   style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
@@ -657,7 +670,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                       width: 'clamp(16px,2.5vw,20px)',
                     }}
                   />
-                  {!realtimeConnected && (
+                  {realtimeOffline && (
                     <span
                       className="absolute rounded-full bg-warning"
                       style={{

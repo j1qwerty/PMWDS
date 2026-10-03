@@ -10,7 +10,12 @@ import {
 } from "react";
 import { ApiError, api } from "./api";
 import { useAuth } from "./auth";
-import { isRealtimeHealthy, onDataChanged, startRealtime } from "./realtime";
+import {
+  isRealtimeHealthy,
+  isRealtimeRecovering,
+  onDataChanged,
+  startRealtime,
+} from "./realtime";
 import { GLOBAL_SCOPES } from "./realtimeScopes";
 import type {
   ActivityLogRecord,
@@ -36,6 +41,14 @@ const REALTIME_DEBOUNCE_MS = 250;
 const FOCUS_DEBOUNCE_MS = 1000;
 /** Fallback poll when the socket is not connected. */
 const POLL_INTERVAL_MS = 60_000;
+/** How often the watchdog re-evaluates whether the socket is alive. */
+const REALTIME_WATCHDOG_CHECK_MS = 5_000;
+/**
+ * How long the socket may be continuously unhealthy, with the tab visible, before the
+ * watchdog forces a fresh connection. Well above the 30s ceiling on the reconnect backoff,
+ * so a server that is merely slow to accept the socket is not fought with.
+ */
+const REALTIME_WATCHDOG_MS = 45_000;
 
 type AppData = {
   organizations: OrganizationRecord[];
@@ -384,6 +397,52 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
     return () => window.clearInterval(timer);
   }, [auth, refresh]);
+
+  // Watchdog. realtime.ts already self-heals, but it can only act on transitions it
+  // observes: if the socket dies while the tab is in the background, the browser may
+  // suspend timers entirely and the client never learns about it until the tab is
+  // refocused - by which point `onclose` may never have fired at all, leaving `connection`
+  // pointing at a socket in a state the retry policy is no longer driving.
+  //
+  // This is the belt-and-braces check: while the tab is visible and the socket has been
+  // unhealthy for longer than the threshold, ask for a fresh connection. It is deliberately
+  // not a poll - it only acts on a sustained outage, and it skips while a reconnect is
+  // already in progress so it cannot reset the backoff and spin.
+  useEffect(() => {
+    if (!auth) return;
+
+    let unhealthySince: number | null = null;
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") {
+        // Time spent hidden does not count against the socket.
+        unhealthySince = null;
+        return;
+      }
+
+      if (isRealtimeHealthy()) {
+        unhealthySince = null;
+        return;
+      }
+
+      // A connect or reconnect is already underway; let it finish rather than restarting
+      // it, which would throw away the accumulated backoff.
+      if (isRealtimeRecovering()) return;
+
+      const now = Date.now();
+      if (unhealthySince === null) {
+        unhealthySince = now;
+        return;
+      }
+
+      if (now - unhealthySince >= REALTIME_WATCHDOG_MS) {
+        unhealthySince = null;
+        void startRealtime();
+      }
+    }, REALTIME_WATCHDOG_CHECK_MS);
+
+    return () => window.clearInterval(timer);
+  }, [auth]);
 
   const data = useMemo(() => {
     if (pages) {

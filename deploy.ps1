@@ -495,6 +495,41 @@ try {
     if ($deep -match '^200 ') { Write-Ok 'SPA deep link /projects -> 200' }
     else { Write-Err "SPA deep link failed: $deep"; $allOk = $false }
 
+    # The SignalR handshake must be checked explicitly. Every other check here can pass
+    # while live updates are completely broken: GET / and the SPA deep link are served
+    # from static files by try_files, so they return 200 regardless of whether /hubs/ is
+    # proxied. The failure mode is silent - the client just quietly falls back to the
+    # 60s poll - so it has to be asserted, not assumed.
+    #
+    # Checked for both web and api targets, because this is a web/nginx concern and a
+    # web-only deploy is exactly when it would regress unnoticed.
+    foreach ($h in $PublicHosts) {
+        Write-Running "checking SignalR negotiate on $($h.Url)"
+        $negotiateUrl = $h.Url + '/hubs/dashboard/negotiate?negotiateVersion=1'
+        $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
+            "curl -s -X POST -o /tmp/pmwds-neg.json -w '%{http_code}' '$negotiateUrl'; echo; head -c 300 /tmp/pmwds-neg.json; rm -f /tmp/pmwds-neg.json") `
+            -What 'negotiate check' -StreamOutput -OutputLabel 'check'
+
+        $lines = ($out -split "`r?`n") | Where-Object { $_ -match '\S' }
+        $code = ($lines | Select-Object -First 1).Trim()
+        $body = ($lines | Select-Object -Skip 1) -join ' '
+
+        # A working negotiate returns 200 and a JSON body advertising the transports. An
+        # nginx `try_files` fallback instead returns 200 with the SPA index.html, which is
+        # why the body has to be asserted and not just the status code.
+        if ($code -eq '200' -and $body -match '"connectionToken"' -and $body -match 'WebSockets') {
+            Write-Ok "$($h.Label) negotiate -> 200, WebSockets advertised"
+        } else {
+            Write-Err "$($h.Label) negotiate -> HTTP $code"
+            Write-Detail ("  body: " + $body.Trim())
+            if ($code -eq '200') {
+                Write-Detail '  200 with a non-negotiate body means nginx is serving the SPA'
+                Write-Detail '  fallback for /hubs/. Add the location block from PRODUCTION.md 2b.'
+            }
+            $allOk = $false
+        }
+    }
+
     if ($doApi) {
         # grep -c exits 1 when the count is zero, which would fail the check even though
         # zero unhandled exceptions is the good outcome. Force the exit status to 0 and read
