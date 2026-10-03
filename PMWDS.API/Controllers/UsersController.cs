@@ -412,13 +412,47 @@ public class UsersController : BaseApiController
             return NotFound();
         }
 
-        await using var stream = file.OpenReadStream();
-        var extension = Path.GetExtension(file.FileName);
-        var url = await _localFiles.UploadAvatarAsync(stream, user.EmployeeCode, extension, ct);
-        user.UpdateProfile(user.FirstName, user.LastName, user.PhoneNumber, user.JobTitle, url);
-        user.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Users.UpdateAsync(user, ct);
-        await _uow.SaveChangesAsync(ct);
+        var previousUrl = user.ProfilePictureUrl;
+        string? url = null;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var extension = Path.GetExtension(file.FileName);
+            url = await _localFiles.UploadAvatarAsync(stream, user.EmployeeCode, extension, ct);
+
+            user.UpdateProfile(user.FirstName, user.LastName, user.PhoneNumber, user.JobTitle, url);
+            user.SetModified(_currentUser.UserId ?? "system");
+            await _uow.Users.UpdateAsync(user, ct);
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                try
+                {
+                    await _localFiles.DeleteFileAsync(url, ct);
+                }
+                catch
+                {
+                    // Preserve the original failure; orphan cleanup can be reconciled separately.
+                }
+            }
+            throw;
+        }
+
+        if (!string.IsNullOrWhiteSpace(previousUrl) &&
+            !string.Equals(previousUrl, url, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await _localFiles.DeleteFileAsync(previousUrl, ct);
+            }
+            catch
+            {
+                // Keep the newly committed profile picture; stale-file cleanup is best effort.
+            }
+        }
 
         await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(new { profilePictureUrl = url, user = UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)) });
