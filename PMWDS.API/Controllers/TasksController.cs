@@ -306,6 +306,18 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        if (dto.MilestoneId.HasValue)
+        {
+            var milestoneProjectId = await _db.Milestones
+                .Where(milestone => milestone.Id == dto.MilestoneId.Value)
+                .Select(milestone => (Guid?)milestone.ProjectId)
+                .FirstOrDefaultAsync(ct);
+            if (!milestoneProjectId.HasValue)
+                return BadRequest(new { message = "Milestone not found." });
+            if (milestoneProjectId.Value != task.ProjectId)
+                return BadRequest(new { message = "The selected milestone must belong to the task project." });
+        }
+
         var oldMilestoneId = task.MilestoneId;
         task.UpdateDetails(
             dto.Title,
@@ -862,6 +874,18 @@ public class TasksController : BaseApiController
             return BadRequest(new { message = "Subtask project must match the parent task project." });
         }
 
+        if (dto.MilestoneId.HasValue)
+        {
+            var milestoneProjectId = await _db.Milestones
+                .Where(milestone => milestone.Id == dto.MilestoneId.Value)
+                .Select(milestone => (Guid?)milestone.ProjectId)
+                .FirstOrDefaultAsync(ct);
+            if (!milestoneProjectId.HasValue)
+                return BadRequest(new { message = "Milestone not found." });
+            if (milestoneProjectId.Value != parentTask.ProjectId)
+                return BadRequest(new { message = "The selected milestone must belong to the parent task project." });
+        }
+
         if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
             !await _taskWorkflow.IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
         {
@@ -923,6 +947,18 @@ public class TasksController : BaseApiController
         if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
         {
             return Forbid();
+        }
+
+        if (dto.MilestoneId.HasValue)
+        {
+            var milestoneProjectId = await _db.Milestones
+                .Where(milestone => milestone.Id == dto.MilestoneId.Value)
+                .Select(milestone => (Guid?)milestone.ProjectId)
+                .FirstOrDefaultAsync(ct);
+            if (!milestoneProjectId.HasValue)
+                return BadRequest(new { message = "Milestone not found." });
+            if (milestoneProjectId.Value != task.ProjectId)
+                return BadRequest(new { message = "The selected milestone must belong to the subtask project." });
         }
 
         if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
@@ -1155,6 +1191,24 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
+        if (predecessor.ProjectId != successor.ProjectId || predecessor.ProjectId != task.ProjectId)
+            return BadRequest(new { message = "Task dependencies must stay within the same project." });
+
+        if (dto.PredecessorTaskId == dto.SuccessorTaskId)
+            return BadRequest(new { message = "A task cannot depend on itself." });
+
+        if (dto.PredecessorTaskId != id && dto.SuccessorTaskId != id)
+            return BadRequest(new { message = "The dependency must include the task identified by the route." });
+
+        var duplicateExists = await _db.TaskDependencies.AnyAsync(dependency =>
+            dependency.PredecessorTaskId == dto.PredecessorTaskId &&
+            dependency.SuccessorTaskId == dto.SuccessorTaskId, ct);
+        if (duplicateExists)
+            return Conflict(new { message = "This task dependency already exists." });
+
+        if (await WouldCreateDependencyCycleAsync(task.ProjectId, dto.PredecessorTaskId, dto.SuccessorTaskId, null, ct))
+            return Conflict(new { message = "The dependency would create a cycle in the project task graph." });
+
         var dependency = TaskDependency.Create(dto.PredecessorTaskId, dto.SuccessorTaskId, dto.Type, dto.LagDays);
         await _uow.TaskDependencies.AddAsync(dependency, ct);
         await _uow.SaveChangesAsync(ct);
@@ -1245,4 +1299,56 @@ public class TasksController : BaseApiController
 
         return NoContent();
     }
+    private async Task<bool> WouldCreateDependencyCycleAsync(
+        Guid projectId,
+        Guid predecessorTaskId,
+        Guid successorTaskId,
+        Guid? excludedDependencyId,
+        CancellationToken ct)
+    {
+        var projectTaskIds = await _db.Tasks
+            .Where(task => task.ProjectId == projectId)
+            .Select(task => task.Id)
+            .ToListAsync(ct);
+
+        var edges = await _db.TaskDependencies
+            .Where(dependency =>
+                (!excludedDependencyId.HasValue || dependency.Id != excludedDependencyId.Value) &&
+                projectTaskIds.Contains(dependency.PredecessorTaskId) &&
+                projectTaskIds.Contains(dependency.SuccessorTaskId))
+            .Select(dependency => new
+            {
+                dependency.PredecessorTaskId,
+                dependency.SuccessorTaskId
+            })
+            .ToListAsync(ct);
+
+        var outgoing = edges
+            .GroupBy(edge => edge.PredecessorTaskId)
+            .ToDictionary(group => group.Key, group => group.Select(edge => edge.SuccessorTaskId).ToList());
+
+        var visited = new HashSet<Guid>();
+        var stack = new Stack<Guid>();
+        stack.Push(successorTaskId);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            if (!visited.Add(current))
+                continue;
+
+            if (current == predecessorTaskId)
+                return true;
+
+            if (outgoing.TryGetValue(current, out var next))
+            {
+                foreach (var successor in next)
+                    stack.Push(successor);
+            }
+        }
+
+        return false;
+    }
+
+
 }

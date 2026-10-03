@@ -190,7 +190,13 @@ public class ReportsController : BaseApiController
 
     [HttpGet("stored")]
     public async Task<IActionResult> GetStoredReports(CancellationToken ct)
-        => Ok((await _uow.Reports.GetAllAsync(ct)).OrderByDescending(r => r.GeneratedDate).Select(MapReport));
+    {
+        var reports = await _uow.Reports.GetAllAsync(ct);
+        return Ok(reports
+            .Where(CanAccessStoredReport)
+            .OrderByDescending(r => r.GeneratedDate)
+            .Select(MapReport));
+    }
 
     [HttpGet("stored/{id:guid}")]
     public async Task<IActionResult> GetStoredReport(Guid id, CancellationToken ct)
@@ -198,6 +204,8 @@ public class ReportsController : BaseApiController
         var report = await _uow.Reports.GetByIdAsync(id, ct);
         if (report == null)
             return NotFound();
+        if (!CanAccessStoredReport(report))
+            return Forbid();
 
         var schedules = (await _uow.ReportSchedules.FindAsync(s => s.ReportId == id, ct))
             .Select(MapSchedule).ToList();
@@ -208,9 +216,12 @@ public class ReportsController : BaseApiController
     public async Task<IActionResult> DownloadStoredReport(Guid id, CancellationToken ct)
     {
         var report = await _uow.Reports.GetByIdAsync(id, ct);
-        return report == null
-            ? NotFound()
-            : File(report.Data, GetContentType(report.Format), $"{report.Name}.{report.Format}");
+        if (report == null)
+            return NotFound();
+        if (!CanAccessStoredReport(report))
+            return Forbid();
+
+        return File(report.Data, GetContentType(report.Format), $"{report.Name}.{report.Format}");
     }
 
     [HttpPost("stored")]
@@ -238,6 +249,8 @@ public class ReportsController : BaseApiController
         var report = await _uow.Reports.GetByIdAsync(id, ct);
         if (report == null)
             return NotFound();
+        if (!CanAccessStoredReport(report))
+            return Forbid();
 
         report.UpdateMetadata(req.Name, req.ReportType, req.Parameters, req.Format);
         if (!string.IsNullOrWhiteSpace(req.ContentBase64))
@@ -252,6 +265,12 @@ public class ReportsController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteStoredReport(Guid id, CancellationToken ct)
     {
+        var report = await _uow.Reports.GetByIdAsync(id, ct);
+        if (report == null)
+            return NotFound();
+        if (!CanAccessStoredReport(report))
+            return Forbid();
+
         await _uow.Reports.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
@@ -264,7 +283,19 @@ public class ReportsController : BaseApiController
     [HttpGet("schedules")]
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetSchedules(CancellationToken ct)
-        => Ok((await _uow.ReportSchedules.GetAllAsync(ct)).OrderBy(s => s.NextRun).Select(MapSchedule));
+    {
+        var schedules = await _uow.ReportSchedules.GetAllAsync(ct);
+        var reports = await _uow.Reports.GetAllAsync(ct);
+        var accessibleReportIds = reports
+            .Where(CanAccessStoredReport)
+            .Select(report => report.Id)
+            .ToHashSet();
+
+        return Ok(schedules
+            .Where(schedule => accessibleReportIds.Contains(schedule.ReportId))
+            .OrderBy(schedule => schedule.NextRun)
+            .Select(MapSchedule));
+    }
 
     [HttpPost("schedules")]
     [Authorize(Policy = AuthorizationPolicies.Manager)]
@@ -273,6 +304,8 @@ public class ReportsController : BaseApiController
         var report = await _uow.Reports.GetByIdAsync(req.ReportId, ct);
         if (report == null)
             return NotFound(new { message = "Report not found." });
+        if (!CanAccessStoredReport(report))
+            return Forbid();
 
         var schedule = ReportSchedule.Create(req.ReportId, req.Frequency, req.NextRun, req.Recipients, req.DeliveryOptions, req.IsActive);
         schedule.SetCreatedBy(_currentUser.UserId ?? "system");
@@ -289,6 +322,12 @@ public class ReportsController : BaseApiController
         if (schedule == null)
             return NotFound();
 
+        var report = await _uow.Reports.GetByIdAsync(schedule.ReportId, ct);
+        if (report == null)
+            return NotFound();
+        if (!CanAccessStoredReport(report))
+            return Forbid();
+
         schedule.Update(req.Frequency, req.NextRun, req.Recipients, req.DeliveryOptions, req.IsActive);
         await _uow.ReportSchedules.UpdateAsync(schedule, ct);
         await _uow.SaveChangesAsync(ct);
@@ -299,6 +338,16 @@ public class ReportsController : BaseApiController
     [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteSchedule(Guid id, CancellationToken ct)
     {
+        var schedule = await _uow.ReportSchedules.GetByIdAsync(id, ct);
+        if (schedule == null)
+            return NotFound();
+
+        var report = await _uow.Reports.GetByIdAsync(schedule.ReportId, ct);
+        if (report == null)
+            return NotFound();
+        if (!CanAccessStoredReport(report))
+            return Forbid();
+
         await _uow.ReportSchedules.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
@@ -307,6 +356,15 @@ public class ReportsController : BaseApiController
     // ──────────────────────────────────────────────
     //  Mappers & helpers
     // ──────────────────────────────────────────────
+
+    private bool CanAccessStoredReport(Report report)
+    {
+        if (_scope.IsSuperAdmin || _scope.IsDirector)
+            return true;
+
+        return Guid.TryParse(_currentUser.UserId, out var currentUserId)
+            && report.GeneratedByUserId == currentUserId;
+    }
 
     private static StoredReportResponse MapReport(Report report)
         => new(

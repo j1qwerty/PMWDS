@@ -163,7 +163,7 @@ public class Project : AuditableEntity, IHasDomainEvents
          _projectDepartments.Add(ProjectDepartment.Create(Id, departmentId, departmentId == DepartmentId));
       }
    }
-   public void UpdateStatus(ProjectStatus newStatus)
+   public void UpdateStatus(ProjectStatus newStatus, string? justification = null)
    {
       switch (newStatus)
       {
@@ -179,6 +179,7 @@ public class Project : AuditableEntity, IHasDomainEvents
             break;
          case ProjectStatus.OnHold:
             Status = ProjectStatus.OnHold;
+            DelayJustification = string.IsNullOrWhiteSpace(justification) ? null : justification.Trim();
             break;
          case ProjectStatus.Completed:
             Status = ProjectStatus.Completed;
@@ -186,8 +187,12 @@ public class Project : AuditableEntity, IHasDomainEvents
             ProgressPercentage = 100;
             break;
          case ProjectStatus.Cancelled:
+            Status = newStatus;
+            DelayJustification = null;
+            break;
          case ProjectStatus.Delayed:
             Status = newStatus;
+            DelayJustification = string.IsNullOrWhiteSpace(justification) ? null : justification.Trim();
             break;
       }
    }
