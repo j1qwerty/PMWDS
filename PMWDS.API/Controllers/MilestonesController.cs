@@ -320,8 +320,12 @@ public class MilestonesController : BaseApiController
         {
             return BadRequest(new { message = "Milestone department must be assigned to the project." });
         }
+        if (dto.GoalId.HasValue && !await IsGoalAssignedToProjectAsync(dto.ProjectId, dto.GoalId.Value, ct))
+        {
+            return BadRequest(new { message = "Milestone goal must belong to the project." });
+        }
 
-        var milestone = Milestone.Create(dto.ProjectId, dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
+        var milestone = Milestone.Create(dto.ProjectId, dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId, dto.GoalId);
         milestone.SetCreatedBy("system");
         await _uow.Milestones.AddAsync(milestone, ct);
         await _uow.SaveChangesAsync(ct);
@@ -373,8 +377,12 @@ public class MilestonesController : BaseApiController
         {
             return BadRequest(new { message = "Milestone department must be assigned to the project." });
         }
+        if (dto.GoalId.HasValue && !await IsGoalAssignedToProjectAsync(milestone.ProjectId, dto.GoalId.Value, ct))
+        {
+            return BadRequest(new { message = "Milestone goal must belong to the project." });
+        }
 
-        milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
+        milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId, dto.GoalId);
 
         if (milestone.Tasks.Count > 0)
         {
@@ -625,6 +633,17 @@ public class MilestonesController : BaseApiController
         if (project == null) return;
         project.RecalculateProgressFromMilestones();
         project.RecalculateStatusFromMilestones();
+
+        var goals = await _db.Goals
+            .Include(goal => goal.Milestones)
+            .Where(goal => goal.ProjectId == projectId)
+            .ToListAsync(ct);
+        foreach (var goal in goals)
+        {
+            goal.RecalculateProgressFromMilestones();
+            goal.SetModified("system");
+        }
+
         project.SetModified("system");
         await _uow.Projects.UpdateAsync(project, ct);
         await _uow.SaveChangesAsync(ct);
@@ -670,6 +689,9 @@ public class MilestonesController : BaseApiController
             return true;
         return await _scope.CanAccessProjectAsPrimaryDepartmentAsync(milestone.ProjectId, ct);
     }
+
+    private Task<bool> IsGoalAssignedToProjectAsync(Guid projectId, Guid goalId, CancellationToken ct)
+        => _db.Goals.AnyAsync(goal => goal.Id == goalId && goal.ProjectId == projectId, ct);
 
     private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)
         => _db.Projects.AnyAsync(project =>

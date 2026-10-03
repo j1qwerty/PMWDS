@@ -27,6 +27,19 @@ public static class PermissionCodes
     public const string ProjectDelete = "PROJECT_DELETE";
     public const string ProjectPrimaryDepartmentManage = "PROJECT_PRIMARY_DEPARTMENT_MANAGE";
 
+    public const string GoalManage = "GOAL_MANAGE";
+    public const string GoalView = "GOAL_VIEW";
+    public const string GoalCreate = "GOAL_CREATE";
+    public const string GoalEdit = "GOAL_EDIT";
+    public const string GoalDelete = "GOAL_DELETE";
+
+    public const string BudgetManage = "BUDGET_MANAGE";
+    public const string BudgetView = "BUDGET_VIEW";
+    public const string BudgetCreate = "BUDGET_CREATE";
+    public const string BudgetEdit = "BUDGET_EDIT";
+    public const string BudgetApprove = "BUDGET_APPROVE";
+    public const string BudgetDelete = "BUDGET_DELETE";
+
     public const string MilestoneManage = "MILESTONE_MANAGE";
     public const string MilestoneView = "MILESTONE_VIEW";
     public const string MilestoneCreate = "MILESTONE_CREATE";

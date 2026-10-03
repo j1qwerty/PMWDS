@@ -7,6 +7,17 @@ public static class AuthorizationPolicies
     public const string Director = "Director";
     public const string Manager = "Manager";
     public const string TaskEditor = "TaskEditor";
+    public const string GoalView = "Goals.View";
+    public const string GoalCreate = "Goals.Create";
+    public const string GoalEdit = "Goals.Edit";
+    public const string GoalDelete = "Goals.Delete";
+    public const string GoalManage = "Goals.Manage";
+    public const string BudgetView = "Budget.View";
+    public const string BudgetCreate = "Budget.Create";
+    public const string BudgetEdit = "Budget.Edit";
+    public const string BudgetApprove = "Budget.Approve";
+    public const string BudgetDelete = "Budget.Delete";
+    public const string BudgetManage = "Budget.Manage";
 
     public const string ActivityLogsView = "ActivityLogs.View";
     public const string ActivityLogsCreate = "ActivityLogs.Create";

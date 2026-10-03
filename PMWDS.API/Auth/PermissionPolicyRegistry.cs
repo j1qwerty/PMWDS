@@ -43,6 +43,9 @@ public static class PermissionPolicyRegistry
         AddCrud(options, "Organizations", PermissionCodes.OrganizationManage, PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete);
         AddCrud(options, "Departments", PermissionCodes.DepartmentManage, PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete);
         AddCrud(options, "Projects", PermissionCodes.ProjectManage, PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete);
+        AddCrud(options, "Goals", PermissionCodes.GoalManage, PermissionCodes.GoalView, PermissionCodes.GoalCreate, PermissionCodes.GoalEdit, PermissionCodes.GoalDelete);
+        AddCrud(options, "Budget", PermissionCodes.BudgetManage, PermissionCodes.BudgetView, PermissionCodes.BudgetCreate, PermissionCodes.BudgetEdit, PermissionCodes.BudgetDelete);
+        options.AddPolicy(AuthorizationPolicies.BudgetApprove, policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.BudgetManage, PermissionCodes.BudgetApprove));
         AddCrud(options, "Milestones", PermissionCodes.MilestoneManage, PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete);
         AddCrud(options, "Tasks", PermissionCodes.TaskManage, PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete);
         AddCrud(options, "Subtasks", PermissionCodes.SubtaskManage, PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete);

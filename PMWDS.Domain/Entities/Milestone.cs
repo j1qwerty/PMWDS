@@ -6,6 +6,7 @@ namespace PMWDS.Domain.Entities;
 public class Milestone : AuditableEntity
 {
     public Guid ProjectId { get; private set; }
+    public Guid? GoalId { get; private set; }
     public Guid? DepartmentId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
@@ -17,6 +18,7 @@ public class Milestone : AuditableEntity
     public double ProgressPercentage { get; private set; }
     // Navigation
     public Project? Project { get; private set; }
+    public Goal? Goal { get; private set; }
     public Department? Department { get; private set; }
     public IReadOnlyCollection<ProjectTask> Tasks =>
     _tasks.AsReadOnly();
@@ -32,11 +34,13 @@ public class Milestone : AuditableEntity
     Guid projectId, string name,
     string description, DateTime dueDate,
     int order, bool isCritical = false,
-    Guid? departmentId = null)
+    Guid? departmentId = null,
+    Guid? goalId = null)
     {
         return new Milestone
         {
             ProjectId = projectId,
+            GoalId = goalId,
             DepartmentId = departmentId,
             Name = name,
             Description = description,
@@ -67,7 +71,8 @@ public class Milestone : AuditableEntity
     DateTime dueDate,
     int order,
     bool isCritical,
-    Guid? departmentId = null)
+    Guid? departmentId = null,
+    Guid? goalId = null)
     {
         Name = name;
         Description = description;
@@ -75,6 +80,7 @@ public class Milestone : AuditableEntity
         Order = order;
         IsCritical = isCritical;
         DepartmentId = departmentId;
+        GoalId = goalId;
     }
     public void AssignDepartment(Guid? departmentId)
     {

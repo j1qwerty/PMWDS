@@ -21,6 +21,11 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<Department> Departments { get; }
     public IRepository<Milestone> Milestones { get; }
+    public IRepository<Goal> Goals { get; }
+    public IRepository<GoalTransfer> GoalTransfers { get; }
+    public IRepository<GoalBudgetAllocation> GoalBudgetAllocations { get; }
+    public IRepository<BudgetRelease> BudgetReleases { get; }
+    public IRepository<BudgetExpenditure> BudgetExpenditures { get; }
     public IRepository<Notification> Notifications { get; }
     public IRepository<NotificationTemplate> NotificationTemplates { get; }
     public IRepository<AlertRule> AlertRules { get; }
@@ -66,6 +71,11 @@ public class UnitOfWork : IUnitOfWork
 
         Departments = new EfRepository<Department>(context);
         Milestones = new EfRepository<Milestone>(context);
+        Goals = new EfRepository<Goal>(context);
+        GoalTransfers = new EfRepository<GoalTransfer>(context);
+        GoalBudgetAllocations = new EfRepository<GoalBudgetAllocation>(context);
+        BudgetReleases = new EfRepository<BudgetRelease>(context);
+        BudgetExpenditures = new EfRepository<BudgetExpenditure>(context);
         Notifications = new EfRepository<Notification>(context);
         NotificationTemplates = new EfRepository<NotificationTemplate>(context);
         AlertRules = new EfRepository<AlertRule>(context);

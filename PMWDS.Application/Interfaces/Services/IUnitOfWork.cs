@@ -8,6 +8,11 @@ public interface IUnitOfWork : IDisposable
     IUserRepository Users { get; }
     IRepository<Domain.Entities.Department> Departments { get; }
     IRepository<Domain.Entities.Milestone> Milestones { get; }
+    IRepository<Domain.Entities.Goal> Goals { get; }
+    IRepository<Domain.Entities.GoalTransfer> GoalTransfers { get; }
+    IRepository<Domain.Entities.GoalBudgetAllocation> GoalBudgetAllocations { get; }
+    IRepository<Domain.Entities.BudgetRelease> BudgetReleases { get; }
+    IRepository<Domain.Entities.BudgetExpenditure> BudgetExpenditures { get; }
     IRepository<Domain.Entities.Notification> Notifications { get; }
     IRepository<Domain.Entities.NotificationTemplate> NotificationTemplates { get; }
     IRepository<Domain.Entities.AlertRule> AlertRules { get; }

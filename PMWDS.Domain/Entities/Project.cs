@@ -39,10 +39,12 @@ public class Project : AuditableEntity, IHasDomainEvents
    public Department? Department { get; private set; }
    public IReadOnlyCollection<ProjectDepartment> ProjectDepartments =>
    _projectDepartments.AsReadOnly();
+   public IReadOnlyCollection<Goal> Goals => _goals.AsReadOnly();
    public IReadOnlyCollection<Milestone> Milestones => _milestones.AsReadOnly();
    public IReadOnlyCollection<ProjectTask> Tasks => _tasks.AsReadOnly();
    public IReadOnlyCollection<ProjectDocument> Documents =>
    _documents.AsReadOnly();
+   private readonly List<Goal> _goals = new();
    private readonly List<Milestone> _milestones = new();
    private readonly List<ProjectTask> _tasks = new();
    private readonly List<ProjectDocument> _documents = new();
