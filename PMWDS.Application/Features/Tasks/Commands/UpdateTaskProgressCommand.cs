@@ -34,33 +34,41 @@ public class UpdateTaskProgressCommandHandler
             "Task progress is derived from its subtasks and cannot be updated manually. Update the progress of each subtask instead.");
         }
 
-        task.UpdateProgress(
-        req.Dto.ProgressPercentage,
-        req.Dto.Notes);
-        task.SetModified(
-        _currentUser.UserId ?? "system");
-        await _uow.SaveChangesAsync(ct);
-
-        if (req.Dto.ProgressPercentage >= 100)
+        await _uow.BeginTransactionAsync(ct);
+        try
         {
-            task.Complete();
-            await _uow.SaveChangesAsync(ct);
-        }
-
-        if (task.ParentTaskId.HasValue)
-        {
-            var parent = await _uow.Tasks
-                .GetWithDetailsAsync(task.ParentTaskId.Value, ct);
-            if (parent != null)
+            task.UpdateProgress(
+                req.Dto.ProgressPercentage,
+                req.Dto.Notes);
+            if (req.Dto.ProgressPercentage >= 100)
             {
-                parent.RecalculateProgressFromSubtasks();
-                if (parent.ProgressPercentage >= 100)
-                {
-                    parent.MarkSubtaskCompleted();
-                }
-                parent.SetModified(_currentUser.UserId ?? "system");
-                await _uow.SaveChangesAsync(ct);
+                task.Complete();
             }
+
+            task.SetModified(_currentUser.UserId ?? "system");
+
+            if (task.ParentTaskId.HasValue)
+            {
+                var parent = await _uow.Tasks
+                    .GetWithDetailsAsync(task.ParentTaskId.Value, ct);
+                if (parent != null)
+                {
+                    parent.RecalculateProgressFromSubtasks();
+                    if (parent.ProgressPercentage >= 100)
+                    {
+                        parent.MarkSubtaskCompleted();
+                    }
+                    parent.SetModified(_currentUser.UserId ?? "system");
+                }
+            }
+
+            await _uow.SaveChangesAsync(ct);
+            await _uow.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _uow.RollbackTransactionAsync(ct);
+            throw;
         }
 
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(req.Id, ct);
