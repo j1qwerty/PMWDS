@@ -55,6 +55,7 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("settings")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetAISettings(CancellationToken ct)
     {
         var stored = (await _db.AIProviderCredentials.AsNoTracking().ToListAsync(ct))
@@ -78,7 +79,7 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("settings")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> SaveAISettings([FromBody] AISettingsDto dto, CancellationToken ct)
     {
         if (dto.Providers.Count == 0)
@@ -193,27 +194,27 @@ public class AIController : BaseApiController
             };
 
     [HttpGet("recommend-assignee/{taskId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> RecommendAssignee(Guid taskId, CancellationToken ct)
         => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(taskId), ct));
 
     [HttpPost("recommendations/{taskId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GenerateRecommendation(Guid taskId, CancellationToken ct)
         => Ok(await _recommendations.GenerateRecommendationAsync(taskId, ct));
 
     [HttpGet("recommendations/{taskId:guid}/history")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetRecommendationHistory(Guid taskId, CancellationToken ct)
         => Ok(await _recommendations.GetRecommendationHistoryAsync(taskId, ct));
 
     [HttpPost("recommendations/{recommendationId:guid}/accept")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> AcceptRecommendation(Guid recommendationId, CancellationToken ct)
         => Ok(await _recommendations.AcceptRecommendationAsync(recommendationId, ct));
 
     [HttpPost("recommendations/{recommendationId:guid}/reject")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> RejectRecommendation(
         Guid recommendationId,
         [FromBody] RejectRecommendationRequest request,
@@ -221,16 +222,17 @@ public class AIController : BaseApiController
         => Ok(await _recommendations.RejectRecommendationAsync(recommendationId, request.Reason, ct));
 
     [HttpGet("recommendations/{recommendationId:guid}/explanation")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> ExplainRecommendation(Guid recommendationId, CancellationToken ct)
         => Ok(new { explanation = await _recommendations.ExplainRecommendationAsync(recommendationId, ct) });
 
     [HttpGet("tasks/{taskId:guid}/analysis")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> AnalyzeTask(Guid taskId, CancellationToken ct)
         => Ok(await _recommendations.AnalyzeTaskForAllocationAsync(taskId, ct));
 
     [HttpGet("predict-delay/{taskId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> PredictDelay(Guid taskId, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(taskId, ct);
@@ -248,21 +250,22 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("predictions/{taskId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GenerateDelayPrediction(Guid taskId, CancellationToken ct)
         => Ok(await _predictions.GenerateDelayPredictionAsync(taskId, ct));
 
     [HttpGet("predictions/{taskId:guid}/history")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetPredictionHistory(Guid taskId, CancellationToken ct)
         => Ok(await _predictions.GetPredictionHistoryAsync(taskId, ct));
 
     [HttpPost("projects/{projectId:guid}/predictions")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> PredictProjectDelays(Guid projectId, CancellationToken ct)
         => Ok(await _predictions.PredictProjectDelaysAsync(projectId, ct));
 
     [HttpGet("prediction-results")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetPredictionResults(
         [FromQuery] Guid? taskId,
         [FromQuery] Guid? modelId,
@@ -270,6 +273,7 @@ public class AIController : BaseApiController
         => Ok(await _predictions.GetPredictionResultsAsync(taskId, modelId, ct));
 
     [HttpGet("project-health/{projectId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> ProjectHealth(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -281,11 +285,12 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("optimize-resources/{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> OptimizeResources(Guid projectId, CancellationToken ct)
         => Ok(await _projectHealth.OptimizeResourceAllocationAsync(projectId, ct));
 
     [HttpGet("burnout-risk")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> BurnoutRisk([FromQuery] Guid? departmentId, CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -319,6 +324,7 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("insights/{projectId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> Insights(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -330,6 +336,7 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("chat")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> Chat([FromBody] ChatRequest req, CancellationToken ct)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -342,10 +349,12 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("providers")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> GetProviders(CancellationToken ct)
         => Ok(await _models.GetProvidersAsync(ct));
 
     [HttpGet("providers/{provider}/models")]
+    [Authorize(Policy = AuthorizationPolicies.AIView)]
     public async Task<IActionResult> SearchModels(
         string provider,
         [FromQuery] string? search,
@@ -354,7 +363,7 @@ public class AIController : BaseApiController
         => Ok(await _models.SearchModelsAsync(provider, search, limit <= 0 ? 25 : limit, ct));
 
     [HttpPost("providers/{provider}/test")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> TestProvider(
         string provider,
         [FromBody] ProviderTestRequest? req,
@@ -362,17 +371,17 @@ public class AIController : BaseApiController
         => Ok(await _models.TestProviderAsync(provider, req?.Model, req?.Prompt, ct));
 
     [HttpPost("train")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> TriggerTraining(CancellationToken ct)
         => Ok(await Mediator.Send(new TriggerAITrainingCommand(), ct));
 
     [HttpGet("models")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GetModels([FromQuery] string? modelType, CancellationToken ct)
         => Ok(await _models.GetModelsAsync(modelType, ct));
 
     [HttpGet("models/{modelId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GetModel(Guid modelId, CancellationToken ct)
     {
         var model = await _models.GetModelByIdAsync(modelId, ct);
@@ -380,17 +389,17 @@ public class AIController : BaseApiController
     }
 
     [HttpPost("models")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> CreateModel([FromBody] UpsertAIModelDto dto, CancellationToken ct)
         => Ok(await _models.UpsertModelAsync(null, dto, ct));
 
     [HttpPut("models/{modelId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> UpdateModel(Guid modelId, [FromBody] UpsertAIModelDto dto, CancellationToken ct)
         => Ok(await _models.UpsertModelAsync(modelId, dto, ct));
 
     [HttpDelete("models/{modelId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> DeleteModel(Guid modelId, CancellationToken ct)
     {
         await _models.DeleteModelAsync(modelId, ct);
@@ -398,17 +407,17 @@ public class AIController : BaseApiController
     }
 
     [HttpGet("training-data")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GetTrainingData([FromQuery] string? dataType, CancellationToken ct)
         => Ok(await _models.GetTrainingDataAsync(dataType, ct));
 
     [HttpPost("training-data")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> AddTrainingData([FromBody] CreateTrainingDataPointDto dto, CancellationToken ct)
         => Ok(await _models.AddTrainingDataPointAsync(dto, ct));
 
     [HttpGet("performance")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.AIManage)]
     public async Task<IActionResult> GetModelPerformance(CancellationToken ct)
         => Ok(await _models.GetModelPerformanceAsync(ct));
 
