@@ -12,7 +12,6 @@ public partial class AddProjectDocumentApproval : Migration
         migrationBuilder.AddColumn<string>(
             name: "ApprovalStatus",
             table: "ProjectDocuments",
-            type: "TEXT",
             maxLength: 20,
             nullable: false,
             defaultValue: "NotRequired");
@@ -20,20 +19,17 @@ public partial class AddProjectDocumentApproval : Migration
         migrationBuilder.AddColumn<string>(
             name: "ApprovedByUserId",
             table: "ProjectDocuments",
-            type: "TEXT",
             maxLength: 100,
             nullable: true);
 
         migrationBuilder.AddColumn<DateTime>(
             name: "ApprovedOn",
             table: "ProjectDocuments",
-            type: "TEXT",
             nullable: true);
 
         migrationBuilder.AddColumn<string>(
             name: "ApprovalNotes",
             table: "ProjectDocuments",
-            type: "TEXT",
             maxLength: 2000,
             nullable: true);
 
