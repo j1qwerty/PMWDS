@@ -32,6 +32,7 @@ public static class SeedData
                 await ProjectsSeeder.SeedAsync(context, ct);
                 await MilestonesSeeder.SeedAsync(context, ct);
                 await TasksSeeder.SeedAsync(context, ct);
+                await GovernmentProjectsSeeder.SeedAsync(context, ct);
                 await NotificationsSeeder.SeedAsync(context, ct);
                 await ActivityLogsSeeder.SeedAsync(context, ct);
                 await MiscSeeder.SeedAsync(context, ct, aiProviderKeys);
