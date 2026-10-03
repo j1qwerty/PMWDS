@@ -449,37 +449,6 @@ public class RoleScopeService
         _scopeSnapshot = cachedScope ?? ScopeSnapshot.Empty;
         return _scopeSnapshot;
 
-        var organizationIds = new HashSet<Guid>();
-        var departmentIds = new HashSet<Guid>();
-
-        if (userScope.OrganizationId.HasValue)
-        {
-            organizationIds.Add(userScope.OrganizationId.Value);
-        }
-
-        if (userScope.PrimaryDepartmentOrganizationId.HasValue)
-        {
-            organizationIds.Add(userScope.PrimaryDepartmentOrganizationId.Value);
-        }
-
-        if (userScope.DepartmentId.HasValue)
-        {
-            departmentIds.Add(userScope.DepartmentId.Value);
-        }
-
-        foreach (var assignment in userScope.Assignments)
-        {
-            departmentIds.Add(assignment.DepartmentId);
-            if (assignment.OrganizationId.HasValue)
-            {
-                organizationIds.Add(assignment.OrganizationId.Value);
-            }
-        }
-
-        _scopeSnapshot = new ScopeSnapshot(organizationIds, departmentIds);
-        return _scopeSnapshot;
-    }
-
     private async Task<bool> HasPermissionAsync(string permissionCode, CancellationToken ct)
     {
         var permissions = await GetPermissionSnapshotAsync(ct);
