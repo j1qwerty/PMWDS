@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppData } from "../../appData";
 import type { Project } from "../../types";
-import { useUserOrganization } from "../shared/useUserOrganization";
 import { PERMISSION_GROUPS, usePermission } from "../shared/RoleGate";
 import { getStatusColor } from "../shared/colors";
-import { projectBelongsToAnyDepartment } from "../shared/projectDepartments";
 import {
-  HiOutlineFolder,
+  HiOutlineHome,
   HiOutlineClipboardList,
   HiOutlineFlag,
+  HiOutlineDocumentText,
   HiOutlineChevronRight,
 } from "react-icons/hi";
 
@@ -36,29 +35,6 @@ interface ProjectsGroupProps {
   onRequestExpand?: () => void;
 }
 
-const STORAGE_KEY = "pmwds.sidebar.expandedProjects";
-
-function loadExpanded(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveExpanded(ids: string[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  } catch {
-    /* ignore */
-  }
-}
-
 function getInitials(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return "?";
@@ -82,14 +58,13 @@ export function ProjectsGroup({
   onRequestExpand,
 }: ProjectsGroupProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { data } = useAppData();
   const perm = usePermission();
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(
-    data.users,
-    data.departments,
-  );
 
-  const [expandedIds, setExpandedIds] = useState<string[]>(() => loadExpanded());
+  // Nested rows start collapsed on every mount. Expansion is per-session
+  // intent only — navigating to a project page must not force a row open.
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   const [sectionCollapsed, setSectionCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -103,10 +78,6 @@ export function ProjectsGroup({
   const [showAllProjects, setShowAllProjects] = useState(false);
 
   useEffect(() => {
-    saveExpanded(expandedIds);
-  }, [expandedIds]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem("pmwds.sidebar.collapsedSection", String(sectionCollapsed));
@@ -117,20 +88,13 @@ export function ProjectsGroup({
 
   const visibleProjects = useMemo<Project[]>(() => {
     if (!perm.has(PERMISSION_GROUPS.project.view)) return [];
-    let filtered = data.projects;
-    if (shouldFilterByOrg && userOrganizationId) {
-      const orgDeptIds = data.departments
-        .filter((d) => d.organizationId === userOrganizationId)
-        .map((d) => d.id);
-      filtered = filtered.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
-    }
-    return [...filtered].sort((a, b) => {
+    return [...data.projects].sort((a, b) => {
       const aNew = isNewProject(a);
       const bNew = isNewProject(b);
       if (aNew !== bNew) return aNew ? -1 : 1;
       return new Date(b.createdDate ?? 0).getTime() - new Date(a.createdDate ?? 0).getTime();
     });
-  }, [data.projects, data.departments, shouldFilterByOrg, userOrganizationId, perm]);
+  }, [data.projects, perm]);
 
   const DISPLAY_LIMIT = 10;
   const displayedProjects = useMemo(() => {
@@ -138,17 +102,11 @@ export function ProjectsGroup({
     return visibleProjects.slice(0, DISPLAY_LIMIT);
   }, [visibleProjects, showAllProjects]);
   const hasMore = visibleProjects.length > DISPLAY_LIMIT;
+  // (rows start collapsed; toggle only changes state on explicit user click)
 
-  const activeProjectId = useMemo(() => {
-    const match = location.pathname.match(/^\/projects\/([^/]+)/);
-    return match ? match[1] : "";
-  }, [location.pathname]);
+  
 
-  useEffect(() => {
-    if (!activeProjectId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setExpandedIds((prev) => (prev.includes(activeProjectId) ? prev : [...prev, activeProjectId]));
-  }, [activeProjectId]);
+  
 
   const isChildActive = useCallback(
     (projectId: string) => location.pathname.startsWith(`/projects/${projectId}/`),
@@ -167,9 +125,7 @@ export function ProjectsGroup({
   };
 
   const handleCompactClick = (projectId: string) => {
-    setExpandedIds((prev) =>
-      prev.includes(projectId) ? prev : [...prev, projectId],
-    );
+    navigate(`/projects/${projectId}`);
     onRequestExpand?.();
   };
 
@@ -223,55 +179,74 @@ export function ProjectsGroup({
         {displayedProjects.map((project) => {
           const expanded = expandedIds.includes(project.id);
           const parentActive = isChildActive(project.id);
+          const childOverviewActive =
+            location.pathname === `/projects/${project.id}` ||
+            isChildExactActive(project.id, "/overview");
           const childTasksActive = isChildExactActive(project.id, "/tasks");
           const childMilestonesActive = isChildExactActive(project.id, "/milestones");
+          const childDocumentsActive = isChildExactActive(project.id, "/documents");
           const status = getStatusColor(project.status);
           const isNew = isNewProject(project);
           return (
             <div key={project.id} className="flex flex-col">
-              <button
-                type="button"
-                onClick={() => toggle(project.id)}
-                className={`relative flex items-center gap-[clamp(2px,1.5vw,6px)] px-[clamp(2px,1.5vw,4px)] py-[clamp(7px,1vw,9px)] rounded-md transition-all duration-200 group ${
+              {/* Row: the name opens Overview, the chevron only expands/collapses. */}
+              <div
+                className={`relative flex items-center rounded-md transition-all duration-200 group ${
                   parentActive
                     ? `${theme.active} ${theme.borderActive}`
                     : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
                 } ${isNew ? "bg-emerald-50/80 ring-1 ring-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.28)]" : ""}`}
-                
-                title={project.name}
               >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`}
-                  title={project.status}
-                />
-                {/* <span
-                  className={`shrink-0 transition-all duration-300 ${
-                    parentActive
-                      ? `${theme.iconActive} scale-110`
-                      : `${theme.iconDefault} group-hover:scale-110`
-                  }`}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                  title={project.name}
+                  className="flex items-center gap-[clamp(2px,1.5vw,6px)] min-w-0 flex-1 pl-[clamp(2px,1.5vw,4px)] pr-1 py-[clamp(7px,1vw,9px)] text-left"
                 >
-                  <HiOutlineFolder className={iconClass} />
-                </span> */}
-                <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em] truncate flex-1 text-left">
-                  {project.name}
-                </span>
-                {isNew && (
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
-                    New
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`}
+                    title={project.status}
+                  />
+                  <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em] truncate">
+                    {project.name}
                   </span>
-                )}
-                
-                <HiOutlineChevronRight
-                  className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
-                    expanded ? "rotate-90" : ""
-                  } ${parentActive ? theme.iconActive : theme.iconDefault}`}
-                />
-              </button>
+                  {isNew && (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                      New
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toggle(project.id)}
+                  aria-expanded={expanded}
+                  aria-label={expanded ? `Collapse ${project.name}` : `Expand ${project.name}`}
+                  title={expanded ? "Collapse" : "Expand"}
+                  className="shrink-0 mr-[clamp(2px,0.5vw,4px)] p-[clamp(4px,0.7vw,6px)] rounded-md hover:bg-white/10 transition-colors"
+                >
+                  <HiOutlineChevronRight
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      expanded ? "rotate-90" : ""
+                    } ${parentActive ? theme.iconActive : theme.iconDefault}`}
+                  />
+                </button>
+              </div>
 
               {expanded && (
                 <div className="flex flex-col ml-[clamp(16px,2.5vw,20px)] border-l border-surface-variant/60 pl-1">
-                   <Link
+                  <Link
+                    to={`/projects/${project.id}/overview`}
+                    className={`flex items-center gap-[clamp(6px,1vw,10px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(5px,0.8vw,7px)] rounded-md transition-all duration-200 ${
+                      childOverviewActive
+                        ? `${theme.active}`
+                        : `${theme.textDefault} ${theme.hover}`
+                    }`}
+                  >
+                    <HiOutlineHome className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
+                    <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Overview</span>
+                  </Link>
+                  <Link
                     to={`/projects/${project.id}/milestones`}
                     className={`flex items-center gap-[clamp(6px,1vw,10px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(5px,0.8vw,7px)] rounded-md transition-all duration-200 ${
                       childMilestonesActive
@@ -293,7 +268,17 @@ export function ProjectsGroup({
                     <HiOutlineClipboardList className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
                     <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Tasks</span>
                   </Link>
-                 
+                  <Link
+                    to={`/projects/${project.id}/documents`}
+                    className={`flex items-center gap-[clamp(6px,1vw,10px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(5px,0.8vw,7px)] rounded-md transition-all duration-200 ${
+                      childDocumentsActive
+                        ? `${theme.active}`
+                        : `${theme.textDefault} ${theme.hover}`
+                    }`}
+                  >
+                    <HiOutlineDocumentText className="h-[clamp(13px,1.6vw,15px)] w-[clamp(13px,1.6vw,15px)] shrink-0" />
+                    <span className="text-[clamp(10px,1.3vw,12px)] font-medium">Documents</span>
+                  </Link>
                 </div>
               )}
             </div>

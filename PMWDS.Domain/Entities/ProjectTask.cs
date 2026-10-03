@@ -4,7 +4,7 @@ using PMWDS.Domain.Events;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Domain.Entities;
 
-public class ProjectTask : AuditableEntity
+public class ProjectTask : AuditableEntity, IHasDomainEvents
 {
     // Core Properties
     public Guid ProjectId { get; private set; }
@@ -15,8 +15,8 @@ public class ProjectTask : AuditableEntity
     public TaskStatus Status { get; private set; }
     public TaskPriority Priority { get; private set; }
     // Assignment
-    public string? AssignedToUserId { get; private set; }
-    public string? AssignedByUserId { get; private set; }
+    public Guid? AssignedToUserId { get; private set; }
+    public Guid? AssignedByUserId { get; private set; }
     public DateTime? AssignedDate { get; private set; }
     // Scheduling
     public DateTime StartDate { get; private set; }
@@ -37,7 +37,7 @@ public class ProjectTask : AuditableEntity
     public double AIDelayProbability { get; private set; }
     public DateTime? AIPredictedCompletionDate { get; private set; }
     public double AIOptimalAssigneeScore { get; private set; }
-    public string? AIRecommendedAssigneeId { get; private set; }
+    public Guid? AIRecommendedAssigneeId { get; private set; }
     public string? AIRiskFactors { get; private set; } // JSON
                                                        // Navigation
     public Project? Project { get; private set; }
@@ -103,13 +103,13 @@ public class ProjectTask : AuditableEntity
             EstimatedHours = estimatedHours
         };
     }
-    public void AssignTo(string userId, string assignedBy)
+    public void AssignTo(Guid userId, Guid assignedBy)
     {
         AssignedToUserId = userId;
         AssignedByUserId = assignedBy;
         AssignedDate = DateTime.UtcNow;
         _domainEvents.Add(new TaskAssignedEvent(
-        Id, userId, assignedBy));
+        Id, userId.ToString(), assignedBy.ToString()));
     }
     public void UpdateDetails(
     string title,
@@ -215,7 +215,7 @@ public class ProjectTask : AuditableEntity
     {
         Status = TaskStatus.OnHold;
         AddComment(TaskComment.Create(
-        Id, "SYSTEM", $"Task put on hold: {reason}"));
+        Id, null, $"Task put on hold: {reason}", isSystem: true));
     }
     public void MarkDelayed(string reason)
     {
@@ -235,7 +235,7 @@ public class ProjectTask : AuditableEntity
     double delayProbability,
     DateTime predictedCompletion,
     string? riskFactors,
-    string? recommendedAssigneeId = null)
+    Guid? recommendedAssigneeId = null)
     {
         AIDelayProbability = delayProbability;
         AIPredictedCompletionDate = predictedCompletion;
@@ -244,7 +244,7 @@ public class ProjectTask : AuditableEntity
     }
     public void UpdateAIRecommendation(
     double optimalAssigneeScore,
-    string? recommendedAssigneeId)
+    Guid? recommendedAssigneeId)
     {
         AIOptimalAssigneeScore = optimalAssigneeScore;
         AIRecommendedAssigneeId = recommendedAssigneeId;

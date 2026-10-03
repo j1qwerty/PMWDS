@@ -2,7 +2,6 @@ using System.Data;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using MySql.Data.MySqlClient;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -11,7 +10,6 @@ namespace PMWDS.API.Services;
 public enum ActiveDatabaseProvider
 {
     SqlServer,
-    MySql,
     Sqlite
 }
 
@@ -32,11 +30,18 @@ public static class DatabaseConnectionService
     {
         var settings = configuration.GetSection("Database").Get<DatabaseSettings>() ?? new DatabaseSettings();
         var sqlServerConnection = configuration.GetConnectionString("Default");
-        var mysqlConnection = configuration.GetConnectionString("MySql") ?? settings.MySqlConnectionString;
-        var sqliteConnection = settings.SqliteConnectionString;
+
+        // Resolve relative SQLite data sources against the content root so the path does not
+        // depend on the process working directory (differs under systemd).
+        var sqliteConnection = ResolveSqliteConnectionString(settings.SqliteConnectionString, environment.ContentRootPath);
         var attempts = new List<string>();
 
-        var selected = SelectProvider(environment, settings, sqlServerConnection, mysqlConnection, sqliteConnection, attempts);
+        if (!environment.IsDevelopment())
+        {
+            GuardSqliteOutsideAppDirectory(sqliteConnection, environment, attempts);
+        }
+
+        var selected = SelectProvider(environment, settings, sqlServerConnection, sqliteConnection, attempts);
 
         services.AddSingleton(selected);
         services.AddDbContext<ApplicationDbContext>(opt =>
@@ -44,10 +49,11 @@ public static class DatabaseConnectionService
             switch (selected.Provider)
             {
                 case ActiveDatabaseProvider.SqlServer:
-                    opt.UseSqlServer(sqlServerConnection, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
-                    break;
-                case ActiveDatabaseProvider.MySql:
-                    opt.UseMySQL(mysqlConnection!, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
+                    opt.UseSqlServer(sqlServerConnection, sql =>
+                    {
+                        sql.MigrationsAssembly("PMWDS.Persistence");
+                        sql.EnableRetryOnFailure();
+                    });
                     break;
                 case ActiveDatabaseProvider.Sqlite:
                     opt.UseSqlite(sqliteConnection, sql => sql.MigrationsAssembly("PMWDS.Persistence"));
@@ -89,24 +95,147 @@ public static class DatabaseConnectionService
                     : Path.Combine(environment.ContentRootPath, sqliteDirectory));
             }
 
-            await EnsureSqliteDevelopmentDatabaseAsync(db, ct);
+            if (environment.IsDevelopment())
+            {
+                await EnsureSqliteDevelopmentDatabaseAsync(db, ct);
+                return;
+            }
+
+            // Production SQLite: never drop the database. Apply EF migrations forward only.
+            Console.WriteLine("[PMWDS] Applying SQLite migrations (production, no destructive reset)...");
+            await db.Database.MigrateAsync(ct);
+            await EnsureSqliteCompatibilityColumnsAsync(db, ct);
             return;
         }
 
-        Console.WriteLine("[PMWDS] Ensuring database schema...");
-        await db.Database.EnsureCreatedAsync(ct);
+        Console.WriteLine("[PMWDS] Applying database migrations...");
+        try
+        {
+            await db.Database.MigrateAsync(ct);
+        }
+        catch when (environment.IsDevelopment())
+        {
+            Console.WriteLine("[PMWDS] SQL Server development migration failed; recreating database from InitialCreate.");
+            await db.Database.EnsureDeletedAsync(ct);
+            await db.Database.MigrateAsync(ct);
+        }
+
+        if (!await HasExpectedSqlServerSchemaAsync(db, ct))
+        {
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException("SQL Server schema is incomplete after migrations. Refusing to reset outside Development.");
+            }
+
+            Console.WriteLine("[PMWDS] SQL Server development schema is incomplete; recreating database from InitialCreate.");
+            await db.Database.EnsureDeletedAsync(ct);
+            await db.Database.MigrateAsync(ct);
+        }
+    }
+
+    /// <summary>
+    /// Outside Development the SQLite file must live outside the application directory. The usual
+    /// deploy replaces the publish folder in place, so a database inside it is destroyed on every
+    /// redeploy — the "data disappears" symptom. Fail fast instead of silently losing data.
+    /// </summary>
+    private static void GuardSqliteOutsideAppDirectory(
+        string sqliteConnectionString,
+        IWebHostEnvironment environment,
+        List<string> attempts)
+    {
+        if (string.IsNullOrWhiteSpace(sqliteConnectionString))
+        {
+            return;
+        }
+
+        var marker = "data source=";
+        var index = sqliteConnectionString.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var valueStart = index + marker.Length;
+        var valueEnd = sqliteConnectionString.IndexOf(';', valueStart);
+        if (valueEnd < 0)
+        {
+            valueEnd = sqliteConnectionString.Length;
+        }
+
+        var dataSource = sqliteConnectionString[valueStart..valueEnd].Trim();
+        if (dataSource.Length == 0 ||
+            dataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase) ||
+            dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase) ||
+            !Path.IsPathRooted(dataSource))
+        {
+            return;
+        }
+
+        var appDirectory = Path.GetFullPath(AppContext.BaseDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+        if (dataSource.StartsWith(appDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Database:SqliteConnectionString points inside the application directory ({dataSource}). " +
+                "A deploy replaces that directory, which would delete the database. " +
+                "Use a durable absolute path outside the app folder, e.g. /var/lib/pmwds/database/pmwds.sqlite.");
+        }
+
+        attempts.Add($"SQLite data source '{dataSource}' verified outside the application directory.");
+    }
+
+    private static string ResolveSqliteConnectionString(string connectionString, string contentRootPath)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return connectionString;
+        }
+
+        var marker = "data source=";
+        var index = connectionString.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return connectionString;
+        }
+
+        var valueStart = index + marker.Length;
+        var valueEnd = connectionString.IndexOf(';', valueStart);
+        if (valueEnd < 0)
+        {
+            valueEnd = connectionString.Length;
+        }
+
+        var dataSource = connectionString[valueStart..valueEnd].Trim();
+        if (dataSource.Length == 0
+            || dataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase)
+            || dataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+            || Path.IsPathRooted(dataSource))
+        {
+            return connectionString;
+        }
+
+        var resolved = Path.GetFullPath(Path.Combine(contentRootPath, dataSource));
+        return connectionString[..valueStart] + resolved + connectionString[valueEnd..];
     }
 
     private static DatabaseConnectionStatus SelectProvider(
         IWebHostEnvironment environment,
         DatabaseSettings settings,
         string? sqlServerConnection,
-        string? mysqlConnection,
         string sqliteConnection,
         List<string> attempts)
     {
+        var sqlitePermitted = environment.IsDevelopment() || settings.AllowSqliteInProduction;
+
         if (settings.ForceSqlite)
         {
+            if (!sqlitePermitted)
+            {
+                throw new InvalidOperationException(
+                    "Database:ForceSqlite requires Development or Database:AllowSqliteInProduction=true. Production must use SQL Server by default.");
+            }
+
             attempts.Add("SQLite forced by Database:ForceSqlite.");
             return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, true, attempts);
         }
@@ -119,20 +248,14 @@ public static class DatabaseConnectionService
 
         attempts.Add("SQL Server unavailable or not configured.");
 
-        if (settings.EnableMySqlFallback && CanConnectToMySql(mysqlConnection))
+        if (!sqlitePermitted)
         {
-            attempts.Add("MySQL fallback connection succeeded.");
-            return CreateStatus(ActiveDatabaseProvider.MySql, "MySQL", "ConnectionStrings:MySql", mysqlConnection!, true, attempts);
+            throw new InvalidOperationException(
+                "SQL Server is required outside Development, but ConnectionStrings:Default is not reachable. " +
+                "Set Database:AllowSqliteInProduction=true to run SQLite in Production.");
         }
 
-        attempts.Add("MySQL unavailable or not configured.");
-
-        if (!environment.IsDevelopment() && !settings.EnableSqliteFallback)
-        {
-            throw new InvalidOperationException("No configured database provider is reachable and SQLite fallback is disabled.");
-        }
-
-        attempts.Add("SQLite fallback selected.");
+        attempts.Add("SQLite selected after a single SQL Server connectivity check.");
         return CreateStatus(ActiveDatabaseProvider.Sqlite, "SQLite", "Database:SqliteConnectionString", sqliteConnection, true, attempts);
     }
 
@@ -161,24 +284,11 @@ public static class DatabaseConnectionService
             probeCs = builder.ConnectionString;
         }
 
-        var maxRetries = 5;
-        for (var i = 0; i < maxRetries; i++)
+        return CanConnect(probeCs, cs =>
         {
-            if (CanConnect(probeCs, cs =>
-            {
-                var b = new SqlConnectionStringBuilder(cs) { ConnectTimeout = 3 };
-                return new SqlConnection(b.ConnectionString);
-            }))
-            {
-                return true;
-            }
-            if (i < maxRetries - 1)
-            {
-                Console.WriteLine($"[PMWDS] SQL Server not ready yet, retrying ({i + 1}/{maxRetries})...");
-                Thread.Sleep(3000);
-            }
-        }
-        return false;
+            var b = new SqlConnectionStringBuilder(cs) { ConnectTimeout = 3 };
+            return new SqlConnection(b.ConnectionString);
+        });
     }
 
     private static void EnsureDatabasesExist(IConfiguration configuration, string? sqlServerConnection)
@@ -218,13 +328,6 @@ public static class DatabaseConnectionService
         }
     }
 
-    private static bool CanConnectToMySql(string? connectionString)
-        => CanConnect(connectionString, cs =>
-        {
-            var builder = new MySqlConnectionStringBuilder(cs) { ConnectionTimeout = 2 };
-            return new MySqlConnection(builder.ConnectionString);
-        });
-
     private static bool CanConnect(string? connectionString, Func<string, DbConnection> connectionFactory)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -251,7 +354,6 @@ public static class DatabaseConnectionService
             return provider switch
             {
                 ActiveDatabaseProvider.SqlServer => new SqlConnectionStringBuilder(connectionString).DataSource,
-                ActiveDatabaseProvider.MySql => new MySqlConnectionStringBuilder(connectionString).Server,
                 ActiveDatabaseProvider.Sqlite => connectionString.Replace("Data Source=", string.Empty, StringComparison.OrdinalIgnoreCase).Trim(),
                 _ => provider.ToString()
             };
@@ -308,7 +410,8 @@ public static class DatabaseConnectionService
             "AIProviderCredentials",
             "UserDepartments",
             "ProjectDepartments",
-            "MilestoneDependencies"
+            "MilestoneDependencies",
+            "UtilizationCertificates"
         };
 
         var connection = db.Database.GetDbConnection();
@@ -350,6 +453,116 @@ public static class DatabaseConnectionService
         return result != null && result != DBNull.Value;
     }
 
+    private static async Task<bool> HasExpectedSqlServerSchemaAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        if (!await db.Database.CanConnectAsync(ct))
+        {
+            return false;
+        }
+
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            var expectedTables = new[]
+            {
+                "Organizations",
+                "Users",
+                "Roles",
+                "Projects",
+                "Milestones",
+                "MilestoneDependencies",
+                "Tasks",
+                "TaskAssignments",
+                "TimeEntries",
+                "AIGlobalSettings"
+            };
+
+            foreach (var table in expectedTables)
+            {
+                if (!await HasSqlServerTableAsync(connection, table, ct))
+                {
+                    return false;
+                }
+            }
+
+            return await HasSqlServerColumnAsync(connection, "Roles", "Key", ct) &&
+                await HasSqlServerColumnAsync(connection, "Users", "RefreshTokenHash", ct) &&
+                await HasSqlServerColumnAsync(connection, "Users", "AccessTokenVersion", ct) &&
+                await HasSqlServerColumnAsync(connection, "Milestones", "DepartmentId", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Projects", "ProjectManagerId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Tasks", "AssignedToUserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Tasks", "AssignedByUserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "Tasks", "AIRecommendedAssigneeId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "TaskAssignments", "UserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "TaskComments", "UserId", "uniqueidentifier", ct) &&
+                await HasSqlServerColumnTypeAsync(connection, "TimeEntries", "UserId", "uniqueidentifier", ct);
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task<bool> HasSqlServerTableAsync(DbConnection connection, string tableName, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT OBJECT_ID(@tableName, 'U')";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "@tableName";
+        parameter.Value = $"dbo.{tableName}";
+        command.Parameters.Add(parameter);
+        var result = await command.ExecuteScalarAsync(ct);
+        return result != null && result != DBNull.Value;
+    }
+
+    private static async Task<bool> HasSqlServerColumnAsync(DbConnection connection, string tableName, string columnName, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT 1
+FROM sys.columns c
+INNER JOIN sys.tables t ON c.object_id = t.object_id
+WHERE t.name = @tableName AND c.name = @columnName";
+        var tableParameter = command.CreateParameter();
+        tableParameter.ParameterName = "@tableName";
+        tableParameter.Value = tableName;
+        command.Parameters.Add(tableParameter);
+        var columnParameter = command.CreateParameter();
+        columnParameter.ParameterName = "@columnName";
+        columnParameter.Value = columnName;
+        command.Parameters.Add(columnParameter);
+        var result = await command.ExecuteScalarAsync(ct);
+        return result != null && result != DBNull.Value;
+    }
+
+    private static async Task<bool> HasSqlServerColumnTypeAsync(DbConnection connection, string tableName, string columnName, string dataType, CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @columnName";
+        var tableParameter = command.CreateParameter();
+        tableParameter.ParameterName = "@tableName";
+        tableParameter.Value = tableName;
+        command.Parameters.Add(tableParameter);
+        var columnParameter = command.CreateParameter();
+        columnParameter.ParameterName = "@columnName";
+        columnParameter.Value = columnName;
+        command.Parameters.Add(columnParameter);
+        var result = await command.ExecuteScalarAsync(ct);
+        return string.Equals(result?.ToString(), dataType, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task EnsureSqliteCompatibilityColumnsAsync(ApplicationDbContext db, CancellationToken ct)
     {
         var connection = db.Database.GetDbConnection();
@@ -371,6 +584,26 @@ public static class DatabaseConnectionService
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"PasswordResetTokenHash\" TEXT NULL", ct);
             }
 
+            if (!await HasSqliteColumnAsync(connection, "Users", "RefreshTokenHash", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"RefreshTokenHash\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "RefreshTokenExpiresAt", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"RefreshTokenExpiresAt\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "RefreshTokenRevokedAt", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"RefreshTokenRevokedAt\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Users", "AccessTokenVersion", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"AccessTokenVersion\" INTEGER NOT NULL DEFAULT 0", ct);
+            }
+
             if (!await HasSqliteColumnAsync(connection, "Users", "OrganizationId", ct))
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
@@ -379,6 +612,13 @@ public static class DatabaseConnectionService
             if (!await HasSqliteColumnAsync(connection, "Skills", "OrganizationId", ct))
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Skills\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "Roles", "Key", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"Roles\" ADD COLUMN \"Key\" TEXT NOT NULL DEFAULT ''", ct);
+                await ExecuteSqliteAsync(connection, "UPDATE \"Roles\" SET \"Key\" = LOWER(REPLACE(\"Name\", ' ', '-')) WHERE \"Key\" = ''", ct);
+                await ExecuteSqliteAsync(connection, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Roles_Key\" ON \"Roles\" (\"Key\")", ct);
             }
 
             if (!await HasSqliteColumnAsync(connection, "Roles", "PaginationPageSize", ct))
@@ -392,12 +632,50 @@ public static class DatabaseConnectionService
                 await ExecuteSqliteAsync(connection, "UPDATE \"Milestones\" SET \"DepartmentId\" = (SELECT \"DepartmentId\" FROM \"Projects\" WHERE \"Projects\".\"Id\" = \"Milestones\".\"ProjectId\") WHERE \"DepartmentId\" IS NULL", ct);
                 await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_Milestones_DepartmentId\" ON \"Milestones\" (\"DepartmentId\")", ct);
             }
+
+            await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
         }
         finally
         {
             if (shouldClose)
             {
                 await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static async Task NormalizeSqliteNullableGuidColumnsAsync(DbConnection connection, CancellationToken ct)
+    {
+        var nullableGuidColumns = new (string Table, string Column)[]
+        {
+            ("ActivityLogs", "ProjectId"),
+            ("Departments", "OrganizationId"),
+            ("Departments", "ParentDepartmentId"),
+            ("KnowledgeArticles", "ProjectId"),
+            ("Milestones", "DepartmentId"),
+            ("PredictionResults", "TaskId"),
+            ("Projects", "ProjectManagerId"),
+            ("Skills", "OrganizationId"),
+            ("TaskComments", "UserId"),
+            ("TaskComments", "ParentCommentId"),
+            ("Tasks", "MilestoneId"),
+            ("Tasks", "ParentTaskId"),
+            ("Tasks", "AssignedToUserId"),
+            ("Tasks", "AssignedByUserId"),
+            ("Tasks", "AIRecommendedAssigneeId"),
+            ("Users", "OrganizationId"),
+            ("Users", "DepartmentId"),
+            ("Webhooks", "IntegrationId")
+        };
+
+        foreach (var (table, column) in nullableGuidColumns)
+        {
+            if (await HasSqliteColumnAsync(connection, table, column, ct))
+            {
+                await ExecuteSqliteAsync(
+                    connection,
+                    $"UPDATE \"{table}\" SET \"{column}\" = NULL WHERE \"{column}\" = ''",
+                    ct);
             }
         }
     }

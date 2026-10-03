@@ -41,6 +41,10 @@ public class TaskConfiguration
         .WithOne()
         .HasForeignKey(c => c.TaskId)
         .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<ApplicationUser>()
+        .WithMany()
+        .HasForeignKey(e => e.AssignedToUserId)
+        .OnDelete(DeleteBehavior.NoAction);
         b.HasMany(e => e.Attachments)
         .WithOne()
         .HasForeignKey(a => a.TaskId)
@@ -58,8 +62,10 @@ public class TaskConfiguration
         b.HasIndex(e => e.AssignedToUserId);
         b.HasIndex(e => e.Status);
         b.HasIndex(e => e.DueDate);
-
-
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.ProjectId, e.Status });
+        b.HasIndex(e => new { e.IsDeleted, e.AssignedToUserId });
+        b.HasIndex(e => new { e.IsDeleted, e.MilestoneId });
         b.HasIndex(e => e.IsEscalated);
         b.HasIndex(e => e.AIDelayProbability);
     }

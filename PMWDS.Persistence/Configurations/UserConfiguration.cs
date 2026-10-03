@@ -14,6 +14,8 @@ public class UserConfiguration
         .HasMaxLength(100).IsRequired();
         b.Property(e => e.LastName)
         .HasMaxLength(100).IsRequired();
+        b.Property(e => e.Email)
+        .HasMaxLength(256).IsRequired();
         b.Property(e => e.JobTitle)
         .HasMaxLength(200);
         b.Property(e => e.EmployeeCode)
@@ -22,6 +24,10 @@ public class UserConfiguration
         .HasMaxLength(100);
         b.Property(e => e.PasswordResetTokenHash)
         .HasMaxLength(128);
+        b.Property(e => e.RefreshTokenHash)
+        .HasMaxLength(128);
+        b.Property(e => e.AccessTokenVersion)
+        .HasDefaultValue(0);
         b.Property(e => e.AvailabilityStatus)
         .HasConversion<string>().HasMaxLength(30);
         b.Property(e => e.AvailabilityPercentage)
@@ -47,11 +53,6 @@ public class UserConfiguration
         .WithOne(s => s.User)
         .HasForeignKey(s => s.UserId)
         .OnDelete(DeleteBehavior.Cascade);
-
-        // Task assignments still use string-based user ids in the domain model.
-        // Keep them out of EF relationship discovery until those ids are
-        // normalized to Guid across the task aggregate.
-        b.Ignore(e => e.TaskAssignments);
 
         b.HasIndex(e => e.EmployeeCode).IsUnique();
         b.HasIndex(e => e.Email).IsUnique();

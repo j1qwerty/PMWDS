@@ -1,7 +1,10 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 
 namespace PMWDS.API.Controllers;
@@ -10,15 +13,17 @@ public class WebhooksController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
-    public WebhooksController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public WebhooksController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _sensitiveData = sensitiveData;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAll([FromQuery] Guid? integrationId, CancellationToken ct)
     {
         var webhooks = integrationId.HasValue
@@ -29,7 +34,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var webhook = await _uow.Webhooks.GetByIdAsync(id, ct);
@@ -46,10 +51,15 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertWebhookRequest req, CancellationToken ct)
     {
-        var webhook = Webhook.Create(req.IntegrationId, req.EventType, req.CallbackUrl, req.Secret, req.Headers, req.IsActive);
+        if (!OutboundUrlGuard.IsSafeWebhookCallbackUrl(req.CallbackUrl, out var callbackUrlError))
+        {
+            return BadRequest(new { message = callbackUrlError });
+        }
+
+        var webhook = Webhook.Create(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
         webhook.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.Webhooks.AddAsync(webhook, ct);
         await _uow.SaveChangesAsync(ct);
@@ -57,7 +67,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertWebhookRequest req, CancellationToken ct)
     {
         var webhook = await _uow.Webhooks.GetByIdAsync(id, ct);
@@ -66,14 +76,19 @@ public class WebhooksController : BaseApiController
             return NotFound();
         }
 
-        webhook.Update(req.IntegrationId, req.EventType, req.CallbackUrl, req.Secret, req.Headers, req.IsActive);
+        if (!OutboundUrlGuard.IsSafeWebhookCallbackUrl(req.CallbackUrl, out var callbackUrlError))
+        {
+            return BadRequest(new { message = callbackUrlError });
+        }
+
+        webhook.Update(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
         await _uow.Webhooks.UpdateAsync(webhook, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok(MapWebhook(webhook));
     }
 
     [HttpPost("{id:guid}/deliveries")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> LogDelivery(Guid id, [FromBody] CreateWebhookDeliveryRequest req, CancellationToken ct)
     {
         var webhook = await _uow.Webhooks.GetByIdAsync(id, ct);
@@ -90,7 +105,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _uow.Webhooks.DeleteAsync(id, ct);
@@ -117,9 +132,3 @@ public class WebhooksController : BaseApiController
             delivery.Success,
             delivery.ErrorMessage);
 }
-
-public record WebhookResponse(Guid Id, Guid? IntegrationId, string EventType, string CallbackUrl, List<string> Headers, bool IsActive);
-public record WebhookDetailResponse(WebhookResponse Webhook, List<WebhookDeliveryResponse> Deliveries);
-public record WebhookDeliveryResponse(Guid Id, Guid WebhookId, DateTime AttemptedAt, int StatusCode, string ResponseBody, bool Success, string? ErrorMessage);
-public record UpsertWebhookRequest(Guid? IntegrationId, string EventType, string CallbackUrl, string Secret, List<string> Headers, bool IsActive);
-public record CreateWebhookDeliveryRequest(int StatusCode, string ResponseBody, bool Success, string? ErrorMessage);

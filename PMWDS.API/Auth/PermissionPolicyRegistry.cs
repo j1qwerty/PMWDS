@@ -7,9 +7,9 @@ public static class PermissionPolicyRegistry
 {
     public static void AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy("Authenticated", policy => policy.RequireAuthenticatedUser());
-        options.AddPolicy("SuperAdmin", policy => RequireAny(policy, PermissionCodes.SystemAdmin));
-        options.AddPolicy("Director", policy => RequireAny(
+        options.AddPolicy(AuthorizationPolicies.Authenticated, policy => policy.RequireAuthenticatedUser());
+        options.AddPolicy(AuthorizationPolicies.SuperAdmin, policy => RequireAny(policy, PermissionCodes.SystemAdmin));
+        options.AddPolicy(AuthorizationPolicies.Director, policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.OrganizationManage,
@@ -17,10 +17,11 @@ public static class PermissionPolicyRegistry
             PermissionCodes.OrganizationEdit,
             PermissionCodes.ActivityLogManage,
             PermissionCodes.ActivityLogView));
-        options.AddPolicy("Manager", policy => RequireAny(
+        options.AddPolicy(AuthorizationPolicies.Manager, policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.ProjectCreate,
             PermissionCodes.ProjectEdit,
             PermissionCodes.TaskManage,
@@ -28,7 +29,7 @@ public static class PermissionPolicyRegistry
             PermissionCodes.TaskEdit,
             PermissionCodes.MilestoneManage,
             PermissionCodes.SubtaskManage));
-        options.AddPolicy("TaskEditor", policy => RequireAny(
+        options.AddPolicy(AuthorizationPolicies.TaskEditor, policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.TaskManage,
@@ -49,9 +50,19 @@ public static class PermissionPolicyRegistry
         AddCrud(options, "Roles", PermissionCodes.RoleManage, PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete);
         AddCrud(options, "Permissions", PermissionCodes.PermissionManage, PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
         AddCrud(options, "Notifications", PermissionCodes.NotificationManage, PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage);
-        options.AddPolicy("ActivityLogs.View", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogView));
-        options.AddPolicy("ActivityLogs.Create", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogCreate));
-        options.AddPolicy("ActivityLogs.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage));
+        AddCrud(options, "UtilizationCertificates", PermissionCodes.UtilizationCertificateManage, PermissionCodes.UtilizationCertificateView, PermissionCodes.UtilizationCertificateCreate, PermissionCodes.UtilizationCertificateEdit, PermissionCodes.UtilizationCertificateDelete);
+
+        // Review is deliberately NOT part of AddCrud: a contributor must never be able
+        // to approve their own utilization certificate.
+        options.AddPolicy(AuthorizationPolicies.UtilizationCertificateReview, policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.UtilizationCertificateManage,
+            PermissionCodes.UtilizationCertificateReview));
+
+        options.AddPolicy(AuthorizationPolicies.ActivityLogsView, policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogView));
+        options.AddPolicy(AuthorizationPolicies.ActivityLogsCreate, policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogCreate));
+        options.AddPolicy(AuthorizationPolicies.ActivityLogsManage, policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage));
     }
 
     private static void AddCrud(

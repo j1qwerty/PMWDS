@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { OrganizationRecord, User } from "../../../types";
+import { RoleKey, hasRoleKey } from "../../../permissions";
 
 interface DeptFormModalProps {
   organizations: OrganizationRecord[];
@@ -110,7 +111,7 @@ export function DeptFormModal({
           >
             <option value="">None</option>
             {users
-              .filter((u) => u.isActive !== false && !u.roles?.includes("SuperAdmin"))
+              .filter((u) => u.isActive !== false && !hasRoleKey(u.roleKeys ?? u.roles, RoleKey.SuperAdmin))
               .map((u) => (
                 <option key={u.id} value={u.id}>{u.fullName}</option>
               ))}

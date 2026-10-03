@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +7,7 @@ using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
@@ -16,17 +19,18 @@ public class OrganizationsController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
     private readonly ApplicationDbContext _db;
+    private readonly IDataChangeNotifier _changes;
 
-    public OrganizationsController(IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db)
+    public OrganizationsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ICurrentUserService currentUser, ApplicationDbContext db, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _scope = scope;
         _currentUser = currentUser;
         _db = db;
+        _changes = changes;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var organizations = (await _uow.Organizations.GetAllAsync(ct)).ToList();
@@ -53,7 +57,6 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -73,7 +76,7 @@ public class OrganizationsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertOrganizationRequest req, CancellationToken ct)
     {
         var organization = Organization.Create(req.Name, req.TaxId, req.Address, req.ContactEmail, req.ContactPhone, req.FoundedDate);
@@ -91,11 +94,12 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, organization.Id.ToString(), null, ct);
         return CreatedAtAction(nameof(GetById), new { id = organization.Id }, MapOrganization(organization, new List<Department>(), null));
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertOrganizationRequest req, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -125,11 +129,12 @@ public class OrganizationsController : BaseApiController
 
         var departments = (await _uow.Departments.FindAsync(d => d.OrganizationId == id, ct)).ToList();
         var directors = await GetDirectorSummariesAsync(new HashSet<Guid> { id }, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
         return Ok(MapOrganization(organization, departments, directors.GetValueOrDefault(id)));
     }
 
     [HttpPut("{id:guid}/departments/{departmentId:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> AssignDepartment(Guid id, Guid departmentId, CancellationToken ct)
     {
         var organization = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -155,11 +160,13 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Departments, departmentId.ToString(), null, ct);
         return NoContent();
     }
 
     [HttpDelete("{id:guid}/departments/{departmentId:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> RemoveDepartment(Guid id, Guid departmentId, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(departmentId, ct);
@@ -188,11 +195,13 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Departments, departmentId.ToString(), null, ct);
         return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var org = await _uow.Organizations.GetByIdAsync(id, ct);
@@ -210,6 +219,7 @@ public class OrganizationsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Organizations, id.ToString(), null, ct);
         return NoContent();
     }
 
@@ -222,7 +232,7 @@ public class OrganizationsController : BaseApiController
 
         var users = await _uow.Users.GetAllAsync(ct);
         return users
-            .Where(user => UserRoleResolver.Resolve(user).Contains("Director") &&
+            .Where(user => UserRoleResolver.ResolveKeys(user).Contains(RoleKeys.Director) &&
                 user.DepartmentAssignments.Any(assignment =>
                     assignment.Department?.OrganizationId is { } organizationId &&
                     organizationIds.Contains(organizationId)))
@@ -255,19 +265,3 @@ public class OrganizationsController : BaseApiController
             departments.Select(d => new OrganizationDepartmentResponse(d.Id, d.Name, d.Code)).ToList(),
             departments.Count);
 }
-
-public record OrganizationResponse(
-    Guid Id,
-    string Name,
-    string? TaxId,
-    string? Address,
-    string? ContactEmail,
-    string? ContactPhone,
-    DateTime? FoundedDate,
-    OrganizationDirectorResponse? Director,
-    List<OrganizationDepartmentResponse> Departments,
-    int DepartmentCount);
-
-public record OrganizationDirectorResponse(Guid Id, string FullName, string Email, string? ProfilePictureUrl);
-public record OrganizationDepartmentResponse(Guid Id, string Name, string Code);
-public record UpsertOrganizationRequest(string Name, string? TaxId = null, string? Address = null, string? ContactEmail = null, string? ContactPhone = null, DateTime? FoundedDate = null);

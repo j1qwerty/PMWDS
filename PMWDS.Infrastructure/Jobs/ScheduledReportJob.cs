@@ -35,7 +35,7 @@ public class ScheduledReportJob : IScheduledReportJob
             try
             {
                 var projects = await _uow.Projects
-                .GetByManagerAsync(manager.Id.ToString(), ct);
+                .GetByManagerAsync(manager.Id, ct);
                 foreach (var project in projects)
                 {
                     var reportBytes = await _reports

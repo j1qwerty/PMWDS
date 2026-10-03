@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,53 +16,17 @@ using PMWDS.Persistence.Context;
 using System.Text.Json;
 
 namespace PMWDS.API.Controllers;
-
-[Authorize(Policy = "Authenticated")]
 public class PagesController : BaseApiController
 {
-    private static readonly HashSet<string> VisiblePermissionModules = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Authentication",
-        "Authorization",
-        "System",
-        "Organization",
-        "Departments",
-        "Projects",
-        "Milestones",
-        "Tasks",
-        "Subtasks",
-        "Users",
-        "Notifications",
-        "Audit",
-        "Reports",
-        "AI"
-    };
-
-    private static readonly Dictionary<string, string[]> ManagePermissionCoverage = new(StringComparer.OrdinalIgnoreCase)
-    {
-        [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
-        [PermissionCodes.DepartmentManage] = new[] { PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete },
-        [PermissionCodes.ProjectManage] = new[] { PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete },
-        [PermissionCodes.MilestoneManage] = new[] { PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete },
-        [PermissionCodes.TaskManage] = new[] { PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack },
-        [PermissionCodes.SubtaskManage] = new[] { PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete },
-        [PermissionCodes.UserManage] = new[] { PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete, PermissionCodes.UserDepartmentManage, PermissionCodes.UserProfilePictureManage },
-        [PermissionCodes.RoleManage] = new[] { PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete },
-        [PermissionCodes.PermissionManage] = new[] { PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete },
-        [PermissionCodes.NotificationManage] = new[] { PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage },
-        [PermissionCodes.ActivityLogManage] = new[] { PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate },
-        [PermissionCodes.ReportManage] = new[] { PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete },
-        [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView }
-    };
-
     private readonly ApplicationDbContext _db;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
 
     public PagesController(
+        IMediator mediator,
         ApplicationDbContext db,
         RoleScopeService scope,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser) : base(mediator)
     {
         _db = db;
         _scope = scope;
@@ -87,6 +52,14 @@ public class PagesController : BaseApiController
         var returnedPageSize = Math.Clamp(userPageSize * 2, 1, 500);
         var pagination = new PaginationQuery(page, returnedPageSize);
 
+        // Intentionally uncached. This response used to be memoized for 30s behind a
+        // per-user key that nothing ever evicted, so a mutation could leave every other
+        // browser (and the mutating one) looking at a stale snapshot for half a minute.
+        // Clients now refetch on the DataChanged hub event, which is both faster and correct.
+        // If this endpoint ever needs caching again, key it on a monotonic version counter
+        // bumped by every mutation - never on a TTL.
+        // See docs/realtime-sync-and-data-durability.md step 3b.
+
         var organizationsQuery = await _scope.ScopeOrganizationsAsync(
             _db.Organizations.AsNoTracking().OrderBy(o => o.Name),
             ct);
@@ -103,7 +76,7 @@ public class PagesController : BaseApiController
         var usersQuery = await _scope.ScopeUsersAsync(
             _db.Users.AsNoTracking()
                 .Include(u => u.Department)
-                .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department).ThenInclude(d => d.Organization)
+                .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department!).ThenInclude(d => d.Organization)
                 .Include(u => u.Profile)
                 .Include(u => u.Roles)
                 .Include(u => u.Skills).ThenInclude(s => s.Skill)
@@ -214,7 +187,7 @@ public class PagesController : BaseApiController
     private Task<ApplicationUser?> LoadCurrentUserAsync(Guid currentUserId, CancellationToken ct)
         => _db.Users
             .Include(u => u.Department)
-            .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department).ThenInclude(d => d.Organization)
+            .Include(u => u.DepartmentAssignments).ThenInclude(d => d.Department!).ThenInclude(d => d.Organization)
             .Include(u => u.Profile)
             .Include(u => u.Roles).ThenInclude(r => r.Permissions)
             .Include(u => u.Skills).ThenInclude(s => s.Skill)
@@ -266,13 +239,13 @@ public class PagesController : BaseApiController
 
         var managerIds = projects
             .Select(p => p.ProjectManagerId)
-            .Where(id => Guid.TryParse(id, out _))
-            .Select(Guid.Parse)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
             .Distinct()
             .ToList();
         var managerNames = await _db.Users.AsNoTracking()
             .Where(u => managerIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id.ToString(), u => u.FullName, ct);
+            .ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
 
         var isDepartmentHead = _scope.IsDepartmentHead && !_scope.IsDirector && !_scope.IsSuperAdmin;
         var isDirectorOrSuperAdmin = _scope.IsDirector || _scope.IsSuperAdmin;
@@ -305,7 +278,11 @@ public class PagesController : BaseApiController
 
         var items = projects.Select(p =>
         {
-            var dto = ProjectDto.FromEntity(p, managerNames.GetValueOrDefault(p.ProjectManagerId));
+            var dto = ProjectDto.FromEntity(
+                p,
+                p.ProjectManagerId.HasValue
+                    ? managerNames.GetValueOrDefault(p.ProjectManagerId.Value)
+                    : null);
 
             if (isDepartmentHead && userDepartmentIds != null && projectDeptTaskInfo != null)
             {
@@ -340,7 +317,7 @@ public class PagesController : BaseApiController
         return PaginatedResponse<ProjectDto>.Create(items, pagination, total);
     }
 
-    private Task<PaginatedResponse<PageRoleDto>> GetRolesAsync(PaginationQuery pagination, CancellationToken ct)
+    private async Task<PaginatedResponse<PageRoleDto>> GetRolesAsync(PaginationQuery pagination, CancellationToken ct)
     {
         IQueryable<Role> query = _db.Roles.AsNoTracking().Include(r => r.Permissions);
 
@@ -349,9 +326,10 @@ public class PagesController : BaseApiController
             var currentUserId = _currentUser.UserId;
             if (Guid.TryParse(currentUserId, out var parsedId))
             {
-                var user = _db.Users
+                var user = await _db.Users
+                    .AsNoTracking()
                     .Include(u => u.Roles)
-                    .FirstOrDefault(u => u.Id == parsedId);
+                    .FirstOrDefaultAsync(u => u.Id == parsedId, ct);
                 if (user != null)
                 {
                     var maxLevel = user.Roles.Max(r => r.PermissionLevel);
@@ -360,11 +338,12 @@ public class PagesController : BaseApiController
             }
         }
 
-        return ToPageAsync(
+        return await ToPageAsync(
             query.OrderBy(r => r.PermissionLevel).ThenBy(r => r.Name),
             pagination,
             r => new PageRoleDto(
                 r.Id,
+                r.Key,
                 r.Name,
                 r.Description,
                 r.PermissionLevel,
@@ -374,13 +353,16 @@ public class PagesController : BaseApiController
     }
 
     private Task<PaginatedResponse<PagePermissionDto>> GetPermissionsAsync(PaginationQuery pagination, CancellationToken ct)
-        => ToPageAsync(
+    {
+        var visibleModules = PermissionCatalog.VisibleModules.ToArray();
+        return ToPageAsync(
             _db.Permissions.AsNoTracking()
-                .Where(p => VisiblePermissionModules.Contains(p.Module))
+                .Where(p => visibleModules.Contains(p.Module))
                 .OrderBy(p => p.Module).ThenBy(p => p.Code),
             pagination,
             p => new PagePermissionDto(p.Id, p.Code, p.Name, p.Description, p.Module, p.IsGlobal),
             ct);
+    }
 
     private Task<PaginatedResponse<NotificationDto>> GetNotificationsAsync(
         Guid currentUserId,
@@ -608,16 +590,16 @@ public class PagesController : BaseApiController
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return codes.Contains(PermissionCodes.SystemAdmin) ||
             codes.Contains(permissionCode) ||
-            ManagePermissionCoverage.Any(pair => pair.Value.Contains(permissionCode, StringComparer.OrdinalIgnoreCase) && codes.Contains(pair.Key));
+            PermissionCatalog.ManagePermissionCoverage.Any(pair => pair.Value.Contains(permissionCode, StringComparer.OrdinalIgnoreCase) && codes.Contains(pair.Key));
     }
 
     private static IEnumerable<string> VisiblePermissionCodes(IEnumerable<Permission> permissions)
     {
         var visible = permissions
-            .Where(permission => VisiblePermissionModules.Contains(permission.Module))
+            .Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module))
             .ToList();
         var codes = visible.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = ManagePermissionCoverage
+        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
             .Where(pair => codes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);

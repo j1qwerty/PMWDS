@@ -30,7 +30,7 @@ export function AIPage() {
   const [burnout, setBurnout] = useState<BurnoutRiskRecord[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [delay, setDelay] = useState<any>(null);
-  const [provider, setProvider] = useState("OpenAI");
+  const [provider, setProvider] = useState("OpenRouter");
   const [model, setModel] = useState("");
   const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");
   const [chatResult, setChatResult] = useState<any>(null);
@@ -55,7 +55,7 @@ export function AIPage() {
       setProjects(projectData);
       setDepartments(departmentData);
       setOrganizations(organizationData);
-      setProvider(settings.defaultProvider || "OpenAI");
+      setProvider(settings.defaultProvider || "OpenRouter");
       setModel(settings.defaultModel || "");
       if (projectData[0]) setSelectedProjectId(projectData[0].id);
       if (taskData[0]) setSelectedTaskId(taskData[0].id);

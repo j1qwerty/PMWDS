@@ -1,5 +1,5 @@
 import type { Project } from "../../../types";
-import { formatDate } from "../../../ui";
+import { formatDate, formatLakhs } from "../../../ui";
 import { GlassCard, getStatusColor, getPriorityColor } from "../../shared";
 import { Avatark } from "../../shared/Avatark";
 import { 
@@ -257,9 +257,9 @@ export function ProjectBasicDetails({
 
           {/* Budget */}
           <div className="flex items-center gap-2 text-slate-600">
-            <Icon name="hi-currency-dollar" size={16} className="shrink-0 text-slate-400" />
-            <span className="text-xs font-semibold">
-              ₹{project.plannedBudget.toLocaleString("en-IN")}
+            <Icon name="hi-cash" size={16} className="shrink-0 text-slate-400" />
+            <span className="text-xs font-semibold" title={`${formatLakhs(project.plannedBudget)} (shown in lakhs)`}>
+              {formatLakhs(project.plannedBudget)}
             </span>
           </div>
 

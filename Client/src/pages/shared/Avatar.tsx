@@ -27,8 +27,13 @@ const sizeClass = {
 };
 
 const apiOrigin = (() => {
-  const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v\d+\/?$/, "").replace(/\/$/, "");
-  return base || "http://localhost:5177";
+  const configured = import.meta.env.VITE_API_BASE_URL;
+  // Unset means local development against a separately hosted API.
+  if (!configured) return "http://localhost:5177";
+  // A relative base such as "/api/v1" means the API is served from this same origin. Strip it to
+  // an empty string so the paths below compose as root-relative URLs. Falling back to localhost
+  // here would point avatar and file requests at a developer's machine.
+  return configured.replace(/\/api\/v\d+\/?$/, "").replace(/\/$/, "");
 })();
 
 export function getAvatarUrl(person?: AvatarPerson | null, nameOverride?: string | null, srcOverride?: string | null) {

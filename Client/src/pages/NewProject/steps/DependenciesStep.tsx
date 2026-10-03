@@ -109,6 +109,9 @@ export function DependenciesStep({ milestones, dependencies, onChange }: Depende
 
   return (
     <div className="space-y-5">
+      <p className="text-xs text-slate-500">
+        Dependencies are optional. Add them only if a milestone must wait on another.
+      </p>
       {milestones.length === 0 ? (
         <GlassCard className="p-10 text-center">
           <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">

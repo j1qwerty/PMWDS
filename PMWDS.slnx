@@ -5,4 +5,5 @@
   <Project Path="PMWDS.Domain/PMWDS.Domain.csproj" />
   <Project Path="PMWDS.Infrastructure/PMWDS.Infrastructure.csproj" />
   <Project Path="PMWDS.Persistence/PMWDS.Persistence.csproj" />
+  <Project Path="PMWDS.Tests/PMWDS.Tests.csproj" />
 </Solution>

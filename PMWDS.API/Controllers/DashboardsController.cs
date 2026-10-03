@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -10,15 +12,16 @@ public class DashboardsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public DashboardsController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public DashboardsController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetMine(CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -32,7 +35,6 @@ public class DashboardsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var dashboard = await _uow.Dashboards.GetByIdAsync(id, ct);
@@ -46,7 +48,6 @@ public class DashboardsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Create([FromBody] UpsertDashboardRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -58,11 +59,11 @@ public class DashboardsController : BaseApiController
         dashboard.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.Dashboards.AddAsync(dashboard, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return CreatedAtAction(nameof(GetById), new { id = dashboard.Id }, MapDashboard(dashboard, new List<DashboardWidget>()));
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertDashboardRequest req, CancellationToken ct)
     {
         var dashboard = await _uow.Dashboards.GetByIdAsync(id, ct);
@@ -76,11 +77,11 @@ public class DashboardsController : BaseApiController
         await _uow.SaveChangesAsync(ct);
 
         var widgets = (await _uow.DashboardWidgets.FindAsync(w => w.DashboardId == id, ct)).OrderBy(w => w.DisplayOrder).ToList();
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return Ok(MapDashboard(dashboard, widgets));
     }
 
     [HttpPost("{id:guid}/widgets")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> AddWidget(Guid id, [FromBody] UpsertDashboardWidgetRequest req, CancellationToken ct)
     {
         var dashboard = await _uow.Dashboards.GetByIdAsync(id, ct);
@@ -93,11 +94,11 @@ public class DashboardsController : BaseApiController
         widget.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.DashboardWidgets.AddAsync(widget, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return CreatedAtAction(nameof(GetById), new { id }, MapWidget(widget));
     }
 
     [HttpPut("widgets/{widgetId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateWidget(Guid widgetId, [FromBody] UpsertDashboardWidgetRequest req, CancellationToken ct)
     {
         var widget = await _uow.DashboardWidgets.GetByIdAsync(widgetId, ct);
@@ -110,11 +111,11 @@ public class DashboardsController : BaseApiController
         widget.SetDisplayOrder(req.DisplayOrder);
         await _uow.DashboardWidgets.UpdateAsync(widget, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return Ok(MapWidget(widget));
     }
 
     [HttpPatch("{id:guid}/widgets/reorder")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> ReorderWidgets(Guid id, [FromBody] ReorderDashboardWidgetsRequest req, CancellationToken ct)
     {
         var widgets = (await _uow.DashboardWidgets.FindAsync(w => w.DashboardId == id, ct)).ToList();
@@ -129,24 +130,25 @@ public class DashboardsController : BaseApiController
         }
 
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
     }
 
     [HttpDelete("widgets/{widgetId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> DeleteWidget(Guid widgetId, CancellationToken ct)
     {
         await _uow.DashboardWidgets.DeleteAsync(widgetId, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _uow.Dashboards.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Dashboards, null, null, ct);
         return NoContent();
     }
 
@@ -172,27 +174,3 @@ public class DashboardsController : BaseApiController
             JsonSerializer.Deserialize<List<string>>(widget.RequiredPermissionsJson) ?? new(),
             widget.DisplayOrder);
 }
-
-public record DashboardResponse(
-    Guid Id,
-    Guid UserId,
-    string Name,
-    string LayoutType,
-    bool IsDefault,
-    DateTime LastAccessed,
-    List<DashboardWidgetResponse> Widgets);
-
-public record DashboardWidgetResponse(
-    Guid Id,
-    Guid DashboardId,
-    string WidgetType,
-    string Title,
-    Dictionary<string, object> Configuration,
-    int RefreshInterval,
-    DateTime LastRefreshed,
-    List<string> RequiredPermissions,
-    int DisplayOrder);
-
-public record UpsertDashboardRequest(string Name, string LayoutType, bool IsDefault);
-public record UpsertDashboardWidgetRequest(string WidgetType, string Title, Dictionary<string, object> Configuration, int RefreshInterval, List<string> RequiredPermissions, int DisplayOrder);
-public record ReorderDashboardWidgetsRequest(List<Guid> WidgetIds);

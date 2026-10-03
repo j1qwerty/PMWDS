@@ -14,6 +14,11 @@ import {
 } from "recharts";
 import type { AiReportResponse, ReportSection } from "../../types";
 import { GlassCard } from "../shared";
+import {
+  resolveMetricColor,
+  resolveMetricIcon,
+  resolveMetricTrend,
+} from "./reportMetricStyle";
 
 interface ReportViewerProps {
   report: AiReportResponse;
@@ -44,29 +49,36 @@ const sectionIcons: Record<string, string> = {
 };
 
 function MetricBadge({ metric }: { metric: any }) {
-  const colors = colorStyles[metric.color] || colorStyles.indigo;
-  
+  const colors = colorStyles[resolveMetricColor(metric.color)];
+  const trend = resolveMetricTrend(metric.trend);
+  const icon = resolveMetricIcon(metric.icon, metric.label);
+
   return (
-    <div className={`${colors.light} ${colors.border} rounded-xl border p-4`}>
+    <div className={`${colors.light} ${colors.border} rounded-xl border p-4 min-w-0`}>
       <div className="flex items-center gap-2 mb-2">
-        <span className={`material-symbols-outlined text-lg ${colors.text}`}>{metric.icon}</span>
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{metric.label}</span>
+        <span className={`material-symbols-outlined text-lg leading-none shrink-0 ${colors.text}`}>{icon}</span>
+        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider break-words">
+          {metric.label}
+        </span>
       </div>
-      <div className="flex items-end justify-between">
-        <span className="text-2xl font-bold text-slate-800">{metric.value}</span>
-        {metric.trend && (
-          <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
-            metric.trend === "up" 
-              ? "bg-emerald-100 text-emerald-700" 
-              : metric.trend === "down" 
-                ? "bg-red-100 text-red-700" 
+      <div className="flex items-end justify-between gap-2">
+        <span className="text-2xl font-bold text-slate-800 break-words [overflow-wrap:anywhere]">
+          {metric.value}
+        </span>
+        <span
+          className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${
+            trend === "up"
+              ? "bg-emerald-100 text-emerald-700"
+              : trend === "down"
+                ? "bg-red-100 text-red-700"
                 : "bg-slate-100 text-slate-600"
-          }`}>
-            <span className="material-symbols-outlined text-sm">
-              {metric.trend === "up" ? "trending_up" : metric.trend === "down" ? "trending_down" : "trending_flat"}
-            </span>
+          }`}
+          title={trend === "neutral" ? "No change" : trend === "up" ? "Trending up" : "Trending down"}
+        >
+          <span className="material-symbols-outlined text-sm leading-none">
+            {trend === "up" ? "trending_up" : trend === "down" ? "trending_down" : "trending_flat"}
           </span>
-        )}
+        </span>
       </div>
     </div>
   );

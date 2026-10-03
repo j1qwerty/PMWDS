@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using PMWDS.Application.DTOs.Reports;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
@@ -14,24 +15,27 @@ public class ReportService : IReportService
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly IAIService _ai;
+    private readonly IProjectHealthService _ai;
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IReportPdfRenderer _pdfRenderer;
     private readonly IReportExcelRenderer _excelRenderer;
+    private readonly ILogger<ReportService> _logger;
 
     public ReportService(
-        IAIService ai,
+        IProjectHealthService ai,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         IReportPdfRenderer pdfRenderer,
-        IReportExcelRenderer excelRenderer)
+        IReportExcelRenderer excelRenderer,
+        ILogger<ReportService> logger)
     {
         _ai = ai;
         _uow = uow;
         _currentUser = currentUser;
         _pdfRenderer = pdfRenderer;
         _excelRenderer = excelRenderer;
+        _logger = logger;
     }
 
     // ──────────────────────────────────────────────
@@ -162,8 +166,8 @@ public class ReportService : IReportService
 
         var byAssignee = taskList
             .Where(t => t.AssignedToUserId != null)
-            .GroupBy(t => t.AssignedToUserId ?? "unknown")
-            .ToDictionary(g => g.Key, g => new
+            .GroupBy(t => t.AssignedToUserId!.Value)
+            .ToDictionary(g => g.Key.ToString(), g => new
             {
                 Total = g.Count(),
                 Completed = g.Count(t => t.Status == Domain.Enums.TaskStatus.Completed),
@@ -204,7 +208,7 @@ public class ReportService : IReportService
         var allTasks = await _uow.Tasks.GetAllAsync(ct);
         var relevantTasks = allTasks
             .Where(t => t.Project?.DepartmentId == departmentId ||
-                        (t.AssignedToUserId != null && users.Any(u => u.Id.ToString() == t.AssignedToUserId)))
+                        (t.AssignedToUserId != null && users.Any(u => u.Id == t.AssignedToUserId)))
             .ToList();
 
         var userWorkloads = users.Select(u => new
@@ -216,10 +220,10 @@ public class ReportService : IReportService
             u.AIBurnoutRiskScore,
             u.AIPerformanceScore,
             ActiveTasks = relevantTasks.Count(t =>
-                t.AssignedToUserId == u.Id.ToString() &&
+                t.AssignedToUserId == u.Id &&
                 t.Status != Domain.Enums.TaskStatus.Completed),
             CompletedTasks = relevantTasks.Count(t =>
-                t.AssignedToUserId == u.Id.ToString() &&
+                t.AssignedToUserId == u.Id &&
                 t.Status == Domain.Enums.TaskStatus.Completed),
         }).ToList();
 
@@ -281,7 +285,7 @@ public class ReportService : IReportService
                         t.ProgressPercentage,
                         t.AIDelayProbability,
                         t.Priority,
-                        AssignedTo = t.AssignedToUserId ?? "Unassigned",
+                        AssignedTo = t.AssignedToUserId?.ToString() ?? "Unassigned",
                         ProjectName = t.Project?.Name ?? "Unknown"
                     })
             },
@@ -378,11 +382,11 @@ You MUST respond with ONLY valid JSON matching this schema:
   ""summary"": ""string (2-3 sentence executive summary)"",
   ""metrics"": [
     {
-      ""label"": ""string"",
-      ""value"": ""string"",
+      ""label"": ""string (max 28 characters)"",
+      ""value"": ""string (max 16 characters, keep units short)"",
       ""trend"": ""up"" | ""down"" | ""neutral"",
-      ""icon"": ""string (Material Symbol name)"",
-      ""color"": ""string (Tailwind color name like indigo, emerald, amber, red, violet)""
+      ""icon"": ""one of: analytics, insights, monitoring, percent, calculate, payments, account_balance, savings, receipt_long, wallet, task_alt, checklist, check_circle, assignment, groups, person, engineering, construction, architecture, flag, emoji_events, verified, schedule, timer, warning, error, speed, inventory_2, lightbulb, report, description, summarize"",
+      ""color"": ""one of: indigo, emerald, amber, red, violet, blue, cyan, orange""
     }
   ],
   ""tables"": [
@@ -424,9 +428,12 @@ You MUST respond with ONLY valid JSON matching this schema:
             await StoreReportAsync(reportType, report, ct);
             return report;
         }
-        catch
+        catch (Exception ex)
         {
-            var fallback = BuildFallbackReport(reportId, reportType);
+            // Log the provider error instead of silently degrading, so a wrong
+            // provider/model pairing stays diagnosable.
+            _logger.LogError(ex, "AI report generation failed for report type {ReportType}", reportType);
+            var fallback = BuildFallbackReport(reportId, reportType, ex);
             await StoreReportAsync(reportType, fallback, ct);
             return fallback;
         }
@@ -519,14 +526,27 @@ You MUST respond with ONLY valid JSON matching this schema:
 
             return (title, summary, metrics, tables, sections, insights, recommendations);
         }
-        catch
+        catch (JsonException ex)
         {
-            return (ReportTitle(reportType), "AI report generation returned an unexpected format. Please try again.",
+            // Log the offending prefix: models that ignore "ONLY valid JSON" emit a preamble, a
+            // markdown fence, or trailing prose, and the bare parse error is impossible to act on.
+            var preview = responseText.Length > 300 ? responseText[..300] : responseText;
+            _logger.LogWarning(
+                "Could not parse AI report response for {ReportType}: {Message}. Response began: {Preview}",
+                reportType, ex.Message, preview);
+
+            return (ReportTitle(reportType),
+                $"AI report generation returned an unexpected format: {ex.Message}",
                 new List<ReportMetric>(), new List<ReportTable>(), new List<ReportSection>(),
                 new List<string>(), new List<string>());
         }
     }
 
+    /// <summary>
+    /// Pulls the JSON object out of a model response. Models frequently wrap it in a markdown code
+    /// fence or add a sentence of preamble, so slice from the first brace to the last one rather
+    /// than assuming the response starts with JSON.
+    /// </summary>
     private static string ExtractJson(string text)
     {
         var start = text.IndexOf('{');
@@ -536,36 +556,47 @@ You MUST respond with ONLY valid JSON matching this schema:
         return text;
     }
 
-    private static AiReportResponse BuildFallbackReport(Guid reportId, string reportType)
+    private static AiReportResponse BuildFallbackReport(Guid reportId, string reportType, Exception? error = null)
     {
         var title = ReportTitle(reportType);
+        var detail = error is null
+            ? "Configure an AI provider in Settings to enable intelligent report generation."
+            : $"The configured AI provider rejected the request: {Truncate(error.Message, 300)}";
+
         return new AiReportResponse(
             reportId,
             reportType,
             title,
-            $"{title} could not be generated with AI assistance. The data was collected but AI processing is unavailable. Configure an AI provider in Settings to enable intelligent report generation.",
+            $"{title} could not be generated with AI assistance. {detail}",
             new List<ReportMetric>(),
             new List<ReportTable>(),
             new List<ReportSection>
             {
-                new("AI Not Configured",
-                    "This report requires an AI provider (OpenAI or OpenRouter) to be configured. " +
-                    "Go to AI Settings to add your API key and enable intelligent report generation. " +
-                    "Once configured, reports will include metrics, charts, insights, and recommendations generated by AI.",
+                new("AI Generation Failed",
+                    (error is null
+                        ? "This report requires an AI provider (OpenAI or OpenRouter) to be configured. "
+                        : $"Provider error: {Truncate(error.Message, 500)} ")
+                    + "Go to AI Settings to verify the default provider, its API key, and the default model, " +
+                    "then regenerate this report for AI-powered insights.",
                     "recommendation")
             },
             new List<string>
             {
-                "Configure an AI provider in Settings to enable full report generation.",
-                "Reports require an API key for OpenAI or OpenRouter."
+                "Verify the default AI provider and model in Settings > AI Configuration.",
+                error is null
+                    ? "Reports require an API key for OpenAI or OpenRouter."
+                    : "A model id that does not belong to the selected provider is the most common cause."
             },
             new List<string>
             {
-                "Go to Settings > AI Configuration to set up your provider.",
+                "Go to Settings > AI Configuration and test the provider with a custom prompt.",
                 "After configuration, regenerate this report for AI-powered insights."
             },
             DateTime.UtcNow);
     }
+
+    private static string Truncate(string value, int maxLength)
+        => value.Length <= maxLength ? value : value[..maxLength] + "...";
 
     private static string ReportTitle(string reportType) => reportType switch
     {

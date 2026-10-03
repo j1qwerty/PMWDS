@@ -71,14 +71,14 @@ public record TaskDto(
             MilestoneId: t.MilestoneId,
             MilestoneName: t.Milestone?.Name,
             ParentTaskId: t.ParentTaskId,
-            AssignedToUserId: t.AssignedToUserId,
+            AssignedToUserId: t.AssignedToUserId?.ToString(),
             AssignedToUserName: assignments
             .Where(a => a.IsActive)
             .Select(a => a.User != null ? a.User.FullName : null)
             .FirstOrDefault(n => !string.IsNullOrEmpty(n)),
             Assignees: assignments
             .Where(a => a.IsActive)
-            .Select(a => new TaskAssigneeDto(a.UserId, a.User?.FullName))
+            .Select(a => new TaskAssigneeDto(a.UserId.ToString(), a.User?.FullName))
             .ToList(),
             IsEscalated: t.IsEscalated,
             EscalationLevel: t.EscalationLevel,
@@ -105,7 +105,7 @@ public record TaskDto(
             HasSubTasks: hasSubTasks,
             AIOptimalAssigneeScore: t.AIOptimalAssigneeScore,
             AIPredictedCompletionDate: t.AIPredictedCompletionDate,
-            AIRecommendedAssigneeId: t.AIRecommendedAssigneeId
+            AIRecommendedAssigneeId: t.AIRecommendedAssigneeId?.ToString()
             );
         }
     }
@@ -143,7 +143,7 @@ public record TaskDto(
         => new(
             Id: c.Id,
             TaskId: c.TaskId,
-            UserId: c.UserId,
+            UserId: c.UserId?.ToString() ?? "system",
             Content: c.Content,
             IsSystemGenerated: c.IsSystemGenerated,
             ParentCommentId: c.ParentCommentId,
@@ -187,7 +187,7 @@ public record TaskDto(
         => new(
             Id: e.Id,
             TaskId: e.TaskId,
-            UserId: e.UserId,
+            UserId: e.UserId.ToString(),
             UserName: e.User?.FullName,
             Description: e.Description,
             StartTime: e.StartTime,

@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
+import type { Department } from "../../types";
+import { lakhsToRupees } from "../../ui";
 import {
   GlassCard,
   useToast,
   LoadingPage,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
@@ -62,6 +65,8 @@ const LEGACY_STEPS: StepConfig[] = [
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
+// Executive flow. Steps 5-7 (Departments / Users / Tasks) are intentionally
+// hidden for every executive role - see `visibleSteps` below.
 const EXECUTIVE_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "milestones", label: "Milestones", icon: "flag" },
@@ -77,7 +82,44 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const { auth } = useAuth();
   const { data, refresh } = useAppData();
   const { addToast } = useToast();
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(data.users, data.departments);
+  const [liveDepartments, setLiveDepartments] = useState<Department[] | null>(null);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+
+  // The wizard previously relied only on the paginated / cached appData
+  // departments (pages API). The Departments page fetches live via
+  // api.getDepartments, so newly created departments were visible there
+  // but missing here. Fetch live and merge so the dropdown never goes
+  // empty while cached data is stale.
+  useEffect(() => {
+    if (!auth) {
+      setLiveDepartments(null);
+      return;
+    }
+    let cancelled = false;
+    setDepartmentsLoading(true);
+    api.getDepartments(auth.token)
+      .then((departments) => {
+        if (!cancelled) setLiveDepartments(departments);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveDepartments(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDepartmentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.token]);
+
+  const allDepartments = useMemo(() => {
+    if (!liveDepartments) return data.departments;
+    const seen = new Set(liveDepartments.map((d) => d.id));
+    const missing = data.departments.filter((d) => !seen.has(d.id));
+    return [...liveDepartments, ...missing];
+  }, [data.departments, liveDepartments]);
+
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(data.users, allDepartments);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -105,9 +147,9 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 5: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
-  const isSuperAdmin = auth?.roles?.includes("SuperAdmin") ?? false;
-  const isDirector = auth?.roles?.includes("Director") ?? false;
-  const isDepartmentHead = auth?.roles?.includes("DepartmentHead") ?? false;
+  const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
+  const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
+  const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
   const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
@@ -115,7 +157,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  const visibleSteps = usesExecutiveFlow && !isSuperAdmin
+  // Executive flows (super admin, director, department head) stop after the
+  // Dependencies step: the Departments / Users / Tasks steps are hidden and the
+  // final visible step submits with "Finish" instead of showing "Next".
+  const visibleSteps = usesExecutiveFlow
     ? steps.slice(0, dependenciesStepIndex + 1)
     : steps;
 
@@ -140,7 +185,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const isStepComplete = (step: number): boolean => {
     switch (steps[step]?.key) {
-      case "details": return name.trim().length > 0 && startDate.trim().length > 0 && endDate.trim().length > 0;
+      case "details":
+        return (
+          name.trim().length > 0 &&
+          startDate.trim().length > 0 &&
+          endDate.trim().length > 0 &&
+          endDate >= startDate
+        );
       case "departments": return selectedDepartmentIds.length > 0;
       case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
       case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
@@ -155,7 +206,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const handleNext = () => {
     if (!canProceed) return;
-    if (currentStep < steps.length - 1) {
+    if (currentStep < visibleSteps.length - 1) {
       setCurrentStep((s) => s + 1);
     }
   };
@@ -202,7 +253,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         category: "Monitoring",
         plannedStartDate: startDate,
         plannedEndDate: endDate || "",
-        plannedBudget: budget,
+        // The budget field is in lakhs; the API stores rupees.
+        plannedBudget: lakhsToRupees(budget),
         organizationId: "",
         departmentId: execPrimaryDeptId,
         departmentIds: assignedDepartmentIds,
@@ -271,12 +323,18 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   };
 
   const scopedDepartments = useMemo(() => {
-    let filtered = data.departments;
+    let filtered = allDepartments;
     if (shouldFilterByOrg && userOrganizationId) {
-      filtered = filtered.filter((d) => d.organizationId === userOrganizationId);
+      const orgFiltered = filtered.filter((d) => d.organizationId === userOrganizationId);
+      // Fall back to the full server-scoped list instead of an empty
+      // dropdown when the client-side org id does not match (e.g. stale
+      // user scope or departments without an organization).
+      if (orgFiltered.length > 0) return orgFiltered;
+      // If every department lacks an organization, filtering is meaningless.
+      if (filtered.length > 0 && filtered.every((d) => !d.organizationId)) return filtered;
     }
     return filtered;
-  }, [data.departments, shouldFilterByOrg, userOrganizationId]);
+  }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
 
   const departmentUsers = useMemo(() => {
     const effectiveDepartmentIds = usesExecutiveFlow
@@ -289,7 +347,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       if (u.isActive === false) return false;
       if (seen.has(u.id)) return false;
       seen.add(u.id);
-      if (u.roles?.includes("SuperAdmin")) return false;
+      if (hasRoleKey(u.roleKeys ?? u.roles, RoleKey.SuperAdmin)) return false;
       const belongsToDept =
         (u.departmentId && deptSet.has(u.departmentId)) ||
         u.departments?.some((d) => deptSet.has(d.departmentId));
@@ -386,7 +444,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">{steps[currentStep].label}</h2>
-            <p className="text-xs text-slate-400">Step {currentStep + 1} of {visibleSteps.length}</p>
+            <p className="text-xs text-slate-400">
+              Step {currentStep + 1} of {visibleSteps.length} ·{" "}
+              <span className="text-red-500">*</span> required
+            </p>
           </div>
         </div>
 
@@ -436,6 +497,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             <MilestoneDepartmentsStep
               milestones={milestones}
               departments={scopedDepartments}
+              organizations={data.organizations}
+              loading={departmentsLoading}
               onChange={setMilestones}
             />
           )}

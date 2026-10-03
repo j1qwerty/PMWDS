@@ -29,10 +29,10 @@ export function ProjectNotFound() {
         </p>
         <div className="flex justify-center gap-2">
           <Link
-            to="/projectsK"
+            to="/projects"
             className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
           >
-            Go to Workspace
+            Go to Projects
           </Link>
           <Link
             to="/"

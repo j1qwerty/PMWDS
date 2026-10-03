@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
 
 export interface NavHeaderAction {
   label: string;
@@ -28,8 +28,10 @@ export function NavHeaderProvider({ children }: { children: ReactNode }) {
     setState(newState);
   }, []);
 
+  const value = useMemo(() => ({ ...state, setNavHeader }), [state, setNavHeader]);
+
   return (
-    <NavHeaderContext.Provider value={{ ...state, setNavHeader }}>
+    <NavHeaderContext.Provider value={value}>
       {children}
     </NavHeaderContext.Provider>
   );

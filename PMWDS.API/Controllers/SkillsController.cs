@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
@@ -8,7 +10,6 @@ namespace PMWDS.API.Controllers;
 
 [ApiController]
 [Route("api/v1/skills")]
-[Authorize(Policy = "Authenticated")]
 public class SkillsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
@@ -16,9 +17,10 @@ public class SkillsController : BaseApiController
     private readonly RoleScopeService _scope;
 
     public SkillsController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
-        RoleScopeService scope)
+        RoleScopeService scope) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
@@ -26,7 +28,6 @@ public class SkillsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var skills = await GetScopedSkillsAsync(ct);
@@ -34,7 +35,6 @@ public class SkillsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var skill = await _uow.Skills.GetByIdAsync(id, ct);
@@ -49,7 +49,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create(
         [FromBody] CreateSkillDto dto,
         CancellationToken ct)
@@ -79,7 +79,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateSkillDto dto,
@@ -114,7 +114,7 @@ public class SkillsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var skill = await _uow.Skills.GetByIdAsync(id, ct);
@@ -199,27 +199,3 @@ public class SkillsController : BaseApiController
             await _scope.CanAccessOrganizationAsync(skill.OrganizationId.Value, ct);
     }
 }
-
-public record SkillDto(
-    Guid Id,
-    string Name,
-    string Category,
-    string Description,
-    int UserCount,
-    Guid? OrganizationId,
-    string CreatedBy)
-{
-    public static SkillDto FromEntity(Skill s)
-    => new(s.Id, s.Name, s.Category, s.Description, s.UserSkills.Count, s.OrganizationId, s.CreatedBy);
-}
-
-public record CreateSkillDto(
-    string Name,
-    string Category,
-    string Description,
-    Guid? OrganizationId = null);
-
-public record UpdateSkillDto(
-    string Name,
-    string Category,
-    string Description);

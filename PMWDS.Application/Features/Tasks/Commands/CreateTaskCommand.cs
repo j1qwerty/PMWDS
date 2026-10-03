@@ -13,13 +13,13 @@ public class CreateTaskCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IAuditService _audit;
     private readonly INotificationService _notifications;
-    private readonly IAIService _ai;
+    private readonly IPredictionService _ai;
     public CreateTaskCommandHandler(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
     IAuditService audit,
     INotificationService notifications,
-    IAIService ai)
+    IPredictionService ai)
     {
         _uow = uow;
         _currentUser = currentUser;
@@ -60,16 +60,20 @@ public class CreateTaskCommandHandler
 
         if (assigneeIds.Count > 0)
         {
+            var assignedBy = ParseUserId(_currentUser.UserId, "current user");
+            var parsedAssigneeIds = assigneeIds
+                .Select(id => ParseUserId(id, "assignee"))
+                .ToList();
             task.AssignTo(
-            assigneeIds[0],
-            _currentUser.UserId ?? "system");
-            foreach (var assigneeId in assigneeIds)
+            parsedAssigneeIds[0],
+            assignedBy);
+            foreach (var assigneeId in parsedAssigneeIds)
             {
                 await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, assigneeId), ct);
                 await _notifications
                 .SendTaskAssignmentAlertAsync(
                 task.Id,
-                assigneeId, ct);
+                assigneeId.ToString(), ct);
             }
         }
         await _uow.SaveChangesAsync(ct);
@@ -93,4 +97,9 @@ public class CreateTaskCommandHandler
         ct: ct);
         return TaskDto.FromEntity(task);
     }
+
+    private static Guid ParseUserId(string? userId, string fieldName)
+        => Guid.TryParse(userId, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException($"Invalid {fieldName} id.");
 }

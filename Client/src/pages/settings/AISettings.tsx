@@ -298,7 +298,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
   };
 
   // ── Derived ──
-  const defaultProvider = aiSettings?.defaultProvider ?? "OpenAI";
+  const defaultProvider = aiSettings?.defaultProvider ?? "OpenRouter";
   const defaultModelStr = aiSettings?.defaultModel ?? "";
   const currentProvider = aiSettings?.providers.find(p => p.provider === defaultProvider);
   const defaultProviderDisplay = currentProvider?.displayName ?? defaultProvider;

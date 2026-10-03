@@ -92,7 +92,7 @@ public partial class AIService
             insights.Add($"{highBurnout.Count()} team member(s) show high burnout risk.");
         }
 
-        if (_chat.IsConfigured())
+        if (await _chat.IsConfiguredAsync(ct: ct))
         {
             try
             {
@@ -136,7 +136,7 @@ public partial class AIService
             suggestions.Add(new ReallocationSuggestion(
                 task.Id,
                 task.Title,
-                task.AssignedToUserId ?? string.Empty,
+                task.AssignedToUserId?.ToString() ?? string.Empty,
                 string.Empty,
                 recommendation.RecommendedUserId,
                 recommendation.RecommendedUserName,
@@ -172,7 +172,7 @@ public partial class AIService
         string userContext,
         CancellationToken ct = default)
     {
-        if (!_chat.IsConfigured())
+        if (!await _chat.IsConfiguredAsync(ct: ct))
         {
             throw new InvalidOperationException(
                 "AI provider is not configured. Please configure AI settings first.");

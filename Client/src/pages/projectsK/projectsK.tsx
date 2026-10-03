@@ -18,7 +18,7 @@ import {
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { formatMoney } from "../../ui";
-import DashboardStats from "../dashboard/dashbaordStats";
+import DashboardStats from "../dashboard/dashboardStats";
 import {
   ConfirmDeleteModal,
   ProjectFormModal,
@@ -37,7 +37,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   category: "Monitoring",
   plannedStartDate: new Date().toISOString().split("T")[0],
   plannedEndDate: "",
-  plannedBudget: 25000,
+  plannedBudget: 0,
   organizationId: "",
   departmentId: "",
   departmentIds: [],
@@ -47,7 +47,7 @@ const emptyProjectForm = (): ProjectFormState => ({
 
 export function ProjectsKPage() {
   const { auth } = useAuth();
-  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
+  const { refresh: refreshAppData } = useAppData();
   const perm = usePermission();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
   const isSuperAdmin = perm.isSuperAdmin;
@@ -96,10 +96,10 @@ export function ProjectsKPage() {
     setLoading(true);
     try {
       const [projectData, deptData, orgData, userData] = await Promise.all([
-        Promise.resolve(data.projects),
-        Promise.resolve(data.departments),
-        Promise.resolve(data.organizations),
-        Promise.resolve(data.users),
+        api.getProjects(auth.token),
+        api.getDepartments(auth.token),
+        api.getOrganizations(auth.token),
+        api.getUsers(auth.token),
       ]);
       setProjects(projectData);
       setDepartments(deptData);
@@ -133,7 +133,7 @@ export function ProjectsKPage() {
 
   useEffect(() => {
     void loadProjects();
-  }, [auth, data]);
+  }, [auth]);
 
   useEffect(() => {
     if (shouldFilterByOrg && userOrganizationId && !selectedOrgId) {
@@ -152,6 +152,42 @@ export function ProjectsKPage() {
       void refreshProjectDetails(selectedProjectId);
     }
   }, [auth, selectedProjectId]);
+
+  const sortedMilestones = useMemo(() => {
+    if (projectDependencies.length === 0) return projectMilestones;
+    const deps = projectDependencies;
+    const mils = projectMilestones;
+    const milestoneSet = new Set(mils.map(m => m.id));
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    for (const m of mils) {
+      adj.set(m.id, []);
+      inDegree.set(m.id, 0);
+    }
+    for (const dep of deps) {
+      const from = dep.prerequisiteMilestoneId;
+      const to = dep.dependentMilestoneId;
+      if (milestoneSet.has(from) && milestoneSet.has(to)) {
+        adj.get(from)!.push(to);
+        inDegree.set(to, (inDegree.get(to) || 0) + 1);
+      }
+    }
+    const roots = mils.filter(m => inDegree.get(m.id) === 0);
+    const visited = new Set<string>();
+    const orderedIds: string[] = [];
+    const dfs = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      orderedIds.push(id);
+      for (const neighbor of adj.get(id) || []) {
+        if (!visited.has(neighbor)) dfs(neighbor);
+      }
+    };
+    for (const root of roots) dfs(root.id);
+    for (const m of mils) if (!visited.has(m.id)) orderedIds.push(m.id);
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+    return [...mils].sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
+  }, [projectMilestones, projectDependencies]);
 
   const filteredProjects = useMemo(() => {
     let filtered = projects;
@@ -292,7 +328,7 @@ export function ProjectsKPage() {
     [visibleDepartments]
   );
 
-  if (loading || appDataLoading) return <LoadingPage label="Loading workspace..." />;
+  if (loading) return <LoadingPage label="Loading workspace..." />;
 
   return (
     <div>
@@ -410,7 +446,7 @@ export function ProjectsKPage() {
         canManage={canManageProjects}
         onClose={() => setViewProject(null)}
         authToken={auth?.token}
-        milestones={projectMilestones}
+        milestones={sortedMilestones}
         dependencies={projectDependencies}
         onEdit={
           canManageProjects && viewProject

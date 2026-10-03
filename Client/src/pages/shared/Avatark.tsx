@@ -25,8 +25,12 @@ const sizeClass = {
 };
 
 const apiOrigin = (() => {
-  const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v\d+\/?$/, "").replace(/\/$/, "");
-  return base || "http://localhost:5177";
+  const configured = import.meta.env.VITE_API_BASE_URL;
+  // Unset means local development against a separately hosted API.
+  if (!configured) return "http://localhost:5177";
+  // A relative base such as "/api/v1" means the API is served from this same origin; keep it empty
+  // so composed paths stay root-relative instead of pointing at localhost.
+  return configured.replace(/\/api\/v\d+\/?$/, "").replace(/\/$/, "");
 })();
 
 function toAvatarkPerson(person?: AvatarkPerson | null) {

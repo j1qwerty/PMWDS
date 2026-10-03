@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Text.Json;
+using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.Exceptions;
 namespace PMWDS.API.Middleware;
 
@@ -60,13 +61,9 @@ public class ExceptionMiddleware
             message = "An unexpected error occurred.";
         }
         ctx.Response.StatusCode = (int)statusCode;
-        var response = new
-        {
-            StatusCode = (int)statusCode,
-            Message = message,
-            TraceId = ctx.TraceIdentifier,
-            Timestamp = DateTime.UtcNow
-        };
+        var response = ApiResponse<object>.Fail(
+            new ApiError(StatusCodeToCode((int)statusCode), message),
+            ctx.TraceIdentifier);
         await ctx.Response.WriteAsync(
         JsonSerializer.Serialize(response,
         new JsonSerializerOptions
@@ -75,4 +72,14 @@ public class ExceptionMiddleware
         JsonNamingPolicy.CamelCase
         }));
     }
+
+    private static string StatusCodeToCode(int statusCode)
+        => statusCode switch
+        {
+            StatusCodes.Status400BadRequest => "bad_request",
+            StatusCodes.Status401Unauthorized => "unauthorized",
+            StatusCodes.Status404NotFound => "not_found",
+            StatusCodes.Status409Conflict => "conflict",
+            _ => "server_error"
+        };
 }

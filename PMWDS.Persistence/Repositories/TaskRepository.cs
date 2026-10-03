@@ -5,7 +5,7 @@ using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Repositories;
 
 public class TaskRepository
- : BaseRepository<ProjectTask>, ITaskRepository
+ : EfRepository<ProjectTask>, ITaskRepository
 {
     public TaskRepository(ApplicationDbContext ctx)
     : base(ctx) { }
@@ -46,11 +46,12 @@ public class TaskRepository
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
     GetByAssigneeAsync(
-    string userId,
+    Guid userId,
     CancellationToken ct = default)
     => await _dbSet
     .Where(t => (t.AssignedToUserId == userId ||
@@ -65,6 +66,7 @@ public class TaskRepository
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -76,6 +78,7 @@ public class TaskRepository
     && t.Status != Domain.Enums.TaskStatus.Completed
     && t.Status != Domain.Enums.TaskStatus.Cancelled)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -94,6 +97,7 @@ public class TaskRepository
     t.AssignedToUserId == null
     && t.Status == Domain.Enums.TaskStatus.NotStarted)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
     GetHighRiskTasksAsync(
@@ -102,6 +106,7 @@ public class TaskRepository
     => await _dbSet
     .Where(t => t.AIDelayProbability >= threshold)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .OrderByDescending(t => t.AIDelayProbability)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -111,6 +116,7 @@ public class TaskRepository
     .Where(t => t.IsEscalated
     && t.Status != Domain.Enums.TaskStatus.Completed)
     .Include(t => t.Project)
+    .AsSplitQuery()
     .OrderByDescending(t => t.EscalationLevel)
     .ToListAsync(ct);
     public async Task<IEnumerable<ProjectTask>>
@@ -127,6 +133,7 @@ public class TaskRepository
     .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
+    .AsSplitQuery()
     .OrderBy(t => t.DueDate)
     .ToListAsync(ct);
 
@@ -203,6 +210,24 @@ public class TaskRepository
         .Where(d => taskIds.Contains(d.PredecessorTaskId) || taskIds.Contains(d.SuccessorTaskId))
         .ToListAsync(ct);
         _context.TaskDependencies.RemoveRange(dependencies);
+
+        // Utilization certificates link optionally to the task whose delivery they
+        // certify. The link is informational: an approved financial certificate must
+        // outlive the work item it paid for, so it is detached rather than deleted.
+        //
+        // This cannot be left to the database. The TaskId foreign key is ON DELETE SET NULL
+        // on SQLite, but that is impossible on SQL Server - Tasks cascade from Projects,
+        // and Projects already reaches UtilizationCertificates through ProjectDocuments,
+        // so a second cascade path makes SQL Server reject the table (it permits one per
+        // table). Unlinking here means both providers behave identically, and covers every
+        // task-deletion path because all of them funnel through this method.
+        var certificates = await _context.UtilizationCertificates
+        .Where(c => c.TaskId.HasValue && taskIds.Contains(c.TaskId.Value))
+        .ToListAsync(ct);
+        foreach (var certificate in certificates)
+        {
+            certificate.UnlinkTask();
+        }
 
         var tasks = await _dbSet
         .Where(t => taskIds.Contains(t.Id))

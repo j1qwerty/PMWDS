@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import type { Department, User } from "../../../types";
 import { Avatar } from "../../shared";
+import { RoleKey, hasRoleKey } from "../../../permissions";
 
 interface DepartmentUsersModalProps {
   department: Department;
@@ -16,7 +17,7 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
   const orgUsers = useMemo(
     () => allUsers.filter((u) => {
       if (u.isActive === false) return false;
-      if (u.roles?.includes("SuperAdmin")) return false;
+      if (hasRoleKey(u.roleKeys ?? u.roles, RoleKey.SuperAdmin)) return false;
       const userDept = allDepartments.find((d) => d.id === u.departmentId);
       const userOrgId = u.organizationId ??
         userDept?.organizationId ??

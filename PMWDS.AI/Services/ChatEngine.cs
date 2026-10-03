@@ -1,11 +1,13 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -41,7 +43,7 @@ public interface IChatEngine
         string? prompt = null,
         CancellationToken ct = default);
 
-    bool IsConfigured(string? provider = null);
+    Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default);
 
     Task<string> GenerateStructuredReportAsync(
         string systemPrompt,
@@ -60,33 +62,54 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly AISettings _settings;
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _db;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
     // In-memory session history (production: use Redis)
-    private static readonly Dictionary<string, List<ChatMessagePayload>> Sessions = new();
+    private static readonly ConcurrentDictionary<string, List<ChatMessagePayload>> Sessions = new();
 
     // Cached global DB defaults (refreshed per-resolve)
     private string? _globalDefaultProvider;
     private string? _globalDefaultModel;
 
+    private static bool IsOpenRouterModel(string model)
+        => model.Contains('/', StringComparison.Ordinal);
+
+    private static bool IsOpenAiModel(string model)
+        => !model.Contains('/', StringComparison.Ordinal);
+
     public OpenAICompatibleChatEngine(
         HttpClient httpClient,
         IOptions<AISettings> settings,
         IUnitOfWork uow,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        ISensitiveDataProtector sensitiveData)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _uow = uow;
         _db = db;
+        _sensitiveData = sensitiveData;
     }
 
-    public bool IsConfigured(string? provider = null)
+    public async Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default)
     {
-        var config = ResolveEnvironmentProvider(provider);
-        return config.Enabled &&
-               !string.IsNullOrWhiteSpace(config.BaseUrl) &&
-               !string.IsNullOrWhiteSpace(config.ApiKey);
+        try
+        {
+            // Resolve through the database so credentials saved from the Settings
+            // page are honoured, not just environment configuration.
+            return IsUsableProvider(await ResolveProviderAsync(provider, ct));
+        }
+        catch
+        {
+            return false;
+        }
     }
+
+    private static bool IsUsableProvider(ResolvedProviderConfig config)
+        => config.Enabled &&
+           !string.IsNullOrWhiteSpace(config.BaseUrl) &&
+           !string.IsNullOrWhiteSpace(config.ApiKey) &&
+           OutboundUrlGuard.IsAllowedAiProviderBaseUrl(config.ProviderId, config.BaseUrl, out _);
 
     public async Task<IReadOnlyList<AIProviderInfoDto>> GetProvidersAsync(
         CancellationToken ct = default)
@@ -187,40 +210,47 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? model = null,
         CancellationToken ct = default)
     {
-        if (!Sessions.ContainsKey(userId))
-        {
-            Sessions[userId] =
+        var session = Sessions.GetOrAdd(userId, _ =>
             [
                 new ChatMessagePayload(
                     "system",
                     "You are PMWDS AI Assistant, a concise project monitoring expert. " +
                     "Help users with project status, task assignments, risk analysis, and productivity insights.")
-            ];
-        }
-
-        Sessions[userId].Add(new ChatMessagePayload("user", message));
+            ]);
 
         var intent = DetectIntent(message);
         var contextData = await FetchContextData(userId, intent, ct);
-        if (contextData != null)
+        List<ChatMessagePayload> requestMessages;
+        lock (session)
         {
-            Sessions[userId].Add(new ChatMessagePayload(
-                "system",
-                $"System Context: {JsonSerializer.Serialize(contextData, JsonOptions)}"));
+            session.Add(new ChatMessagePayload("user", message));
+            if (contextData != null)
+            {
+                session.Add(new ChatMessagePayload(
+                    "system",
+                    $"System Context: {JsonSerializer.Serialize(contextData, JsonOptions)}"));
+            }
+
+            requestMessages = session.ToList();
         }
 
         var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
-        var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, Sessions[userId], ct);
+        var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, requestMessages, ct);
 
-        Sessions[userId].Add(new ChatMessagePayload("assistant", reply));
-
-        if (Sessions[userId].Count > 22)
+        lock (session)
         {
-            Sessions[userId] = Sessions[userId]
-                .Take(1)
-                .Concat(Sessions[userId].TakeLast(20))
-                .ToList();
+            session.Add(new ChatMessagePayload("assistant", reply));
+
+            if (session.Count > 22)
+            {
+                var trimmed = session
+                    .Take(1)
+                    .Concat(session.TakeLast(20))
+                    .ToList();
+                session.Clear();
+                session.AddRange(trimmed);
+            }
         }
 
         return new ChatResponseDto(
@@ -237,7 +267,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? model = null,
         CancellationToken ct = default)
     {
-        if (!IsConfigured(provider))
+        if (!await IsConfiguredAsync(provider, ct))
         {
             return "AI summary not available.";
         }
@@ -262,7 +292,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string userContext,
         CancellationToken ct = default)
     {
-        if (!IsConfigured())
+        if (!await IsConfiguredAsync(null, ct))
         {
             throw new InvalidOperationException(
                 "AI provider is not configured. Please configure AI settings first.");
@@ -287,7 +317,11 @@ public class OpenAICompatibleChatEngine : IChatEngine
         IReadOnlyList<ChatMessagePayload> messages,
         CancellationToken ct)
     {
-        var body = new ChatCompletionRequest(model, messages, Stream: false);
+        var body = new ChatCompletionRequest(
+            model,
+            messages,
+            Stream: false,
+            MaxTokens: _settings.MaxOutputTokens > 0 ? _settings.MaxOutputTokens : null);
         var response = await SendAsync(
             HttpMethod.Post,
             provider,
@@ -303,9 +337,24 @@ public class OpenAICompatibleChatEngine : IChatEngine
         }
 
         var content = ExtractAssistantText(responseText);
-        return string.IsNullOrWhiteSpace(content)
-            ? "The provider returned an empty response."
-            : content.Trim();
+
+        // Do not return a prose placeholder here. Callers parse the result as JSON, so a sentence
+        // like "The provider returned an empty response." surfaces as
+        // "'T' is an invalid start of a value", which hides the real cause. Reasoning models can
+        // return an empty content field when reasoning consumes the whole token budget, so throw
+        // with the reason attached and let the caller degrade with a meaningful message.
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            var finishReason = TryGetFinishReason(responseText) ?? "unknown";
+            var reasoningLength = TryGetReasoningLength(responseText);
+            throw new InvalidOperationException(
+                $"Provider '{provider.ProviderId}' returned no content (finish_reason={finishReason}" +
+                (reasoningLength is { } len ? $", reasoning tokens produced {len} characters" : "") +
+                "). For a reasoning model this usually means the token budget was consumed before the " +
+                "answer was written. Increase AI:MaxOutputTokens or switch to a non-reasoning model.");
+        }
+
+        return content.Trim();
     }
 
     private async Task<HttpResponseMessage> SendAsync(
@@ -355,10 +404,13 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
         if (stored == null)
         {
+            EnsureAllowedProviderUrl(environmentProvider);
             return environmentProvider;
         }
 
-        return stored.UseEnvironmentDefault
+        var storedApiKey = _sensitiveData.Unprotect(stored.ApiKey);
+
+        var resolved = stored.UseEnvironmentDefault
             ? environmentProvider with
             {
                 Enabled = stored.Enabled,
@@ -368,10 +420,12 @@ public class OpenAICompatibleChatEngine : IChatEngine
             : environmentProvider with
             {
                 Enabled = stored.Enabled,
-                ApiKey = string.IsNullOrWhiteSpace(stored.ApiKey) ? environmentProvider.ApiKey : stored.ApiKey,
+                ApiKey = string.IsNullOrWhiteSpace(storedApiKey) ? environmentProvider.ApiKey : storedApiKey,
                 BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
                 DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
             };
+        EnsureAllowedProviderUrl(resolved);
+        return resolved;
     }
 
     private ResolvedProviderConfig ResolveEnvironmentProvider(string? provider)
@@ -425,24 +479,43 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string? requestedModel,
         bool providerExplicitlySelected)
     {
-        var envDefault = !string.IsNullOrWhiteSpace(_globalDefaultModel)
+        if (!string.IsNullOrWhiteSpace(requestedModel))
+        {
+            return requestedModel;
+        }
+
+        if (providerExplicitlySelected && !string.IsNullOrWhiteSpace(provider.DefaultModel))
+        {
+            return provider.DefaultModel;
+        }
+
+        // The global default model is only valid for the provider it belongs to.
+        // Reusing an OpenAI model id against OpenRouter (or vice versa) makes the
+        // provider reject the request, so fall back to the provider's own default.
+        var globalDefault = !string.IsNullOrWhiteSpace(_globalDefaultModel)
             ? _globalDefaultModel
             : _settings.DefaultModel;
 
-        var model = string.IsNullOrWhiteSpace(requestedModel)
-            ? (providerExplicitlySelected || string.IsNullOrWhiteSpace(envDefault)
-                ? provider.DefaultModel
-                : envDefault)
-            : requestedModel;
-
-        if (string.IsNullOrWhiteSpace(model))
+        if (!string.IsNullOrWhiteSpace(globalDefault) && ModelBelongsToProvider(globalDefault, provider.ProviderId))
         {
-            throw new InvalidOperationException(
-                $"No default model is configured for provider '{provider.ProviderId}'.");
+            return globalDefault;
         }
 
-        return model;
+        if (!string.IsNullOrWhiteSpace(provider.DefaultModel))
+        {
+            return provider.DefaultModel;
+        }
+
+        throw new InvalidOperationException(
+            $"No default model is configured for provider '{provider.ProviderId}'.");
     }
+
+    private static bool ModelBelongsToProvider(string model, string providerId)
+        => providerId.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase)
+            ? IsOpenRouterModel(model)
+            : providerId.Equals("OpenAI", StringComparison.OrdinalIgnoreCase)
+                ? IsOpenAiModel(model)
+                : true;
 
     private static string DetectIntent(string message)
     {
@@ -536,6 +609,60 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private static string CombineUrl(string baseUrl, string path)
         => $"{baseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
 
+    private static void EnsureAllowedProviderUrl(ResolvedProviderConfig provider)
+    {
+        if (!OutboundUrlGuard.IsAllowedAiProviderBaseUrl(provider.ProviderId, provider.BaseUrl, out var error))
+        {
+            throw new InvalidOperationException(error);
+        }
+    }
+
+    /// <summary>Reads choices[0].finish_reason for diagnostics. Returns null if absent.</summary>
+    private static string? TryGetFinishReason(string responseText)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseText);
+            if (document.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.ValueKind == JsonValueKind.Array &&
+                choices.GetArrayLength() > 0 &&
+                choices[0].TryGetProperty("finish_reason", out var reason))
+            {
+                return reason.GetString();
+            }
+        }
+        catch
+        {
+            // Diagnostics only; never let this mask the original failure.
+        }
+
+        return null;
+    }
+
+    /// <summary>Length of the reasoning field, used to explain empty completions.</summary>
+    private static int? TryGetReasoningLength(string responseText)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseText);
+            if (document.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.ValueKind == JsonValueKind.Array &&
+                choices.GetArrayLength() > 0 &&
+                choices[0].TryGetProperty("message", out var message) &&
+                message.TryGetProperty("reasoning", out var reasoning) &&
+                reasoning.ValueKind == JsonValueKind.String)
+            {
+                return reasoning.GetString()?.Length;
+            }
+        }
+        catch
+        {
+            // Diagnostics only.
+        }
+
+        return null;
+    }
+
     private static string? ExtractAssistantText(string responseText)
     {
         using var document = JsonDocument.Parse(responseText);
@@ -592,7 +719,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private sealed record ChatCompletionRequest(
         string Model,
         IReadOnlyList<ChatMessagePayload> Messages,
-        bool Stream);
+        bool Stream,
+        [property: JsonPropertyName("max_tokens")] int? MaxTokens = null);
 
     private sealed record ChatMessagePayload(
         string Role,

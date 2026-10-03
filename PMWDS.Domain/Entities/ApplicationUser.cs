@@ -15,6 +15,10 @@ public class ApplicationUser : AuditableEntity
     public string? PasswordHash { get; private set; }
     public string? PasswordResetTokenHash { get; private set; }
     public DateTime? PasswordResetTokenExpiresAt { get; private set; }
+    public string? RefreshTokenHash { get; private set; }
+    public DateTime? RefreshTokenExpiresAt { get; private set; }
+    public DateTime? RefreshTokenRevokedAt { get; private set; }
+    public int AccessTokenVersion { get; private set; }
     // Organization
     public Guid? OrganizationId { get; private set; }
     public Guid? DepartmentId { get; private set; }
@@ -37,8 +41,11 @@ public class ApplicationUser : AuditableEntity
     _skills.AsReadOnly();
     public IReadOnlyCollection<TaskAssignment> TaskAssignments =>
     _taskAssignments.AsReadOnly();
+    public IReadOnlyCollection<TimeEntry> TimeEntries =>
+    _timeEntries.AsReadOnly();
     private readonly List<UserSkill> _skills = new();
     private readonly List<TaskAssignment> _taskAssignments = new();
+    private readonly List<TimeEntry> _timeEntries = new();
     protected ApplicationUser() { }
     public static ApplicationUser Create(
     string email,
@@ -77,6 +84,15 @@ public class ApplicationUser : AuditableEntity
         }
     }
     public void AssignToDepartment(Guid departmentId) => DepartmentId = departmentId;
+    public void UpdateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new ArgumentException("Email is required.", nameof(email));
+        }
+
+        Email = email.ToLower().Trim();
+    }
     public void AssignToOrganization(Guid organizationId) => OrganizationId = organizationId;
     public void ClearPrimaryDepartment() => DepartmentId = null;
     public void ClearOrganization() => OrganizationId = null;
@@ -105,6 +121,7 @@ public class ApplicationUser : AuditableEntity
         PasswordHash = passwordHash;
         PasswordResetTokenHash = null;
         PasswordResetTokenExpiresAt = null;
+        RevokeAllTokens();
     }
     public void SetPasswordResetToken(string tokenHash, DateTime expiresAtUtc)
     {
@@ -116,6 +133,38 @@ public class ApplicationUser : AuditableEntity
         && PasswordResetTokenHash == tokenHash
         && PasswordResetTokenExpiresAt.HasValue
         && PasswordResetTokenExpiresAt.Value >= DateTime.UtcNow;
+    public void SetRefreshToken(string tokenHash, DateTime expiresAtUtc)
+    {
+        RefreshTokenHash = tokenHash;
+        RefreshTokenExpiresAt = expiresAtUtc;
+        RefreshTokenRevokedAt = null;
+    }
+    public bool IsRefreshTokenValid(string tokenHash)
+        => IsActive
+        && !string.IsNullOrWhiteSpace(RefreshTokenHash)
+        && RefreshTokenHash == tokenHash
+        && RefreshTokenExpiresAt.HasValue
+        && RefreshTokenExpiresAt.Value >= DateTime.UtcNow
+        && RefreshTokenRevokedAt == null;
+    public void RevokeRefreshToken()
+    {
+        if (string.IsNullOrWhiteSpace(RefreshTokenHash) || RefreshTokenRevokedAt != null)
+        {
+            return;
+        }
+
+        RefreshTokenRevokedAt = DateTime.UtcNow;
+    }
+    public void RevokeAllTokens()
+    {
+        RevokeRefreshToken();
+        AccessTokenVersion++;
+    }
+    public new void Deactivate()
+    {
+        base.Deactivate();
+        RevokeAllTokens();
+    }
     public void SetProfile(UserProfile profile)
     {
         Profile = profile;

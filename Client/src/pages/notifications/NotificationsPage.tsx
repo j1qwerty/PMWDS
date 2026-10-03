@@ -29,7 +29,10 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 export function NotificationsPage() {
   const { auth } = useAuth();
   const perm = usePermission();
-  const canConfigure = perm.hasAny(PERMISSION_GROUPS.notification.template, PERMISSION_GROUPS.notification.rule);
+  // Templates and Alert Rules are SuperAdmin-only. Keying this off the
+  // superadmin role (rather than the template/rule permissions) hides the
+  // stat cards, the tabs, and the loaders for every other role.
+  const canConfigure = perm.isSuperAdmin;
   const canBroadcast = perm.has(PERMISSION_GROUPS.notification.broadcast);
 
   const [items, setItems] = useState<NotificationItem[]>([]);

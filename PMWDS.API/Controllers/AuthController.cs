@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -25,17 +27,21 @@ public class AuthController : BaseApiController
     private readonly JwtSettings _jwt;
     private readonly EmailSettings _email;
     private readonly IEmailService _emailService;
+    private readonly ILoginLockoutService _loginLockout;
 
     public AuthController(
+        IMediator mediator,
         IUnitOfWork uow,
         IOptions<JwtSettings> jwt,
         IOptions<EmailSettings> email,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILoginLockoutService loginLockout) : base(mediator)
     {
         _uow = uow;
         _jwt = jwt.Value;
         _email = email.Value;
         _emailService = emailService;
+        _loginLockout = loginLockout;
     }
 
     [AllowAnonymous]
@@ -44,12 +50,23 @@ public class AuthController : BaseApiController
         [FromBody] LoginRequest req,
         CancellationToken ct)
     {
+        // Check if account is temporarily locked out due to too many failed attempts
+        if (await _loginLockout.IsLockedOutAsync(req.Email))
+        {
+            return StatusCode(429, new
+            {
+                Message = "Account temporarily locked due to too many failed login attempts. Try again later.",
+                LockedOut = true
+            });
+        }
+
         var user = await _uow.Users.GetByEmailAsync(req.Email, ct);
         var passwordVerification = user == null
             ? PasswordVerificationResult.Failed
             : VerifyPassword(user, req.Password);
         if (user == null || passwordVerification == PasswordVerificationResult.Failed)
         {
+            await _loginLockout.RecordFailureAsync(req.Email);
             return Unauthorized(new { Message = "Invalid credentials." });
         }
 
@@ -58,7 +75,11 @@ public class AuthController : BaseApiController
             return Unauthorized(new { Message = "Your account has been deactivated. Please contact your administrator." });
         }
 
-        var roles = UserRoleResolver.Resolve(user);
+        // Clear failed login attempts on successful authentication
+        await _loginLockout.ResetAsync(req.Email);
+
+        var roles = UserRoleResolver.ResolveNames(user);
+        var roleKeys = UserRoleResolver.ResolveKeys(user);
         var permissions = ResolvePermissions(user);
         if (passwordVerification == PasswordVerificationResult.SuccessRehashNeeded)
         {
@@ -66,7 +87,8 @@ public class AuthController : BaseApiController
             await _uow.SaveChangesAsync(ct);
         }
 
-        var token = GenerateToken(user, roles, permissions);
+        var (refreshToken, refreshTokenExpiresAt) = IssueRefreshToken(user);
+        var token = GenerateToken(user, roleKeys, permissions);
 
         var log = ActivityLog.Create(
             user.Id,
@@ -81,11 +103,14 @@ public class AuthController : BaseApiController
         {
             Token = token,
             Expiry = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes),
+            RefreshToken = refreshToken,
+            RefreshTokenExpiry = refreshTokenExpiresAt,
             UserId = user.Id,
             FullName = user.FullName,
             Email = user.Email,
             ProfilePictureUrl = user.ProfilePictureUrl,
             Roles = roles,
+            RoleKeys = roleKeys,
             Permissions = permissions
         });
     }
@@ -94,9 +119,10 @@ public class AuthController : BaseApiController
     [HttpPost("signup")]
     public async Task<IActionResult> Signup([FromBody] SignupRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
+        string? pwdError = null;
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password) || !IsPasswordValid(req.Password, out pwdError))
         {
-            return BadRequest(new { message = "Email and a password of at least 6 characters are required." });
+            return BadRequest(new { message = pwdError ?? "Email and a valid password are required." });
         }
 
         var email = req.Email.ToLower().Trim();
@@ -105,7 +131,7 @@ public class AuthController : BaseApiController
             return Conflict(new { message = $"A user with email '{email}' already exists." });
         }
 
-        var viewer = (await _uow.Roles.FindAsync(r => r.Name == "Viewer", ct)).FirstOrDefault();
+        var viewer = (await _uow.Roles.FindAsync(r => r.Key == RoleKeys.Viewer || r.Name == "Viewer", ct)).FirstOrDefault();
         if (viewer == null)
         {
             return BadRequest(new { message = "Viewer role was not found." });
@@ -166,9 +192,10 @@ public class AuthController : BaseApiController
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
+        string? resetPwdError = null;
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || !IsPasswordValid(req.NewPassword, out resetPwdError))
         {
-            return BadRequest(new { message = "New password must be at least 6 characters." });
+            return BadRequest(new { message = resetPwdError ?? "New password must meet the complexity requirements." });
         }
 
         var user = await _uow.Users.GetByEmailAsync(req.Email.ToLower().Trim(), ct);
@@ -206,9 +233,10 @@ public class AuthController : BaseApiController
             return BadRequest(new { message = "Current password is incorrect." });
         }
 
-        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
+        string? changePwdError = null;
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || !IsPasswordValid(req.NewPassword, out changePwdError))
         {
-            return BadRequest(new { message = "New password must be at least 6 characters." });
+            return BadRequest(new { message = changePwdError ?? "New password must meet the complexity requirements." });
         }
 
         var newHash = HashPassword(user, req.NewPassword);
@@ -229,27 +257,49 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("refresh")]
-    [Authorize]
-    public async Task<IActionResult> RefreshToken(CancellationToken ct)
+    [AllowAnonymous]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest req, CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userId, out var parsedUserId))
+        if (!Guid.TryParse(req.UserId, out var parsedUserId) || string.IsNullOrWhiteSpace(req.RefreshToken))
         {
             return Unauthorized();
         }
 
         var user = await _uow.Users.GetByIdAsync(parsedUserId, ct);
-        if (user == null)
+        if (user == null || !user.IsRefreshTokenValid(HashToken(req.RefreshToken)))
         {
             return Unauthorized();
         }
 
-        var token = GenerateToken(user, UserRoleResolver.Resolve(user), ResolvePermissions(user));
+        var (refreshToken, refreshTokenExpiresAt) = IssueRefreshToken(user);
+        await _uow.SaveChangesAsync(ct);
+
+        var token = GenerateToken(user, UserRoleResolver.ResolveKeys(user), ResolvePermissions(user));
         return Ok(new
         {
             Token = token,
-            Expiry = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes)
+            Expiry = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes),
+            RefreshToken = refreshToken,
+            RefreshTokenExpiry = refreshTokenExpiresAt
         });
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(userId, out var parsedUserId))
+        {
+            var user = await _uow.Users.GetByIdAsync(parsedUserId, ct);
+            if (user != null)
+            {
+                user.RevokeAllTokens();
+                await _uow.SaveChangesAsync(ct);
+            }
+        }
+
+        return NoContent();
     }
 
     private static PasswordVerificationResult VerifyPassword(ApplicationUser user, string password)
@@ -263,15 +313,7 @@ public class AuthController : BaseApiController
         if (!string.IsNullOrEmpty(user.PasswordHash))
         {
             var hasher = new PasswordHasher<ApplicationUser>();
-            var result = hasher.VerifyHashedPassword(user, user.PasswordHash, normalized);
-            if (result != PasswordVerificationResult.Failed)
-            {
-                return result;
-            }
-
-            return LegacyHashPassword(normalized, user.Id) == user.PasswordHash
-                ? PasswordVerificationResult.SuccessRehashNeeded
-                : PasswordVerificationResult.Failed;
+            return hasher.VerifyHashedPassword(user, user.PasswordHash, normalized);
         }
 
         return PasswordVerificationResult.Failed;
@@ -279,7 +321,7 @@ public class AuthController : BaseApiController
 
     private string GenerateToken(
         ApplicationUser user,
-        IEnumerable<string> roles,
+        IEnumerable<string> roleKeys,
         IEnumerable<string> permissions)
     {
         var claims = new List<Claim>
@@ -288,10 +330,12 @@ public class AuthController : BaseApiController
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
             new("DepartmentId", user.DepartmentId?.ToString() ?? string.Empty),
+            new("token_version", user.AccessTokenVersion.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(roleKeys.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(roleKeys.Select(r => new Claim(RoleKeys.RoleClaimType, r)));
         claims.AddRange(permissions.Select(p => new Claim(PermissionCodes.PermissionClaimType, p)));
 
         var key = new SymmetricSecurityKey(
@@ -320,8 +364,48 @@ public class AuthController : BaseApiController
     private static string HashPassword(ApplicationUser user, string password)
         => new PasswordHasher<ApplicationUser>().HashPassword(user, password.Trim());
 
-    private static string LegacyHashPassword(string password, Guid userId)
-        => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(password.Trim() + userId)));
+    private (string Token, DateTime ExpiresAtUtc) IssueRefreshToken(ApplicationUser user)
+    {
+        var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(64));
+        var expiresAt = DateTime.UtcNow.AddDays(Math.Max(_jwt.RefreshTokenDays, 1));
+        user.SetRefreshToken(HashToken(token), expiresAt);
+        return (token, expiresAt);
+    }
+
+    /// <summary>
+    /// Validates password meets complexity requirements:
+    /// minimum 10 characters, at least one uppercase, one lowercase, one digit, one special character.
+    /// </summary>
+    private static bool IsPasswordValid(string password, out string? error)
+    {
+        if (password.Length < 10)
+        {
+            error = "Password must be at least 10 characters long.";
+            return false;
+        }
+        if (!password.Any(char.IsUpper))
+        {
+            error = "Password must contain at least one uppercase letter.";
+            return false;
+        }
+        if (!password.Any(char.IsLower))
+        {
+            error = "Password must contain at least one lowercase letter.";
+            return false;
+        }
+        if (!password.Any(char.IsDigit))
+        {
+            error = "Password must contain at least one digit.";
+            return false;
+        }
+        if (!password.Any(c => !char.IsLetterOrDigit(c)))
+        {
+            error = "Password must contain at least one special character.";
+            return false;
+        }
+        error = null;
+        return true;
+    }
 
     private static string HashToken(string token)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
@@ -337,9 +421,3 @@ public class AuthController : BaseApiController
         </div>
         """;
 }
-
-public record LoginRequest(string Email, string Password);
-public record ChangePasswordRequest(string OldPassword, string NewPassword);
-public record SignupRequest(string FirstName, string LastName, string Email, string Password, string? JobTitle);
-public record ForgotPasswordRequest(string Email);
-public record ResetPasswordRequest(string Email, string Token, string NewPassword);

@@ -4,7 +4,7 @@ namespace PMWDS.Domain.Entities;
 public class TaskAssignment : BaseEntity
 {
     public Guid TaskId { get; private set; }
-    public string UserId { get; private set; } = string.Empty;
+    public Guid UserId { get; private set; }
     public DateTime AssignedAt { get; private set; }
     public DateTime? ReleasedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -16,7 +16,7 @@ public class TaskAssignment : BaseEntity
     public ApplicationUser? User { get; private set; }
     protected TaskAssignment() { }
     public static TaskAssignment Create(
-    Guid taskId, string userId,
+    Guid taskId, Guid userId,
     double aiMatchScore = 0,
     string? aiRationale = null,
     bool isAIRecommended = false)

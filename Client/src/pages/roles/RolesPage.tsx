@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
-import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { PermissionRecord, RoleRecord } from "../../types";
+import { roleDisplayName } from "../../permissions";
 import {
   AnimatedBackground,
   GlassCard,
@@ -25,14 +25,13 @@ import { PermissionFormModal } from "./PermissionFormModal";
 
 export function RolesPage() {
   const { auth } = useAuth();
-  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
   const canManageRoles = perm.has(PERMISSION_GROUPS.role.manage);
   const canManagePermissions = perm.has(PERMISSION_GROUPS.permission.manage);
 
   const userMaxLevel = useMemo(() => {
-    if (!auth?.roles?.length) return 0;
-    return Math.max(...auth.roles.map((r) => ROLE_LEVELS[r] ?? 0));
+    if (!auth?.roleKeys?.length) return 0;
+    return Math.max(...auth.roleKeys.map((r) => ROLE_LEVELS[r] ?? 0));
   }, [auth]);
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
@@ -76,12 +75,19 @@ export function RolesPage() {
   const loadData = () => {
     if (!auth) return;
     setLoading(true);
-    setRoles(data.roles);
-    api.getPermissions(auth.token).then(setPermissions).catch(() => setPermissions(data.permissions));
-    setLoading(false);
+    Promise.all([
+      api.getRoles(auth.token),
+      api.getPermissions(auth.token),
+    ])
+      .then(([roleData, permissionData]) => {
+        setRoles(roleData);
+        setPermissions(permissionData);
+      })
+      .catch((e) => addToast(`Error: ${e instanceof Error ? e.message : "Failed to load roles"}`, "error"))
+      .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, [auth, data]);
+  useEffect(() => { loadData(); }, [auth]);
 
   const handleRoleSubmit = async (payload: Record<string, unknown>) => {
     if (!auth) return;
@@ -94,7 +100,7 @@ export function RolesPage() {
         addToast("Role created successfully.");
       }
       setRoleModal({ open: false });
-      await refreshAppData();
+      loadData();
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
@@ -111,7 +117,7 @@ export function RolesPage() {
         addToast("Permission created successfully.");
       }
       setPermissionModal({ open: false });
-      await refreshAppData();
+      loadData();
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
     }
@@ -127,13 +133,13 @@ export function RolesPage() {
       }
       addToast(`${deleteConfirm.type === "role" ? "Role" : "Permission"} deleted.`);
       setDeleteConfirm({ open: false, type: "role", id: "", name: "" });
-      await refreshAppData();
+      loadData();
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
     }
   };
 
-  if (loading || appDataLoading) return <LoadingPage label="Loading roles and permissions..." />;
+  if (loading) return <LoadingPage label="Loading roles and permissions..." />;
 
   return (
     <div>
@@ -187,7 +193,7 @@ export function RolesPage() {
           <RolesTable
             roles={visibleRoles}
             onEdit={(role) => setRoleModal({ open: true, editRole: role })}
-            onDelete={(role) => setDeleteConfirm({ open: true, type: "role", id: role.id, name: role.name })}
+            onDelete={(role) => setDeleteConfirm({ open: true, type: "role", id: role.id, name: roleDisplayName(role.name) })}
             onCreate={() => setRoleModal({ open: true })}
             isAdmin={canManageRoles}
           />

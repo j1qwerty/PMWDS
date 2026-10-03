@@ -10,11 +10,11 @@ public interface IAIModelTrainingJob
 
 public class AIModelTrainingJob : IAIModelTrainingJob
 {
-    private readonly IAIService _ai;
+    private readonly IModelManagementService _ai;
     private readonly ILogger<AIModelTrainingJob> _logger;
 
     public AIModelTrainingJob(
-        IAIService ai,
+        IModelManagementService ai,
         ILogger<AIModelTrainingJob> logger)
     {
         _ai = ai;

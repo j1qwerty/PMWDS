@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FiAlertTriangle, FiClock, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
 import { ModalOverlay, useToast, AvatarStack, PriorityBadge } from "..";
-import { StatusBadgeMinimal } from "../../shared/StatusBadgeMininmal";
+import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
 import { ProgressStatusEditor } from "../../nested/components/ProgressStatusEditor";
 import { InfoChip } from "../../nested/components/InfoChip";
 import { priorities } from "../../constants";
@@ -186,6 +186,7 @@ export function TaskEditModal({
                       : 'text-slate-400 hover:bg-amber-50 hover:text-amber-600'
                   }`}
                   title="Escalate task"
+                  aria-label="Escalate task"
                 >
                   <FiAlertTriangle className="w-4 h-4 pointer-events-none" />
                 </button>
@@ -195,6 +196,7 @@ export function TaskEditModal({
                 disabled={isDeleting}
                 className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                 title="Delete task"
+                aria-label="Delete task"
               >
                 <FiTrash2 className="w-4 h-4 pointer-events-none" />
               </button>

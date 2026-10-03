@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import {
   LoadingPage,
   useNavHeader,
@@ -18,7 +19,7 @@ export function ProjectDependenciesPage() {
   const { setNavHeader } = useNavHeader();
   const { addToast } = useToast();
 
-  const canManage = perm.isSuperAdmin || perm.roles.includes("Director");
+  const canManage = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
 
   useEffect(() => {
     if (ws.project) {

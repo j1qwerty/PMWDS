@@ -26,21 +26,41 @@ public class JwtSettings
     public string Secret { get; set; } = string.Empty;
     public string Issuer { get; set; } = string.Empty;
     public string Audience { get; set; } = string.Empty;
-    public int ExpiryMinutes { get; set; } = 60;
+    public int ExpiryMinutes { get; set; } = 30;
+    public int RefreshTokenDays { get; set; } = 14;
+}
+
+public class SecurityValidationSettings
+{
+    public bool ValidateSecretsOnStartup { get; set; } = true;
 }
 
 public class AISettings
 {
     public string OpenAIApiKey { get; set; } = string.Empty;
     public string OpenAIModel { get; set; } = "gpt-4o";
-    public string DefaultProvider { get; set; } = "OpenAI";
-    public string DefaultModel { get; set; } = string.Empty;
+    public string DefaultProvider { get; set; } = "OpenRouter";
+    public string DefaultModel { get; set; } = "nvidia/nemotron-3-ultra-550b-a55b:free";
     public string AppName { get; set; } = "PMWDS";
     public string AppUrl { get; set; } = "http://localhost:5177";
     public string MLModelPath { get; set; } = string.Empty;
     public bool UseLocalModel { get; set; } = false;
     public double RiskThreshold { get; set; } = 0.7;
     public int TrainingCronHour { get; set; } = 2; // 2 AM
+
+    /// <summary>
+    /// Overall timeout for provider calls. The default HttpClient timeout is
+    /// 100s, which is not enough for large structured report completions on a
+    /// large model such as the 550B default.
+    /// </summary>
+    public int RequestTimeoutSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// Caps the completion length. Must be large enough to hold a complete
+    /// JSON report body; if the cap truncates the response mid-object the
+    /// JSON will not parse and the report falls back.
+    /// </summary>
+    public int MaxOutputTokens { get; set; } = 16000;
     public AIProviderOptions OpenAI { get; set; } = new()
     {
         Enabled = true,
@@ -49,9 +69,9 @@ public class AISettings
     };
     public AIProviderOptions OpenRouter { get; set; } = new()
     {
-        Enabled = false,
+        Enabled = true,
         BaseUrl = "https://openrouter.ai/api/v1",
-        DefaultModel = "openai/gpt-4o-mini"
+        DefaultModel = "nvidia/nemotron-3-ultra-550b-a55b:free"
     };
 }
 
@@ -73,11 +93,14 @@ public class HangfireSettings
 
 public class DatabaseSettings
 {
-    public bool EnableSqliteFallback { get; set; } = true;
-    public bool EnableMySqlFallback { get; set; } = true;
     public bool ForceSqlite { get; set; } = false;
-    public string MySqlConnectionString { get; set; } = string.Empty;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+
+    /// <summary>
+    /// Permits SQLite outside Development. Off by default so Production still demands SQL Server
+    /// unless a deployment deliberately opts in (single-instance hosting, no Hangfire).
+    /// </summary>
+    public bool AllowSqliteInProduction { get; set; } = false;
 }
 
 public class LocalFileStorageSettings
@@ -85,10 +108,13 @@ public class LocalFileStorageSettings
     public string BasePath { get; set; } = string.Empty;
     public string AvatarsPath { get; set; } = "avatars";
     public string DocumentsPath { get; set; } = "documents";
-    public string FullAvatarsPath => string.IsNullOrWhiteSpace(BasePath)
-        ? Path.Combine(AppContext.BaseDirectory, "App_Data", AvatarsPath)
-        : Path.Combine(BasePath, AvatarsPath);
-    public string FullDocumentsPath => string.IsNullOrWhiteSpace(BasePath)
-        ? Path.Combine(AppContext.BaseDirectory, "App_Data", DocumentsPath)
-        : Path.Combine(BasePath, DocumentsPath);
+
+    // Resolve relative BasePath against AppContext.BaseDirectory so callers never get a
+    // working-directory-dependent path (systemd runs with a different working directory).
+    // Empty BasePath keeps the historical App_Data default.
+    private string ResolvedBasePath =>
+        StoragePathResolver.Resolve(BasePath, AppContext.BaseDirectory, "App_Data");
+
+    public string FullAvatarsPath => Path.Combine(ResolvedBasePath, AvatarsPath);
+    public string FullDocumentsPath => Path.Combine(ResolvedBasePath, DocumentsPath);
 }

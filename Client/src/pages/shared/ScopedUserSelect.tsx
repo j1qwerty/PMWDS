@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { User } from "../../types";
 import { Avatar } from "./Avatar";
+import { RoleKey, hasRoleKey } from "../../permissions";
 
 type ScopedUserSelectProps = {
   users: User[];
@@ -37,7 +38,7 @@ export function ScopedUserSelect({
     const term = search.trim().toLowerCase();
     return users.filter((user) => {
       if (!user.isActive) return false;
-      if (hideSuperAdmins && user.roles.includes("SuperAdmin")) return false;
+      if (hideSuperAdmins && hasRoleKey(user.roleKeys ?? user.roles, RoleKey.SuperAdmin)) return false;
       const inOrganization = !organizationId || user.organizationId === organizationId || user.departments?.some((assignment) => assignment.organizationId === organizationId);
       const inDepartment = !departmentId || user.departments?.some((assignment) => assignment.departmentId === departmentId) || user.departmentId === departmentId;
       const matchesSearch = !term ||

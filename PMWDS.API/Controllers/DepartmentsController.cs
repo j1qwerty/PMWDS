@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,17 +18,18 @@ public class DepartmentsController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public DepartmentsController(IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db, ICurrentUserService currentUser)
+    public DepartmentsController(IMediator mediator, IUnitOfWork uow, RoleScopeService scope, ApplicationDbContext db, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _scope = scope;
         _db = db;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var query = await _scope.ScopeDepartmentsAsync(_db.Departments.AsNoTracking(), ct);
@@ -45,7 +48,6 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(id, ct);
@@ -63,7 +65,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/dashboard")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Dashboard(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessDepartmentAsync(id, ct))
@@ -96,7 +98,7 @@ public class DepartmentsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create(
         [FromBody] CreateDepartmentDto dto,
         CancellationToken ct)
@@ -159,15 +161,16 @@ public class DepartmentsController : BaseApiController
             {
                 ["departmentId"] = department.Id,
                 ["departmentName"] = department.Name,
-                ["organizationId"] = organizationId
+                ["organizationId"] = organizationId?.ToString() ?? string.Empty
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Departments, department.Id.ToString(), null, ct);
         return CreatedAtAction(nameof(GetById), new { id = department.Id }, MapDepartment(department));
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateDepartmentDto dto,
@@ -249,11 +252,12 @@ public class DepartmentsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Departments, department.Id.ToString(), null, ct);
         return Ok(MapDepartment(department));
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var department = await _uow.Departments.GetByIdAsync(id, ct);
@@ -271,6 +275,7 @@ public class DepartmentsController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Departments, id.ToString(), null, ct);
         return NoContent();
     }
 
@@ -286,31 +291,3 @@ public class DepartmentsController : BaseApiController
             department.MaxCapacity,
             department.CalculateCapacityUtilization());
 }
-
-public record DepartmentDto(
-    Guid Id,
-    string Name,
-    string Code,
-    string? Description,
-    Guid? OrganizationId,
-    Guid? ParentDepartmentId,
-    string? DepartmentHeadUserId,
-    int MaxCapacity,
-    double CapacityUtilization);
-
-public record CreateDepartmentDto(
-    string Name,
-    string Code,
-    string? Description,
-    Guid? ParentDepartmentId = null,
-    Guid? OrganizationId = null,
-    string? DepartmentHeadUserId = null,
-    int? MaxCapacity = null);
-
-public record UpdateDepartmentDto(
-    string Name,
-    string Code,
-    string? Description,
-    Guid? OrganizationId = null,
-    string? DepartmentHeadUserId = null,
-    int? MaxCapacity = null);

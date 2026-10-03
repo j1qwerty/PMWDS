@@ -33,6 +33,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.AllocationRecommendation> AllocationRecommendations { get; }
     IRepository<Domain.Entities.DelayPrediction> DelayPredictions { get; }
     IRepository<Domain.Entities.ProjectDocument> ProjectDocuments { get; }
+    IRepository<Domain.Entities.UtilizationCertificate> UtilizationCertificates { get; }
     IRepository<Domain.Entities.UserSkill> UserSkills { get; }
     IRepository<Domain.Entities.TaskAssignment> TaskAssignments { get; }
     IRepository<Domain.Entities.TaskComment> TaskComments { get; }
@@ -40,12 +41,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.TaskDependency> TaskDependencies { get; }
     IRepository<Domain.Entities.MilestoneDependency> MilestoneDependencies { get; }
     IRepository<Domain.Entities.TimeEntry> TimeEntries { get; }
-    Task<int> SaveChangesAsync(
-    CancellationToken ct = default);
-    Task BeginTransactionAsync(
-    CancellationToken ct = default);
-    Task CommitTransactionAsync(
-    CancellationToken ct = default);
-    Task RollbackTransactionAsync(
-    CancellationToken ct = default);
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
+    Task BeginTransactionAsync(CancellationToken ct = default);
+    Task CommitTransactionAsync(CancellationToken ct = default);
+    Task RollbackTransactionAsync(CancellationToken ct = default);
 }

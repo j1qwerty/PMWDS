@@ -36,12 +36,14 @@ public class CreateProjectCommandHandler
         ?? throw new NotFoundException(
         "Department", dto.DepartmentId);
         // Validate project manager exists (optional)
+        Guid? projectManagerId = null;
         string? managerName = null;
         if (!string.IsNullOrEmpty(dto.ProjectManagerId))
         {
+           projectManagerId = Guid.Parse(dto.ProjectManagerId);
            var manager = await _uow.Users
            .GetByIdAsync(
-           Guid.Parse(dto.ProjectManagerId), ct)
+           projectManagerId.Value, ct)
            ?? throw new NotFoundException(
            "User", dto.ProjectManagerId);
            managerName = manager.FullName;
@@ -53,7 +55,7 @@ public class CreateProjectCommandHandler
         dto.Category,
         dto.Priority,
         dto.DepartmentId,
-        dto.ProjectManagerId,
+        projectManagerId,
         dto.PlannedStartDate,
         dto.PlannedEndDate,
         dto.PlannedBudget,

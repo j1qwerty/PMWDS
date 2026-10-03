@@ -63,7 +63,7 @@ export function UserSkillsPanel({ users, onMessage, onUpdate }: UserSkillsPanelP
         User Management
       </h3>
 
-      <div className="max-w-md space-y-5">
+      <div className="max-w-[28rem] space-y-5">
         {/* User Selector */}
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">

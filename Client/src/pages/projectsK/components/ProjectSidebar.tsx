@@ -182,7 +182,7 @@ export function ProjectSidebar({
     }}
     title="Back to previous position"
   >
-    <Icon name="arrow-up" size={16} />
+    <Icon name="arrow-down" size={16} />
     <style>{`
       @keyframes bounce-glow {
         0%, 100% { 

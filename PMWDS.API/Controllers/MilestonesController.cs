@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,20 +22,21 @@ public class MilestonesController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly INotificationService _notifications;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public MilestonesController(IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser)
+    public MilestonesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _db = db;
         _scope = scope;
         _notifications = notifications;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     // ── Milestone Dependency Endpoints ──────────────────────────────────
 
     [HttpGet("by-project/{projectId:guid}/dependencies")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependenciesByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -47,9 +50,16 @@ public class MilestonesController : BaseApiController
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            depsQuery = depsQuery.Where(d =>
-                (d.PrerequisiteMilestone.DepartmentId.HasValue && departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
-                (d.DependentMilestone.DepartmentId.HasValue && departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
+            {
+                depsQuery = depsQuery.Where(d =>
+                    (d.PrerequisiteMilestone != null &&
+                        d.PrerequisiteMilestone.DepartmentId.HasValue &&
+                        departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
+                    (d.DependentMilestone != null &&
+                        d.DependentMilestone.DepartmentId.HasValue &&
+                        departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+            }
         }
 
         var deps = await depsQuery.ToListAsync(ct);
@@ -57,7 +67,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost("dependencies")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> CreateDependency([FromBody] CreateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
@@ -131,11 +141,13 @@ public class MilestonesController : BaseApiController
             ProjectId: dto.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, dep.Id.ToString(), dto.ProjectId, ct);
+
         return Ok(MilestoneDependencyDto.FromEntity(loaded));
     }
 
     [HttpPut("dependencies/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateDependency(Guid id, [FromBody] UpdateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -176,11 +188,13 @@ public class MilestonesController : BaseApiController
             ProjectId: dep.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), dep.ProjectId, ct);
+
         return Ok(MilestoneDependencyDto.FromEntity(dep));
     }
 
     [HttpDelete("dependencies/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteDependency(Guid id, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -213,11 +227,12 @@ public class MilestonesController : BaseApiController
             ProjectId: projectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), projectId, ct);
+
         return NoContent();
     }
 
     [HttpGet("{id:guid}/dependency-status")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependencyStatus(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -240,7 +255,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -257,11 +271,7 @@ public class MilestonesController : BaseApiController
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            var projectDeptId = await _db.Projects
-                .Where(p => p.Id == projectId)
-                .Select(p => p.DepartmentId)
-                .FirstOrDefaultAsync(ct);
-            if (!departmentIds.Contains(projectDeptId))
+            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
             {
                 query = query.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
             }
@@ -274,7 +284,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -299,7 +308,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create([FromBody] CreateMilestoneDto dto, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
@@ -331,11 +340,15 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        // Milestone counts roll up into the project, so both scopes must refetch.
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = milestone.Id }, MilestoneDto.FromEntity(milestone));
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMilestoneDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -394,11 +407,14 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpPatch("{id:guid}/complete")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct, [FromQuery] bool forceComplete = false)
     {
         var milestone = await _db.Milestones
@@ -461,11 +477,14 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetMilestoneStatusDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -539,11 +558,14 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
@@ -587,6 +609,11 @@ public class MilestonesController : BaseApiController
             ProjectId: projectId
         );
 
+        // Deleting a milestone cascades its subtasks.
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
+
         return NoContent();
     }
 
@@ -616,8 +643,17 @@ public class MilestonesController : BaseApiController
             .Where(p => projectIds.Contains(p.Id) && departmentIds.Contains(p.DepartmentId))
             .Select(p => p.Id)
             .ToListAsync(ct);
+        var primaryDeptAllowedProjectIds = new HashSet<Guid>();
+        foreach (var projectId in primaryDeptProjectIds)
+        {
+            if (await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
+            {
+                primaryDeptAllowedProjectIds.Add(projectId);
+            }
+        }
+
         return milestones
-            .Where(m => primaryDeptProjectIds.Contains(m.ProjectId) ||
+            .Where(m => primaryDeptAllowedProjectIds.Contains(m.ProjectId) ||
                         (m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value)))
             .ToList();
     }
@@ -632,11 +668,7 @@ public class MilestonesController : BaseApiController
         var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
         if (milestone.DepartmentId.HasValue && departmentIds.Contains(milestone.DepartmentId.Value))
             return true;
-        var projectDeptId = await _db.Projects
-            .Where(p => p.Id == milestone.ProjectId)
-            .Select(p => p.DepartmentId)
-            .FirstOrDefaultAsync(ct);
-        return departmentIds.Contains(projectDeptId);
+        return await _scope.CanAccessProjectAsPrimaryDepartmentAsync(milestone.ProjectId, ct);
     }
 
     private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)
@@ -702,34 +734,3 @@ public class MilestonesController : BaseApiController
         return project ?? "Unknown Project";
     }
 }
-
-public record SetMilestoneStatusDto(string Status, bool ForceComplete = false);
-
-public record CreateMilestoneDto(
-    Guid ProjectId,
-    string Name,
-    string Description,
-    DateTime DueDate,
-    int Order,
-    Guid? DepartmentId = null,
-    bool IsCritical = false);
-
-public record UpdateMilestoneDto(
-    string Name,
-    string Description,
-    DateTime DueDate,
-    int Order,
-    bool IsCritical,
-    Guid? DepartmentId,
-    double ProgressPercentage);
-
-public record CreateMilestoneDependencyDto(
-    Guid ProjectId,
-    Guid PrerequisiteMilestoneId,
-    Guid DependentMilestoneId,
-    string Type,
-    double? ThresholdPercentage = null);
-
-public record UpdateMilestoneDependencyDto(
-    string Type,
-    double? ThresholdPercentage = null);

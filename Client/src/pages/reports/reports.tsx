@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type {
@@ -21,10 +22,11 @@ import {
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
-import { ReportViewer } from "./ReportViewer";
 import { GeneratedReports } from "./GeneratedReports";
+import { useReportGeneration } from "./ReportGenerationContext";
 
 export function ReportsPage() {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const perm = usePermission();
   const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
@@ -33,8 +35,7 @@ export function ReportsPage() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
   const [storedReportsLoading, setStoredReportsLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [viewingReport, setViewingReport] = useState<AiReportResponse | null>(null);
+  const { generate, isGeneratingType, pendingReportType } = useReportGeneration();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -122,17 +123,20 @@ export function ReportsPage() {
   });
 
   const handleGenerate = async (label: string, reportType: string, body: Record<string, unknown>) => {
-    if (!auth) return;
-    setGenerating(true);
+    // The pending flag lives above the router, so this guard still holds if the
+    // user navigated away and back while the request is running.
+    if (isGeneratingType(reportType)) {
+      addToast(`${label} report is already being generated.`, "error");
+      return;
+    }
+
     try {
-      const report = await api.generateReport(auth.token, reportType, body);
-      setViewingReport(report);
+      const { report, exportParams } = await generate(reportType, body, reportFilterPayload());
+      navigate("/reports/view", { state: { report, exportParams } });
       loadStoredReports();
       addToast(`${label} report generated successfully.`);
     } catch (e) {
-      addToast(`Error: ${e instanceof Error ? e.message : "Generation failed"}`, "error");
-    } finally {
-      setGenerating(false);
+      addToast(e instanceof Error ? e.message : "Generation failed", "error");
     }
   };
 
@@ -163,13 +167,13 @@ export function ReportsPage() {
     }
   };
 
-  const handleViewStoredReport = async (report: StoredReportRecord) => {
+  const handleViewStoredReport = async (record: StoredReportRecord) => {
     if (!auth) return;
     try {
-      const blob = await api.downloadStoredReport(auth.token, report.id);
+      const blob = await api.downloadStoredReport(auth.token, record.id);
       const text = await blob.text();
-      const parsed: AiReportResponse = JSON.parse(text);
-      setViewingReport(parsed);
+      const parsed = JSON.parse(text) as AiReportResponse;
+      navigate("/reports/view", { state: { report: parsed, exportParams: reportFilterPayload() } });
     } catch {
       addToast("Could not load this report for viewing.", "error");
     }
@@ -250,33 +254,38 @@ export function ReportsPage() {
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         {/* Left: Filters & Report Generation */}
         <div className="flex flex-col gap-6">
-          <OrganizationDepartmentFilter
-            organizations={organizations}
-            departments={departments}
-            users={[]}
-            selectedOrganizationId={filters.organizationId}
-            selectedDepartmentId={filters.departmentId}
-            onOrganizationChange={(organizationId) => setFilters((current) => ({
-              ...current,
-              organizationId,
-              departmentId: "",
-              projectId: "",
-            }))}
-            onDepartmentChange={(departmentId) => setFilters((current) => ({
-              ...current,
-              departmentId,
-              projectId: "",
-            }))}
-          />
           <ReportFilters
             filters={filters}
             projects={visibleProjects}
             onFilterChange={setFilters}
+            scopeFields={
+              <OrganizationDepartmentFilter
+                variant="fields"
+                searchPlaceholder="Search departments..."
+                organizations={organizations}
+                departments={departments}
+                users={[]}
+                selectedOrganizationId={filters.organizationId}
+                selectedDepartmentId={filters.departmentId}
+                onOrganizationChange={(organizationId) => setFilters((current) => ({
+                  ...current,
+                  organizationId,
+                  departmentId: "",
+                  projectId: "",
+                }))}
+                onDepartmentChange={(departmentId) => setFilters((current) => ({
+                  ...current,
+                  departmentId,
+                  projectId: "",
+                }))}
+              />
+            }
           />
 
           <ReportGenerator
             filters={filters}
-            generating={generating}
+            generatingReportType={pendingReportType}
+            isGeneratingType={isGeneratingType}
             onGenerateProjectStatus={handleGenerateProjectStatus}
             onGenerateBudgetVariance={handleGenerateBudgetVariance}
             onGenerateTaskCompletion={handleGenerateTaskCompletion}
@@ -297,14 +306,6 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {/* Report Viewer Modal */}
-      {viewingReport && (
-        <ReportViewer
-          report={viewingReport}
-          onClose={() => setViewingReport(null)}
-          onDownloadPdf={handleDownloadPdf}
-        />
-      )}
     </div>
   );
 }

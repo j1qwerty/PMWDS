@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, MilestoneDependency, Project, Task } from "../../types";
-import { classNames, formatDate } from "../../ui";
+import { RoleKey, hasRoleKey } from "../../permissions";
+import type { Milestone, MilestoneDependency, Task } from "../../types";
+import { classNames } from "../../ui";
 import {
   GlassCard,
   LoadingPage,
@@ -12,15 +12,11 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useToast,
-  getStatusColor,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
   MilestonesPanel,
   MilestoneDetailModal,
-  ProjectDetailModal,
-  ProjectFormModal,
-  type ProjectFormState,
   TaskSubtaskCard,
   TaskSubtaskDetailsModal,
   TaskFormModal,
@@ -35,30 +31,14 @@ import { ProjectInfoCard } from "./ProjectInfoCard";
 import { TaskSubCard } from "../projectsK/components/Tasksubcard";
 import { Icon } from "../../components/ui/Icon";
 
-const emptyProjectForm = (): ProjectFormState => ({
-  projectCode: "",
-  name: "",
-  description: "",
-  category: "Monitoring",
-  plannedStartDate: new Date().toISOString().split("T")[0],
-  plannedEndDate: "",
-  plannedBudget: 25000,
-  organizationId: "",
-  departmentId: "",
-  departmentIds: [],
-  projectManagerId: "",
-  priority: "Medium",
-});
-
 export function ProjectMilestonesPage() {
   const ws = useProjectWorkspace();
   const { data: appData } = useAppData();
-  const navigate = useNavigate();
   const { auth } = useAuth();
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  const canManageMilestones = perm.isSuperAdmin || perm.roles.includes("Director");
+  const canManageMilestones = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -77,9 +57,6 @@ export function ProjectMilestonesPage() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [viewTask, setViewTask] = useState<Task | null>(null);
   const [viewMilestone, setViewMilestone] = useState<Milestone | null>(null);
-  const [viewProject, setViewProject] = useState(false);
-  const [editProjectOpen, setEditProjectOpen] = useState(false);
-  const [projectForm, setProjectForm] = useState<ProjectFormState>(emptyProjectForm());
   const [milestoneError, setMilestoneError] = useState("");
   const [pendingForceComplete, setPendingForceComplete] = useState<{
     milestoneId: string;
@@ -87,9 +64,6 @@ export function ProjectMilestonesPage() {
     incompleteCount: number;
     totalCount: number;
   } | null>(null);
-
-  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
-  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
 
   const [depModalOpen, setDepModalOpen] = useState(false);
   const [editDep, setEditDep] = useState<MilestoneDependency | null>(null);
@@ -326,24 +300,47 @@ export function ProjectMilestonesPage() {
 
   const { ref: tasksContainerRef, isNarrow: isTasksNarrow } = useContainerWidth();
 
-  const handleEditProject = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!auth || !ws.project) return;
-    await api.updateProject(auth.token, ws.project.id, projectForm);
-    setEditProjectOpen(false);
-    addToast("Project updated");
-    await ws.refresh();
-  };
+  const sortedMilestones = useMemo(() => {
+    if (ws.dependencies.length === 0) return ws.milestones;
 
-  const handleDeleteProject = async () => {
-    const target = deleteProjectTarget ?? ws.project;
-    if (!auth || !target) return;
-    await api.deleteProject(auth.token, target.id);
-    setDeleteProjectOpen(false);
-    setDeleteProjectTarget(null);
-    addToast("Project deleted");
-    navigate("/projectsK");
-  };
+    const deps = ws.dependencies;
+    const mils = ws.milestones;
+    const milestoneSet = new Set(mils.map(m => m.id));
+
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    for (const m of mils) {
+      adj.set(m.id, []);
+      inDegree.set(m.id, 0);
+    }
+    for (const dep of deps) {
+      const from = dep.prerequisiteMilestoneId;
+      const to = dep.dependentMilestoneId;
+      if (milestoneSet.has(from) && milestoneSet.has(to)) {
+        adj.get(from)!.push(to);
+        inDegree.set(to, (inDegree.get(to) || 0) + 1);
+      }
+    }
+
+    const roots = mils.filter(m => inDegree.get(m.id) === 0);
+    const visited = new Set<string>();
+    const orderedIds: string[] = [];
+
+    const dfs = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      orderedIds.push(id);
+      for (const neighbor of adj.get(id) || []) {
+        if (!visited.has(neighbor)) dfs(neighbor);
+      }
+    };
+
+    for (const root of roots) dfs(root.id);
+    for (const m of mils) if (!visited.has(m.id)) orderedIds.push(m.id);
+
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+    return [...mils].sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
+  }, [ws.milestones, ws.dependencies]);
 
   const handleDeleteTask = async () => {
     if (!auth || !deleteTask) return;
@@ -405,38 +402,18 @@ export function ProjectMilestonesPage() {
         <ProjectInfoCard
           project={ws.project}
           milestonesCount={ws.milestones.length}
+          milestones={ws.milestones}
+          dependencies={ws.dependencies}
           canManageProjects={canManageProjects}
           users={ws.users}
-          onViewProject={() => setViewProject(true)}
-          onEditProject={() => {
-            if (!ws.project) return;
-            setProjectForm({
-              projectCode: ws.project.projectCode ?? "",
-              name: ws.project.name,
-              description: ws.project.description ?? "",
-              category: ws.project.category ?? "Monitoring",
-              plannedStartDate: ws.project.plannedStartDate?.split("T")[0] ?? "",
-              plannedEndDate: ws.project.plannedEndDate?.split("T")[0] ?? "",
-              plannedBudget: ws.project.plannedBudget ?? 0,
-              organizationId: "",
-              departmentId: ws.project.departmentId ?? "",
-              departmentIds: ws.project.departmentIds ?? [],
-              projectManagerId: ws.project.projectManagerId ?? "",
-              priority: ws.project.priority ?? "Medium",
-            });
-            setEditProjectOpen(true);
-          }}
-          onDeleteProject={(project) => {
-            setDeleteProjectTarget(project);
-            setDeleteProjectOpen(true);
-          }}
+          onProjectUpdated={() => ws.refresh()}
         />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_240px] gap-4">
         {/* Left: Milestone list */}
         <MilestonesPanel
-          milestones={ws.milestones}
+          milestones={sortedMilestones}
           tasks={ws.tasks}
           users={ws.users}
           project={ws.project}
@@ -592,7 +569,7 @@ export function ProjectMilestonesPage() {
         departments={[]}
         milestones={ws.milestones}
         users={ws.users}
-        roles={auth?.roles}
+        roles={auth?.roleKeys}
         onSubmit={handleTaskSubmit}
         onClose={() => setTaskModal({ open: false })}
       />
@@ -665,200 +642,9 @@ export function ProjectMilestonesPage() {
         onMessage={() => { }}
       />
 
-      <ProjectDetailModal
-        project={viewProject ? ws.project : null}
-        canManage={canManageProjects}
-        authToken={auth?.token}
-        users={ws.users}
-        milestones={ws.milestones}
-        dependencies={ws.dependencies}
-        onClose={() => setViewProject(false)}
-        onEdit={() => navigate("/projectsK")}
-        onStatusChange={() => { ws.refresh(); }}
-      />
-
-      <ProjectFormModal
-        open={editProjectOpen}
-        title="Edit Project"
-        submitLabel="Save"
-        form={projectForm}
-        setForm={setProjectForm}
-        departments={appData.departments}
-        organizations={appData.organizations}
-        users={appData.users}
-        onSubmit={handleEditProject}
-        onClose={() => setEditProjectOpen(false)}
-      />
-
-      <ConfirmDeleteModal
-        open={deleteProjectOpen}
-        name={deleteProjectTarget?.name ?? ws.project?.name ?? "this project"}
-        warning="All milestones and tasks under this project may be affected."
-        onConfirm={handleDeleteProject}
-        onClose={() => {
-          setDeleteProjectOpen(false);
-          setDeleteProjectTarget(null);
-        }}
-      />
     </div>
   );
 }
 
-function MilestoneHeader({
-  milestone,
-  tasks,
-  isAdmin,
-  onComplete,
-  onStatusChange,
-  onEdit,
-  onDelete,
-  onAddTask,
-  onViewMilestone,
-}: {
-  milestone: Milestone;
-  tasks: Task[];
-  isAdmin: boolean;
-  onComplete: () => void;
-  onStatusChange: (status: string) => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onAddTask: () => void;
-  onViewMilestone?: (milestone: Milestone) => void;
-}) {
-  const statusColors = getStatusColor(milestone.status);
-  const progress = milestone.progressPercentage || 0;
-  const hasTasks = milestone.hasTasks ?? tasks.length > 0;
-  const completedTasks = tasks.filter((t) => t.status === "Completed").length;
-  const isCompleted = milestone.status === "Completed";
 
-  const getProgressColor = (p: number): string => {
-    if (p === 100) return "bg-emerald-500";
-    if (p >= 75) return "bg-amber-400";
-    if (p >= 50) return "bg-cyan-400";
-    if (p >= 25) return "bg-rose-400";
-    return "bg-slate-300";
-  };
 
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md shrink-0 ${milestone.isCritical ? "bg-red-500 shadow-red-500/25" : "bg-indigo-600 shadow-indigo-500/25"
-              }`}
-          >
-            <Icon
-              name={milestone.status === "Completed" ? "check_circle" : "hi-flag"}
-              size={20}
-              className="text-white"
-            />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-base font-bold text-slate-900 truncate">{milestone.name}</h3>
-            {milestone.description && (
-              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{milestone.description}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          {onViewMilestone && (
-            <button
-              title="View milestone"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 transition-colors"
-              onClick={() => onViewMilestone?.(milestone)}
-            >
-              <Icon name="view" size={16} />
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={onEdit}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-              title="Edit milestone"
-            >
-              <Icon name="edit" size={16} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${statusColors.bg} ${statusColors.text}`}>
-          {milestone.status}
-        </span>
-        {milestone.isCritical && (
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-red-50 text-red-600">Critical</span>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-4 text-xs mb-3">
-        <div className="flex items-center gap-1.5 text-slate-500">
-          <Icon name="calendar_today" size={15} className="text-slate-400" />
-          <span>{milestone.dueDate ? formatDate(milestone.dueDate) : "No due date"}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-slate-500">
-          <Icon name="task_alt" size={15} className="text-slate-400" />
-          <span>{completedTasks}/{tasks.length} completed</span>
-        </div>
-      </div>
-
-      <div className="mb-3">
-        <div className="flex justify-between text-[10px] mb-1">
-          <span className="text-slate-400 font-medium">
-            Progress
-            {hasTasks && <span className="ml-1 text-indigo-500 font-normal">(avg of tasks)</span>}
-          </span>
-          <span className="font-semibold text-slate-700">{Math.round(progress)}%</span>
-        </div>
-        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${getProgressColor(progress)}`}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      {isAdmin && (
-        <div className="flex flex-wrap items-center gap-2 mt-4">
-          <div className="flex flex-wrap gap-1">
-            {["Pending", "InProgress", "Completed", "Delayed"].map((status) => {
-              const st = getStatusColor(status);
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  disabled={milestone.status === status}
-                  onClick={() => (status === "Completed" ? onComplete() : onStatusChange(status))}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors ${milestone.status === status
-                      ? `${st.bg} ${st.text} cursor-default`
-                      : "border-slate-200 text-slate-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
-                    }`}
-                >
-                  {status}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </GlassCard>
-  );
-}
-
-function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
-    rose: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100" },
-  };
-  const colors = colorMap[color] || colorMap.indigo;
-
-  return (
-    <div className={`rounded-xl border p-4 text-center ${colors.border} ${colors.bg}`}>
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${colors.text}`}>{value}</p>
-    </div>
-  );
-}

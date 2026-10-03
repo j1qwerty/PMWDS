@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../../types";
+import { RoleKey, hasAnyRoleKey } from "../../../permissions";
 import { priorities } from "../../constants";
 import { ModalOverlay, InputF, SelectF, AvatarStack, ScopedUserSelect, getProjectDepartmentIds } from "../../shared";
 
@@ -91,7 +92,7 @@ export function TaskFormModal({
 
   if (!open) return null;
 
-  const canAssignMilestone = roles.some((r) => r === "SuperAdmin" || r === "Director");
+  const canAssignMilestone = hasAnyRoleKey(roles, [RoleKey.SuperAdmin, RoleKey.Director]);
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const selectedDepartment = selectedProject

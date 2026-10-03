@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +10,7 @@ using PMWDS.Application.DTOs.Common;
 using PMWDS.Application.DTOs.Users;
 using PMWDS.Application.Features.Users.Queries;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
@@ -21,23 +24,26 @@ public class UsersController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly ILocalFileStorageService _localFiles;
     private readonly RoleScopeService _scope;
+    private readonly IDataChangeNotifier _changes;
 
     public UsersController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         ApplicationDbContext db,
         ILocalFileStorageService localFiles,
-        RoleScopeService scope)
+        RoleScopeService scope,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
         _db = db;
         _localFiles = localFiles;
         _scope = scope;
+        _changes = changes;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] PaginationQuery pagination,
@@ -72,7 +78,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -90,7 +95,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("me")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetMe(CancellationToken ct)
     {
         var userId = _currentUser.UserId;
@@ -104,7 +108,6 @@ public class UsersController : BaseApiController
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Update(
         string id,
         [FromBody] UpdateUserDto dto,
@@ -162,24 +165,22 @@ public class UsersController : BaseApiController
         }
 
         user.UpdateAvailability(dto.AvailabilityStatus ?? user.AvailabilityStatus, dto.AvailabilityPercentage);
-        if (dto.RoleNames is { Count: > 0 } && (User.IsInRole("SuperAdmin") || User.IsInRole("Director")))
+        if (dto.RoleNames is { Count: > 0 } && (_scope.IsSuperAdmin || _scope.IsDirector))
         {
-            var requestedRoles = dto.RoleNames
+            var requestedRoleInputs = dto.RoleNames
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Select(role => role.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (!User.IsInRole("SuperAdmin") && requestedRoles.Any(role => role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+            var requestedRoles = await ResolveRolesByInputAsync(requestedRoleInputs, ct);
+
+            if (!_scope.IsSuperAdmin && requestedRoles.Any(role => role.Key == RoleKeys.SuperAdmin))
             {
                 return Forbid();
             }
 
-            requestedRoles = requestedRoles
-                .Where(role => !role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            if (!User.IsInRole("SuperAdmin") && requestedRoles.Count > 0)
+            if (!_scope.IsSuperAdmin && requestedRoles.Count > 0)
             {
                 var currentUserId = _currentUser.UserId;
                 var currentUserMaxLevel = 0;
@@ -194,28 +195,33 @@ public class UsersController : BaseApiController
                     }
                 }
 
-                var exceedLevel = await _uow.Roles.FindAsync(
-                    r => requestedRoles.Contains(r.Name) && r.PermissionLevel >= currentUserMaxLevel, ct);
-                if (exceedLevel.Any())
+                if (requestedRoles.Any(role => role.PermissionLevel >= currentUserMaxLevel))
                 {
                     return Forbid();
                 }
             }
 
-            var isCurrentlySuperAdmin = user.Roles.Any(r => r.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
-            if (isCurrentlySuperAdmin && !requestedRoles.Contains("SuperAdmin", StringComparer.OrdinalIgnoreCase))
+            var isCurrentlySuperAdmin = user.Roles.Any(r => r.Key == RoleKeys.SuperAdmin);
+            if (isCurrentlySuperAdmin && requestedRoles.All(role => role.Key != RoleKeys.SuperAdmin))
             {
-                requestedRoles.Add("SuperAdmin");
+                var superAdmin = await _db.Roles.FirstOrDefaultAsync(r => r.Key == RoleKeys.SuperAdmin, ct);
+                if (superAdmin != null)
+                {
+                    requestedRoles.Add(superAdmin);
+                }
             }
 
             if (requestedRoles.Count == 0)
             {
-                requestedRoles.Add("Viewer");
+                var viewer = await _db.Roles.FirstOrDefaultAsync(r => r.Key == RoleKeys.Viewer, ct);
+                if (viewer != null)
+                {
+                    requestedRoles.Add(viewer);
+                }
             }
 
-            var roles = await _uow.Roles.FindAsync(r => requestedRoles.Contains(r.Name), ct);
             user.Roles.Clear();
-            foreach (var role in roles)
+            foreach (var role in requestedRoles)
             {
                 user.Roles.Add(role);
             }
@@ -235,11 +241,13 @@ public class UsersController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Users, user.Id.ToString(), null, ct);
+
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     [HttpPost("register")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Register(
         [FromBody] RegisterUserDto dto,
         CancellationToken ct)
@@ -262,16 +270,25 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
-        var roleName = string.IsNullOrWhiteSpace(dto.Role) ? "Viewer" : dto.Role.Trim();
-        if (!_scope.IsSuperAdmin && roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        var roleInput = string.IsNullOrWhiteSpace(dto.Role) ? RoleKeys.Viewer : dto.Role.Trim();
+        var role = await ResolveRoleByInputAsync(roleInput, ct);
+        if (role == null)
+        {
+            return BadRequest(new { message = $"Role '{roleInput}' was not found." });
+        }
+
+        if (!_scope.IsSuperAdmin && role.Key == RoleKeys.SuperAdmin)
         {
             return Forbid();
         }
 
-        var role = (await _uow.Roles.FindAsync(r => r.Name == roleName, ct)).FirstOrDefault();
-        if (role == null)
+        if (!_scope.IsSuperAdmin)
         {
-            return BadRequest(new { message = $"Role '{roleName}' was not found." });
+            var currentUserMaxLevel = await GetCurrentUserMaxRoleLevelAsync(ct);
+            if (role.PermissionLevel >= currentUserMaxLevel)
+            {
+                return Forbid();
+            }
         }
 
         var user = ApplicationUser.Create(
@@ -279,7 +296,7 @@ public class UsersController : BaseApiController
             dto.FirstName,
             dto.LastName,
             Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
-            dto.JobTitle ?? roleName,
+            dto.JobTitle ?? role.Name,
             dto.DepartmentId);
         user.SetCreatedBy(_currentUser.UserId ?? "system");
         user.Roles.Add(role);
@@ -298,7 +315,7 @@ public class UsersController : BaseApiController
         var profile = UserProfile.Create(
             user.Id,
             null,
-            dto.JobTitle ?? roleName,
+            dto.JobTitle ?? role.Name,
             null,
             null,
             null,
@@ -320,11 +337,12 @@ public class UsersController : BaseApiController
         );
 
         var created = await _uow.Users.GetByIdWithSkillsAsync(user.Id, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Users, user.Id.ToString(), null, ct);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, UserDto.FromEntityWithSkills(created!, UserRoleResolver.Resolve(created!)));
     }
 
     [HttpPut("{id}/departments")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> AssignDepartments(
         string id,
         [FromBody] AssignUserDepartmentsRequest req,
@@ -355,16 +373,16 @@ public class UsersController : BaseApiController
         await _uow.SaveChangesAsync(ct);
 
         var refreshed = await _uow.Users.GetByIdWithSkillsAsync(parsedId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(UserDto.FromEntityWithSkills(refreshed!, UserRoleResolver.Resolve(refreshed!)));
     }
 
     [HttpPost("{id}/profile-picture")]
-    [Authorize(Policy = "Authenticated")]
     [RequestSizeLimit(2_000_000)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadProfilePicture(
         string id,
-        [FromForm] IFormFile file,
+        IFormFile file,
         CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -402,11 +420,11 @@ public class UsersController : BaseApiController
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
 
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(new { profilePictureUrl = url, user = UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)) });
     }
 
     [HttpPatch("{id}/availability")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateAvailability(
         string id,
         [FromBody] UpdateAvailabilityRequest req,
@@ -431,11 +449,11 @@ public class UsersController : BaseApiController
         user.UpdateAvailability(req.Status, req.AvailabilityPercentage);
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
 
     [HttpPost("{id}/skills")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> AddSkill(
         string id,
         [FromBody] AddUserSkillRequest req,
@@ -485,15 +503,15 @@ public class UsersController : BaseApiController
                 s.ExperienceMonths,
                 s.LastUsed))
             .ToList();
-        return Ok(new
-        {
-            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
+            await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+            return Ok(new
+            {
+                User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
 
     [HttpPut("{id}/skills/{skillId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateSkill(
         string id,
         Guid skillId,
@@ -535,15 +553,15 @@ public class UsersController : BaseApiController
                 s.ExperienceMonths,
                 s.LastUsed))
             .ToList();
-        return Ok(new
-        {
-            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
+            await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+            return Ok(new
+            {
+                User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
 
     [HttpDelete("{id}/skills/{skillId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> RemoveSkill(
         string id,
         Guid skillId,
@@ -583,15 +601,16 @@ public class UsersController : BaseApiController
                 s.ExperienceMonths,
                 s.LastUsed))
             .ToList();
-        return Ok(new
-        {
-            User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
+            await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+            return Ok(new
+            {
+                User = UserDto.FromEntityWithSkills(refreshed, UserRoleResolver.Resolve(refreshed)),
             Skills = skillDtos
         });
     }
 
     [HttpGet("available")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAvailable([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var query = await _scope.ScopeUsersAsync(
@@ -612,7 +631,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet("workload")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetWorkload(
         [FromQuery] Guid? departmentId,
         CancellationToken ct)
@@ -629,7 +648,7 @@ public class UsersController : BaseApiController
     }
 
     [HttpPatch("{id}/deactivate")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Deactivate(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -648,6 +667,11 @@ public class UsersController : BaseApiController
             return Forbid();
         }
 
+        if (await IsLastActiveSuperAdminAsync(parsedId, ct))
+        {
+            return BadRequest(new { message = "The last active SuperAdmin user cannot be deactivated." });
+        }
+
         user.Deactivate();
         await _uow.Users.UpdateAsync(user, ct);
         await _uow.SaveChangesAsync(ct);
@@ -662,11 +686,13 @@ public class UsersController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
+
         return Ok();
     }
 
     [HttpPatch("{id}/reactivate")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> Reactivate(string id, CancellationToken ct)
     {
         if (!Guid.TryParse(id, out var parsedId))
@@ -698,6 +724,8 @@ public class UsersController : BaseApiController
                 ["targetUserFullName"] = user.FullName
             }
         );
+
+        await _changes.NotifyAsync(DataChangeScopes.Users, parsedId.ToString(), null, ct);
 
         return Ok(UserDto.FromEntityWithSkills(user, UserRoleResolver.Resolve(user)));
     }
@@ -842,6 +870,68 @@ public class UsersController : BaseApiController
         return await _scope.CanAccessOrganizationAsync(organizationId.Value, ct);
     }
 
+    private async Task<List<Role>> ResolveRolesByInputAsync(IReadOnlyCollection<string> roleInputs, CancellationToken ct)
+    {
+        if (roleInputs.Count == 0)
+        {
+            return new List<Role>();
+        }
+
+        var normalizedInputs = roleInputs
+            .Select(RoleKeys.Normalize)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var roles = await _db.Roles
+            .Where(role => normalizedInputs.Contains(role.Key) || normalizedInputs.Contains(role.Name.ToLower()))
+            .ToListAsync(ct);
+
+        return roles
+            .GroupBy(role => role.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private async Task<Role?> ResolveRoleByInputAsync(string roleInput, CancellationToken ct)
+    {
+        var normalizedInput = RoleKeys.Normalize(roleInput);
+        return await _db.Roles
+            .FirstOrDefaultAsync(role => role.Key == normalizedInput || role.Name.ToLower() == normalizedInput, ct);
+    }
+
+    private async Task<int> GetCurrentUserMaxRoleLevelAsync(CancellationToken ct)
+    {
+        var currentUserId = _currentUser.UserId;
+        if (!Guid.TryParse(currentUserId, out var currentUserGuid))
+        {
+            return 0;
+        }
+
+        var currentUserEntity = await _db.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == currentUserGuid, ct);
+
+        return currentUserEntity?.Roles.Max(r => r.PermissionLevel) ?? 0;
+    }
+
+    private async Task<bool> IsLastActiveSuperAdminAsync(Guid userId, CancellationToken ct)
+    {
+        var isSuperAdmin = await _db.Users
+            .Where(user => user.Id == userId)
+            .AnyAsync(user => user.Roles.Any(role => role.Key == RoleKeys.SuperAdmin), ct);
+        if (!isSuperAdmin)
+        {
+            return false;
+        }
+
+        var activeSuperAdminCount = await _db.Users
+            .CountAsync(user =>
+                user.IsActive &&
+                user.Roles.Any(role => role.Key == RoleKeys.SuperAdmin),
+                ct);
+
+        return activeSuperAdminCount <= 1;
+    }
+
     private async Task<Guid?> GetOrganizationForDepartmentAsync(Guid? departmentId, CancellationToken ct)
     {
         if (!departmentId.HasValue)
@@ -855,20 +945,3 @@ public class UsersController : BaseApiController
             .FirstOrDefaultAsync(ct);
     }
 }
-
-public record UpdateAvailabilityRequest(
-    PMWDS.Domain.Enums.AvailabilityStatus Status,
-    double AvailabilityPercentage);
-
-public record AddUserSkillRequest(
-    Guid SkillId,
-    int ProficiencyLevel,
-    int ExperienceMonths);
-
-public record UpdateUserSkillRequest(
-    int ProficiencyLevel,
-    int ExperienceMonths);
-
-public record AssignUserDepartmentsRequest(
-    List<Guid> DepartmentIds,
-    Guid? PrimaryDepartmentId);

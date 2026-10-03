@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import type { Task, User } from "../../../types";
@@ -44,8 +44,6 @@ export function TaskSubtaskCard({
 
   const [expanded, setExpanded] = useState(false);
   const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks ?? []);
-  const [loaded, setLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
   const [editSubtask, setEditSubtask] = useState<Task | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -91,41 +89,12 @@ export function TaskSubtaskCard({
     setCardProgress(avg);
   };
 
-  useEffect(() => {
-    if (loaded || !auth || !hasSubtasks) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    api
-      .getSubtasks(auth.token, task.id)
-      .then((list) => {
-        setSubtasks(list);
-        setLoaded(true);
-      })
-      .catch(() => {
-        setSubtasks(task.subTasks ?? []);
-        setLoaded(true);
-      })
-      .finally(() => setLoading(false));
-  }, [loaded, auth, task.id, hasSubtasks, task.subTasks]);
-
-  const refreshSubtasks = async () => {
-    if (!auth) return;
-    try {
-      const list = await api.getSubtasks(auth.token, task.id);
-      setSubtasks(list);
-      recalcProgress(list);
-    } catch {
-      /* ignore */
-    }
-  };
-
   const handleCreateSubtask = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
       await api.createSubtask(auth.token, task.id, form);
       setShowSubtaskModal(false);
       addToast("Subtask created");
-      await refreshSubtasks();
       onParentRefresh?.();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to create subtask", "error");
@@ -154,17 +123,6 @@ export function TaskSubtaskCard({
           milestoneId: original.milestoneId,
         });
       }
-      const updated = (prev: Task[]) => {
-        const next = prev.map((s) =>
-          s.id === subtaskId
-            ? { ...s, progressPercentage: data.progress, status: data.status, priority: data.priority }
-            : s
-        );
-        recalcProgress(next);
-        return next;
-      };
-      setSubtasks(updated);
-      await refreshSubtasks();
       onParentRefresh?.();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to update subtask", "error");
@@ -176,11 +134,6 @@ export function TaskSubtaskCard({
     if (!auth) return;
     try {
       await api.deleteSubtask(auth.token, subtaskId);
-      setSubtasks((prev) => {
-        const next = prev.filter((s) => s.id !== subtaskId);
-        recalcProgress(next);
-        return next;
-      });
       addToast("Subtask deleted");
       onParentRefresh?.();
     } catch (e) {
@@ -193,7 +146,7 @@ export function TaskSubtaskCard({
     try {
       await api.addTaskComment(auth.token, subtaskId, text);
       addToast("Comment added.");
-      await refreshSubtasks();
+      onParentRefresh?.();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to add comment", "error");
     }
@@ -373,11 +326,7 @@ export function TaskSubtaskCard({
 
       {expanded && hasSubtasks && (
         <div className="mb-3 space-y-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
-          {loading && (
-            <div className="text-[10px] text-slate-400 px-1">Loading subtasks…</div>
-          )}
-          {!loading &&
-            subtasks.map((sub) => (
+          {subtasks.map((sub) => (
               <div
                 key={sub.id}
                 className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -518,7 +467,6 @@ export function TaskSubtaskCard({
           onEscalate={handleTaskEscalate}
           onStartTimer={handleTaskStartTimer}
           onRefresh={async () => {
-            await refreshSubtasks();
             onParentRefresh?.();
           }}
         />

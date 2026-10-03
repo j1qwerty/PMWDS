@@ -52,6 +52,10 @@ public class ProjectConfiguration
         .WithOne()
         .HasForeignKey(d => d.ProjectId)
         .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<ApplicationUser>()
+        .WithMany()
+        .HasForeignKey(e => e.ProjectManagerId)
+        .OnDelete(DeleteBehavior.NoAction);
         // Indexes
         b.HasIndex(e => e.ProjectCode).IsUnique();
         b.HasIndex(e => e.Status);

@@ -1,17 +1,35 @@
-import { useCallback, useEffect, useState } from "react";
-import type { ProjectDocument } from "../../../types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Milestone, ProjectDocument, Task } from "../../../types";
 import { api } from "../../../api";
+import { onDataChanged } from "../../../realtime";
+import { DOCUMENT_SCOPES } from "../../../realtimeScopes";
+import { UtilizationCertificates } from "../../shared";
 
 interface DocumentsSectionProps {
   projectId: string;
   authToken?: string | null;
+  /** Optional — lets a utilization certificate be linked to the work it pays for. */
+  milestones?: Milestone[];
+  tasks?: Task[];
 }
 
-export function DocumentsSection({ projectId, authToken }: DocumentsSectionProps) {
+export function DocumentsSection({
+  projectId,
+  authToken,
+  milestones = [],
+  tasks = [],
+}: DocumentsSectionProps) {
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Utilization certificates render in their own block below, so keep them out
+  // of the plain document list to avoid showing the same file twice.
+  const plainDocuments = useMemo(
+    () => documents.filter((doc) => doc.category !== "UtilizationCertificate"),
+    [documents],
+  );
 
   const fetchDocuments = useCallback(() => {
     if (!authToken || !projectId) {
@@ -28,6 +46,28 @@ export function DocumentsSection({ projectId, authToken }: DocumentsSectionProps
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  // Keep the list in sync with other sessions. Document rows live in the DB and the bytes
+  // on disk, and the API now broadcasts a `documents` change on upload, so a file added in
+  // another browser appears here without a reload.
+  useEffect(() => {
+    let debounceTimer: number | undefined;
+
+    const stopListening = onDataChanged((notification) => {
+      if (!DOCUMENT_SCOPES.includes(notification.scope)) return;
+      if (notification.projectId && notification.projectId !== projectId) return;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined;
+        fetchDocuments();
+      }, 250);
+    });
+
+    return () => {
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      stopListening();
+    };
+  }, [projectId, fetchDocuments]);
 
   const handleFileUpload = async () => {
     if (!authToken || !uploadFile) return;
@@ -78,6 +118,10 @@ export function DocumentsSection({ projectId, authToken }: DocumentsSectionProps
         </label>
       </div>
 
+      {/* Utilization Certificates — finance compliance documents with their own
+          review lifecycle, surfaced at the top of the Documents section. */}
+      <UtilizationCertificates projectId={projectId} milestones={milestones} tasks={tasks} />
+
       {/* File preview */}
       {uploadFile && (
         <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
@@ -112,9 +156,9 @@ export function DocumentsSection({ projectId, authToken }: DocumentsSectionProps
         <div className="flex items-center justify-center py-8">
           <span className="material-symbols-outlined text-slate-400 animate-spin">progress_activity</span>
         </div>
-      ) : documents.length > 0 ? (
+      ) : plainDocuments.length > 0 ? (
         <div className="space-y-2">
-          {documents.map((doc) => (
+          {plainDocuments.map((doc) => (
             <div
               key={doc.id}
               className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-3 hover:bg-slate-100/50 transition-colors"

@@ -12,10 +12,6 @@ public class TimeEntryConfiguration
         b.ToTable("TimeEntries");
         b.HasKey(e => e.Id);
 
-        b.Property(e => e.UserId)
-            .HasMaxLength(64)
-            .IsRequired();
-
         b.Property(e => e.Description)
             .HasMaxLength(2000)
             .IsRequired();
@@ -25,11 +21,15 @@ public class TimeEntryConfiguration
             .HasForeignKey(e => e.TaskId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // The domain still tracks time entry users via string ids.
-        b.Ignore(e => e.User);
+        b.HasOne(e => e.User)
+            .WithMany(u => u.TimeEntries)
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
 
         b.HasIndex(e => e.TaskId);
         b.HasIndex(e => e.UserId);
         b.HasIndex(e => e.StartTime);
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.TaskId, e.UserId, e.StartTime });
     }
 }

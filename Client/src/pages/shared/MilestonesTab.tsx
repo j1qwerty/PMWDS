@@ -1,10 +1,10 @@
 // components/MilestonesTab.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import type { Milestone, MilestoneDependency, Task, ProjectDocument } from "../../types";
 import { StatusBadge } from "./StatusBadge";
-import { PriorityBadge } from "./PriorityBadge";
-import { useToast } from "./Toast";
+import { ProjectTaskCardk } from "../projectsK/components/ProjectTaskCardk";
+import { DocumentsSection } from "../projectsK/components/DocumentsSection";
 
 interface MilestonesTabProps {
   projectId: string;
@@ -18,12 +18,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const { addToast } = useToast();
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
-  const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
-
   const fetchData = () => {
     if (!authToken || !projectId) return;
     
@@ -62,6 +57,53 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     return acc;
   }, {} as Record<string, Task[]>);
 
+  const parentTasksByMilestone = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    for (const task of tasks) {
+      if (task.parentTaskId) continue;
+      const key = task.milestoneId || "standalone";
+      if (!map[key]) map[key] = [];
+      map[key].push(task);
+    }
+    return map;
+  }, [tasks]);
+
+  const sortedMilestones = useMemo(() => {
+    if (dependencies.length === 0) return milestones;
+    const deps = dependencies;
+    const mils = milestones;
+    const milestoneSet = new Set(mils.map(m => m.id));
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    for (const m of mils) {
+      adj.set(m.id, []);
+      inDegree.set(m.id, 0);
+    }
+    for (const dep of deps) {
+      const from = dep.prerequisiteMilestoneId;
+      const to = dep.dependentMilestoneId;
+      if (milestoneSet.has(from) && milestoneSet.has(to)) {
+        adj.get(from)!.push(to);
+        inDegree.set(to, (inDegree.get(to) || 0) + 1);
+      }
+    }
+    const roots = mils.filter(m => inDegree.get(m.id) === 0);
+    const visited = new Set<string>();
+    const orderedIds: string[] = [];
+    const dfs = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      orderedIds.push(id);
+      for (const neighbor of adj.get(id) || []) {
+        if (!visited.has(neighbor)) dfs(neighbor);
+      }
+    };
+    for (const root of roots) dfs(root.id);
+    for (const m of mils) if (!visited.has(m.id)) orderedIds.push(m.id);
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+    return [...mils].sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
+  }, [milestones, dependencies]);
+
   const getMilestoneProgress = (milestoneId: string) => {
     const milestoneTasks = tasksByMilestone[milestoneId] || [];
     if (milestoneTasks.length === 0) return 0;
@@ -69,36 +111,20 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     return Math.round((completed / milestoneTasks.length) * 100);
   };
 
-  const handleFileUpload = async () => {
-    if (!authToken || !uploadFile) return;
-    try {
-      await api.uploadProjectDocument(authToken, projectId, uploadFile);
-      setUploadFile(null);
-      addToast("Document uploaded successfully");
-      fetchData();
-    } catch (error) {
-      addToast("Failed to upload document", "error");
-    }
+  const getProgressColor = (progress: number): string => {
+    if (progress === 100) return "bg-emerald-500";
+    if (progress >= 75) return "bg-amber-400";
+    if (progress >= 50) return "bg-cyan-400";
+    if (progress >= 25) return "bg-rose-400";
+    return "bg-slate-300";
   };
 
-  const handleDownload = async (doc: ProjectDocument) => {
-    if (!authToken) return;
-    setDownloadingId(doc.id);
-    try {
-      const blob = await api.downloadProjectDocument(authToken, projectId, doc.id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.title;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      addToast("Failed to download document", "error");
-    } finally {
-      setDownloadingId(null);
-    }
+  const getStrokeColor = (progress: number): string => {
+    if (progress === 100) return '#10b981';
+    if (progress >= 75) return '#fbbf24';
+    if (progress >= 50) return '#22d3ee';
+    if (progress >= 25) return '#fb7185';
+    return '#cbd5e1';
   };
 
   const toggleMilestoneExpansion = (milestoneId: string) => {
@@ -113,29 +139,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
     });
   };
 
-  const handleTaskComplete = async (taskId: string) => {
-    if (!authToken) return;
-    setCompletingTasks(prev => new Set([...prev, taskId]));
-    try {
-      await api.updateTask(authToken, taskId, { status: "Completed" });
-      fetchData();
-    } catch (error) {
-      addToast("Failed to update task", "error");
-    } finally {
-      setCompletingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   const getStatusColor = (status: string) => {
     const colors: Record<string, { bg: string; text: string }> = {
       Completed: { bg: "bg-emerald-50", text: "text-emerald-700" },
@@ -144,15 +147,6 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
       Delayed: { bg: "bg-rose-50", text: "text-rose-700" },
     };
     return colors[status] || colors.Pending;
-  };
-
-  const getPriorityColor = (priority: string) => {
-    const colors: Record<string, string> = {
-      High: "bg-rose-100 text-rose-700",
-      Medium: "bg-amber-100 text-amber-700",
-      Low: "bg-slate-100 text-slate-700",
-    };
-    return colors[priority] || colors.Low;
   };
 
   return (
@@ -241,8 +235,8 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
               )}
             <div className="relative pl-8 ml-4 border-l-2 border-slate-200">
               <div className="space-y-8">
-                {milestones.map((milestone) => {
-                  const milestoneTasks = tasksByMilestone[milestone.id] || [];
+                {sortedMilestones.map((milestone) => {
+                  const milestoneParentTasks = parentTasksByMilestone[milestone.id] || [];
                   const isCompleted = milestone.status === "Completed";
                   const progress = getMilestoneProgress(milestone.id);
                   const isExpanded = expandedMilestones.has(milestone.id);
@@ -316,7 +310,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                           <div className="mb-4">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-medium text-slate-500">
-                                {milestoneTasks.length} task{milestoneTasks.length !== 1 ? 's' : ''}
+                                {milestoneParentTasks.length} task{milestoneParentTasks.length !== 1 ? 's' : ''}
                               </span>
                               <span className="text-xs font-bold text-slate-700">{progress}%</span>
                             </div>
@@ -334,7 +328,7 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                           </div>
 
                           {/* Tasks toggle button */}
-                          {milestoneTasks.length > 0 && (
+                          {milestoneParentTasks.length > 0 && (
                             <button
                               onClick={() => toggleMilestoneExpansion(milestone.id)}
                               className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
@@ -344,76 +338,21 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
                               >
                                 chevron_right
                               </span>
-                              {isExpanded ? 'Hide' : 'Show'} Tasks ({milestoneTasks.length})
+                              {isExpanded ? 'Hide' : 'Show'} Tasks ({milestoneParentTasks.length})
                             </button>
                           )}
 
                           {/* Expanded tasks */}
-                          {isExpanded && milestoneTasks.length > 0 && (
+                          {isExpanded && milestoneParentTasks.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-                              {milestoneTasks.map((task) => {
-                                const taskDone = task.status === "Completed";
-                                const isCompleting = completingTasks.has(task.id);
-
-                                return taskDone ? (
-                                  <div key={task.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                      <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
-                                      <span className="text-sm text-slate-500 line-through">{task.title}</span>
-                                    </div>
-                                    {task.assignedToUserName && (
-                                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 ring-2 ring-white">
-                                        {task.assignedToUserName.charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div key={task.id} className="p-4 bg-slate-50/50 rounded-lg border border-slate-200 hover:border-indigo-200 transition-all">
-                                    <div className="flex items-start justify-between mb-3">
-                                      <div className="flex items-center gap-3">
-                                        <button
-                                          onClick={() => handleTaskComplete(task.id)}
-                                          disabled={isCompleting}
-                                          className="relative flex items-center justify-center w-5 h-5 rounded border-2 border-slate-300 hover:border-indigo-500 transition-colors"
-                                        >
-                                          {isCompleting && (
-                                            <div className="absolute inset-0 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                          )}
-                                        </button>
-                                        <div>
-                                          <span className="text-sm font-medium text-slate-900">{task.title}</span>
-                                          {task.description && (
-                                            <p className="text-xs text-slate-500 mt-1 line-clamp-1">{task.description}</p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                          {task.priority}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center justify-between pl-8">
-                                      <div className="flex items-center gap-3 flex-1">
-                                        <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-indigo-600 rounded-full transition-all duration-500"
-                                            style={{ width: `${task.progressPercentage || 0}%` }}
-                                          />
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-500">
-                                          {task.progressPercentage || 0}%
-                                        </span>
-                                      </div>
-                                      {task.assignedToUserName && (
-                                        <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 ring-2 ring-white ml-3">
-                                          {task.assignedToUserName.charAt(0).toUpperCase()}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                              {milestoneParentTasks.map((task) => (
+                                <ProjectTaskCardk
+                                  key={task.id}
+                                  task={task}
+                                  getProgressColor={getProgressColor}
+                                  onRefresh={fetchData}
+                                />
+                              ))}
                             </div>
                           )}
                         </div>
@@ -428,122 +367,16 @@ export function MilestonesTab({ projectId, authToken }: MilestonesTabProps) {
         </div>
       )}
 
-      {/* Documents Tab Content */}
+      {/* Documents Tab Content — reuses the shared section so this tab and the
+          project detail modal stay in sync (including Utilization Certificates). */}
       {activeTab === "documents" && (
         <div className="mt-6">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Documents</h3>
-                <p className="text-sm text-slate-500 mt-1">Manage project-related files and documents</p>
-              </div>
-              <label className="
-                inline-flex items-center gap-2 px-4 py-2.5 
-                bg-indigo-600 text-white text-sm font-semibold 
-                rounded-xl hover:bg-indigo-700 transition-colors 
-                cursor-pointer shadow-sm
-              ">
-                <span className="material-symbols-outlined text-lg">upload_file</span>
-                Upload
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </div>
-
-            {/* Upload preview */}
-            {uploadFile && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-indigo-600">description</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{uploadFile.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{formatFileSize(uploadFile.size)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setUploadFile(null)}
-                      className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleFileUpload}
-                      className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Upload File
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Documents list */}
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : documents.length > 0 ? (
-              <div className="grid gap-3">
-                {documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-indigo-600 text-xl">description</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900 truncate">{doc.title}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-slate-500">{formatFileSize(doc.fileSizeBytes)}</span>
-                            <span className="text-xs text-slate-300">•</span>
-                            <span className="text-xs text-slate-500">
-                              {new Date(doc.createdDate).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDownload(doc)}
-                        disabled={downloadingId === doc.id}
-                        className="
-                          p-2 rounded-lg text-slate-400 hover:text-indigo-600 
-                          hover:bg-indigo-50 transition-all opacity-0 group-hover:opacity-100
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                        "
-                        title="Download"
-                      >
-                        <span className="material-symbols-outlined text-xl">
-                          {downloadingId === doc.id ? "hourglass_top" : "download"}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-3xl text-slate-400">folder_open</span>
-                </div>
-                <h3 className="text-sm font-semibold text-slate-700 mb-1">No Documents Yet</h3>
-                <p className="text-xs text-slate-500">Upload project documents, specifications, or reports.</p>
-              </div>
-            )}
-          </div>
+          <DocumentsSection
+            projectId={projectId}
+            authToken={authToken}
+            milestones={milestones}
+            tasks={tasks}
+          />
         </div>
       )}
     </div>

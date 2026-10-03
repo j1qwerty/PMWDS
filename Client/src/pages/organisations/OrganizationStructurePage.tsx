@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
-import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { AnimatedBackground } from "../shared/AnimatedBackground";
@@ -15,7 +14,6 @@ import { LoadingPage, PERMISSION_GROUPS, usePermission, useNavHeader, useToast }
 
 export function OrganizationStructurePage() {
   const { auth } = useAuth();
-  const { data, loading: appDataLoading, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
   const canCreateOrganization = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.create);
   const canManageOrganization = perm.hasAny(
@@ -45,17 +43,33 @@ export function OrganizationStructurePage() {
     warning?: string;
   }>({ open: false, type: "org", id: "", name: "" });
 
-  const loadData = () => {
+  const loadData = (preferredOrgId?: string) => {
     if (!auth) return;
     setLoading(true);
-    setOrganizations(data.organizations);
-    setDepartments(data.departments);
-    setUsers(canManageDepartments ? data.users : []);
-    if (!selectedOrgId && data.organizations.length) setSelectedOrgId(data.organizations[0].id);
-    setLoading(false);
+    Promise.all([
+      api.getOrganizations(auth.token),
+      api.getDepartments(auth.token),
+      canManageDepartments ? api.getUsers(auth.token) : Promise.resolve([]),
+    ])
+      .then(([organizationData, departmentData, userData]) => {
+        setOrganizations(organizationData);
+        setDepartments(departmentData);
+        setUsers(userData);
+
+        const nextOrgId = preferredOrgId || selectedOrgId;
+        if (nextOrgId && organizationData.some((org) => org.id === nextOrgId)) {
+          setSelectedOrgId(nextOrgId);
+        } else if (organizationData.length) {
+          setSelectedOrgId(organizationData[0].id);
+        } else {
+          setSelectedOrgId("");
+        }
+      })
+      .catch((e) => addToast(`Error: ${e instanceof Error ? e.message : "Failed to load organizations"}`, "error"))
+      .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, [auth, data, canManageDepartments]);
+  useEffect(() => { loadData(); }, [auth, canManageDepartments]);
 
   useEffect(() => {
     if (!auth || !selectedOrgId) { setSelectedOrgDetail(null); return; }
@@ -95,7 +109,7 @@ export function OrganizationStructurePage() {
       }
       addToast(`${deleteConfirm.type === "org" ? "Organization" : "Department"} deleted successfully.`);
       setDeleteConfirm({ open: false, type: "org", id: "", name: "" });
-      await refreshAppData();
+      loadData();
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
     }
@@ -104,14 +118,17 @@ export function OrganizationStructurePage() {
   const handleOrgSubmit = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
+      let nextOrgId = selectedOrgId;
       if (orgModal.editOrg) {
         await api.updateOrganization(auth.token, orgModal.editOrg.id, form);
+        nextOrgId = orgModal.editOrg.id;
       } else {
         const newOrg = await api.createOrganization(auth.token, form);
-        setSelectedOrgId((newOrg as any).id || selectedOrgId);
+        nextOrgId = newOrg.id || selectedOrgId;
+        setSelectedOrgId(nextOrgId);
       }
       setOrgModal({ open: false });
-      await refreshAppData();
+      loadData(nextOrgId);
       addToast(orgModal.editOrg ? "Organization updated." : "Organization created.");
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
@@ -128,7 +145,7 @@ export function OrganizationStructurePage() {
         await api.createDepartment(auth.token, payload);
       }
       setDeptModal({ open: false });
-      await refreshAppData();
+      loadData();
       addToast(deptModal.editDept ? "Department updated." : "Department created.");
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
@@ -149,7 +166,7 @@ export function OrganizationStructurePage() {
     });
   }, [setNavHeader, canCreateOrganization]);
 
-  if (loading || appDataLoading) return <LoadingPage label="Loading organizations..." />;
+  if (loading) return <LoadingPage label="Loading organizations..." />;
 
   return (
     <div>

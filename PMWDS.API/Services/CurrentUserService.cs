@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 namespace PMWDS.API.Services;
 
 public class CurrentUserService : ICurrentUserService
@@ -32,11 +33,13 @@ public class CurrentUserService : ICurrentUserService
     _http.HttpContext?.User
     .Identity?.IsAuthenticated == true;
     public bool IsInRole(string role) =>
+    _http.HttpContext?.User.IsInRole(role) == true ||
     _http.HttpContext?.User
-    .IsInRole(role) == true;
+    .FindAll(RoleKeys.RoleClaimType)
+    .Any(claim => claim.Value.Equals(role, StringComparison.OrdinalIgnoreCase)) == true;
     public IEnumerable<string> Roles =>
     _http.HttpContext?.User
-    .FindAll(ClaimTypes.Role)
+    .FindAll(RoleKeys.RoleClaimType)
     .Select(c => c.Value)
     ?? Enumerable.Empty<string>();
 }

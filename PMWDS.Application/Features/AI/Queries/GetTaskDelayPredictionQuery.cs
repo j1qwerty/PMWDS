@@ -9,10 +9,10 @@ public class GetTaskDelayPredictionQueryHandler
  GetTaskDelayPredictionQuery,
  DelayPredictionDto>
 {
- private readonly IAIService _ai;
+ private readonly IPredictionService _ai;
  private readonly IUnitOfWork _uow;
  public GetTaskDelayPredictionQueryHandler(
- IAIService ai,
+ IPredictionService ai,
  IUnitOfWork uow)
  {
  _ai = ai;

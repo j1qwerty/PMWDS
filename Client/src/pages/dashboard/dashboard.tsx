@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useMemo, type FormEvent } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -12,14 +12,25 @@ import { PERMISSION_GROUPS, usePermission } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import TaskStats from "../shared/dash/TaskStats";
-import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
+import TaskPerformanceTable, { type TaskPerformanceQuery } from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
-import DashboardStats from "./dashbaordStats";
+import DashboardStats from "./dashboardStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
 import Timer from "../shared/dash/Timer";
 import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
+
+// Temporarily hidden dashboard widgets. Kept behind flags (not deleted) so
+// they can be restored by flipping these back to true.
+//   SHOW_MY_TASKS          - "My Tasks" (Active Objectives) card
+//   SHOW_WORKLOAD_DISTRIBUTION - "Workload Distribution" card
+//   SHOW_TIME_TRACKER      - "Time Tracker" card (Notifications render in its place)
+//   SHOW_ACTIVITY_FILTER   - "All Tasks / My Tasks / Team Tasks" dropdown on the Activity card
+const SHOW_MY_TASKS = false;
+const SHOW_WORKLOAD_DISTRIBUTION = false;
+const SHOW_TIME_TRACKER = false;
+const SHOW_ACTIVITY_FILTER = false;
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -28,7 +39,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   category: "Monitoring",
   plannedStartDate: new Date().toISOString().split("T")[0],
   plannedEndDate: "",
-  plannedBudget: 25000,
+  plannedBudget: 0,
   organizationId: "",
   departmentId: "",
   departmentIds: [],
@@ -46,7 +57,6 @@ export function DashboardPage() {
   const canViewTasks = perm.has(PERMISSION_GROUPS.task.view);
   const [dashboard, setDashboard] = useState<any>(null);
   const [myTasks, setMyTasks] = useState<Task[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -55,6 +65,13 @@ export function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
+  const [taskPerformanceTasks, setTaskPerformanceTasks] = useState<Task[]>([]);
+  const [taskPerformancePage, setTaskPerformancePage] = useState(1);
+  const [taskPerformancePageSize, setTaskPerformancePageSize] = useState(10);
+  const [taskPerformanceTotalCount, setTaskPerformanceTotalCount] = useState(0);
+  const [taskPerformanceTotalPages, setTaskPerformanceTotalPages] = useState(1);
+  const [taskPerformanceLoading, setTaskPerformanceLoading] = useState(false);
+  const [lastTaskPerformanceQuery, setLastTaskPerformanceQuery] = useState<TaskPerformanceQuery | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,7 +115,6 @@ export function DashboardPage() {
     Promise.allSettled([
       api.getDashboard(auth.token),
       api.getMyTasks(auth.token),
-      api.getPagesData(auth.token, 1, 500),
       api.getNotifications(auth.token, true),
       api.getDepartments(auth.token),
       api.getOrganizations(auth.token),
@@ -107,10 +123,9 @@ export function DashboardPage() {
       canViewTasks ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       canViewTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ])
-      .then(([dashboardResult, tasksResult, pagesResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
+      .then(([dashboardResult, tasksResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
         if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
         if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
-        if (pagesResult.status === "fulfilled") setAllTasks(pagesResult.value.tasks.items as Task[]);
         if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
         if (organizationsResult.status === "fulfilled") setOrganizations(organizationsResult.value as OrganizationRecord[]);
@@ -130,6 +145,38 @@ export function DashboardPage() {
     PERMISSION_GROUPS.task.create,
     PERMISSION_GROUPS.task.assign,
   );
+
+  const loadTaskPerformance = useCallback(async (query: TaskPerformanceQuery) => {
+    if (!auth) return;
+
+    setLastTaskPerformanceQuery(query);
+    setTaskPerformanceLoading(true);
+    try {
+      const response = await api.getTasks(auth.token, {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        projectId: query.projectId,
+        departmentId: query.departmentId,
+        statuses: query.statuses?.join(","),
+        priorities: query.priorities?.join(","),
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+      });
+      setTaskPerformanceTasks(response.items);
+      setTaskPerformancePage(response.page);
+      setTaskPerformancePageSize(response.pageSize);
+      setTaskPerformanceTotalCount(response.totalCount);
+      setTaskPerformanceTotalPages(response.totalPages);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to load task performance data", "error");
+      setTaskPerformanceTasks([]);
+      setTaskPerformanceTotalCount(0);
+      setTaskPerformanceTotalPages(1);
+    } finally {
+      setTaskPerformanceLoading(false);
+    }
+  }, [auth, addToast]);
 
   const openTaskDetails = async (task: Task) => {
     if (!auth) return;
@@ -155,6 +202,9 @@ export function DashboardPage() {
     ]);
     setMyTasks(tasks);
     setEscalatedTasks(escalated);
+    if (lastTaskPerformanceQuery) {
+      await loadTaskPerformance(lastTaskPerformanceQuery);
+    }
     if (selectedTask) {
       setSelectedTask(await api.getTask(auth.token, selectedTask.id));
     }
@@ -237,24 +287,32 @@ export function DashboardPage() {
               doneProjects={(dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0}
             />
 
-            {/* Activity Chart */}
+            {/* Activity Chart - the task filter dropdown is hidden via SHOW_ACTIVITY_FILTER */}
             <Activity
               data={activityData}
               title="Activity"
-              filterOptions={["All Tasks", "My Tasks", "Team Tasks"]}
+              filterOptions={SHOW_ACTIVITY_FILTER ? ["All Tasks", "My Tasks", "Team Tasks"] : []}
               selectedFilter={selectedActivityFilter}
               onFilterChange={setSelectedActivityFilter}
             />
 
-            {/* Timer */}
-            <Timer tasks={myTasks} token={auth?.token ?? ''} />
+            {/* Timer (hidden) - Notifications are shown in its place */}
+            {SHOW_TIME_TRACKER ? (
+              <Timer tasks={myTasks} token={auth?.token ?? ''} />
+            ) : (
+              <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+            )}
           </div>
         </section>
 
 
-        {/* Active Objectives , Workload Distribution, Notifications */}
+        {/* Active Objectives , Workload Distribution, Notifications
+            "My Tasks" and "Workload Distribution" are currently hidden via the
+            SHOW_MY_TASKS / SHOW_WORKLOAD_DISTRIBUTION flags above. */}
+        {(SHOW_MY_TASKS || SHOW_WORKLOAD_DISTRIBUTION) && (
         <section className="flex gap-4">
           {/* left - Active Objectives */}
+          {SHOW_MY_TASKS && (
           <div className="flex-1 py-4">
             <ActiveObjectives
               objectives={myTasks.slice(0, 6).map((task) => {
@@ -276,8 +334,10 @@ export function DashboardPage() {
               subtitle={`${myTasks.length} tasks`}
             />
           </div>
+          )}
 
           {/* middle - Workload Distribution */}
+          {SHOW_WORKLOAD_DISTRIBUTION && (
           <div className="flex-1 py-4">
             <WorkloadBars
               items={departmentWorkload}
@@ -285,19 +345,29 @@ export function DashboardPage() {
               isDepartment={true}
             />
           </div>
+          )}
 
           {/* right - Notifications */}
           <div className="flex-1 py-4">
             <NotificationList items={unread.slice(0, 6)} title="Notifications" />
           </div>
         </section>
+        )}
 
         <div className="py-4">
           <TaskStats tasks={myTasks} />
         </div>
 
         <TaskPerformanceTable
-          tasks={allTasks}
+          tasks={taskPerformanceTasks}
+          projects={projects}
+          departments={departments}
+          totalCount={taskPerformanceTotalCount}
+          totalPages={taskPerformanceTotalPages}
+          page={taskPerformancePage}
+          pageSize={taskPerformancePageSize}
+          loading={taskPerformanceLoading}
+          onQueryChange={loadTaskPerformance}
           onViewTask={openTaskDetails}
           onEditTask={openTaskEditor}
           canEdit={canEditTasks}

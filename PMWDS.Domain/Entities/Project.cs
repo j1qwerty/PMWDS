@@ -3,7 +3,7 @@ using PMWDS.Domain.Enums;
 using PMWDS.Domain.Events;
 namespace PMWDS.Domain.Entities;
 
-public class Project : AuditableEntity
+public class Project : AuditableEntity, IHasDomainEvents
 {
    // Core Properties
    public string ProjectCode { get; private set; } = string.Empty;
@@ -14,7 +14,7 @@ public class Project : AuditableEntity
    public ProjectStatus Status { get; private set; }
    // Organization
    public Guid DepartmentId { get; private set; }
-   public string ProjectManagerId { get; private set; } = string.Empty;
+   public Guid? ProjectManagerId { get; private set; }
    public string? ClientName { get; private set; }
    public string? StakeholderIds { get; private set; } // JSON
                                                        // Timeline
@@ -57,7 +57,7 @@ public class Project : AuditableEntity
     string category,
     ProjectPriority priority,
     Guid departmentId,
-    string projectManagerId,
+    Guid? projectManagerId,
     DateTime plannedStartDate,
     DateTime plannedEndDate,
     decimal plannedBudget,
@@ -120,7 +120,7 @@ public class Project : AuditableEntity
    decimal plannedBudget,
    ProjectPriority priority,
    Guid departmentId,
-   string projectManagerId)
+   Guid? projectManagerId)
    {
       Name = name;
       Description = description;

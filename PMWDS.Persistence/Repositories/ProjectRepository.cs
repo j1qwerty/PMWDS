@@ -6,7 +6,7 @@ using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Repositories;
 
 public class ProjectRepository
- : BaseRepository<Project>, IProjectRepository
+ : EfRepository<Project>, IProjectRepository
 {
     public ProjectRepository(ApplicationDbContext ctx)
     : base(ctx) { }
@@ -23,6 +23,7 @@ public class ProjectRepository
     .Include(p => p.Department)
     .Include(p => p.ProjectDepartments)
     .ThenInclude(pd => pd.Department)
+    .AsSplitQuery()
     .FirstOrDefaultAsync(p => p.Id == projectId, ct);
     public async Task<IEnumerable<Project>>
     GetByDepartmentAsync(
@@ -38,7 +39,7 @@ public class ProjectRepository
     .ToListAsync(ct);
     public async Task<IEnumerable<Project>>
     GetByManagerAsync(
-    string managerId,
+    Guid managerId,
     CancellationToken ct = default)
     => await _dbSet
     .Where(p => p.ProjectManagerId == managerId)

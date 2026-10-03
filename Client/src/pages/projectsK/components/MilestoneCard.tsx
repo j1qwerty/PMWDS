@@ -34,7 +34,7 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
     isSelected
       ? "bg-indigo-50 border-blue-500 border-b hover:bg-blue-100"
       : milestone.isBlocked
-      ? "bg-amber-50/60 border-amber-200 hover:shadow-md hover:border-amber-400"
+      ? " border-amber-200 hover:shadow-md hover:border-amber-400"
       : "bg-white border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200"
   }`}
   style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}

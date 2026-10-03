@@ -10,13 +10,13 @@ import { PERMISSION_GROUPS, Permission } from "./permissions";
 
 // Overview
 import { DashboardPage } from "./pages/dashboard/dashboard";
-import { ProjectsKPage } from "./pages/projectsK/projectsK";
-import { NotificationsPage } from "./pages/notifications/notifications";
+import { NotificationsPage } from "./pages/notifications/NotificationsPage";
+
+// Projects list + project workspace shell (Overview / Milestones / Tasks / Documents)
+import { ProjectsListPage } from "./pages/projects/ProjectsListPage";
+import { ProjectDetailShell } from "./pages/projects/ProjectDetailShell";
 
 // Project-nested views
-import { ProjectTasksPage } from "./pages/nested/ProjectTasksPage";
-import { ProjectMilestonesPage } from "./pages/nested/ProjectMilestonesPage";
-import { ProjectDependenciesPage } from "./pages/nested/ProjectDependenciesPage";
 import { ProjectNotFound } from "./pages/nested/ProjectNotFound";
 
 // Team
@@ -24,11 +24,15 @@ import { OrganizationStructurePage } from "./pages/organisations/OrganizationStr
 import { DepartmentsPage } from "./pages/departments/DepartmentsPage";
 import { UsersPage } from "./pages/users/users";
 import { ProfilesPage } from "./pages/profiles/ProfilesPage";
+// Kept for when the Skills page is re-enabled (see SHOW_SKILLS_PAGE).
 import { SkillsPage } from "./pages/skills/SkillsPage";
+import { SHOW_SKILLS_PAGE } from "./featureFlags";
 
 // Tools
 import { AIPage as CoreAIPage } from "./pages/ai/ai";
 import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
+import { ReportViewPage } from "./pages/reports/ReportViewPage";
+import { ReportGenerationProvider } from "./pages/reports/ReportGenerationContext";
 
 // System
 import { RolesPage } from "./pages/roles/RolesPage";
@@ -81,25 +85,29 @@ function AppRoutes() {
               <Routes>
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
+                {/* Projects list + project workspace shell (tabs) */}
                 <Route
-                  path="/projectsK"
-                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsKPage /></Guarded>}
+                  path="/projects"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsListPage /></Guarded>}
                 />
+                <Route
+                  path="/projects/:projectId"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
+                />
+                <Route
+                  path="/projects/:projectId/:tab"
+                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
+                />
+                {/* Legacy workspace route kept in code (ProjectsKPage) but no longer routed.
+                    Delete ProjectsKPage from this import if the old workspace is retired. */}
                 <Route
                   path="/notificationsPage"
                   element={<Guarded permission={ROUTE_GUARDS.notificationsPage}><NotificationsPage /></Guarded>}
                 />
 
-                {/* Project-nested deep links */}
-                <Route path="/projects/:projectId/tasks" element={<ProjectTasksPage />} />
-                <Route
-                  path="/projects/:projectId/milestones"
-                  element={<ProjectMilestonesPage />}
-                />
-                <Route
-                  path="/projects/:projectId/dependencies"
-                  element={<ProjectDependenciesPage />}
-                />
+                {/* Project-nested deep links. Dependencies is served by the tab
+                    shell above; a static path here would outrank /:tab in
+                    React Router's ranking and bypass the tabs. */}
                 <Route path="/projects/:projectId/*" element={<ProjectNotFound />} />
 
                 {/* Team */}
@@ -116,11 +124,16 @@ function AppRoutes() {
                   element={<Guarded permission={ROUTE_GUARDS.users}><UsersPage /></Guarded>}
                 />
                 <Route path="/profiles" element={<Guarded permission={ROUTE_GUARDS.profiles}><ProfilesPage /></Guarded>} />
-                <Route path="/skills" element={<Guarded permission={ROUTE_GUARDS.skills}><SkillsPage /></Guarded>} />
+                {/* Skills page is temporarily hidden for all roles - see SHOW_SKILLS_PAGE.
+                    Removing the route falls through to the "*" NoAccessPage route. */}
+                {SHOW_SKILLS_PAGE && (
+                  <Route path="/skills" element={<Guarded permission={ROUTE_GUARDS.skills}><SkillsPage /></Guarded>} />
+                )}
 
                 {/* Tools (open to all authenticated users) */}
                 <Route path="/ai" element={<Guarded permission={ROUTE_GUARDS.ai}><CoreAIPage /></Guarded>} />
                 <Route path="/reports" element={<Guarded permission={ROUTE_GUARDS.reports}><CoreReportsPage /></Guarded>} />
+                <Route path="/reports/view" element={<Guarded permission={ROUTE_GUARDS.reports}><ReportViewPage /></Guarded>} />
 
                 {/* System */}
                 <Route
@@ -152,7 +165,11 @@ export default function App() {
       <AuthProvider>
         <AppDataProvider>
           <ToastProvider>
-            <AppRoutes />
+            {/* Holds in-flight report generation above the router so the
+                "Generating..." state survives navigation. */}
+            <ReportGenerationProvider>
+              <AppRoutes />
+            </ReportGenerationProvider>
           </ToastProvider>
         </AppDataProvider>
       </AuthProvider>

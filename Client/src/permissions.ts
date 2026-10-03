@@ -16,6 +16,7 @@ export const Permission = {
   DepartmentDelete: "DEPARTMENT_DELETE",
 
   ProjectManage: "PROJECT_MANAGE",
+  ProjectPrimaryDepartmentManage: "PROJECT_PRIMARY_DEPARTMENT_MANAGE",
   ProjectView: "PROJECT_VIEW",
   ProjectCreate: "PROJECT_CREATE",
   ProjectEdit: "PROJECT_EDIT",
@@ -92,6 +93,13 @@ export const Permission = {
 
   AiView: "AI_VIEW",
   AiManage: "AI_MANAGE",
+
+  UtilizationCertificateManage: "UTILIZATION_CERTIFICATE_MANAGE",
+  UtilizationCertificateView: "UTILIZATION_CERTIFICATE_VIEW",
+  UtilizationCertificateCreate: "UTILIZATION_CERTIFICATE_CREATE",
+  UtilizationCertificateEdit: "UTILIZATION_CERTIFICATE_EDIT",
+  UtilizationCertificateDelete: "UTILIZATION_CERTIFICATE_DELETE",
+  UtilizationCertificateReview: "UTILIZATION_CERTIFICATE_REVIEW",
 } as const;
 
 export type PermissionCode = (typeof Permission)[keyof typeof Permission];
@@ -124,6 +132,7 @@ export const PERMISSION_GROUPS = {
     edit: Permission.ProjectEdit,
     delete: Permission.ProjectDelete,
     manage: Permission.ProjectManage,
+    primaryDepartmentManage: Permission.ProjectPrimaryDepartmentManage,
   },
   milestone: {
     view: Permission.MilestoneView,
@@ -210,6 +219,14 @@ export const PERMISSION_GROUPS = {
     view: Permission.AiView,
     manage: Permission.AiManage,
   },
+  utilizationCertificate: {
+    view: Permission.UtilizationCertificateView,
+    create: Permission.UtilizationCertificateCreate,
+    edit: Permission.UtilizationCertificateEdit,
+    delete: Permission.UtilizationCertificateDelete,
+    review: Permission.UtilizationCertificateReview,
+    manage: Permission.UtilizationCertificateManage,
+  },
 } as const;
 
 export type PermissionModule = keyof typeof PERMISSION_GROUPS;
@@ -233,6 +250,7 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
     Permission.ProjectCreate,
     Permission.ProjectEdit,
     Permission.ProjectDelete,
+    Permission.ProjectPrimaryDepartmentManage,
   ],
   [Permission.MilestoneManage]: [
     Permission.MilestoneView,
@@ -307,6 +325,13 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
   [Permission.AiManage]: [
     Permission.AiView,
   ],
+  [Permission.UtilizationCertificateManage]: [
+    Permission.UtilizationCertificateView,
+    Permission.UtilizationCertificateCreate,
+    Permission.UtilizationCertificateEdit,
+    Permission.UtilizationCertificateDelete,
+    Permission.UtilizationCertificateReview,
+  ],
 };
 
 export function isSuperAdmin(perms: readonly string[] | undefined | null): boolean {
@@ -347,14 +372,74 @@ export function expandPermissions(userPermissions: readonly string[] | undefined
   return Array.from(set);
 }
 
-export const ROLE_LEVELS: Record<string, number> = {
-  SuperAdmin: 100,
-  Director: 90,
-  ProjectManager: 80,
-  DepartmentHead: 70,
-  TeamMember: 40,
-  Viewer: 10,
+export const RoleKey = {
+  SuperAdmin: "superadmin",
+  Director: "director",
+  ProjectManager: "project-manager",
+  DepartmentHead: "department-head",
+  TeamMember: "team-member",
+  Viewer: "viewer",
+} as const;
+
+export type RoleKeyCode = (typeof RoleKey)[keyof typeof RoleKey];
+
+export const ROLE_DISPLAY_NAMES: Record<RoleKeyCode, string> = {
+  [RoleKey.SuperAdmin]: "SuperAdmin",
+  // Presented as "Admin" throughout the UI. The backend key stays "director", so no
+  // permission, guard or API payload changes.
+  [RoleKey.Director]: "Admin",
+  [RoleKey.ProjectManager]: "ProjectManager",
+  [RoleKey.DepartmentHead]: "DepartmentHead",
+  [RoleKey.TeamMember]: "TeamMember",
+  [RoleKey.Viewer]: "Viewer",
 };
+
+export const ROLE_LEVELS: Record<string, number> = {
+  [RoleKey.SuperAdmin]: 100,
+  [RoleKey.Director]: 90,
+  [RoleKey.ProjectManager]: 80,
+  [RoleKey.DepartmentHead]: 70,
+  [RoleKey.TeamMember]: 40,
+  [RoleKey.Viewer]: 10,
+};
+
+const LEGACY_ROLE_KEYS: Record<string, RoleKeyCode> = {
+  SuperAdmin: RoleKey.SuperAdmin,
+  Director: RoleKey.Director,
+  ProjectManager: RoleKey.ProjectManager,
+  DepartmentHead: RoleKey.DepartmentHead,
+  TeamMember: RoleKey.TeamMember,
+  Viewer: RoleKey.Viewer,
+};
+
+export function normalizeRoleKey(role: string): string {
+  return LEGACY_ROLE_KEYS[role] ?? role;
+}
+
+/**
+ * Display label for a role, given either its backend key ("director") or the role name
+ * stored on the user ("Director"). Use this anywhere a role is shown to a user so the
+ * relabelled roles read the same everywhere.
+ */
+export function roleDisplayName(role: string | null | undefined): string {
+  const trimmed = role?.trim();
+  if (!trimmed) return "";
+  const key = normalizeRoleKey(trimmed) as RoleKeyCode;
+  return ROLE_DISPLAY_NAMES[key] ?? trimmed;
+}
+
+/** Display labels for a list of roles, dropping any empty entries. */
+export function roleDisplayNames(roles: readonly string[] | null | undefined): string[] {
+  return (roles ?? []).map(roleDisplayName).filter(Boolean);
+}
+
+export function hasRoleKey(roles: readonly string[] | undefined | null, roleKey: RoleKeyCode): boolean {
+  return Boolean(roles?.some((role) => normalizeRoleKey(role) === roleKey));
+}
+
+export function hasAnyRoleKey(roles: readonly string[] | undefined | null, roleKeys: readonly RoleKeyCode[]): boolean {
+  return roleKeys.some((roleKey) => hasRoleKey(roles, roleKey));
+}
 
 export function getModuleGroup(module: PermissionModule) {
   return PERMISSION_GROUPS[module];

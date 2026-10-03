@@ -1,0 +1,1809 @@
+{
+  "base": "http://localhost:5173",
+  "capturedAt": "2026-10-02T15:03:45.928Z",
+  "results": [
+    {
+      "role": "admin",
+      "slug": "__nav__",
+      "file": null,
+      "access": "allowed",
+      "nav": [
+        "/",
+        "/",
+        "/projects",
+        "/notificationsPage",
+        "/departmentsPage",
+        "/users",
+        "/profiles",
+        "/reports",
+        "/ai",
+        "/roles",
+        "/activity-logs"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "dashboard",
+      "file": "01-dashboard.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "add_circle",
+        "Task",
+        "Progress",
+        "Status",
+        "Priority",
+        "Due Date",
+        "Final Inspection & Handover",
+        "Snag Correction",
+        "Material Testing & Audit",
+        "Irrigation & Children's Park",
+        "Lawn & Plantation",
+        "Kerbs, Parking & Marking",
+        "Internal Roads & Footpaths",
+        "Leak Testing",
+        "Storm Drains & STP",
+        "Sewer Pipeline & Manholes",
+        "Previous",
+        "1",
+        "2",
+        "4",
+        "Next"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "projects",
+      "file": "02-projects.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "add_circle",
+        "All Departments",
+        "All Statuses",
+        "All Priorities",
+        "Filters",
+        "2%"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "project-overview",
+      "file": "03-project-overview.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "Land Acquisition & Site Readiness",
+        "Master Planning & Design",
+        "Statutory Approvals",
+        "Tendering & Contractor Selection",
+        "Site Preparation",
+        "Foundation Construction",
+        "Superstructure Construction",
+        "Water Supply Infrastructure",
+        "Roads & External Development",
+        "Quality Inspection & Handover",
+        "Landscaping",
+        "Electrical Infrastructure",
+        "Sewerage & Drainage",
+        "View all",
+        "?",
+        "add"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "project-milestones",
+      "file": "04-project-milestones.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "flag",
+        "add_task",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "add",
+        "Show 3 more (3 remaining)",
+        "New task",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "add",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "project-tasks",
+      "file": "05-project-tasks.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "flag",
+        "add_task",
+        "account_tree",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "project-documents",
+      "file": "06-project-documents.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "?",
+        "add",
+        "download"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "project-dependencies",
+      "file": "07-project-dependencies.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "add",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete",
+        "edit",
+        "delete"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "users",
+      "file": "08-users.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "add"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "departments",
+      "file": "09-departments.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "add",
+        "Architecture & Planning Cell",
+        "Electricity Distribution Division",
+        "Horticulture Department",
+        "Jal Nigam",
+        "PWD Civil Division",
+        "Procurement & Finance",
+        "Public Works Department",
+        "Quality Assurance Cell",
+        "Revenue Department",
+        "Sewerage Division",
+        "Town & Country Planning",
+        "Edit",
+        "Delete",
+        "Users",
+        "New User"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "organization-structure",
+      "file": "10-organization-structure.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "admin",
+      "slug": "profiles",
+      "file": "11-profiles.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "edit",
+        "Alok Singh",
+        "Amit Saxena",
+        "Ananya Patel",
+        "Dev Kapoor",
+        "Dinesh Kumar",
+        "Harish Sharma",
+        "Karan Verma",
+        "Manoj Tiwari",
+        "Meera Nair",
+        "Pradeep Mishra",
+        "Priya Menon",
+        "Rajesh Verma",
+        "Ramesh Yadav",
+        "Rohan Iyer",
+        "Sita Rao",
+        "Sneha Kulkarni",
+        "Sunil Yadav",
+        "Suresh Pandey",
+        "Vikas Gupta",
+        "Vikram Singh",
+        "Upload",
+        "Edit Profile"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "roles-permissions",
+      "file": "12-roles-permissions.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "shield",
+        "lock",
+        "add",
+        "Edit",
+        "Delete",
+        "Edit",
+        "Delete",
+        "Edit",
+        "Delete",
+        "Edit",
+        "Delete"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "activity-logs",
+      "file": "13-activity-logs.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "Meeting",
+        "Code Review",
+        "Documentation",
+        "Training",
+        "Bug Fix",
+        "Feature Development",
+        "Client Call",
+        "Planning",
+        "Testing",
+        "Deployment",
+        "+ Custom type",
+        "Save Activity"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "reports",
+      "file": "14-reports.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "Clear all",
+        "monitoring",
+        "account_balance",
+        "task_alt",
+        "groups",
+        "speed",
+        "visibility",
+        "download",
+        "delete",
+        "visibility",
+        "download",
+        "delete",
+        "visibility",
+        "download",
+        "delete",
+        "visibility",
+        "download",
+        "delete",
+        "visibility",
+        "download",
+        "delete",
+        "visibility",
+        "download",
+        "delete"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "ai-insights",
+      "file": "15-ai-insights.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "Run Analysis",
+        "Upgrade Agent"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "notifications",
+      "file": "16-notifications.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Priya Menon",
+        "campaign",
+        "inbox",
+        "done_all",
+        "campaign"
+      ]
+    },
+    {
+      "role": "admin",
+      "slug": "settings",
+      "file": "17-settings.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "manager",
+      "slug": "__nav__",
+      "file": null,
+      "access": "allowed",
+      "nav": [
+        "/",
+        "/",
+        "/projects",
+        "/notificationsPage",
+        "/departmentsPage",
+        "/users",
+        "/profiles"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "dashboard",
+      "file": "01-dashboard.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "add_circle",
+        "Task",
+        "Progress",
+        "Status",
+        "Priority",
+        "Due Date",
+        "Final Inspection & Handover",
+        "Snag Correction",
+        "Material Testing & Audit",
+        "Irrigation & Children's Park",
+        "Lawn & Plantation",
+        "Kerbs, Parking & Marking",
+        "Internal Roads & Footpaths",
+        "Leak Testing",
+        "Storm Drains & STP",
+        "Sewer Pipeline & Manholes",
+        "Previous",
+        "1",
+        "2",
+        "4",
+        "Next"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "projects",
+      "file": "02-projects.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "add_circle",
+        "All Departments",
+        "All Statuses",
+        "All Priorities",
+        "Filters",
+        "2%"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "project-overview",
+      "file": "03-project-overview.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "Land Acquisition & Site Readiness",
+        "Master Planning & Design",
+        "Statutory Approvals",
+        "Tendering & Contractor Selection",
+        "Site Preparation",
+        "Foundation Construction",
+        "Superstructure Construction",
+        "Water Supply Infrastructure",
+        "Roads & External Development",
+        "Quality Inspection & Handover",
+        "Landscaping",
+        "Electrical Infrastructure",
+        "Sewerage & Drainage",
+        "View all",
+        "?",
+        "add"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "project-milestones",
+      "file": "04-project-milestones.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "add_task",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "Show 3 more (3 remaining)",
+        "New task",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "project-tasks",
+      "file": "05-project-tasks.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "add_task",
+        "account_tree",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "project-documents",
+      "file": "06-project-documents.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "?",
+        "add",
+        "download"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "project-dependencies",
+      "file": "07-project-dependencies.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "users",
+      "file": "08-users.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "departments",
+      "file": "09-departments.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "Architecture & Planning Cell",
+        "Electricity Distribution Division",
+        "Horticulture Department",
+        "Jal Nigam",
+        "PWD Civil Division",
+        "Procurement & Finance",
+        "Public Works Department",
+        "Quality Assurance Cell",
+        "Revenue Department",
+        "Sewerage Division",
+        "Town & Country Planning"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "organization-structure",
+      "file": "10-organization-structure.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "manager",
+      "slug": "profiles",
+      "file": "11-profiles.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "Alok Singh",
+        "Amit Saxena",
+        "Ananya Patel",
+        "Dev Kapoor",
+        "Dinesh Kumar",
+        "Harish Sharma",
+        "Karan Verma",
+        "Manoj Tiwari",
+        "Meera Nair",
+        "Pradeep Mishra",
+        "Priya Menon",
+        "Rajesh Verma",
+        "Ramesh Yadav",
+        "Rohan Iyer",
+        "Sita Rao",
+        "Sneha Kulkarni",
+        "Sunil Yadav",
+        "Suresh Pandey",
+        "Vikas Gupta",
+        "Vikram Singh"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "roles-permissions",
+      "file": "12-roles-permissions.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "manager",
+      "slug": "activity-logs",
+      "file": "13-activity-logs.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "manager",
+      "slug": "reports",
+      "file": "14-reports.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "manager",
+      "slug": "ai-insights",
+      "file": "15-ai-insights.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "manager",
+      "slug": "notifications",
+      "file": "16-notifications.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Dev Kapoor",
+        "inbox",
+        "done_all"
+      ]
+    },
+    {
+      "role": "manager",
+      "slug": "settings",
+      "file": "17-settings.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "head",
+      "slug": "__nav__",
+      "file": null,
+      "access": "allowed",
+      "nav": [
+        "/",
+        "/",
+        "/projects",
+        "/notificationsPage",
+        "/departmentsPage",
+        "/users",
+        "/profiles",
+        "/activity-logs"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "dashboard",
+      "file": "01-dashboard.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "add_circle",
+        "Task",
+        "Progress",
+        "Status",
+        "Priority",
+        "Due Date",
+        "Final Inspection & Handover",
+        "Snag Correction",
+        "Material Testing & Audit",
+        "Irrigation & Children's Park",
+        "Lawn & Plantation",
+        "Kerbs, Parking & Marking",
+        "Internal Roads & Footpaths",
+        "Leak Testing",
+        "Storm Drains & STP",
+        "Sewer Pipeline & Manholes",
+        "Previous",
+        "1",
+        "2",
+        "4",
+        "Next"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "projects",
+      "file": "02-projects.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "add_circle",
+        "All Departments",
+        "All Statuses",
+        "All Priorities",
+        "Filters",
+        "2%"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "project-overview",
+      "file": "03-project-overview.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "Site Preparation",
+        "Foundation Construction",
+        "Superstructure Construction",
+        "Roads & External Development",
+        "View all",
+        "?",
+        "add"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "project-milestones",
+      "file": "04-project-milestones.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "add_task",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "New task",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "project-tasks",
+      "file": "05-project-tasks.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "add_task",
+        "account_tree",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "project-documents",
+      "file": "06-project-documents.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "?",
+        "add",
+        "download"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "project-dependencies",
+      "file": "07-project-dependencies.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "users",
+      "file": "08-users.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "add"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "departments",
+      "file": "09-departments.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "add",
+        "Architecture & Planning Cell",
+        "Electricity Distribution Division",
+        "Horticulture Department",
+        "Jal Nigam",
+        "PWD Civil Division",
+        "Procurement & Finance",
+        "Public Works Department",
+        "Quality Assurance Cell",
+        "Revenue Department",
+        "Sewerage Division",
+        "Town & Country Planning",
+        "Edit",
+        "Delete",
+        "Users",
+        "New User"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "organization-structure",
+      "file": "10-organization-structure.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "head",
+      "slug": "profiles",
+      "file": "11-profiles.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "edit",
+        "Alok Singh",
+        "Amit Saxena",
+        "Ananya Patel",
+        "Dev Kapoor",
+        "Dinesh Kumar",
+        "Harish Sharma",
+        "Karan Verma",
+        "Manoj Tiwari",
+        "Meera Nair",
+        "Pradeep Mishra",
+        "Priya Menon",
+        "Rajesh Verma",
+        "Ramesh Yadav",
+        "Rohan Iyer",
+        "Sita Rao",
+        "Sneha Kulkarni",
+        "Sunil Yadav",
+        "Suresh Pandey",
+        "Vikas Gupta",
+        "Vikram Singh",
+        "Upload",
+        "Edit Profile"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "roles-permissions",
+      "file": "12-roles-permissions.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "head",
+      "slug": "activity-logs",
+      "file": "13-activity-logs.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "Meeting",
+        "Code Review",
+        "Documentation",
+        "Training",
+        "Bug Fix",
+        "Feature Development",
+        "Client Call",
+        "Planning",
+        "Testing",
+        "Deployment",
+        "+ Custom type",
+        "Save Activity"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "reports",
+      "file": "14-reports.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "head",
+      "slug": "ai-insights",
+      "file": "15-ai-insights.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "head",
+      "slug": "notifications",
+      "file": "16-notifications.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Rohan Iyer",
+        "inbox",
+        "done_all"
+      ]
+    },
+    {
+      "role": "head",
+      "slug": "settings",
+      "file": "17-settings.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "__nav__",
+      "file": null,
+      "access": "allowed",
+      "nav": [
+        "/",
+        "/",
+        "/projects",
+        "/notificationsPage"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "dashboard",
+      "file": "01-dashboard.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "Task",
+        "Progress",
+        "Status",
+        "Priority",
+        "Due Date",
+        "Final Inspection & Handover",
+        "Snag Correction",
+        "Material Testing & Audit",
+        "Irrigation & Children's Park",
+        "Lawn & Plantation",
+        "Kerbs, Parking & Marking",
+        "Internal Roads & Footpaths",
+        "Leak Testing",
+        "Storm Drains & STP",
+        "Sewer Pipeline & Manholes",
+        "Previous",
+        "1",
+        "2",
+        "4",
+        "Next"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "projects",
+      "file": "02-projects.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "All Departments",
+        "All Statuses",
+        "All Priorities",
+        "Filters",
+        "2%"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "project-overview",
+      "file": "03-project-overview.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "Land Acquisition & Site Readiness",
+        "Master Planning & Design",
+        "Statutory Approvals",
+        "Tendering & Contractor Selection",
+        "Site Preparation",
+        "Foundation Construction",
+        "Superstructure Construction",
+        "Water Supply Infrastructure",
+        "Roads & External Development",
+        "Quality Inspection & Handover",
+        "Landscaping",
+        "Electrical Infrastructure",
+        "Sewerage & Drainage",
+        "View all",
+        "?",
+        "add"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "project-milestones",
+      "file": "04-project-milestones.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "Show 3 more (3 remaining)",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "project-tasks",
+      "file": "05-project-tasks.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "account_tree",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS",
+        "SUBTASKS"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "project-documents",
+      "file": "06-project-documents.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "Back to Projects",
+        "Overview",
+        "Milestones",
+        "Tasks",
+        "Documents",
+        "Dependencies",
+        "?",
+        "add",
+        "download"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "project-dependencies",
+      "file": "07-project-dependencies.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "users",
+      "file": "08-users.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "departments",
+      "file": "09-departments.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "organization-structure",
+      "file": "10-organization-structure.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "profiles",
+      "file": "11-profiles.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "roles-permissions",
+      "file": "12-roles-permissions.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "activity-logs",
+      "file": "13-activity-logs.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "reports",
+      "file": "14-reports.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "ai-insights",
+      "file": "15-ai-insights.png",
+      "access": "blocked",
+      "actions": []
+    },
+    {
+      "role": "member",
+      "slug": "notifications",
+      "file": "16-notifications.png",
+      "access": "allowed",
+      "actions": [
+        "PROJECTS",
+        "Ananya Patel",
+        "inbox",
+        "done_all"
+      ]
+    },
+    {
+      "role": "member",
+      "slug": "settings",
+      "file": "17-settings.png",
+      "access": "blocked",
+      "actions": []
+    }
+  ],
+  "deep": [
+    {
+      "role": "admin",
+      "slug": "project-overview-documents-section",
+      "file": "01-project-overview-documents-section.png",
+      "access": "allowed",
+      "label": "Documents section"
+    },
+    {
+      "role": "admin",
+      "slug": "project-overview-team",
+      "file": "02-project-overview-team.png",
+      "access": "allowed",
+      "label": "Team Assignment"
+    },
+    {
+      "role": "admin",
+      "slug": "project-overview-ai",
+      "file": "03-project-overview-ai.png",
+      "access": "allowed",
+      "label": "AI Insights"
+    },
+    {
+      "role": "admin",
+      "slug": "project-overview-budget",
+      "file": "04-project-overview-budget.png",
+      "access": "allowed",
+      "label": "Budget Overview"
+    },
+    {
+      "role": "admin",
+      "slug": "project-edit-modal",
+      "file": "05-project-edit-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "documents-register",
+      "file": "06-documents-register.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "documents-upload-modal",
+      "file": "07-documents-upload-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "tasks-milestone-expanded",
+      "file": "08-tasks-milestone-expanded.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "tasks-subtask-detail",
+      "file": "09-tasks-subtask-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "tasks-escalate-modal",
+      "file": "10-tasks-escalate-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "tasks-add-modal",
+      "file": "11-tasks-add-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "milestone-detail",
+      "file": "12-milestone-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "roles-table-detail",
+      "file": "13-roles-table-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "roles-create-modal",
+      "file": "14-roles-create-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "users-row-detail",
+      "file": "15-users-row-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "users-create-modal",
+      "file": "16-users-create-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "departments-detail",
+      "file": "17-departments-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "departments-create-modal",
+      "file": "18-departments-create-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "org-structure-detail",
+      "file": null,
+      "access": "blocked"
+    },
+    {
+      "role": "admin",
+      "slug": "report-department-workload",
+      "file": "20-report-department-workload.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "ai-risk-prediction",
+      "file": "21-ai-risk-prediction.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "ai-recommendations",
+      "file": "22-ai-recommendations.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "profiles-detail",
+      "file": "23-profiles-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "activity-log-filters",
+      "file": "24-activity-log-filters.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "notification-templates",
+      "file": "25-notification-templates.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "project-overview-documents-section",
+      "file": "01-project-overview-documents-section.png",
+      "access": "allowed",
+      "label": "Documents section"
+    },
+    {
+      "role": "manager",
+      "slug": "project-overview-team",
+      "file": "02-project-overview-team.png",
+      "access": "allowed",
+      "label": "Team Assignment"
+    },
+    {
+      "role": "manager",
+      "slug": "project-overview-ai",
+      "file": "03-project-overview-ai.png",
+      "access": "allowed",
+      "label": "AI Insights"
+    },
+    {
+      "role": "manager",
+      "slug": "project-overview-budget",
+      "file": "04-project-overview-budget.png",
+      "access": "allowed",
+      "label": "Budget Overview"
+    },
+    {
+      "role": "manager",
+      "slug": "project-edit-modal",
+      "file": "05-project-edit-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "documents-register",
+      "file": "06-documents-register.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "documents-upload-modal",
+      "file": "07-documents-upload-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "tasks-milestone-expanded",
+      "file": "08-tasks-milestone-expanded.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "tasks-subtask-detail",
+      "file": "09-tasks-subtask-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "tasks-escalate-modal",
+      "file": "10-tasks-escalate-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "tasks-add-modal",
+      "file": "11-tasks-add-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "milestone-detail",
+      "file": "12-milestone-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "roles-table-detail",
+      "file": null,
+      "access": "blocked"
+    },
+    {
+      "role": "manager",
+      "slug": "roles-create-modal",
+      "file": null,
+      "access": "blocked"
+    },
+    {
+      "role": "manager",
+      "slug": "departments-detail",
+      "file": "15-departments-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "manager",
+      "slug": "profiles-detail",
+      "file": "16-profiles-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "project-overview-documents-section",
+      "file": "01-project-overview-documents-section.png",
+      "access": "allowed",
+      "label": "Documents section"
+    },
+    {
+      "role": "head",
+      "slug": "project-overview-team",
+      "file": "02-project-overview-team.png",
+      "access": "allowed",
+      "label": "Team Assignment"
+    },
+    {
+      "role": "head",
+      "slug": "project-overview-ai",
+      "file": "03-project-overview-ai.png",
+      "access": "allowed",
+      "label": "AI Insights"
+    },
+    {
+      "role": "head",
+      "slug": "project-overview-budget",
+      "file": "04-project-overview-budget.png",
+      "access": "allowed",
+      "label": "Budget Overview"
+    },
+    {
+      "role": "head",
+      "slug": "documents-register",
+      "file": "05-documents-register.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "tasks-milestone-expanded",
+      "file": "06-tasks-milestone-expanded.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "tasks-subtask-detail",
+      "file": "07-tasks-subtask-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "tasks-add-modal",
+      "file": "08-tasks-add-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "milestone-detail",
+      "file": "09-milestone-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "users-row-detail",
+      "file": "10-users-row-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "departments-detail",
+      "file": "11-departments-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "profiles-detail",
+      "file": "12-profiles-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "head",
+      "slug": "activity-log-filters",
+      "file": "13-activity-log-filters.png",
+      "access": "allowed"
+    },
+    {
+      "role": "member",
+      "slug": "project-overview-documents-section",
+      "file": "01-project-overview-documents-section.png",
+      "access": "allowed",
+      "label": "Documents section"
+    },
+    {
+      "role": "member",
+      "slug": "project-overview-team",
+      "file": "02-project-overview-team.png",
+      "access": "allowed",
+      "label": "Team Assignment"
+    },
+    {
+      "role": "member",
+      "slug": "project-overview-ai",
+      "file": "03-project-overview-ai.png",
+      "access": "allowed",
+      "label": "AI Insights"
+    },
+    {
+      "role": "member",
+      "slug": "project-overview-budget",
+      "file": "04-project-overview-budget.png",
+      "access": "allowed",
+      "label": "Budget Overview"
+    },
+    {
+      "role": "member",
+      "slug": "documents-register",
+      "file": "05-documents-register.png",
+      "access": "allowed"
+    },
+    {
+      "role": "member",
+      "slug": "tasks-milestone-expanded",
+      "file": "06-tasks-milestone-expanded.png",
+      "access": "allowed"
+    },
+    {
+      "role": "member",
+      "slug": "tasks-subtask-detail",
+      "file": "07-tasks-subtask-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "member",
+      "slug": "milestone-detail",
+      "file": "08-milestone-detail.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "project-edit-modal",
+      "file": "01-project-edit-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "tasks-add-modal",
+      "file": "02-tasks-add-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "project-edit-modal",
+      "file": "05-project-edit-modal.png",
+      "access": "allowed"
+    },
+    {
+      "role": "admin",
+      "slug": "tasks-add-modal",
+      "file": "11-tasks-add-modal.png",
+      "access": "allowed"
+    }
+  ],
+  "wizard": [
+    {
+      "slug": "wizard-1-project-details",
+      "file": "01-wizard-1-project-details.png"
+    },
+    {
+      "slug": "wizard-2-milestones",
+      "file": "02-wizard-2-milestones.png"
+    },
+    {
+      "slug": "wizard-3-assign-departments",
+      "file": "03-wizard-3-assign-departments.png"
+    },
+    {
+      "slug": "wizard-4-dependencies",
+      "file": "04-wizard-4-dependencies.png"
+    }
+  ]
+}

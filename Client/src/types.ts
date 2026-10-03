@@ -1,19 +1,24 @@
-export type Role =
-  | "SuperAdmin"
-  | "Director"
-  | "ProjectManager"
-  | "DepartmentHead"
-  | "TeamMember"
-  | "Viewer";
+export type Role = string;
+
+export type RoleKey =
+  | "superadmin"
+  | "director"
+  | "project-manager"
+  | "department-head"
+  | "team-member"
+  | "viewer";
 
 export interface AuthResponse {
   token: string;
   expiry: string;
+  refreshToken?: string;
+  refreshTokenExpiry?: string;
   userId: string;
   fullName: string;
   email: string;
   profilePictureUrl?: string | null;
   roles: Role[];
+  roleKeys?: RoleKey[];
   permissions: string[];
 }
 
@@ -40,6 +45,7 @@ export interface User {
   isActive: boolean;
   lastLoginDate?: string | null;
   roles: string[];
+  roleKeys?: RoleKey[];
   skills: string[];
   skillDetails?: UserSkillAssignment[];
 }
@@ -72,6 +78,7 @@ export interface PermissionRecord {
 
 export interface RoleRecord {
   id: string;
+  key: RoleKey | string;
   name: string;
   description: string;
   permissionLevel: number;
@@ -186,6 +193,30 @@ export interface ProjectDepartmentAssignment {
   departmentId: string;
   departmentName?: string | null;
   isPrimary: boolean;
+}
+
+export interface ProjectNavigationItem {
+  id: string;
+  projectCode: string;
+  name: string;
+  status: string;
+  priority: string;
+  departmentId: string;
+  departmentIds: string[];
+  progressPercentage: number;
+  aiDelayRiskScore: number;
+  totalTasks: number;
+  isNewForCurrentUser: boolean;
+  createdDate: string;
+}
+
+export interface WorkspaceBootstrap {
+  generatedAt: string;
+  currentUser: User;
+  permissions: string[];
+  projects: ProjectNavigationItem[];
+  unreadNotificationCount: number;
+  userPageSize: number;
 }
 
 export interface Task {
@@ -778,6 +809,15 @@ export interface TaskAttachment {
   createdDate: string;
 }
 
+export type DocumentCategory =
+  | "General"
+  | "Plan"
+  | "Report"
+  | "Contract"
+  | "Compliance"
+  | "Financial"
+  | "UtilizationCertificate";
+
 export interface ProjectDocument {
   id: string;
   projectId: string;
@@ -788,7 +828,76 @@ export interface ProjectDocument {
   uploadedByUserId: string;
   description?: string | null;
   version: string;
+  category?: DocumentCategory;
   createdDate: string;
+}
+
+export type UtilizationCertificateStatus =
+  | "Draft"
+  | "Submitted"
+  | "UnderReview"
+  | "Approved"
+  | "Rejected";
+
+export interface UtilizationCertificate {
+  id: string;
+  projectId: string;
+  documentId: string;
+  certificateNumber: string;
+  fundingSource: string;
+  amountClaimed: number;
+  amountUtilized: number;
+  unutilizedAmount: number;
+  utilizationPercentage: number;
+  periodStart: string;
+  periodEnd: string;
+  status: UtilizationCertificateStatus;
+  milestoneId?: string | null;
+  taskId?: string | null;
+  milestoneTitle?: string | null;
+  taskTitle?: string | null;
+  purpose?: string | null;
+  submittedByUserId: string;
+  submittedOn?: string | null;
+  reviewedByUserId?: string | null;
+  reviewedOn?: string | null;
+  reviewNotes?: string | null;
+  createdDate: string;
+  // Denormalized document info.
+  title: string;
+  filePath: string;
+  contentType: string;
+  fileSizeBytes: number;
+  capabilities: UtilizationCertificateCapabilities;
+}
+
+export interface SubmitUtilizationCertificatePayload {
+  projectId: string;
+  certificateNumber: string;
+  fundingSource: string;
+  amountClaimed: number;
+  amountUtilized: number;
+  periodStart: string;
+  periodEnd: string;
+  milestoneId?: string | null;
+  taskId?: string | null;
+  purpose?: string | null;
+  title?: string | null;
+  description?: string | null;
+}
+
+export type UpdateUtilizationCertificatePayload = Omit<
+  SubmitUtilizationCertificatePayload,
+  "projectId"
+>;
+
+export interface UtilizationCertificateCapabilities {
+  /** Resolved server-side, so the UI never disagrees with the API. */
+  canEdit: boolean;
+  canSubmitForReview: boolean;
+  canReview: boolean;
+  canDelete: boolean;
+  isOwner: boolean;
 }
 
 export interface TaskTimeEntry {
@@ -936,11 +1045,13 @@ export interface PageUserDto {
   departments: UserDepartmentAssignment[];
   isActive: boolean;
   roles: string[];
+  roleKeys?: RoleKey[];
   skills: { skillId: string; skillName: string; proficiencyLevel: number }[];
 }
 
 export interface PageRoleDto {
   id: string;
+  key: RoleKey | string;
   name: string;
   description: string;
   permissionLevel: number;

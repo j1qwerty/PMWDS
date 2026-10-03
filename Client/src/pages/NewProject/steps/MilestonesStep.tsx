@@ -57,6 +57,10 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
 
   return (
     <div className="space-y-5">
+      <p className="text-xs text-slate-500">
+        At least one milestone is required <span className="text-red-500">*</span>
+      </p>
+
       {/* Existing milestones */}
       {milestones.length > 0 && (
         <div className="space-y-2">
@@ -116,7 +120,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
             <span className="material-symbols-outlined text-3xl text-indigo-400">flag</span>
           </div>
           <p className="text-sm font-semibold text-slate-600">No milestones yet</p>
-          <p className="text-xs text-slate-400 mt-1 mb-4">Break your project into key milestones to track progress</p>
+          <p className="text-xs text-slate-400 mt-1 mb-4">Break your project into key milestones to track progress. At least one milestone is required <span className="text-red-500">*</span></p>
         </GlassCard>
       )}
 
