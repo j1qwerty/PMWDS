@@ -49,7 +49,7 @@ public sealed class RoleHierarchyAuthorizationTests
     [Fact]
     public async Task Delegating_role_can_create_a_lower_role()
     {
-        var client = _fixture.ProjectManager.Client;
+        var client = _fixture.Director.Client;
         var permissions = await client.GetAsync<JsonElement>("/api/v1/roles/permissions");
         var projectView = permissions.Data.EnumerateArray()
             .First(p => p.GetString("code") == "PROJECT_VIEW")
