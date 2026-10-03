@@ -128,14 +128,26 @@ builder.Services
                     return;
                 }
 
-                var db = ctx.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
-                var user = await db.Users
-                    .AsNoTracking()
-                    .Where(u => u.Id == userId)
-                    .Select(u => new { u.IsActive, u.AccessTokenVersion })
-                    .FirstOrDefaultAsync(ctx.HttpContext.RequestAborted);
+                var cache = ctx.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                var cacheKey = $"pmwds:jwt-validation:{userId:N}:{tokenVersion}";
 
-                if (user == null || !user.IsActive || user.AccessTokenVersion != tokenVersion)
+                if (!cache.TryGetValue(cacheKey, out bool isTokenValid))
+                {
+                    var db = ctx.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                    var user = await db.Users
+                        .AsNoTracking()
+                        .Where(u => u.Id == userId)
+                        .Select(u => new { u.IsActive, u.AccessTokenVersion })
+                        .FirstOrDefaultAsync(ctx.HttpContext.RequestAborted);
+
+                    isTokenValid = user != null &&
+                        user.IsActive &&
+                        user.AccessTokenVersion == tokenVersion;
+
+                    cache.Set(cacheKey, isTokenValid, TimeSpan.FromSeconds(5));
+                }
+
+                if (!isTokenValid)
                 {
                     ctx.Fail("Token has been revoked.");
                 }
