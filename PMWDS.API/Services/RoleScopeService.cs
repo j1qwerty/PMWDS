@@ -180,7 +180,6 @@ public class RoleScopeService
         if (!await HasAnyPermissionAsync(ct,
             PermissionCodes.OrganizationManage,
             PermissionCodes.OrganizationEdit,
-            PermissionCodes.OrganizationCreate,
             PermissionCodes.OrganizationDelete))
         {
             return false;
@@ -209,7 +208,6 @@ public class RoleScopeService
         if (!await HasAnyPermissionAsync(ct,
             PermissionCodes.DepartmentManage,
             PermissionCodes.DepartmentEdit,
-            PermissionCodes.DepartmentCreate,
             PermissionCodes.DepartmentDelete))
         {
             return false;
@@ -260,7 +258,6 @@ public class RoleScopeService
         if (!await HasAnyPermissionAsync(ct,
             PermissionCodes.ProjectManage,
             PermissionCodes.ProjectEdit,
-            PermissionCodes.ProjectCreate,
             PermissionCodes.ProjectDelete,
             PermissionCodes.ProjectPrimaryDepartmentManage))
         {
@@ -392,7 +389,6 @@ public class RoleScopeService
         if (!await HasAnyPermissionAsync(ct,
             PermissionCodes.UserManage,
             PermissionCodes.UserEdit,
-            PermissionCodes.UserCreate,
             PermissionCodes.UserDelete))
         {
             return false;
