@@ -305,3 +305,38 @@ Run the existing `PMWDS.Tests` suite plus explicit role flows for:
 - Scheduled report configuration actually driving execution.
 - Project deletion and descendant soft-delete behaviour.
 - Concurrent edit -> HTTP 409 behaviour.
+# Implementation status after audit verification
+
+| Finding | Current implementation track | Status |
+|---|---|---|
+| H1 Goal hierarchy | PR #5 | Implemented in review |
+| H2 Budget workflow | PR #5 | Implemented in review |
+| H3 Stored report scope | PR #3 | Implemented in review |
+| H4 Scheduled report execution | PR #10 | Implemented in review; scheduler now polls hourly |
+| H5 Assignment authorization | PR #3 | Implemented in review |
+| H6 Task relationship integrity | PR #3 | Implemented in review |
+| H7 Task dependency integrity | PR #3 | Implemented in review |
+| H8 Status justification | PR #3 | Implemented in review |
+| H9 Soft-delete descendant handling | PR #3 | Implemented in review |
+| H10 Permission/scope consistency | PR #16 | Implemented in review |
+| M1 Atomic workflow writes | PR #9 | Implemented in review |
+| M6 Concurrency response | PR #10 | Implemented in review |
+| M8 Project pagination/querying | PR #15 | Implemented in review |
+
+## Additional findings discovered during implementation verification
+
+### M11. Scheduled-report polling cadence was too coarse
+
+The schedule execution logic can support hourly/daily/weekly/monthly records, but the recurring Hangfire trigger itself was weekly. That made an hourly/daily schedule inherently late even when its NextRun was due.
+
+**Resolution:** PR #10 changes the recurring poll to hourly so the persisted NextRun values can actually drive execution.
+
+### M12. CI needed a build-focused baseline before lint cleanup
+
+The first CI run showed the backend build and integration tests passing, while frontend lint reported 203 existing errors across the repository. Treating that lint debt as the release gate would block unrelated review work.
+
+**Resolution:** PR #11 uses backend restore/build/test plus frontend TypeScript/Vite build as the required validation baseline. The lint debt remains a separate cleanup track and is not being hidden.
+
+## Review rule
+
+Implementation PRs remain unmerged so they can be tested and merged in dependency order. PR #2 contains the audit documents and is already merged.
