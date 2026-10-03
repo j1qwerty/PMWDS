@@ -73,9 +73,6 @@ public sealed class BudgetController : ControllerBase
             return Forbid();
         if (dto.Amount <= 0)
             return BadRequest(new { message = "Allocation amount must be greater than zero." });
-        if (dto.DepartmentIdNotUsed())
-            return BadRequest();
-
         if (await _db.GoalBudgetAllocations.AnyAsync(
             item => item.GoalId == dto.GoalId && item.Status == BudgetAllocationStatus.Active, ct))
             return Conflict(new { message = "An active allocation already exists for this goal. Amend the allocation instead." });
@@ -362,7 +359,3 @@ public sealed class BudgetController : ControllerBase
             item.EnteredByUserId);
 }
 
-file sealed static class BudgetRequestCompatibility
-{
-    public static bool DepartmentIdNotUsed(this CreateGoalBudgetAllocationDto dto) => false;
-}
