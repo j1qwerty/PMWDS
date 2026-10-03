@@ -383,6 +383,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
+    [RequestSizeLimit(FileUploadValidation.ProjectDocumentMaxBytes)]
     public async Task<IActionResult> UploadDocument(
     Guid id,
     IFormFile file,
@@ -398,28 +399,71 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        if (!FileUploadValidation.Validate(
+            file?.FileName ?? string.Empty,
+            file?.ContentType ?? string.Empty,
+            file?.Length ?? 0,
+            FileUploadValidation.ProjectDocumentMaxBytes,
+            out var fileError))
+        {
+            return BadRequest(new { message = fileError });
+        }
+
         // A Utilization Certificate carries extra finance metadata and an approval
         // lifecycle, so it has to go through the dedicated UC endpoint instead.
         var resolvedCategory = category is null || category == DocumentCategory.UtilizationCertificate
             ? DocumentCategory.General
             : category.Value;
 
-        await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
-        var filePath = await _localFiles.UploadDocumentAsync(stream, project.ProjectCode, project.Name, extension, file.ContentType, ct);
+        string? filePath = null;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            filePath = await _localFiles.UploadDocumentAsync(
+                stream,
+                project.ProjectCode,
+                project.Name,
+                extension,
+                file.ContentType,
+                ct);
 
-        var doc = ProjectDocument.Create(
-            id,
-            file.FileName,
-            filePath,
-            file.ContentType,
-            file.Length,
-            _currentUser.UserId ?? "system",
-            description: null,
-            category: resolvedCategory);
+            var doc = ProjectDocument.Create(
+                id,
+                file.FileName,
+                filePath,
+                file.ContentType,
+                file.Length,
+                _currentUser.UserId ?? "system",
+                description: null,
+                category: resolvedCategory);
 
-        await _uow.ProjectDocuments.AddAsync(doc, ct);
-        await _uow.SaveChangesAsync(ct);
+            await _uow.ProjectDocuments.AddAsync(doc, ct);
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            if (!string.IsNullOrWhiteSpace(filePath))
+            {
+                try
+                {
+                    await _localFiles.DeleteDocumentAsync(filePath, ct);
+                }
+                catch (Exception cleanupException)
+                {
+                    // The original persistence/upload failure is the actionable error;
+                    // cleanup failure is logged so it can be reconciled separately.
+                    HttpContext.RequestServices
+                        .GetRequiredService<ILogger<ProjectsController>>()
+                        .LogError(
+                            cleanupException,
+                            "Failed to clean up uploaded project document {FilePath} after persistence failure.",
+                            filePath);
+                }
+            }
+
+            throw;
+        }
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Document Uploaded",
