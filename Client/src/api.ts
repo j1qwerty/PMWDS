@@ -166,7 +166,7 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     return (await response.blob()) as T;
   };
 
-  if (method === "GET" || method === "HEAD") {
+  if ((method === "GET" || method === "HEAD") && options.responseType !== "blob") {
     return runCoordinatedRead(
       `${method}:${url.toString()}:${options.token ?? ""}`,
       execute,
