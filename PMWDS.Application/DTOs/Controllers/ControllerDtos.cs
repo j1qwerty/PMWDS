@@ -109,6 +109,7 @@ public record RoleResponse(
     string Name,
     string Description,
     int PermissionLevel,
+    bool CanAssignLowerRoles,
     int PaginationPageSize,
     List<PermissionResponse> Permissions);
 
@@ -120,8 +121,8 @@ public record PermissionResponse(
     string Module,
     bool IsGlobal);
 
-public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
-public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
+public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null, bool CanAssignLowerRoles = false);
+public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null, bool CanAssignLowerRoles = false);
 public record CreatePermissionRequest(string Code, string Name, string Description, string Module, bool IsGlobal);
 public record UpdatePermissionRequest(string Name, string Description, string Module, bool IsGlobal);
 
