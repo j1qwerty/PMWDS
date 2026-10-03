@@ -3,6 +3,7 @@ namespace PMWDS.Application.DTOs.Projects;
 public record MilestoneDto(
  Guid Id,
  Guid ProjectId,
+ Guid? GoalId,
  Guid? DepartmentId,
  string? DepartmentName,
  string Name,
@@ -26,6 +27,7 @@ public record MilestoneDto(
      return new(
      m.Id,
      m.ProjectId,
+     m.GoalId,
      m.DepartmentId,
      m.Department?.Name,
      m.Name,
