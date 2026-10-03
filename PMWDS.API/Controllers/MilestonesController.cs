@@ -9,6 +9,7 @@ using PMWDS.Application.DTOs.Notifications;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Validation;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
 using PMWDS.Persistence.Context;
@@ -95,13 +96,19 @@ public class MilestonesController : BaseApiController
         if (duplicate)
             return BadRequest(new { message = "This dependency already exists" });
 
-        // Circular dependency check: if B depends on A, A cannot depend on B
-        var reverseExists = await _db.MilestoneDependencies.AnyAsync(d =>
-            d.PrerequisiteMilestoneId == dto.DependentMilestoneId &&
-            d.DependentMilestoneId == dto.PrerequisiteMilestoneId &&
-            d.ProjectId == dto.ProjectId, ct);
-        if (reverseExists)
-            return BadRequest(new { message = "Circular dependency detected" });
+        var existingEdges = await _db.MilestoneDependencies
+            .AsNoTracking()
+            .Where(d => d.ProjectId == dto.ProjectId)
+            .Select(d => new { From = d.PrerequisiteMilestoneId, To = d.DependentMilestoneId })
+            .ToListAsync(ct);
+
+        if (MilestoneDependencyGraphValidator.WouldCreateCycle(
+            existingEdges.Select(edge => (edge.From, edge.To)),
+            dto.PrerequisiteMilestoneId,
+            dto.DependentMilestoneId))
+        {
+            return BadRequest(new { message = "Circular dependency detected." });
+        }
 
         if (!Enum.TryParse<MilestoneDependencyType>(dto.Type, ignoreCase: true, out var depType))
             return BadRequest(new { message = "Invalid dependency type. Valid values: CompletionBased, ProgressThreshold" });
