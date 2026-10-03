@@ -57,7 +57,7 @@ export function ReportsPage() {
     if (!auth) return;
     setLoading(true);
     Promise.all([
-      api.getProjects(auth.token),
+      api.getAllProjects(auth.token),
       api.getDepartments(auth.token),
       canViewOrganizations ? api.getOrganizations(auth.token) : Promise.resolve([]),
     ]).then(([projectData, departmentData, organizationData]) => {
