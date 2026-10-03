@@ -20,15 +20,18 @@ public sealed class BudgetController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly RoleScopeService _scope;
     private readonly ICurrentUserService _currentUser;
+    private readonly IBudgetReleaseConditionEvaluator _conditionEvaluator;
 
     public BudgetController(
         ApplicationDbContext db,
         RoleScopeService scope,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IBudgetReleaseConditionEvaluator conditionEvaluator)
     {
         _db = db;
         _scope = scope;
         _currentUser = currentUser;
+        _conditionEvaluator = conditionEvaluator;
     }
 
     [HttpGet("goals/{goalId:guid}/summary")]
@@ -167,8 +170,13 @@ public sealed class BudgetController : ControllerBase
         if (committed + pending + dto.AmountRequested > allocated)
             return Conflict(new { message = "Requested releases exceed the active goal allocation." });
 
-        var required = dto.RequiredConditions ?? new Dictionary<string, bool>();
-        var satisfied = dto.SatisfiedConditions ?? new Dictionary<string, bool>();
+        var required = NormalizeRequiredConditions(dto.RequiredConditions);
+        var satisfied = await _conditionEvaluator.EvaluateAsync(
+            goal.Id,
+            required,
+            manualApprovalSatisfied: false,
+            ct);
+
         var release = BudgetRelease.Create(
             allocation.Id,
             dto.AmountRequested,
@@ -205,8 +213,22 @@ public sealed class BudgetController : ControllerBase
 
         if (dto.Decision == BudgetReleaseStatus.Approved)
         {
+            var required = JsonSerializer.Deserialize<Dictionary<string, bool>>(release.RequiredConditionsJson)
+                ?? new Dictionary<string, bool>();
+            var satisfied = await _conditionEvaluator.EvaluateAsync(
+                goal.Id,
+                required,
+                manualApprovalSatisfied: true,
+                ct);
+            release.SetSatisfiedConditions(satisfied);
+
             if (!release.AreAllConditionsSatisfied())
-                return Conflict(new { message = "All required release conditions must be satisfied before approval." });
+                return Conflict(new
+                {
+                    message = "All required release conditions must be satisfied before approval.",
+                    conditions = satisfied
+                });
+
             if (dto.ApprovedAmount < 0 || dto.ApprovedAmount > release.AmountRequested)
                 return BadRequest(new { message = "Approved amount must be between zero and the requested amount." });
 
@@ -301,6 +323,13 @@ public sealed class BudgetController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return Ok(MapExpenditure(expenditure));
     }
+
+    private static Dictionary<string, bool> NormalizeRequiredConditions(
+        IReadOnlyDictionary<string, bool>? conditions)
+        => (conditions ?? new Dictionary<string, bool>())
+            .Where(item => item.Value && !string.IsNullOrWhiteSpace(item.Key))
+            .GroupBy(item => item.Key.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, _ => true, StringComparer.OrdinalIgnoreCase);
 
     private async Task<Goal?> GetGoalAsync(Guid goalId, CancellationToken ct)
         => await _db.Goals.FirstOrDefaultAsync(item => item.Id == goalId, ct);

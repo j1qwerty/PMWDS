@@ -3,7 +3,7 @@ import type { Milestone, ProjectDocument, Task } from "../../../types";
 import { api } from "../../../api";
 import { onDataChanged } from "../../../realtime";
 import { DOCUMENT_SCOPES } from "../../../realtimeScopes";
-import { UtilizationCertificates } from "../../shared";
+import { Dialog, PERMISSION_GROUPS, usePermission, useToast, UtilizationCertificates } from "../../shared";
 
 interface DocumentsSectionProps {
   projectId: string;
@@ -23,6 +23,13 @@ export function DocumentsSection({
   const [loading, setLoading] = useState(true);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [approvalTarget, setApprovalTarget] = useState<ProjectDocument | null>(null);
+  const [approvalAction, setApprovalAction] = useState<"Approved" | "Rejected" | null>(null);
+  const [approvalNotes, setApprovalNotes] = useState("");
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const perm = usePermission();
+  const { addToast } = useToast();
+  const canApproveDocuments = perm.has(PERMISSION_GROUPS.project.manage);
 
   // Utilization certificates render in their own block below, so keep them out
   // of the plain document list to avoid showing the same file twice.
@@ -94,6 +101,38 @@ export function DocumentsSection({
     }
   };
 
+  const submitApproval = async () => {
+    if (!authToken || !approvalTarget || !approvalAction) return;
+
+    setApprovingId(approvalTarget.id);
+    try {
+      const updated = await api.setProjectDocumentApproval(
+        authToken,
+        projectId,
+        approvalTarget.id,
+        approvalAction === "Approved",
+        approvalNotes.trim() || undefined,
+      );
+
+      setDocuments((current) =>
+        current.map((document) => document.id === updated.id ? updated : document),
+      );
+      addToast(
+        approvalAction === "Approved" ? "Document approved." : "Document rejected.",
+      );
+      setApprovalTarget(null);
+      setApprovalAction(null);
+      setApprovalNotes("");
+    } catch (cause) {
+      addToast(
+        cause instanceof Error ? cause.message : "Failed to update document approval.",
+        "error",
+      );
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -161,14 +200,27 @@ export function DocumentsSection({
           {plainDocuments.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-3 hover:bg-slate-100/50 transition-colors"
+              className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 hover:bg-slate-100/50 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="size-9 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-indigo-600 text-[18px]">description</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{doc.title}</p>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{doc.title}</p>
+                    {doc.approvalStatus && doc.approvalStatus !== "NotRequired" && (
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        doc.approvalStatus === "Approved"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : doc.approvalStatus === "Rejected"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {doc.approvalStatus}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-500">
                     {formatFileSize(doc.fileSizeBytes)} &middot;{" "}
                     {new Date(doc.createdDate).toLocaleDateString("en-US", {
@@ -179,16 +231,54 @@ export function DocumentsSection({
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => handleDownload(doc)}
-                disabled={downloadingId === doc.id}
-                className="size-9 rounded-lg flex items-center justify-center border border-slate-200 hover:bg-white transition-colors disabled:opacity-50 shrink-0"
-                title="Download"
-              >
-                <span className="material-symbols-outlined text-indigo-600 text-[18px]">
-                  {downloadingId === doc.id ? "hourglass_top" : "download"}
-                </span>
-              </button>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {canApproveDocuments && doc.approvalStatus === "Pending" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApprovalTarget(doc);
+                        setApprovalAction("Approved");
+                        setApprovalNotes("");
+                      }}
+                      disabled={approvingId === doc.id}
+                      className="size-9 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                      title="Approve document"
+                      aria-label="Approve document"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">check</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApprovalTarget(doc);
+                        setApprovalAction("Rejected");
+                        setApprovalNotes("");
+                      }}
+                      disabled={approvingId === doc.id}
+                      className="size-9 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                      title="Reject document"
+                      aria-label="Reject document"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleDownload(doc)}
+                  disabled={downloadingId === doc.id}
+                  className="size-9 rounded-lg flex items-center justify-center border border-slate-200 hover:bg-white transition-colors disabled:opacity-50"
+                  title="Download"
+                  aria-label="Download document"
+                >
+                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">
+                    {downloadingId === doc.id ? "hourglass_top" : "download"}
+                  </span>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -206,6 +296,67 @@ export function DocumentsSection({
           <p className="text-xs text-slate-400 mt-1">Upload project documents, specs, or reports.</p>
         </div>
       )}
+      {approvalTarget && approvalAction && (
+        <Dialog
+          title={approvalAction === "Approved" ? "Approve document" : "Reject document"}
+          description={approvalTarget.title}
+          icon={approvalAction === "Approved" ? "task_alt" : "block"}
+          size="sm"
+          onClose={() => {
+            if (approvingId) return;
+            setApprovalTarget(null);
+            setApprovalAction(null);
+            setApprovalNotes("");
+          }}
+          closeOnBackdrop={!approvingId}
+          showCloseButton={!approvingId}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setApprovalTarget(null);
+                  setApprovalAction(null);
+                  setApprovalNotes("");
+                }}
+                disabled={!!approvingId}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitApproval()}
+                disabled={!!approvingId}
+                className={approvalAction === "Approved"
+                  ? "rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  : "rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"}
+              >
+                {approvingId ? "Saving…" : approvalAction === "Approved" ? "Approve document" : "Reject document"}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-slate-600">
+              {approvalAction === "Approved"
+                ? "This document will count as an approved project document for budget release workflows that require document approval."
+                : "This document will no longer satisfy document-approval conditions until it is approved."}
+            </p>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Review notes</span>
+              <textarea
+                rows={3}
+                value={approvalNotes}
+                onChange={(event) => setApprovalNotes(event.target.value)}
+                placeholder="Optional review notes"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              />
+            </label>
+          </div>
+        </Dialog>
+      )}
+
     </div>
   );
 }

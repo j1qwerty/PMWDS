@@ -829,6 +829,10 @@ export interface ProjectDocument {
   description?: string | null;
   version: string;
   category?: DocumentCategory;
+  approvalStatus?: "NotRequired" | "Pending" | "Approved" | "Rejected";
+  approvedByUserId?: string | null;
+  approvedOn?: string | null;
+  approvalNotes?: string | null;
   createdDate: string;
 }
 

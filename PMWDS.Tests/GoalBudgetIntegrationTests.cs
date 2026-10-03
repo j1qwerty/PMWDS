@@ -86,16 +86,7 @@ public sealed class GoalBudgetIntegrationTests
         {
             goalBudgetAllocationId = allocationId,
             amountRequested = 80000m,
-            requiredConditions = new Dictionary<string, bool>
-            {
-                ["goalProgress"] = true,
-                ["documentApproval"] = true,
-            },
-            satisfiedConditions = new Dictionary<string, bool>
-            {
-                ["goalProgress"] = true,
-                ["documentApproval"] = true,
-            },
+            requiredConditions = new Dictionary<string, bool>(),
             justification = "Release tranche one.",
         });
         release.Status.Should().Be(HttpStatusCode.OK);
@@ -165,7 +156,9 @@ public sealed class GoalBudgetIntegrationTests
             },
             satisfiedConditions = new Dictionary<string, bool>
             {
-                ["goalProgress"] = false,
+                // This is intentionally true. The server must ignore it and
+                // recompute goalProgress from the actual Goal entity.
+                ["goalProgress"] = true,
             },
             justification = "Waiting for progress evidence.",
         });

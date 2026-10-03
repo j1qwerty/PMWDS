@@ -19,6 +19,10 @@ public class ProjectDocument : BaseEntity
     /// Defaults to <see cref="DocumentCategory.General"/> so existing rows keep behaving as plain files.
     /// </summary>
     public DocumentCategory Category { get; private set; } = DocumentCategory.General;
+    public DocumentApprovalStatus ApprovalStatus { get; private set; } = DocumentApprovalStatus.NotRequired;
+    public string? ApprovedByUserId { get; private set; }
+    public DateTime? ApprovedOn { get; private set; }
+    public string? ApprovalNotes { get; private set; }
 
     protected ProjectDocument() { }
 
@@ -38,7 +42,10 @@ public class ProjectDocument : BaseEntity
             FileSizeBytes = sizeBytes,
             UploadedByUserId = userId,
             Description = description,
-            Category = category
+            Category = category,
+            ApprovalStatus = category == DocumentCategory.UtilizationCertificate
+                ? DocumentApprovalStatus.NotRequired
+                : DocumentApprovalStatus.Pending
         };
     }
 
@@ -70,6 +77,17 @@ public class ProjectDocument : BaseEntity
 
     /// <summary>A Utilization Certificate carries a finance approval lifecycle.</summary>
     public bool IsUtilizationCertificate() => Category == DocumentCategory.UtilizationCertificate;
+
+    public void SetApproval(DocumentApprovalStatus status, string userId, string? notes)
+    {
+        if (Category == DocumentCategory.UtilizationCertificate)
+            throw new InvalidOperationException("Utilization Certificates use their dedicated approval workflow.");
+
+        ApprovalStatus = status;
+        ApprovedByUserId = status == DocumentApprovalStatus.NotRequired ? null : userId;
+        ApprovedOn = status == DocumentApprovalStatus.NotRequired ? null : DateTime.UtcNow;
+        ApprovalNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+    }
 
     public void BumpVersion(string newVersion)
     => Version = newVersion;

@@ -17,6 +17,8 @@ using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Controllers;
 
+public sealed record UpdateDocumentApprovalDto(bool Approved, string? Notes);
+
 public class ProjectsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
@@ -466,8 +468,66 @@ public class ProjectsController : BaseApiController
             d.Description,
             d.Version,
             d.Category,
+            ApprovalStatus = d.ApprovalStatus.ToString(),
+            d.ApprovedByUserId,
+            d.ApprovedOn,
+            d.ApprovalNotes,
             d.CreatedDate
         }));
+    }
+
+    [HttpPatch("{id:guid}/documents/{docId:guid}/approval")]
+    [Authorize(Policy = AuthorizationPolicies.ProjectManage)]
+    public async Task<IActionResult> SetDocumentApproval(
+        Guid id,
+        Guid docId,
+        [FromBody] UpdateDocumentApprovalDto dto,
+        CancellationToken ct)
+    {
+        var project = await _db.Projects.FirstOrDefaultAsync(item => item.Id == id, ct);
+        if (project == null)
+            return NotFound();
+
+        if (!await _scope.CanManageProjectAsync(id, ct))
+            return Forbid();
+
+        var document = await _db.ProjectDocuments
+            .FirstOrDefaultAsync(item => item.Id == docId && item.ProjectId == id, ct);
+        if (document == null)
+            return NotFound();
+
+        var status = dto.Approved
+            ? DocumentApprovalStatus.Approved
+            : DocumentApprovalStatus.Rejected;
+
+        document.SetApproval(status, _currentUser.UserId ?? "system", dto.Notes);
+        document.SetModified(_currentUser.UserId ?? "system");
+        await _db.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: dto.Approved ? "Document Approved" : "Document Rejected",
+            Description: $"{_currentUser.FullName} { (dto.Approved ? "approved" : "rejected") } document "{document.Title}" in project "{project.Name}"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectId"] = id,
+                ["documentId"] = docId,
+                ["approved"] = dto.Approved,
+                ["notes"] = dto.Notes ?? string.Empty
+            },
+            ProjectId: id);
+
+        await _changes.NotifyAsync(DataChangeScopes.Documents, docId.ToString(), id, ct);
+
+        return Ok(new
+        {
+            document.Id,
+            document.ProjectId,
+            document.Title,
+            ApprovalStatus = document.ApprovalStatus.ToString(),
+            document.ApprovedByUserId,
+            document.ApprovedOn,
+            document.ApprovalNotes
+        });
     }
 
     [HttpGet("{id:guid}/documents/{docId:guid}/download")]
