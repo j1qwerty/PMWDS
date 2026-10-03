@@ -233,3 +233,76 @@ For every major modal:
 - buttons cannot double-submit;
 - successful mutation closes only after the API succeeds;
 - realtime/refetch updates the underlying list without a manual page reload.
+# Implementation status after audit verification
+
+| Finding | Current implementation track | Status |
+|---|---|---|
+| H1/H2 Shared dialog lifecycle | PR #8 | Implemented in review |
+| H4/H5 Mutation modal consistency | PR #8 | Implemented in review |
+| Native destructive confirmations | PR #13 | Implemented in review |
+| M4/M5 Project-list pagination/data-flow | PR #15 | Implemented in review |
+| M1/M2 Theme cleanup | Remaining UI cleanup track | Not yet complete |
+| M3 Icon consistency | Remaining UI cleanup track | Not yet complete |
+| M7 Field-level validation mapping | Remaining UI cleanup track | Not yet complete |
+| M10 Context help affordances | Remaining UI cleanup track | Not yet complete |
+
+## Additional findings discovered during implementation verification
+
+### H6. Native browser confirmations bypass the PMWDS dialog system
+
+Task and subtask deletion used window.confirm(), producing a different browser-native interaction from the rest of the application.
+
+**Resolution:** PR #13 routes both destructive actions through the shared delete dialog.
+
+### M11. Project list filtering was correct only for the currently loaded page
+
+The API already paginated project results, while the UI applied search/sort/date/priority filtering after that page was returned. With enough projects, matching records outside the current page could never appear.
+
+**Resolution:** PR #15 moves the filter/search/sort semantics to the API and adds UI pagination while retaining the existing project-card style.
+
+### M12. Build validation exposed broad pre-existing frontend lint debt
+
+The frontend contained a large number of lint failures unrelated to the modal and project-list work. The build itself remains the more useful release gate until that debt is separately reduced.
+
+**Resolution:** PR #11 validates the frontend production build; lint cleanup remains an explicit follow-up.
+
+## Review rule
+
+The shared dialog and project-list PRs are kept separate from backend workflow changes so UI regressions can be verified independently.
+### Current implementation queue additions
+
+| Finding | PR | Status |
+|---|---|---|
+| Shared Dialog primitive/lifecycle | PR #8 | Implemented in review |
+| Native task/subtask confirmations | PR #13 | Implemented in review |
+| Remaining duplicate modal card chrome | PR #21 | Implemented in review |
+| Project-list server pagination/filter contract | PR #15 | Implemented in review |
+| Project-picker completeness after pagination | PR #22 | Implemented in review |
+| Document approval evidence flow | PR #20 | Implemented in review |
+
+### Current remaining UI work
+
+The highest remaining UI work is field-level validation/error mapping, responsive table/modal polish, consistent icon treatment, context-help affordances for complex workflow terms, and migration of less-used detail modals that still use bespoke markup.
+
+
+## Verification findings added during the 2026-10-03 remediation pass
+
+| Finding | PR | Status |
+|---|---|---|
+| Modal submission state after failed API calls | PR #27 | Implemented in review |
+| Project/Milestone/Task core form submission state and validation | PR #28 | Implemented in review |
+| Atomic New Project wizard UI/API integration | PR #29 | Implemented in review |
+| Lower-role delegation control in Role editor/table | PR #34 | Implemented in review; backend dependency on PR #32 |
+
+### UI workflow corrections completed in review
+
+- Create/edit role, permission, notification-rule/template, profile and skill forms now reinitialize correctly when switching between edit and create modes.
+- Mutation forms restore their enabled state after failed async API calls.
+- Project form validation reports invalid dates/name instead of silently returning.
+- Milestone form blocks a due date after the project end date.
+- Project/Milestone/Task dialogs rely more consistently on the shared ModalOverlay rather than nested duplicate card chrome.
+- The New Project wizard keeps its existing visible steps while submitting the complete graph through one atomic endpoint.
+
+### Remaining UI work
+
+Field-level API validation mapping, consistent semantic theme tokens, icon-source consolidation, contextual help for complex workflow terms, responsive/table polish, and less-used bespoke detail modals remain open follow-up tracks.

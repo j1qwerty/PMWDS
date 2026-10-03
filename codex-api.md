@@ -305,3 +305,109 @@ Run the existing `PMWDS.Tests` suite plus explicit role flows for:
 - Scheduled report configuration actually driving execution.
 - Project deletion and descendant soft-delete behaviour.
 - Concurrent edit -> HTTP 409 behaviour.
+# Implementation status after audit verification
+
+| Finding | Current implementation track | Status |
+|---|---|---|
+| H1 Goal hierarchy | PR #5 | Implemented in review |
+| H2 Budget workflow | PR #5 | Implemented in review |
+| H3 Stored report scope | PR #3 | Implemented in review |
+| H4 Scheduled report execution | PR #10 | Implemented in review; scheduler now polls hourly |
+| H5 Assignment authorization | PR #3 | Implemented in review |
+| H6 Task relationship integrity | PR #3 | Implemented in review |
+| H7 Task dependency integrity | PR #3 | Implemented in review |
+| H8 Status justification | PR #3 | Implemented in review |
+| H9 Soft-delete descendant handling | PR #3 | Implemented in review |
+| H10 Permission/scope consistency | PR #16 | Implemented in review |
+| M1 Atomic workflow writes | PR #9 | Implemented in review |
+| M6 Concurrency response | PR #10 | Implemented in review |
+| M8 Project pagination/querying | PR #15 | Implemented in review |
+
+## Additional findings discovered during implementation verification
+
+### M11. Scheduled-report polling cadence was too coarse
+
+The schedule execution logic can support hourly/daily/weekly/monthly records, but the recurring Hangfire trigger itself was weekly. That made an hourly/daily schedule inherently late even when its NextRun was due.
+
+**Resolution:** PR #10 changes the recurring poll to hourly so the persisted NextRun values can actually drive execution.
+
+### M12. CI needed a build-focused baseline before lint cleanup
+
+The first CI run showed the backend build and integration tests passing, while frontend lint reported 203 existing errors across the repository. Treating that lint debt as the release gate would block unrelated review work.
+
+**Resolution:** PR #11 uses backend restore/build/test plus frontend TypeScript/Vite build as the required validation baseline. The lint debt remains a separate cleanup track and is not being hidden.
+
+## Review rule
+
+Implementation PRs remain unmerged so they can be tested and merged in dependency order. PR #2 contains the audit documents and is already merged.
+### Current implementation queue additions
+
+| Finding | PR | Status |
+|---|---|---|
+| M3 synchronous task AI enrichment | PR #18 | Implemented in review |
+| M4 broad background-job loads | PR #19 | Implemented in review |
+| H2 caller-controlled budget conditions | PR #20 | Implemented in review |
+| M8 project-list server pagination/filter contract | PR #15 | Implemented in review |
+| Project-picker consumers of paginated API | PR #22 | Implemented in review |
+| Dynamic resource-scope authorization | PR #16 | Implemented in review |
+| CI build/test baseline | PR #11 | Implemented; latest CI run green |
+
+### CI verification
+
+The repository CI workflow completed successfully after the frontend lint gate was removed: the backend restore/build/integration-test job passed and the frontend production build passed. The initial lint-only failure reported 203 pre-existing lint errors; lint debt remains a separate cleanup track.
+
+
+## Verification findings added during the 2026-10-03 remediation pass
+
+| Finding | PR | Status |
+|---|---|---|
+| Goal direct department reassignment bypass | PR #26 | Implemented in review; stacked on PR #5 |
+| Budget balance race under concurrent writes | PR #25 | Implemented in review; stacked on PR #5 |
+| Dashboard ownership / Knowledge / AI authorization gaps | PR #23 | Implemented in review |
+| Uploaded-file size/type and orphan cleanup | PR #24 | Implemented in review |
+| Indirect milestone dependency cycles | PR #30 | Implemented in review |
+| Client-created audit-log integrity | PR #31 | Implemented in review |
+| Role permission-level escalation | PR #32 | Implemented in review |
+| SYSTEM_ADMIN dynamic-role consistency | PR #33 | Implemented in review |
+| Explicit lower-role delegation capability | PR #34 | Implemented in review; stacked on PR #32 |
+| Unauthorized role-permission selections | PR #35 | Implemented in review; stacked on PR #34 |
+| Atomic New Project wizard | PR #29 | Implemented in review; stacked on PR #18 |
+| Existing project soft-delete cascade track | PR #14 | Implemented in review |
+| Existing Goal/Budget UI track | PR #12 | Implemented in review |
+
+### New high-value invariants now covered
+
+- Goal department changes must use the transfer workflow rather than direct reassignment.
+- Goal budget allocation/release/expenditure balance checks are serialized against concurrent writes.
+- Dashboard resources are private to their owner.
+- Knowledge and AI operations require explicit permissions plus project/task scope.
+- Project documents and task attachments reject unsupported file types and oversized payloads; failed persistence triggers compensating file cleanup.
+- Milestone dependency creation rejects indirect cycles.
+- Client-authored ActivityLog creation is permission-gated and project-scoped.
+- Custom role updates cannot raise a role to or above the caller's hierarchy level.
+- Dynamic SYSTEM_ADMIN permission is treated consistently with the built-in SuperAdmin role.
+- Lower-role delegation is explicit and separate from role-management permission.
+- Unauthorized or unknown role permission selections are rejected rather than silently dropped.
+- The multi-step New Project wizard can create its project graph atomically and roll back on validation failure.
+
+### Remaining verification caveats
+
+All implementation PRs are still open and unmerged. Source-level review has been performed, but executable validation for each PR should be run after the dependency chain is merged into a branch that contains the CI workflow. PR #11 currently provides the repository build/test CI baseline.
+
+### Recommended merge dependency additions
+
+- PR #5 → PR #20, #25, #26, and the existing Goal/Budget UI chain.
+- PR #8 → PR #13 and #21.
+- PR #15 → PR #22.
+- PR #32 → PR #34 → PR #35.
+- PR #18 → PR #29.
+
+
+### Additional security findings: integrations and file serving
+
+| Finding | PR | Status |
+|---|---|---|
+| Integration configuration/API-key exposure through Manager GET responses | PR #36 | Implemented in review |
+| Public /files static-file bypass for project documents | PR #37 | Implemented in review |
+
+These fixes keep sensitive integration configuration redacted at the API boundary and ensure project documents remain behind the existing project-scope authorization check.
