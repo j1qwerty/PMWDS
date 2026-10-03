@@ -28,6 +28,7 @@ export function ModalOverlay({
     <Dialog
       onClose={onClose}
       closeOnBackdrop={closeOnBackdrop}
+      closeOnEscape
       showCloseButton={showCloseButton}
       size={size}
       className={contentClassName}
