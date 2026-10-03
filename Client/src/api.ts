@@ -213,6 +213,41 @@ export const api = {
   getProject(token: string, id: string) {
     return request<Project>(`projects/${id}`, { token });
   },
+  createProjectWizard(
+    token: string,
+    payload: {
+      project: Record<string, unknown>;
+      milestones: Array<{
+        clientId: string;
+        name: string;
+        description: string;
+        dueDate: string;
+        isCritical: boolean;
+        departmentId?: string | null;
+      }>;
+      dependencies: Array<{
+        prerequisiteMilestoneClientId: string;
+        dependentMilestoneClientId: string;
+        type: "CompletionBased" | "ProgressThreshold";
+        thresholdPercentage?: number | null;
+      }>;
+      tasks: Array<{
+        title: string;
+        description?: string | null;
+        startDate: string;
+        dueDate: string;
+        estimatedHours: number;
+        milestoneClientId?: string | null;
+        priority: string;
+        assignedToUserIds?: string[];
+      }>;
+    },
+  ) {
+    return request<{ project: Project; milestoneIds: Record<string, string>; taskIds: string[] }>(
+      "projects/wizard",
+      { token, method: "POST", body: payload },
+    );
+  },
   createProject(token: string, payload: Record<string, unknown>) {
     return request<Project>("projects", { token, method: "POST", body: payload });
   },
