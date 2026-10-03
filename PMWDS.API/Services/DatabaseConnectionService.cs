@@ -61,7 +61,6 @@ public static class DatabaseConnectionService
                         sql.EnableRetryOnFailure(
                             maxRetryCount: 1,
                             maxRetryDelay: TimeSpan.FromSeconds(2));
-                        sql.CommandTimeout(15);
                     });
                     break;
                 case ActiveDatabaseProvider.Sqlite:
