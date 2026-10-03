@@ -28,44 +28,65 @@ public class EscalationCheckerJob : IEscalationCheckerJob
         _logger.LogInformation(
         "EscalationCheckerJob started at {Time}",
         DateTime.UtcNow);
-        int escalatedCount = 0;
-        var activeTasks = (await _uow.Tasks.GetAllAsync(ct))
-        .Where(t =>
-        t.Status != Domain.Enums.TaskStatus.Completed
-        && t.Status != Domain.Enums.TaskStatus.Cancelled)
-        .ToList();
-        foreach (var task in activeTasks
-        .Where(t => !t.IsEscalated))
+        const batchSize = 100;
+        var skip = 0;
+
+        while (true)
         {
-            try
+            var activeTasks = await _uow.Tasks.GetActiveTasksBatchAsync(skip, batchSize, ct);
+            if (activeTasks.Count == 0)
+                break;
+
+            var batchEscalations = new List<ProjectTask>();
+
+            foreach (var task in activeTasks)
             {
-                var prediction =
-                await _ai.PredictTaskDelayAsync(task.Id, ct);
-                if (prediction.ShouldEscalate)
+                try
                 {
-                    task.Escalate();
-                    task.UpdateAIPrediction(
-                    prediction.DelayProbability,
-                    prediction.PredictedCompletionDate ?? task.DueDate,
-                    string.Join("; ",
-                    prediction.ContributingFactors),
-                    task.AIRecommendedAssigneeId);
-                    await _uow.Tasks.UpdateAsync(task, ct);
-                    await _notifications
-                    .SendEscalationAlertAsync(
-                    task.Id,
-                   task.EscalationLevel, ct);
-                    escalatedCount++;
+                    var prediction = await _ai.PredictTaskDelayAsync(task.Id, ct);
+                    if (prediction.ShouldEscalate)
+                    {
+                        task.Escalate();
+                        task.UpdateAIPrediction(
+                            prediction.DelayProbability,
+                            prediction.PredictedCompletionDate ?? task.DueDate,
+                            string.Join("; ", prediction.ContributingFactors),
+                            task.AIRecommendedAssigneeId);
+                        await _uow.Tasks.UpdateAsync(task, ct);
+                        batchEscalations.Add(task);
+                        escalatedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Error checking escalation for task {TaskId}", task.Id);
                 }
             }
-            catch (Exception ex)
+
+            await _uow.SaveChangesAsync(ct);
+
+            foreach (var task in batchEscalations)
             {
-                _logger.LogError(ex,
-                "Error checking escalation " +
-                "for task {TaskId}", task.Id);
+                try
+                {
+                    await _notifications.SendEscalationAlertAsync(
+                        task.Id,
+                        task.EscalationLevel,
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to send escalation alert for task {TaskId}",
+                        task.Id);
+                }
             }
+
+            skip += activeTasks.Count;
+            if (activeTasks.Count < batchSize)
+                break;
         }
-        await _uow.SaveChangesAsync(ct);
         _logger.LogInformation(
         "EscalationCheckerJob completed. " +
         "AI-escalated: {Count} tasks.",
