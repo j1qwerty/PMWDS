@@ -83,13 +83,17 @@ uploads somewhere unexpected.
 |---|---|---|
 | 5001 | `127.0.0.1` | pmwds-sqlite |
 | 5002 | `127.0.0.1` | pmwds-mssql |
-| 1433 | `127.0.0.1` | SQL Server |
+| 1433 | `0.0.0.0` | SQL Server — ufw-scoped to `152.58.154.0/24` |
 | 6379 | `127.0.0.1` | Redis |
 | 80 / 443 | public | nginx |
 
-SQL Server and Redis were both found listening on `0.0.0.0` at some point during setup and were
-corrected to loopback. `ufw` allows only `OpenSSH` and `Nginx Full`, but binding to loopback is
-the real control — verify with `ss -tln`.
+SQL Server and Redis are both bound to `0.0.0.0` **except** Redis, which is loopback-only.
+SQL Server's public exposure is intentional and scoped: `ufw` allows 1433 from
+`152.58.154.0/24` only, and both sysadmin logins are disabled. `ufw` permits only `OpenSSH` and
+`Nginx Full` otherwise. Verify with `ss -tln` and `ufw status numbered`.
+
+Redis came up on `0.0.0.0` during setup and was corrected to loopback — it has no
+authentication and must stay private.
 
 ---
 
@@ -107,13 +111,32 @@ max server memory (MB)    = 2048
 network.ipaddress         = 127.0.0.1
 ```
 
+Load-bearing settings — without the first two, requests take ~25 seconds:
+
+```
+max degree of parallelism = 1
+max server memory (MB)    = 2048
+network.ipaddress         = 0.0.0.0   (public; scoped by ufw to 152.58.154.0/24)
+```
+
+SQL Server is reachable from the internet for SSMS, scoped by firewall to the operator's
+`/24`. Only **`pmwds_app`** is usable there, and it is **not** sysadmin. `sa` and `pmwds_admin`
+are **disabled** — SQL Server has no per-login network ACL, so disabling is the only way to keep
+an admin login off a public port. Recovery procedure in
+[vps-mssqlserver.md](vps-mssqlserver.md) §5d.
+
 Passwords, root-only:
 
 | What | Where |
 |---|---|
-| `sa` | `/root/mssql-sa-password.txt` |
-| `pmwds_app` | `/root/pmwds-secrets/pmwds_app_password.txt` |
-| `pmwds_app`, in use | `/etc/pmwds/pmwds-mssql.env` (mode 0640 root:www-data) |
+| `pmwds_app` (enabled, internet-reachable, not sysadmin) | `/root/pmwds-secrets/pmwds_app_password.txt` |
+| `pmwds_admin` (disabled) | `/root/pmwds-secrets/pmwds_admin_password.txt` |
+| `pmwds_app`, in use by the app | `/etc/pmwds/pmwds-mssql.env` (mode 0640 root:www-data) |
+| ~~`sa`~~ | `/root/mssql-sa-password.txt` — **stale**, `sa` is disabled |
+
+Firewall: `1433/tcp ALLOW 152.58.154.0/24` — one rule, scoped, not open to the world. The
+operator's IP is dynamic (`152.58.154.143`, `.32`, `.107`, `.195` all seen in one week), which is
+why a `/24` rather than a single address.
 
 Other runtimes: `.NET runtime 10.0.12` (no SDK on the box — publish locally), `python 3.12.3`,
 `sqlite3` CLI **not** installed.
@@ -122,9 +145,16 @@ Other runtimes: `.NET runtime 10.0.12` (no SDK on the box — publish locally), 
 
 ## Databases
 
-`PMWDS` and `PMWDS_Hangfire` on SQL Server. Logins: `sa` and `pmwds_app` (least privilege, used
-by the app). Hangfire has `TRUSTWORTHY` on and creates its own schema at startup — which is why
-`pmwds_app` has `db_ddladmin` on `PMWDS_Hangfire`.
+`PMWDS` and `PMWDS_Hangfire` on SQL Server. Logins:
+
+| Login | State | Role |
+|---|---|---|
+| `pmwds_app` | enabled | `db_datareader`, `db_datawriter`, `db_ddladmin` on both databases. Used by the app and SSMS. Verified: SELECT/INSERT/UPDATE/DELETE/transactions/CREATE TABLE all work |
+| `sa` | **disabled** | unavailable; recovery via `mssql-conf` |
+| `pmwds_admin` | **disabled** | sysadmin, kept off the network deliberately |
+
+Hangfire has `TRUSTWORTHY` on and creates its own schema at startup — which is why `pmwds_app`
+has `db_ddladmin` on `PMWDS_Hangfire`.
 
 SQLite copies on disk: `/var/lib/pmwds-sqlite/database/pmwds.sqlite` (live, 46 tables) and the
 untouched original `/var/lib/pmwds/database/pmwds.sqlite`.
@@ -158,8 +188,11 @@ Memory with everything running: **1.9 GiB used of 7.8 GiB**, 5.9 GiB available.
 # both deployments
 ssh contabo "systemctl is-active pmwds-sqlite pmwds-mssql mssql-server redis-server nginx"
 
-# the two settings that keep the subdomain fast
-ssh contabo "sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P `$(sudo cat /root/mssql-sa-password.txt) -C -h-1 -W -Q `"SET NOCOUNT ON; SELECT CONCAT(name,'=',value_in_use) FROM sys.configurations WHERE name IN ('max degree of parallelism','max server memory (MB)');`""
+# the two settings that keep the subdomain fast (pmwds_app can read these)
+ssh contabo "sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U pmwds_app -P `$(sudo cat /root/pmwds-secrets/pmwds_app_password.txt) -C -h-1 -W -Q `"SET NOCOUNT ON; SELECT CONCAT(name,'=',value_in_use) FROM sys.configurations WHERE name IN ('max degree of parallelism','max server memory (MB)');`""
+
+# only pmwds_app should be reachable from outside; sa and pmwds_admin are disabled
+curl -s -o /dev/null -w 'direct 1433 as pmwds_app: %{http_code}\n' --max-time 10 https://api.ipify.org > /dev/null; echo "(see vps-mssqlserver.md 5.4)"
 
 # end to end, from here
 curl -s -o /dev/null -w 'IP       %{http_code}\n' http://147.93.155.185/

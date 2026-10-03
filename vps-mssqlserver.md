@@ -22,15 +22,25 @@ Related: [PRODUCTION.md](PRODUCTION.md) (§3b provisioning), [mssql-issue.md](ms
 
 Databases: `PMWDS` (application) and `PMWDS_Hangfire` (background jobs).
 
-Logins: `sa` (sysadmin, used only for maintenance) and `pmwds_app` (the application, least
-privilege). Never run the app as `sa`.
+### Logins
+
+| Login | Status | Reachable from the internet | Purpose |
+|---|---|---|---|
+| `pmwds_app` | enabled | **yes** — `147.93.155.185,1433` | the application, and SSMS. Not sysadmin |
+| `sa` | **disabled** | no | unavailable; see §5d to re-enable |
+| `pmwds_admin` | **disabled** | no | sysadmin replacement, disabled to keep it off the network |
+
+Only `pmwds_app` is internet-reachable, and it is not sysadmin. SQL Server has no per-login
+network ACL, so the way to keep an admin login off the network is to disable it entirely — that
+is why both admin accounts are switched off rather than merely left unexposed. Never run the
+application as an admin login.
 
 ### Critical settings, and why they matter
 
 ```
 max degree of parallelism = 1        <-- the fix. Without it, requests stall ~25s.
 max server memory (MB)    = 2048     <-- leaves ~2GB for everything else on a 7.8GB box
-network.ipaddress         = 127.0.0.1
+network.ipaddress         = 0.0.0.0  <-- public, scoped by ufw to 152.58.154.0/24 (see 5f)
 network.tcpport           = 1433
 memory.memorylimitmb      = 2048
 ```
@@ -137,18 +147,26 @@ Record it. It is stored at:
 
 | What | Where | Mode |
 |---|---|---|
-| `sa` password | `/root/mssql-sa-password.txt` | `0600 root` |
 | `pmwds_app` password | `/root/pmwds-secrets/pmwds_app_password.txt` | `0600 root` |
+| `pmwds_admin` password (login disabled) | `/root/pmwds-secrets/pmwds_admin_password.txt` | `0600 root` |
 | `pmwds_app` password, in use | `/etc/pmwds/pmwds-mssql.env` | `0640 root:www-data` |
+| ~~`sa` password~~ | `/root/mssql-sa-password.txt` | **stale** — `sa` is disabled |
+
+Because `sa` is disabled, most of the `sqlcmd` commands in this document need `pmwds_admin`
+instead, which is *also* disabled. In practice: re-enable an admin login per §5d, do the
+maintenance, disable it again. Routine day-to-day work needs neither.
 
 ### 2c. Confirm it is up
 
 ```bash
 systemctl is-active mssql-server           # active
-ss -tln | grep 1433                        # 127.0.0.1:1433
+ss -tln | grep 1433                        # 0.0.0.0:1433 on this instance (see 3a, 5f)
 sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P "$MSSQL_SA_PASSWORD" -C \
   -Q "SELECT @@VERSION"
 ```
+
+This works immediately after setup, because `sa` is enabled at this point. It is disabled once
+configuration is finished — see §5d.
 
 ---
 
@@ -166,12 +184,14 @@ sudo /opt/mssql/bin/mssql-conf set memory.memorylimitmb 2048
 sudo systemctl restart mssql-server
 ```
 
-By default SQL Server listens on `0.0.0.0`. On a public VPS that is a database exposed to the
-internet. The application connects to `127.0.0.1`, so there is no reason to expose it.
-
 **Sizing:** the box is 7.8 GiB. 2048 MB for SQL Server leaves room for nginx, two API
 processes, Redis and the OS. Do not raise it — an over-large buffer pool on a small box
 reproduces the paging behaviour that caused the original problem.
+
+> **This instance is currently bound to `0.0.0.0`, not loopback**, because direct SSMS access
+> over the public IP was requested. It is scoped by `ufw` to `152.58.154.0/24` — see §5f — and
+> both sysadmin logins are disabled (§5d). To return it to loopback-only, follow the removal
+> steps at the end of §5f.
 
 ### 3b. `MAXDOP = 1` and the server memory setting — via `sp_configure`
 
@@ -206,6 +226,7 @@ network.ipaddress            127.0.0.1
 ### 3c. Databases and the application login
 
 ```bash
+# sa is still enabled at this point in a fresh setup; it is disabled afterwards (5d).
 sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "
 CREATE DATABASE [PMWDS];
 CREATE DATABASE [PMWDS_Hangfire];
@@ -233,6 +254,11 @@ The application creates its own databases at startup *only if it can*, which a l
 login cannot — so they are created up front. `TRUSTWORTHY` is what lets Hangfire create its own
 schema.
 
+`db_ddladmin` is what lets Entity Framework apply migrations. Verified working over the public
+IP: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, transactions, `CREATE TABLE` and `DROP TABLE`. It
+is deliberately **not** `db_owner` and **not** sysadmin — it cannot create logins or touch
+server configuration.
+
 Verify:
 
 ```bash
@@ -240,6 +266,13 @@ sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 \
   -U pmwds_app -P '<app password>' -C -d PMWDS \
   -Q "SELECT CONCAT('connected as ', ORIGINAL_LOGIN()) AS v;"
 ```
+
+> Writing to these tables from `sqlcmd` needs `SET QUOTED_IDENTIFIER ON`. Without it you get
+> `INSERT failed because the following SET options have incorrect settings`, which reads like a
+> permissions failure but is not. EF sets it already; `sqlcmd` does not by default.
+
+Once setup is complete, **disable the admin logins** (§5d). Leaving a sysadmin login reachable
+on a public port is the whole risk this section is about.
 
 ---
 
@@ -285,76 +318,143 @@ confirms it:
 
 ## 5. Connecting SSMS on your Windows machine to the VPS instance
 
-SQL Server listens on `127.0.0.1` on the VPS, so SSMS cannot reach it directly — which is the
-point. Reach it through an SSH tunnel, which needs no change to the server's configuration and
-exposes nothing.
+SQL Server is reachable **directly over the public IP**, scoped by firewall to the operator's
+address range. No SSH tunnel is needed for normal use.
 
-### 5a. Open the tunnel (recommended)
+### 5a. The dialog
 
-From PowerShell on your machine:
+| Field | Value |
+|---|---|
+| Server type | Database Engine |
+| **Server name** | **`147.93.155.185,1433`** |
+| Authentication | **SQL Server Authentication** |
+| User name | `pmwds_app` |
+| Password | see below |
+| Database name | `PMWDS`, or `<default>` |
+| Encrypt | Mandatory |
+| **Trust server certificate** | **ticked** ✓ |
+
+Get the password:
+
+```powershell
+ssh contabo "sudo cat /root/pmwds-secrets/pmwds_app_password.txt"
+```
+
+> **Do not type `localhost`.** That is your own machine, not the VPS. Your local SQL Server
+> Express instance is also on 1433 and will happily answer — it looks like it worked, but you
+> are looking at your laptop's database. This is the single most likely mistake here.
+>
+> Windows Authentication also only ever works against the local instance. There is no Active
+> Directory on the VPS, so Windows auth cannot reach it at all.
+
+### 5b. What `pmwds_app` can and cannot do
+
+Not sysadmin. It is the application's own login, scoped to the two databases it uses:
+
+| Database | Roles |
+|---|---|
+| `PMWDS` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
+| `PMWDS_Hangfire` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
+
+Verified working over the public IP: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, transactions with
+`ROLLBACK`, `CREATE TABLE` and `DROP TABLE`. The DDL grant is what lets Entity Framework apply
+migrations if you ever need to.
+
+Not permitted: creating logins, changing server configuration, viewing other databases, or
+anything outside `PMWDS` / `PMWDS_Hangfire`. For that, see §5d.
+
+### 5c. Azure Data Studio / VS Code
+
+Same values. **Server** `147.93.155.185,1433`, **Authentication type** *SQL Login*, user
+`pmwds_app`, and tick **Trust server certificate** under *Encryption*.
+
+### 5d. Admin access — both admin logins are disabled
+
+**`sa` and `pmwds_admin` are disabled.** They cannot be used from anywhere, including the VPS
+itself. That is deliberate: SQL Server has no per-login network ACL, so the only way to keep a
+sysadmin login off the network is to disable it. A sysadmin login on the internet is protected
+by nothing but its password.
+
+This was arrived at the wrong way round, and it is worth recording. `sa` was first exposed
+alongside the firewall change, on the belief that `ALTER LOGIN ... WITH PASSWORD` restricts it.
+It does not — it only rotates the password, and `sa` remained reachable. Disabling it fixed
+that. A replacement `pmwds_admin` was then created and, being sysadmin, was immediately
+reachable too; it has also been disabled. The end state is right; the route there was not.
+
+To administer the instance you have to re-enable an admin login from the VPS console:
+
+```bash
+# Recovery procedure. This is the only way in, and it needs SSH access.
+sudo systemctl stop mssql-server
+MSSQL_SA_PASSWORD='<new strong password>' ACCEPT_EULA=Y sudo -E \
+  /opt/mssql/bin/mssql-conf -n setup accept-eula
+sudo systemctl start mssql-server
+
+sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P '<new>' -C -Q "
+ALTER LOGIN [sa] ENABLE;
+ALTER SERVER ROLE [sysadmin] ADD MEMBER [pmwds_admin];"
+```
+
+Then re-disable both once you are done:
+
+```sql
+ALTER LOGIN [sa] DISABLE;
+ALTER LOGIN [pmwds_admin] DISABLE;
+```
+
+Passwords on disk: `pmwds_admin` at `/root/pmwds-secrets/pmwds_admin_password.txt`. The old
+`sa` password file at `/root/mssql-sa-password.txt` is **stale** — `sa` was disabled and its
+password rotated during that recovery, so that file no longer authenticates anything.
+
+### 5e. SSH tunnel — still useful, and the safest option
+
+A tunnel needs no firewall rule and exposes nothing, so prefer it on an untrusted network or
+from a machine outside the operator range:
 
 ```powershell
 ssh -N -L 14330:127.0.0.1:1433 contabo
 ```
 
-Leave that window open. Local port `14330` now forwards to SQL Server on the VPS. Use any local
-port you like if `14330` is taken.
+Then in SSMS use server name `127.0.0.1,14330`. The tunnel dies when that process exits and
+does not survive a reboot.
 
-> `ssh contabo` is already an alias configured with the key at `E:\contabo\contabo`
-> (see [vps.md](vps.md)). No extra flags needed.
+### 5f. The firewall rule
 
-### 5b. Connect in SSMS
-
-| Field | Value |
-|---|---|
-| Server type | Database Engine |
-| Server name | `127.0.0.1,14330` |
-| Authentication | **SQL Server Authentication** |
-| Login | `sa` for administration, or `pmwds_app` for day-to-day |
-| Password | from `/root/mssql-sa-password.txt` or `/root/pmwds-secrets/pmwds_app_password.txt` |
-
-Then **Connection Properties** (click "Connect" then "Cancel", or use the dialog's arrows):
-
-- **Trust server certificate → tick it.** Required. The instance uses a self-signed
-  certificate, so without this SSMS fails with a certificate-chain error that looks unrelated to
-  the real problem.
-- **Encryption → Optional** if you prefer to allow plaintext on the loopback hop, or leave
-  **Mandatory** if you prefer to force it.
-
-To get the password onto your machine:
-
-```powershell
-ssh contabo "sudo cat /root/mssql-sa-password.txt"
+```
+1433/tcp   ALLOW IN   152.58.154.0/24    # MSSQL (SSMS) - operator range
 ```
 
-### 5c. Connecting Azure Data Studio / VS Code
+Scoped rather than open, because an unrestricted database port is scanned within minutes and a
+password is all that stands between it and the data.
 
-Same tunnel, same credentials. In the connection profile set **Server** to `127.0.0.1,14330`,
-**Authentication type** to *SQL Login*, and tick **Trust server certificate** under
-*Encryption*.
-
-### 5d. If you must connect directly over the internet
-
-Not recommended — it opens a database port to the world. If you accept that, on the VPS:
+**Your IP is dynamic.** The VPS has seen this operator from `152.58.154.143`, `.32`, `.107` and
+`.195` within one week — all inside the `/24`, which is why the range was allowed rather than a
+single address. If an address ever falls outside it, add one:
 
 ```bash
-sudo /opt/mssql/bin/mssql-conf set network.ipaddress 0.0.0.0
-sudo /opt/mssql/bin/mssql-conf set network.tcpport 1433
-sudo systemctl restart mssql-server
-sudo ufw allow from <your home IP> to any port 1433 proto tcp
+sudo ufw allow from YOUR_IP/32 to any port 1433 proto tcp
 ```
 
-Then in SSMS use `147.93.155.185,1433`. **Scope the `ufw` rule to a single source address** — a
-blanket `ufw allow 1433` exposes SQL Server to every host on the internet, and its only
-protection is a password you would be relying on alone. Revert with
-`sudo ufw delete allow 1433/tcp` when finished.
+Check what you currently appear as:
 
-If you do this, also use `pmwds_app` rather than `sa`, and consider a SQL Server certificate
-instead of ticking "trust server certificate".
+```powershell
+curl -s https://api.ipify.org
+```
+
+To remove public access entirely:
+
+```bash
+sudo ufw delete allow 1433/tcp
+sudo /opt/mssql/bin/mssql-conf set network.ipaddress 127.0.0.1
+sudo systemctl restart mssql-server
+```
 
 ---
 
 ## 6. Day-to-day commands
+
+Most inspection works with `pmwds_app`; anything needing `sysadmin` requires the §5d recovery
+procedure first.
 
 ```bash
 # services
@@ -362,20 +462,22 @@ systemctl status  mssql-server redis-server pmwds-mssql pmwds-sqlite --no-pager
 systemctl restart mssql-server          # after any mssql-conf change
 systemctl restart pmwds-mssql           # after a deploy (it holds SQL connections)
 
-# settings - the two that matter
-sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P "$MSSQL_SA_PASSWORD" -C -h-1 -W -Q "
+# the two settings that matter - readable with pmwds_app, no admin needed
+APPPW=$(sudo cat /root/pmwds-secrets/pmwds_app_password.txt)
+sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U pmwds_app -P "$APPPW" -C -h-1 -W -Q "
 SET NOCOUNT ON;
 SELECT CONCAT(name, ' = ', value_in_use) FROM sys.configurations
 WHERE name IN ('max degree of parallelism','max server memory (MB)','show advanced options');"
+# expect: max degree of parallelism = 1, max server memory (MB) = 2048
 
-# the waits that indicate the original problem has returned
-sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P "$MSSQL_SA_PASSWORD" -C -h-1 -W -Q "
+# the waits that indicate the original latency problem has returned
+sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U pmwds_app -P "$APPPW" -C -h-1 -W -Q "
 SET NOCOUNT ON;
 SELECT CONCAT(wait_type, ' waiting=', waiting_tasks_count, ' max_ms=', max_wait_time_ms)
 FROM sys.dm_os_wait_stats
 WHERE wait_type IN ('RESOURCE_SEMAPHORE','SOS_SCHEDULER_YIELD','THREADPOOL');"
-# RESOURCE_SEMAPHORE max_ms should be 0. If it is climbing into the thousands, MAXDOP has
-# been reset or the memory limit raised.
+# RESOURCE_SEMAPHORE max_ms should be 0. Climbing into the thousands means MAXDOP was reset
+# or the memory limit raised - see mssql-issue.md.
 
 # memory granted to the instance
 sudo /opt/mssql/bin/mssql-conf list | grep memory
@@ -387,16 +489,16 @@ tail -f /var/opt/mssql/log/errorlog
 
 ### Backups
 
-`sqlite3 .backup` protects nothing now that the subdomain runs on SQL Server. Back up the
-databases instead:
+`sqlite3 .backup` protects nothing now that the subdomain runs on SQL Server. `BACKUP DATABASE`
+needs sysadmin, so enable an admin login (§5d) first:
 
-```bash
-sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "
-BACKUP DATABASE [PMWDS]        TO DISK = '/var/opt/mssql/backup/PMWDS.bak' WITH INIT, COMPRESSION;
-BACKUP DATABASE [PMWDS_Hangfire] TO DISK = '/var/opt/mssql/backup/PMWDS_Hangfire.bak' WITH INIT, COMPRESSION;"
+```sql
+BACKUP DATABASE [PMWDS]          TO DISK = '/var/opt/mssql/backup/PMWDS.bak'          WITH INIT, COMPRESSION;
+BACKUP DATABASE [PMWDS_Hangfire] TO DISK = '/var/opt/mssql/backup/PMWDS_Hangfire.bak' WITH INIT, COMPRESSION;
 ```
 
-Create `/var/opt/mssql/backup` first. Nothing else on the box depends on it.
+Create `/var/opt/mssql/backup` first. Disable the admin login again afterwards. Nothing else on
+the box depends on that directory.
 
 ---
 
@@ -443,6 +545,22 @@ look like it had silently switched databases.
 database problem, but it happened here and was fixed: `systemctl is-active` returns `active`
 when the process launches, but the app then spends ~19 s applying migrations. The check now
 polls for the "Now listening" line and confirms the port.
+
+**11. `ALTER LOGIN sa WITH PASSWORD = ...` does not restrict network access.** This was
+assumed, tested, and found false: after rotating `sa`'s password as if that made it
+loopback-only, `sa` still authenticated from the public internet. `ALTER LOGIN ... WITH
+PASSWORD` only rotates the password. SQL Server has no per-login network ACL, so **disabling**
+a login is the only way to remove it from the reachable set. Verified after disabling: both the
+old and new `sa` passwords are refused.
+
+**12. Disabling `sa` and creating `pmwds_admin` made things worse before better.** The
+replacement was sysadmin, so it was internet-reachable with full instance control — a larger
+hole than the one just closed. It has been disabled too. Net result is correct: only
+`pmwds_app`, which is not sysadmin, is reachable. The mistake was creating a privileged login
+without checking what the previous one had been used for first.
+
+**13. Both admin logins are now disabled, so `sqlcmd -U sa` in older notes no longer works.**
+Expected, and the recovery path is in §5d. Worth knowing before you need it.
 
 ---
 
