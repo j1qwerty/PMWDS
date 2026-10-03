@@ -1,8 +1,10 @@
+using System.Data;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
+using PMWDS.Application.Exceptions;
 using PMWDS.Application.DTOs.Budget;
 using PMWDS.Application.Security;
 using PMWDS.Application.Interfaces.Services;
@@ -77,27 +79,35 @@ public sealed class BudgetController : ControllerBase
             item => item.GoalId == dto.GoalId && item.Status == BudgetAllocationStatus.Active, ct))
             return Conflict(new { message = "An active allocation already exists for this goal. Amend the allocation instead." });
 
-        var projectBudget = await _db.Projects
-            .Where(project => project.Id == goal.ProjectId)
-            .Select(project => project.PlannedBudget)
-            .SingleAsync(ct);
-        var activeProjectAllocation = await _db.GoalBudgetAllocations
-            .Where(item => item.Status == BudgetAllocationStatus.Active)
-            .Where(item => _db.Goals.Any(goalItem => goalItem.Id == item.GoalId && goalItem.ProjectId == goal.ProjectId))
-            .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
-        if (activeProjectAllocation + dto.Amount > projectBudget)
-            return Conflict(new { message = "The project's goal allocations cannot exceed the project budget reserve." });
+        GoalBudgetAllocation? allocation = null;
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
-        var allocation = GoalBudgetAllocation.Create(
-            goal.Id,
-            goal.AssignedDepartmentId,
-            dto.Amount,
-            dto.Reason);
-        allocation.SetCreatedBy(_currentUser.UserId ?? "system");
-        await _db.GoalBudgetAllocations.AddAsync(allocation, ct);
-        await _db.SaveChangesAsync(ct);
+            var projectBudget = await _db.Projects
+                .Where(project => project.Id == goal.ProjectId)
+                .Select(project => project.PlannedBudget)
+                .SingleAsync(ct);
+            var activeProjectAllocation = await _db.GoalBudgetAllocations
+                .Where(item => item.Status == BudgetAllocationStatus.Active)
+                .Where(item => _db.Goals.Any(goalItem => goalItem.Id == item.GoalId && goalItem.ProjectId == goal.ProjectId))
+                .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
+            if (activeProjectAllocation + dto.Amount > projectBudget)
+                throw new ConflictException("The project's goal allocations cannot exceed the project budget reserve.");
 
-        return Ok(MapAllocation(allocation));
+            allocation = GoalBudgetAllocation.Create(
+                goal.Id,
+                goal.AssignedDepartmentId,
+                dto.Amount,
+                dto.Reason);
+            allocation.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _db.GoalBudgetAllocations.AddAsync(allocation, ct);
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        });
+
+        return Ok(MapAllocation(allocation!));
     }
 
     [HttpPost("allocations/{id:guid}/amend")]
@@ -118,23 +128,37 @@ public sealed class BudgetController : ControllerBase
         if (dto.Amount <= 0)
             return BadRequest(new { message = "Allocation amount must be greater than zero." });
 
-        var projectBudget = await _db.Projects.Where(project => project.Id == goal.ProjectId).Select(project => project.PlannedBudget).SingleAsync(ct);
-        var otherActive = await _db.GoalBudgetAllocations
-            .Where(item => item.Status == BudgetAllocationStatus.Active && item.Id != id)
-            .Where(item => _db.Goals.Any(goalItem => goalItem.Id == item.GoalId && goalItem.ProjectId == goal.ProjectId))
-            .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
-        if (otherActive + dto.Amount > projectBudget)
-            return Conflict(new { message = "The project's goal allocations cannot exceed the project budget reserve." });
+        GoalBudgetAllocation? amended = null;
+        var amendStrategy = _db.Database.CreateExecutionStrategy();
+        await amendStrategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
-        current.Supersede();
-        var amended = GoalBudgetAllocation.Create(goal.Id, goal.AssignedDepartmentId, dto.Amount, dto.Reason, current.Id);
-        amended.SetCreatedBy(_currentUser.UserId ?? "system");
-        await _db.GoalBudgetAllocations.AddAsync(amended, ct);
-        await _db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
+            var projectBudget = await _db.Projects
+                .Where(project => project.Id == goal.ProjectId)
+                .Select(project => project.PlannedBudget)
+                .SingleAsync(ct);
+            var otherActive = await _db.GoalBudgetAllocations
+                .Where(item => item.Status == BudgetAllocationStatus.Active && item.Id != id)
+                .Where(item => _db.Goals.Any(goalItem => goalItem.Id == item.GoalId && goalItem.ProjectId == goal.ProjectId))
+                .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
+            if (otherActive + dto.Amount > projectBudget)
+                throw new ConflictException("The project's goal allocations cannot exceed the project budget reserve.");
 
-        return Ok(MapAllocation(amended));
+            current.Supersede();
+            amended = GoalBudgetAllocation.Create(
+                goal.Id,
+                goal.AssignedDepartmentId,
+                dto.Amount,
+                dto.Reason,
+                current.Id);
+            amended.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _db.GoalBudgetAllocations.AddAsync(amended, ct);
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        });
+
+        return Ok(MapAllocation(amended!));
     }
 
     [HttpPost("releases")]
@@ -155,32 +179,43 @@ public sealed class BudgetController : ControllerBase
         if (dto.AmountRequested <= 0)
             return BadRequest(new { message = "Release amount must be greater than zero." });
 
-        var allocated = allocation.Amount;
-        var committed = await _db.BudgetReleases
-            .Where(item => item.GoalBudgetAllocationId == allocation.Id &&
-                           item.Status == BudgetReleaseStatus.Approved)
-            .SumAsync(item => (decimal?)item.AmountApproved, ct) ?? 0;
-        var pending = await _db.BudgetReleases
-            .Where(item => item.GoalBudgetAllocationId == allocation.Id &&
-                           item.Status == BudgetReleaseStatus.Pending)
-            .SumAsync(item => (decimal?)item.AmountRequested, ct) ?? 0;
-        if (committed + pending + dto.AmountRequested > allocated)
-            return Conflict(new { message = "Requested releases exceed the active goal allocation." });
-
+        BudgetRelease? release = null;
         var required = dto.RequiredConditions ?? new Dictionary<string, bool>();
-        var satisfied = dto.SatisfiedConditions ?? new Dictionary<string, bool>();
-        var release = BudgetRelease.Create(
-            allocation.Id,
-            dto.AmountRequested,
-            JsonSerializer.Serialize(required),
-            JsonSerializer.Serialize(satisfied),
-            _currentUser.UserId ?? "system",
-            dto.Justification);
-        release.SetCreatedBy(_currentUser.UserId ?? "system");
-        await _db.BudgetReleases.AddAsync(release, ct);
-        await _db.SaveChangesAsync(ct);
 
-        return Ok(MapRelease(release));
+        var releaseStrategy = _db.Database.CreateExecutionStrategy();
+        await releaseStrategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
+            var allocated = allocation.Amount;
+            var committed = await _db.BudgetReleases
+                .Where(item => item.GoalBudgetAllocationId == allocation.Id &&
+                               item.Status == BudgetReleaseStatus.Approved)
+                .SumAsync(item => (decimal?)item.AmountApproved, ct) ?? 0;
+            var pending = await _db.BudgetReleases
+                .Where(item => item.GoalBudgetAllocationId == allocation.Id &&
+                               item.Status == BudgetReleaseStatus.Pending)
+                .SumAsync(item => (decimal?)item.AmountRequested, ct) ?? 0;
+            if (committed + pending + dto.AmountRequested > allocated)
+                throw new ConflictException("Requested releases exceed the active goal allocation.");
+
+            // SatisfiedConditions are intentionally not trusted from the client. They are
+            // evaluated from server-side evidence by the evidence-integrity branch.
+            var satisfied = dto.SatisfiedConditions ?? new Dictionary<string, bool>();
+            release = BudgetRelease.Create(
+                allocation.Id,
+                dto.AmountRequested,
+                JsonSerializer.Serialize(required),
+                JsonSerializer.Serialize(satisfied),
+                _currentUser.UserId ?? "system",
+                dto.Justification);
+            release.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _db.BudgetReleases.AddAsync(release, ct);
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        });
+
+        return Ok(MapRelease(release!));
     }
 
     [HttpPost("releases/{id:guid}/review")]
@@ -205,20 +240,45 @@ public sealed class BudgetController : ControllerBase
 
         if (dto.Decision == BudgetReleaseStatus.Approved)
         {
-            if (!release.AreAllConditionsSatisfied())
-                return Conflict(new { message = "All required release conditions must be satisfied before approval." });
-            if (dto.ApprovedAmount < 0 || dto.ApprovedAmount > release.AmountRequested)
-                return BadRequest(new { message = "Approved amount must be between zero and the requested amount." });
+            IActionResult? result = null;
+            var reviewStrategy = _db.Database.CreateExecutionStrategy();
 
-            var otherApproved = await _db.BudgetReleases
-                .Where(item => item.GoalBudgetAllocationId == allocation.Id &&
-                               item.Id != release.Id &&
-                               item.Status == BudgetReleaseStatus.Approved)
-                .SumAsync(item => (decimal?)item.AmountApproved, ct) ?? 0;
-            if (otherApproved + dto.ApprovedAmount > allocation.Amount)
-                return Conflict(new { message = "Approved releases exceed the goal allocation." });
+            await reviewStrategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
-            release.Approve(dto.ApprovedAmount, _currentUser.UserId ?? "system", dto.Notes);
+                if (!release.AreAllConditionsSatisfied())
+                {
+                    result = Conflict(new { message = "All required release conditions must be satisfied before approval." });
+                    return;
+                }
+
+                if (dto.ApprovedAmount < 0 || dto.ApprovedAmount > release.AmountRequested)
+                {
+                    result = BadRequest(new { message = "Approved amount must be between zero and the requested amount." });
+                    return;
+                }
+
+                var otherApproved = await _db.BudgetReleases
+                    .Where(item => item.GoalBudgetAllocationId == allocation.Id &&
+                                   item.Id != release.Id &&
+                                   item.Status == BudgetReleaseStatus.Approved)
+                    .SumAsync(item => (decimal?)item.AmountApproved, ct) ?? 0;
+
+                if (otherApproved + dto.ApprovedAmount > allocation.Amount)
+                {
+                    result = Conflict(new { message = "Approved releases exceed the goal allocation." });
+                    return;
+                }
+
+                release.Approve(dto.ApprovedAmount, _currentUser.UserId ?? "system", dto.Notes);
+                release.SetModified(_currentUser.UserId ?? "system");
+                await _db.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+                result = Ok(MapRelease(release));
+            });
+
+            return result!;
         }
         else if (dto.Decision == BudgetReleaseStatus.Withheld)
         {
@@ -265,41 +325,50 @@ public sealed class BudgetController : ControllerBase
                 return BadRequest(new { message = "The selected budget release must be approved." });
         }
 
-        var totalReleased = await _db.BudgetReleases
-            .Where(item => item.GoalBudgetAllocationId == allocation.Id && item.Status == BudgetReleaseStatus.Approved)
-            .SumAsync(item => (decimal?)item.AmountApproved, ct) ?? 0;
-        var totalSpent = await _db.BudgetExpenditures
-            .Where(item => item.GoalBudgetAllocationId == allocation.Id)
-            .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
-        if (totalSpent + dto.Amount > totalReleased)
-            return Conflict(new { message = "Expenditure exceeds the approved released budget." });
-
-        if (dto.DocumentId.HasValue)
+        BudgetExpenditure? expenditure = null;
+        var expenditureStrategy = _db.Database.CreateExecutionStrategy();
+        await expenditureStrategy.ExecuteAsync(async () =>
         {
-            var documentExists = await _db.ProjectDocuments.AnyAsync(
-                document => document.Id == dto.DocumentId.Value && document.ProjectId == goal.ProjectId, ct);
-            if (!documentExists)
-                return BadRequest(new { message = "The expenditure document must belong to the goal project." });
-        }
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
-        var expenditure = BudgetExpenditure.Create(
-            allocation.Id,
-            dto.Amount,
-            dto.SpentOn,
-            dto.Description,
-            dto.InvoiceNumber,
-            _currentUser.UserId ?? "system",
-            dto.BudgetReleaseId,
-            dto.DocumentId);
-        expenditure.SetCreatedBy(_currentUser.UserId ?? "system");
-        await _db.BudgetExpenditures.AddAsync(expenditure, ct);
+            var totalReleased = await _db.BudgetReleases
+                .Where(item => item.GoalBudgetAllocationId == allocation.Id && item.Status == BudgetReleaseStatus.Approved)
+                .SumAsync(item => (decimal?)item.AmountApproved, ct) ?? 0;
+            var totalSpent = await _db.BudgetExpenditures
+                .Where(item => item.GoalBudgetAllocationId == allocation.Id)
+                .SumAsync(item => (decimal?)item.Amount, ct) ?? 0;
+            if (totalSpent + dto.Amount > totalReleased)
+                throw new ConflictException("Expenditure exceeds the approved released budget.");
 
-        var project = await _db.Projects.FirstAsync(item => item.Id == goal.ProjectId, ct);
-        project.AddActualCost(dto.Amount);
-        project.SetModified(_currentUser.UserId ?? "system");
+            if (dto.DocumentId.HasValue)
+            {
+                var documentExists = await _db.ProjectDocuments.AnyAsync(
+                    document => document.Id == dto.DocumentId.Value && document.ProjectId == goal.ProjectId, ct);
+                if (!documentExists)
+                    throw new ConflictException("The expenditure document must belong to the goal project.");
+            }
 
-        await _db.SaveChangesAsync(ct);
-        return Ok(MapExpenditure(expenditure));
+            expenditure = BudgetExpenditure.Create(
+                allocation.Id,
+                dto.Amount,
+                dto.SpentOn,
+                dto.Description,
+                dto.InvoiceNumber,
+                _currentUser.UserId ?? "system",
+                dto.BudgetReleaseId,
+                dto.DocumentId);
+            expenditure.SetCreatedBy(_currentUser.UserId ?? "system");
+            await _db.BudgetExpenditures.AddAsync(expenditure, ct);
+
+            var project = await _db.Projects.FirstAsync(item => item.Id == goal.ProjectId, ct);
+            project.AddActualCost(dto.Amount);
+            project.SetModified(_currentUser.UserId ?? "system");
+
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+        });
+
+        return Ok(MapExpenditure(expenditure!));
     }
 
     private async Task<Goal?> GetGoalAsync(Guid goalId, CancellationToken ct)
