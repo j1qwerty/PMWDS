@@ -127,10 +127,17 @@ public class RolesController : BaseApiController
         if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
-            if (role.PermissionLevel >= userMaxLevel)
+
+            if (role.PermissionLevel >= userMaxLevel ||
+                req.PermissionLevel >= userMaxLevel)
             {
                 return Forbid();
             }
+        }
+
+        if (req.PermissionLevel < 0 || req.PermissionLevel > 99)
+        {
+            return BadRequest(new { message = "Custom role permission level must be between 0 and 99. Only SuperAdmin may use the system level 100." });
         }
 
         role.Update(req.Name, req.Description, req.PermissionLevel);
