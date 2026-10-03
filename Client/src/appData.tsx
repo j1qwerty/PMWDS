@@ -25,29 +25,17 @@ import type {
   NotificationItem,
   NotificationTemplateRecord,
   OrganizationRecord,
-  PagesDataResponse,
   PermissionRecord,
   Project,
-  ProjectNavigationItem,
   RoleRecord,
   Task,
   User,
-  WorkspaceBootstrap,
 } from "./types";
 
-/** Coalesce a burst of DataChanged events (one mutation can fire several) into one refetch. */
 const REALTIME_DEBOUNCE_MS = 250;
-/** Focus/visibility refetch delay, long enough to ignore rapid tab switching. */
 const FOCUS_DEBOUNCE_MS = 1000;
-/** Fallback poll when the socket is not connected. */
 const POLL_INTERVAL_MS = 60_000;
-/** How often the watchdog re-evaluates whether the socket is alive. */
 const REALTIME_WATCHDOG_CHECK_MS = 5_000;
-/**
- * How long the socket may be continuously unhealthy, with the tab visible, before the
- * watchdog forces a fresh connection. Well above the 30s ceiling on the reconnect backoff,
- * so a server that is merely slow to accept the socket is not fought with.
- */
 const REALTIME_WATCHDOG_MS = 45_000;
 
 type AppData = {
@@ -68,8 +56,9 @@ type AppData = {
 
 type AppDataContextValue = {
   data: AppData;
-  pages: PagesDataResponse | null;
+  pages: null;
   loading: boolean;
+  initialized: boolean;
   error: string;
   refresh: () => Promise<void>;
 };
@@ -92,40 +81,42 @@ const emptyData: AppData = {
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
-function items<T>(page: { items: T[] } | undefined): T[] {
-  return page?.items ?? [];
-}
-
-function mapRoleRecords(pages: PagesDataResponse): RoleRecord[] {
-  const permissionsByCode = new Map(items(pages.permissions).map((permission) => [permission.code, permission]));
-  return items(pages.roles).map((role) => ({
-    id: role.id,
-    key: role.key,
-    name: role.name,
-    description: role.description,
-    permissionLevel: role.permissionLevel,
-    permissions: (role.permissionCodes ?? [])
-      .map((code) => permissionsByCode.get(code))
-      .filter((permission): permission is PermissionRecord => Boolean(permission)),
+function mapWorkspaceSnapshot(snapshot: Awaited<ReturnType<typeof api.getWorkspaceSnapshot>>): AppData {
+  const permissions = snapshot.permissions.map((code) => ({
+    id: code,
+    code,
+    name: code,
+    description: "",
+    module: code.split("_")[0] ?? "",
+    isGlobal: false,
   }));
-}
 
-function mapDepartments(pages: PagesDataResponse): Department[] {
-  return items(pages.departments).map((department) => ({
+  const organizations = snapshot.organizations.map((organization) => ({
+    id: organization.id,
+    name: organization.name,
+    taxId: organization.taxId ?? "",
+    address: organization.address ?? "",
+    contactEmail: organization.contactEmail ?? "",
+    contactPhone: organization.contactPhone ?? "",
+    foundedDate: organization.foundedDate ?? "",
+    director: null,
+    departments: [],
+    departmentCount: organization.departmentCount,
+  }));
+
+  const departments = snapshot.departments.map((department) => ({
     id: department.id,
     name: department.name,
     code: department.code,
     description: department.description,
     organizationId: department.organizationId,
-    parentDepartmentId: null,
+    parentDepartmentId: department.parentDepartmentId,
     departmentHeadUserId: department.departmentHeadUserId,
     maxCapacity: department.maxCapacity,
-    capacityUtilization: 0,
+    capacityUtilization: department.capacityUtilization,
   }));
-}
 
-function mapUsers(pages: PagesDataResponse): User[] {
-  return items(pages.users).map((user) => ({
+  const users = snapshot.users.map((user) => ({
     id: user.id,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -134,52 +125,26 @@ function mapUsers(pages: PagesDataResponse): User[] {
     profilePictureUrl: user.profilePictureUrl,
     jobTitle: user.jobTitle,
     organizationId: user.organizationId ?? null,
-    department: user.departmentName,
-    departmentId: user.departmentId,
-    departments: user.departments ?? [],
+    department: user.department ?? null,
+    departmentId: user.departmentId ?? null,
+    departments: [],
     profileId: null,
     bio: null,
     availabilityStatus: "Available",
-    availabilityPercentage: 0,
-    aiWorkloadScore: 0,
-    aiBurnoutRiskScore: 0,
-    aiPerformanceScore: 0,
-    activeTaskCount: 0,
+    availabilityPercentage: user.availabilityPercentage,
+    aiWorkloadScore: user.aiWorkloadScore,
+    aiBurnoutRiskScore: user.aiBurnoutRiskScore,
+    aiPerformanceScore: user.aiPerformanceScore,
+    activeTaskCount: user.activeTaskCount,
     isActive: user.isActive,
     lastLoginDate: null,
     roles: user.roles,
     roleKeys: user.roleKeys,
-    skills: user.skills?.map((skill) => skill.skillName) ?? [],
-    skillDetails: user.skills?.map((skill) => ({
-      skillId: skill.skillId,
-      skillName: skill.skillName,
-      proficiencyLevel: skill.proficiencyLevel,
-      experienceMonths: 0,
-      lastUsed: null,
-    })),
+    skills: [],
+    skillDetails: [],
   }));
-}
 
-function mapPagesData(pages: PagesDataResponse): AppData {
-  return {
-    organizations: items(pages.organizations) as OrganizationRecord[],
-    departments: mapDepartments(pages),
-    projects: items(pages.projects) as Project[],
-    milestones: items(pages.milestones) as Milestone[],
-    tasks: items(pages.tasks) as Task[],
-    subtasks: items(pages.subtasks) as Task[],
-    users: mapUsers(pages),
-    roles: mapRoleRecords(pages),
-    permissions: items(pages.permissions) as PermissionRecord[],
-    notifications: items(pages.notifications) as NotificationItem[],
-    notificationTemplates: items(pages.notificationTemplates) as NotificationTemplateRecord[],
-    alertRules: items(pages.alertRules) as AlertRuleRecord[],
-    activityLogs: items(pages.activityLogs) as ActivityLogRecord[],
-  };
-}
-
-function mapProjectNavigation(projects: ProjectNavigationItem[]): Project[] {
-  return projects.map((project) => ({
+  const projects = snapshot.projects.map((project) => ({
     id: project.id,
     projectCode: project.projectCode,
     name: project.name,
@@ -217,66 +182,54 @@ function mapProjectNavigation(projects: ProjectNavigationItem[]): Project[] {
     createdDate: project.createdDate,
     isNewForCurrentUser: project.isNewForCurrentUser,
   }));
-}
 
-function mapBootstrapData(bootstrap: WorkspaceBootstrap): AppData {
+  const currentUser = snapshot.currentUser;
+  const usersWithCurrentUser = users.some((user) => user.id === currentUser.id)
+    ? users
+    : [currentUser, ...users];
+
   return {
     ...emptyData,
-    projects: mapProjectNavigation(bootstrap.projects),
-    users: [bootstrap.currentUser],
-    permissions: bootstrap.permissions.map((code) => ({
-      id: code,
-      code,
-      name: code,
-      description: "",
-      module: code.split("_")[0] ?? "",
-      isGlobal: false,
-    })),
+    organizations,
+    departments,
+    projects,
+    users: usersWithCurrentUser,
+    permissions,
   };
 }
 
 export function AppDataProvider({ children }: PropsWithChildren) {
   const { auth, logout } = useAuth();
-  const [bootstrap, setBootstrap] = useState<WorkspaceBootstrap | null>(null);
-  const [pages, setPages] = useState<PagesDataResponse | null>(null);
+  const [snapshot, setSnapshot] = useState<Awaited<ReturnType<typeof api.getWorkspaceSnapshot>> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState("");
-
-  // Guards against overlapping refetches. Without it, a burst of DataChanged events (or a
-  // poll landing mid-focus-refresh) can start several concurrent bootstrap+pages loads
-  // and let a slower earlier response overwrite a newer one.
   const inFlightRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!auth) {
-      setBootstrap(null);
-      setPages(null);
+      setSnapshot(null);
+      setInitialized(false);
+      setError("");
       return;
     }
 
     if (inFlightRef.current) return;
     inFlightRef.current = true;
-
     setLoading(true);
     setError("");
+
     try {
-      const bootstrapResponse = await api.getWorkspaceBootstrap(auth.token);
-      setBootstrap(bootstrapResponse);
-      const response = await api.getPagesData(auth.token);
-      setPages(response);
+      const response = await api.getWorkspaceSnapshot(auth.token);
+      setSnapshot(response);
+      setInitialized(true);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
         logout();
         return;
       }
-      try {
-        const response = await api.getPagesData(auth.token);
-        setPages(response);
-        setBootstrap(null);
-      } catch (fallbackCause) {
-        setError(fallbackCause instanceof Error ? fallbackCause.message : "Failed to load application data.");
-        setPages(null);
-      }
+
+      setError(cause instanceof Error ? cause.message : "Failed to load workspace data.");
     } finally {
       inFlightRef.current = false;
       setLoading(false);
@@ -284,63 +237,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth, logout]);
 
   useEffect(() => {
-    if (!auth) {
-      setBootstrap(null);
-      setPages(null);
-      return;
-    }
+    void refresh();
+  }, [refresh]);
 
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-
-    api.getWorkspaceBootstrap(auth.token)
-      .then((bootstrapResponse) => {
-        if (cancelled) return;
-        setBootstrap(bootstrapResponse);
-        setLoading(false);
-        void api.getPagesData(auth.token)
-          .then((response) => {
-            if (!cancelled) setPages(response);
-          })
-          .catch(() => {
-            if (!cancelled) setPages(null);
-          });
-      })
-      .catch((cause) => {
-        if (cancelled) return;
-        if (cause instanceof ApiError && cause.status === 401) {
-          logout();
-          setLoading(false);
-          return;
-        }
-        void api.getPagesData(auth.token)
-          .then((response) => {
-            if (cancelled) return;
-            setPages(response);
-            setBootstrap(null);
-            setLoading(false);
-          })
-          .catch((fallbackCause) => {
-            if (cancelled) return;
-            setError(fallbackCause instanceof Error ? fallbackCause.message : "Failed to load application data.");
-            setBootstrap(null);
-            setPages(null);
-            setLoading(false);
-          });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [auth, logout]);
-
-  // Keep the shared store in sync with other sessions.
-  //
-  // Before this, appData loaded once per auth token and never again, so a change made in
-  // one browser was invisible in another until a manual reload. Three layers keep it
-  // current: the DataChanged hub event (instant), a refetch when the tab regains focus
-  // (catches anything missed while asleep), and a slow poll (catches a dead socket).
   useEffect(() => {
     if (!auth) return;
 
@@ -356,8 +255,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       }, delay);
     };
 
-    // A single mutation can touch several scopes (deleting a project refreshes
-    // milestones, tasks and documents too), so coalesce bursts into one refetch.
     const stopListening = onDataChanged((notification) => {
       if (GLOBAL_SCOPES.includes(notification.scope)) {
         scheduleRefresh(REALTIME_DEBOUNCE_MS);
@@ -366,12 +263,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
     void startRealtime();
 
-    // Refetch on focus / tab-visible. A backgrounded tab can miss socket events, and this
-    // is also the moment a user is most likely to be looking at stale data.
     const onFocus = () => scheduleRefresh(FOCUS_DEBOUNCE_MS);
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") scheduleRefresh(FOCUS_DEBOUNCE_MS);
     };
+
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
@@ -384,8 +280,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     };
   }, [auth, refresh]);
 
-  // Safety net for a dead or unavailable socket. Skipped while the tab is hidden, and
-  // skipped while the socket is healthy so a working setup does not pay for both.
   useEffect(() => {
     if (!auth) return;
 
@@ -398,16 +292,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     return () => window.clearInterval(timer);
   }, [auth, refresh]);
 
-  // Watchdog. realtime.ts already self-heals, but it can only act on transitions it
-  // observes: if the socket dies while the tab is in the background, the browser may
-  // suspend timers entirely and the client never learns about it until the tab is
-  // refocused - by which point `onclose` may never have fired at all, leaving `connection`
-  // pointing at a socket in a state the retry policy is no longer driving.
-  //
-  // This is the belt-and-braces check: while the tab is visible and the socket has been
-  // unhealthy for longer than the threshold, ask for a fresh connection. It is deliberately
-  // not a poll - it only acts on a sustained outage, and it skips while a reconnect is
-  // already in progress so it cannot reset the backoff and spin.
   useEffect(() => {
     if (!auth) return;
 
@@ -415,7 +299,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible") {
-        // Time spent hidden does not count against the socket.
         unhealthySince = null;
         return;
       }
@@ -425,8 +308,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      // A connect or reconnect is already underway; let it finish rather than restarting
-      // it, which would throw away the accumulated backoff.
       if (isRealtimeRecovering()) return;
 
       const now = Date.now();
@@ -444,28 +325,21 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     return () => window.clearInterval(timer);
   }, [auth]);
 
-  const data = useMemo(() => {
-    if (pages) {
-      const pageData = mapPagesData(pages);
-      if (!bootstrap) return pageData;
-      return {
-        ...pageData,
-        // Navigation projects are independently server-scoped and are not
-        // limited to the first page of the monolithic pages response.
-        projects: mapProjectNavigation(bootstrap.projects),
-        // Keep the authenticated user available even when they are not on the
-        // first paginated users page.
-        users: pageData.users.some((user) => user.id === bootstrap.currentUser.id)
-          ? pageData.users
-          : [bootstrap.currentUser, ...pageData.users],
-      };
-    }
-    if (bootstrap) return mapBootstrapData(bootstrap);
-    return emptyData;
-  }, [bootstrap, pages]);
+  const data = useMemo(
+    () => (snapshot ? mapWorkspaceSnapshot(snapshot) : emptyData),
+    [snapshot],
+  );
+
   const value = useMemo(
-    () => ({ data, pages, loading, error, refresh }),
-    [data, pages, loading, error, refresh],
+    () => ({
+      data,
+      pages: null,
+      loading,
+      initialized,
+      error,
+      refresh,
+    }),
+    [data, loading, initialized, error, refresh],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
