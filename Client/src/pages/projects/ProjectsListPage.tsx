@@ -86,7 +86,7 @@ const FILTER_INPUT =
 export function ProjectsListPage() {
   const navigate = useNavigate();
   const { auth } = useAuth();
-  const { refresh: refreshAppData } = useAppData();
+  const { data: appData, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
   const isSuperAdmin = perm.isSuperAdmin;
@@ -94,9 +94,7 @@ export function ProjectsListPage() {
   const { setNavHeader } = useNavHeader();
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const { departments, organizations, users } = appData;
   const [loading, setLoading] = useState(true);
 
   const [query, setQuery] = useState("");
@@ -141,16 +139,7 @@ export function ProjectsListPage() {
     if (!auth) return;
     setLoading(true);
     try {
-      const [projectData, deptData, orgData, userData] = await Promise.all([
-        api.getProjects(auth.token),
-        api.getDepartments(auth.token),
-        api.getOrganizations(auth.token),
-        api.getUsers(auth.token),
-      ]);
-      setProjects(projectData);
-      setDepartments(deptData);
-      setOrganizations(orgData);
-      setUsers(userData as User[]);
+      setProjects(await api.getProjects(auth.token));
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Failed to load projects", "error");
     } finally {
