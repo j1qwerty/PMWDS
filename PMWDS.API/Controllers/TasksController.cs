@@ -76,6 +76,7 @@ public class TasksController : BaseApiController
 
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
         var query = _db.Tasks.AsNoTracking()
+            .AsSplitQuery()
             .Where(task => allowedProjectIds.Contains(task.ProjectId) && task.ParentTaskId == null)
             .Include(task => task.Project)
                 .ThenInclude(project => project!.ProjectDepartments)

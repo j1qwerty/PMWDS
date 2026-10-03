@@ -809,8 +809,9 @@ public class UsersController : BaseApiController
     private IQueryable<ApplicationUser> UserGraph(bool includeSkills)
     {
         var query = _db.Users
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(u => u.Department)
-            .Include(u => u.Organization)
             .Include(u => u.DepartmentAssignments)
             .ThenInclude(d => d.Department)
             .ThenInclude(d => d!.Organization)
