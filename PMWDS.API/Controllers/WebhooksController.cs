@@ -23,7 +23,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsView)]
     public async Task<IActionResult> GetAll([FromQuery] Guid? integrationId, CancellationToken ct)
     {
         var webhooks = integrationId.HasValue
@@ -34,7 +34,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsView)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var webhook = await _uow.Webhooks.GetByIdAsync(id, ct);
@@ -51,12 +51,17 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsCreate)]
     public async Task<IActionResult> Create([FromBody] UpsertWebhookRequest req, CancellationToken ct)
     {
         if (!OutboundUrlGuard.IsSafeWebhookCallbackUrl(req.CallbackUrl, out var callbackUrlError))
         {
             return BadRequest(new { message = callbackUrlError });
+        }
+
+        if (!await IntegrationExistsAsync(req.IntegrationId, ct))
+        {
+            return BadRequest(new { message = "The specified integration does not exist." });
         }
 
         var webhook = Webhook.Create(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
@@ -67,7 +72,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsEdit)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertWebhookRequest req, CancellationToken ct)
     {
         var webhook = await _uow.Webhooks.GetByIdAsync(id, ct);
@@ -81,6 +86,11 @@ public class WebhooksController : BaseApiController
             return BadRequest(new { message = callbackUrlError });
         }
 
+        if (!await IntegrationExistsAsync(req.IntegrationId, ct))
+        {
+            return BadRequest(new { message = "The specified integration does not exist." });
+        }
+
         webhook.Update(req.IntegrationId, req.EventType, req.CallbackUrl, _sensitiveData.Protect(req.Secret), req.Headers, req.IsActive);
         await _uow.Webhooks.UpdateAsync(webhook, ct);
         await _uow.SaveChangesAsync(ct);
@@ -88,7 +98,7 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/deliveries")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsEdit)]
     public async Task<IActionResult> LogDelivery(Guid id, [FromBody] CreateWebhookDeliveryRequest req, CancellationToken ct)
     {
         var webhook = await _uow.Webhooks.GetByIdAsync(id, ct);
@@ -105,12 +115,20 @@ public class WebhooksController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _uow.Webhooks.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private async Task<bool> IntegrationExistsAsync(Guid? integrationId, CancellationToken ct)
+    {
+        if (!integrationId.HasValue)
+            return true;
+
+        return await _uow.Integrations.GetByIdAsync(integrationId.Value, ct) != null;
     }
 
     internal static WebhookResponse MapWebhook(Webhook webhook)
@@ -119,7 +137,8 @@ public class WebhooksController : BaseApiController
             webhook.IntegrationId,
             webhook.EventType,
             webhook.CallbackUrl,
-            JsonSerializer.Deserialize<List<string>>(webhook.HeadersJson) ?? new(),
+            IntegrationSecretRedactor.RedactHeaders(
+                JsonSerializer.Deserialize<List<string>>(webhook.HeadersJson) ?? new()),
             webhook.IsActive);
 
     private static WebhookDeliveryResponse MapDelivery(WebhookDelivery delivery)

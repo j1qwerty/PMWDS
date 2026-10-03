@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.API.Services;
 using PMWDS.Domain.Entities;
 
 namespace PMWDS.API.Controllers;
@@ -22,12 +23,12 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsView)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
         => Ok((await _uow.Integrations.GetAllAsync(ct)).Select(MapIntegration));
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsView)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var integration = await _uow.Integrations.GetByIdAsync(id, ct);
@@ -41,7 +42,7 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsCreate)]
     public async Task<IActionResult> Create([FromBody] UpsertIntegrationRequest req, CancellationToken ct)
     {
         var integration = Integration.CreateWithConfigurationJson(req.IntegrationType, req.Name, _sensitiveData.ProtectJson(req.Configuration), req.IsEnabled);
@@ -53,7 +54,7 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsEdit)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertIntegrationRequest req, CancellationToken ct)
     {
         var integration = await _uow.Integrations.GetByIdAsync(id, ct);
@@ -69,7 +70,7 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/sync")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsEdit)]
     public async Task<IActionResult> Sync(Guid id, [FromBody] SyncIntegrationRequest req, CancellationToken ct)
     {
         var integration = await _uow.Integrations.GetByIdAsync(id, ct);
@@ -85,7 +86,7 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    [Authorize(Policy = AuthorizationPolicies.IntegrationsDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _uow.Integrations.DeleteAsync(id, ct);
@@ -98,7 +99,8 @@ public class IntegrationsController : BaseApiController
             integration.Id,
             integration.IntegrationType,
             integration.Name,
-            _sensitiveData.UnprotectJson<Dictionary<string, object>>(integration.ConfigurationJson) ?? new(),
+            IntegrationSecretRedactor.RedactConfiguration(
+                _sensitiveData.UnprotectJson<Dictionary<string, object>>(integration.ConfigurationJson) ?? new()),
             integration.IsActive,
             integration.LastSync,
             integration.Status);

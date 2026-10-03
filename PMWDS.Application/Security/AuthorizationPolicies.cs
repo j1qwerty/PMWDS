@@ -14,6 +14,12 @@ public static class AuthorizationPolicies
 
     public const string NotificationsBroadcast = "Notifications.Create";
 
+    public const string IntegrationsView = "Integrations.View";
+    public const string IntegrationsCreate = "Integrations.Create";
+    public const string IntegrationsEdit = "Integrations.Edit";
+    public const string IntegrationsDelete = "Integrations.Delete";
+
+
     public const string RolesCreate = "Roles.Create";
     public const string RolesEdit = "Roles.Edit";
     public const string RolesDelete = "Roles.Delete";
