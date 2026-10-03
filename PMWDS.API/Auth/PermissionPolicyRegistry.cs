@@ -56,7 +56,13 @@ public static class PermissionPolicyRegistry
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.AiManage,
+            PermissionCodes.AiOperate,
             PermissionCodes.AiView));
+        options.AddPolicy(AuthorizationPolicies.AIOperate, policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.AiManage,
+            PermissionCodes.AiOperate));
         options.AddPolicy(AuthorizationPolicies.AIManage, policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
