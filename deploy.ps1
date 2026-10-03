@@ -634,13 +634,23 @@ try {
         $code = ($lines | Select-Object -First 1).Trim()
         $body = ($lines | Select-Object -Skip 1) -join ' '
 
-        # A working negotiate returns 200 and a JSON body advertising the transports. An
-        # nginx `try_files` fallback instead returns 200 with the SPA index.html, which is
-        # why the body has to be asserted and not just the status code.
-        if ($code -eq '200' -and $body -match '"connectionToken"' -and $body -match 'WebSockets') {
+        # DashboardHub is [Authorize], so an unauthenticated negotiate is expected to be
+        # rejected. What matters is WHICH component answered:
+        #
+        #   401                    the request reached the API and the hub refused it. Correct.
+        #   200 + connectionToken  reached the API and negotiated. Correct.
+        #   200 + HTML             nginx try_files served the SPA. /hubs/ is NOT proxied. Broken.
+        #   404                    no hub route at all. Broken.
+        #
+        # Only the first two are healthy. Checking for 200 alone would pass the broken case,
+        # and treating 401 as a failure would fail every healthy deploy - both mistakes were
+        # made while writing this check.
+        if ($code -eq '401') {
+            Write-Ok "$($h.Label) negotiate -> 401 (hub requires auth) - /hubs/ is proxied"
+        } elseif ($code -eq '200' -and $body -match '"connectionToken"' -and $body -match 'WebSockets') {
             Write-Ok "$($h.Label) negotiate -> 200, WebSockets advertised"
         } else {
-            Write-Err "$($h.Label) negotiate -> HTTP $code"
+            Write-Err "$($h.Label) negotiate -> HTTP $code (expected 401, or 200 with a connectionToken)"
             Write-Detail ("  body: " + $body.Trim())
             if ($code -eq '200') {
                 Write-Detail '  200 with a non-negotiate body means nginx is serving the SPA'
