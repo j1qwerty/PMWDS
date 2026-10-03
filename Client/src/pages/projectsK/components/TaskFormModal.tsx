@@ -114,7 +114,7 @@ export function TaskFormModal({
     return errs;
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     const errs = validate();
@@ -133,12 +133,16 @@ export function TaskFormModal({
     };
     if (form.milestoneId) submission.milestoneId = form.milestoneId;
     if (form.assignedToUserIds[0]) submission.assignedToUserId = form.assignedToUserIds[0];
-    onSubmit(submission);
+    try {
+      await onSubmit(submission);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
+      <div className="w-full p-2">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-indigo-600 text-2xl">{initialData ? "edit" : "add_task"}</span>
