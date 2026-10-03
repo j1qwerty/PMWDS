@@ -44,3 +44,29 @@ public sealed class RoleHierarchyAuthorizationTests
         response.Status.Should().Be(HttpStatusCode.Forbidden);
     }
 }
+
+
+    [Fact]
+    public async Task Delegating_role_can_create_a_lower_role()
+    {
+        var client = _fixture.ProjectManager.Client;
+        var permissions = await client.GetAsync<JsonElement>("/api/v1/roles/permissions");
+        var projectView = permissions.Data.EnumerateArray()
+            .First(p => p.GetString("code") == "PROJECT_VIEW")
+            .GetGuid("id");
+
+        var response = await client.PostAsync<JsonElement>("/api/v1/roles", new
+        {
+            name = $"Delegated-{Guid.NewGuid():N}",
+            description = "Temporary lower role.",
+            permissionLevel = 20,
+            canAssignLowerRoles = false,
+            paginationPageSize = 10,
+            permissionIds = new[] { projectView },
+        });
+
+        response.Status.Should().Be(HttpStatusCode.Created);
+        var roleId = response.Data.GetGuid("id");
+
+        await client.DeleteAsync<JsonElement>($"/api/v1/roles/{roleId}");
+    }
