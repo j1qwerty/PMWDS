@@ -21,7 +21,14 @@ public class ProjectDocumentConfiguration : IEntityTypeConfiguration<ProjectDocu
             .HasConversion<string>()
             .HasMaxLength(40);
 
+        b.Property(e => e.ApprovalStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+        b.Property(e => e.ApprovedByUserId).HasMaxLength(100);
+        b.Property(e => e.ApprovalNotes).HasMaxLength(2000);
+
         b.HasIndex(e => e.Category);
+        b.HasIndex(e => e.ApprovalStatus);
     }
 }
 
