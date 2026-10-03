@@ -5,12 +5,16 @@ import { ProjectOverviewPage } from "../nested/ProjectOverviewPage";
 import { ProjectMilestonesPage } from "../nested/ProjectMilestonesPage";
 import { ProjectTasksPage } from "../nested/ProjectTasksPage";
 import { ProjectDocumentsPage } from "../nested/ProjectDocumentsPage";
+import { ProjectGoalsPage } from "../nested/ProjectGoalsPage";
+import { ProjectBudgetPage } from "../nested/ProjectBudgetPage";
 import { ProjectDependenciesPage } from "../nested/ProjectDependenciesPage";
 import { ProjectNotFound } from "../nested/ProjectNotFound";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: "home" },
+  { key: "goals", label: "Goals", icon: "flag" },
   { key: "milestones", label: "Milestones", icon: "hi-flag" },
+  { key: "budget", label: "Budget", icon: "account_balance_wallet" },
   { key: "tasks", label: "Tasks", icon: "hi-clipboard" },
   { key: "documents", label: "Documents", icon: "description" },
   { key: "dependencies", label: "Dependencies", icon: "account_tree" },
@@ -86,7 +90,9 @@ export function ProjectDetailShell() {
 
       {/* Tab content — each branch mounts the existing project page component. */}
       {activeTab === "overview" && <ProjectOverviewPage />}
+      {activeTab === "goals" && <ProjectGoalsPage />}
       {activeTab === "milestones" && <ProjectMilestonesPage />}
+      {activeTab === "budget" && <ProjectBudgetPage />}
       {activeTab === "tasks" && <ProjectTasksPage />}
       {activeTab === "documents" && <ProjectDocumentsPage />}
       {activeTab === "dependencies" && <ProjectDependenciesPage />}
