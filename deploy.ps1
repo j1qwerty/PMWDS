@@ -307,6 +307,15 @@ function Get-BackupCount {
     return 0
 }
 
+# Built into a variable first: a "-f" expression continued onto the next line swallows
+# -ForegroundColor into the format arguments and Write-Host then reports it as bound twice.
+function Get-BackupSummaryLine {
+    $api = Get-BackupCount $ApiBackDir
+    $web = Get-BackupCount $WebBackDir
+    $db  = Get-BackupCount $DbBackDir
+    return ('   Backups   {0}  (api {1}, web {2}, db {3} kept of {4})' -f $VariantBackDir, $api, $web, $db, $KeepBackups)
+}
+
 # ── Preflight ───────────────────────────────────────────────────────────
 Write-Banner
 Write-Step 'Preflight'
@@ -641,6 +650,10 @@ prune() {
 mkdir -p "$APP" "$WEB" "$DATA" "$DATA/database" "$DATA/data" \
          "$DATA/data/avatars" "$DATA/data/documents" \
          "$BACK" "$BACK/api" "$BACK/web" "$BACK/db"
+# The app runs as www-data and writes uploads, so a data directory created by a web-only
+# deploy must not end up root-owned. The backup tree is deliberately left root-only: it
+# holds a copy of the database.
+chown -R www-data:www-data "$DATA"
 echo "directories ready under $APP $WEB $DATA $BACK"
 
 # ── Database snapshot, before anything is touched ─────────────────────────
@@ -783,8 +796,7 @@ if ($SkipVerify) {
     Write-Banner
     Write-Host '  Deploy finished (unverified).' -ForegroundColor Green
     Write-Host ''
-    Write-Host "   Backups   $VariantBackDir  (api {0}, web {1}, db {2} kept of {3})" -f `
-        (Get-BackupCount $ApiBackDir), (Get-BackupCount $WebBackDir), (Get-BackupCount $DbBackDir), $KeepBackups -ForegroundColor Gray
+    Write-Host (Get-BackupSummaryLine) -ForegroundColor Gray
     Write-Host "   Server    $RemoteBack  (same layout, same retention)" -ForegroundColor Gray
     Write-Host ''
     exit 0
@@ -973,8 +985,7 @@ if ($allOk) {
     Write-Host "   Service   $ServiceName" -ForegroundColor Gray
     Write-Host "   API       $RemoteApp" -ForegroundColor Gray
     Write-Host "   Web       $RemoteWeb" -ForegroundColor Gray
-    Write-Host "   Backups   $VariantBackDir  (api {0}, web {1}, db {2} kept of {3})" -f `
-        (Get-BackupCount $ApiBackDir), (Get-BackupCount $WebBackDir), (Get-BackupCount $DbBackDir), $KeepBackups -ForegroundColor Gray
+    Write-Host (Get-BackupSummaryLine) -ForegroundColor Gray
     Write-Host "   Server    $RemoteBack  (same layout, same retention)" -ForegroundColor Gray
     Write-Host "   Stamp     $Stamp" -ForegroundColor Gray
     Write-Host ''
