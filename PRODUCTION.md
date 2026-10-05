@@ -74,6 +74,8 @@ selection, build, package, confirm, upload, remote deploy, verify.
 | `-Target api\|web\|both` | skip the target prompt |
 | `-SkipConfirm` | deploy without the y/N check (CI) |
 | `-SkipVerify` | skip the post-deploy verification pass |
+| `-KeepBackups 5` | how many archives per option (and DB copies) to keep, locally and on the server. `0` keeps everything |
+| `-BackupRoot <path>` | local backup folder, defaults to `<repo>\backups` |
 | `-Host_ contabo` | override the SSH alias |
 
 Examples:
@@ -88,6 +90,29 @@ Examples:
 
 Exit code is `0` on success and `1` if any check failed, so it is usable from CI.
 
+### Backups taken on every deploy
+
+Each run stamps everything it produces with `<yyyyMMdd-HHmmss>-<short HEAD>` and keeps the
+newest `-KeepBackups` (default 5) of each option, so a bad deploy can be rolled back from a
+folder listing.
+
+| What | Local | Server |
+|---|---|---|
+| API archive | `backups/<variant>/api/pmwds-api-<stamp>.tar.gz` | `/var/backups/pmwds-<variant>/api/` |
+| Web archive | `backups/<variant>/web/pmwds-web-<stamp>.tar.gz` | `/var/backups/pmwds-<variant>/web/` |
+| SQLite database | `backups/<variant>/db/pmwds-<stamp>.sqlite` | `/var/backups/pmwds-<variant>/db/` |
+
+The server archive is the exact tarball that was uploaded — the script `mv`s it out of `/tmp`
+into the backup folder and extracts from there, so one artifact has one name. The database
+copy uses SQLite's online `.backup` API (taken while the service is running, so it is
+consistent), is `chmod 600`, and is then **pulled back down** to the local folder, because a
+backup that only lives on the machine that was just replaced is not a backup. Every directory
+the deployment needs is created with `mkdir -p` first, so a first deploy onto a clean box
+needs no manual setup; if the server has neither `sqlite3` nor `python3` the deploy **fails**
+rather than falling back to `cp`, which would not produce a usable copy of a live database.
+
+The MSSQL variant has no SQLite file, so its database backup is reported as skipped.
+
 ### What each variant maps to
 
 Every path, service and port lives in one `$VariantTable` at the top of `deploy.ps1`:
@@ -99,6 +124,7 @@ Every path, service and port lives in one `$VariantTable` at the top of `deploy.
 | systemd service | `pmwds-sqlite` | `pmwds-mssql` |
 | env file | `/etc/pmwds/pmwds-sqlite.env` | `/etc/pmwds/pmwds-mssql.env` |
 | data directory | `/var/lib/pmwds-sqlite` | `/var/lib/pmwds-mssql` |
+| backup directory | `/var/backups/pmwds-sqlite` | `/var/backups/pmwds-mssql` |
 | API port | 5001 | 5002 |
 | nginx vhost | `sites-available/pmwds-ip` | `sites-available/pmwds.dharmaatribe.app` |
 
@@ -133,6 +159,9 @@ Every item below is a mistake that actually happened during this deploy (§2.1, 
   references 404s.
 - **Database is never touched** — only `app/` and `html/` are replaced, so `/var/lib/pmwds-sqlite` and the
   SQLite file are untouched by construction.
+- **Backups before replacement** — the SQLite file is snapshotted (`.backup`, online, `chmod 600`) and
+  both archives are filed under a stamped name before anything is overwritten, locally and on the server,
+  keeping the newest `-KeepBackups` of each (§ *Backups taken on every deploy*).
 
 ### Requirements
 

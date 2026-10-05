@@ -175,26 +175,44 @@ public static class DatabaseConnectionService
     }
 
     /// <summary>
-    /// Drops __EFMigrationsHistory rows for migrations that are no longer in the
-    /// assembly, before MigrateAsync runs.
+    /// Reconciles __EFMigrationsHistory with the squashed migration chain, before
+    /// MigrateAsync runs.
     ///
-    /// The migration chain was squashed into InitialSchema. On a database built
-    /// from the old chain, EF would otherwise see the old ids, conclude the new
-    /// InitialSchema was still pending, and try to create every table on a
-    /// database that already has them. Pruning first lets the consolidated
-    /// migrations apply cleanly to both fresh and existing databases.
+    /// The chain was consolidated into a baseline schema migration plus one
+    /// repair migration. A database created by the old chain has history rows
+    /// naming migrations this assembly no longer contains, and EF would treat the
+    /// new baseline as still pending and try to create every table on a database
+    /// that already has them.
     ///
-    /// Only rows for ids the assembly does not contain are removed, so this is a
-    /// no-op on a database whose history is already current, and it can never
-    /// mark a genuinely pending migration as applied.
+    /// Two steps, and the second is the one that matters:
+    ///   1. Delete rows for ids this assembly does not contain.
+    ///   2. If the schema is already present but the baseline migration is not
+    ///      recorded as applied, record it as applied.
+    ///
+    /// Step 2 exists because step 1 alone is destructive. Deleting the rows that
+    /// said "this schema was already created" leaves EF believing the database is
+    /// empty, which is exactly what happened on first deploy: production came up
+    /// with 'table ActivityLogs already exists' and crash-looped, because the
+    /// only row recording the schema's existence had just been deleted.
+    ///
+    /// Nothing here can apply a migration to an empty database, because the
+    /// baseline is only stamped when a sentinel table already exists.
     /// </summary>
     private static async Task ReconcileMigrationHistoryAsync(
         ApplicationDbContext db,
         CancellationToken ct)
     {
-        var known = new HashSet<string>(
-            db.Database.GetMigrations(),
-            StringComparer.OrdinalIgnoreCase);
+        var known = db.Database.GetMigrations().ToList();
+        if (known.Count == 0)
+        {
+            return;
+        }
+
+        var knownSet = new HashSet<string>(known, StringComparer.OrdinalIgnoreCase);
+
+        // The baseline is the earliest migration in the assembly: it is the one
+        // that creates the whole schema. Anything after it is a repair.
+        var baseline = known.OrderBy(id => id, StringComparer.Ordinal).First();
 
         // dbo is the default schema on SQL Server; SQLite has no schemas.
         var historyTable = db.Database.ProviderName?.Contains("SqlServer", StringComparison.Ordinal) == true
@@ -219,29 +237,24 @@ public static class DatabaseConnectionService
 
         try
         {
-            List<string> applied;
-            await using (var read = connection.CreateCommand())
+            var applied = new List<string>();
+            try
             {
+                await using var read = connection.CreateCommand();
                 read.CommandText = $"SELECT \"MigrationId\" FROM {historyTable}";
-                applied = new List<string>();
                 await using var reader = await read.ExecuteReaderAsync(ct);
                 while (await reader.ReadAsync(ct))
                 {
                     applied.Add(reader.GetString(0));
                 }
             }
-
-            var stale = applied.Where(id => !known.Contains(id)).ToList();
-            if (stale.Count == 0)
+            catch (DbException)
             {
-                return;
+                // No history table: a brand new database. EF creates it.
+                applied.Clear();
             }
 
-            // Console.WriteLine, not the Serilog logger: this file runs before the
-            // host is built, and Console.WriteLine does not accept {Named} templates.
-            Console.WriteLine(
-                $"[PMWDS] Pruning {stale.Count} superseded migration history row(s): {string.Join(", ", stale)}");
-
+            var stale = applied.Where(id => !knownSet.Contains(id)).ToList();
             foreach (var id in stale)
             {
                 await using var delete = connection.CreateCommand();
@@ -249,11 +262,41 @@ public static class DatabaseConnectionService
                     $"DELETE FROM {historyTable} WHERE \"MigrationId\" = {QuoteLiteral(id)}";
                 await delete.ExecuteNonQueryAsync(ct);
             }
-        }
-        catch (DbException)
-        {
-            // The history table does not exist yet on a brand new database, which
-            // is the normal case and needs no reconciliation.
+
+            if (stale.Count > 0)
+            {
+                // Console.WriteLine, not the Serilog logger: this file runs before
+                // the host is built, and Console.WriteLine does not accept
+                // {Named} templates.
+                Console.WriteLine(
+                    $"[PMWDS] Pruned {stale.Count} superseded migration history row(s): {string.Join(", ", stale)}");
+            }
+
+            if (applied.Any(id => knownSet.Contains(id)))
+            {
+                // At least one current migration is already recorded, so the chain
+                // is aligned and MigrateAsync can work out the rest itself.
+                return;
+            }
+
+            if (!await TableExistsAsync(connection, historyTable, "Projects", ct))
+            {
+                // Genuinely empty. Leave it alone so EF creates the schema.
+                return;
+            }
+
+            // The schema is here but no current migration claims it. Record the
+            // baseline as applied so EF skips table creation and moves on to the
+            // repair migrations that actually have work to do on this database.
+            Console.WriteLine(
+                $"[PMWDS] Schema already present but {baseline} was not recorded; " +
+                "marking it applied so the baseline is not re-created.");
+
+            await using var stamp = connection.CreateCommand();
+            stamp.CommandText =
+                $"INSERT INTO {historyTable} (\"MigrationId\", \"ProductVersion\") " +
+                $"VALUES ({QuoteLiteral(baseline)}, {QuoteLiteral(EFProductVersion)})";
+            await stamp.ExecuteNonQueryAsync(ct);
         }
         finally
         {
@@ -262,6 +305,55 @@ public static class DatabaseConnectionService
                 await connection.CloseAsync();
             }
         }
+    }
+
+    /// <summary>
+    /// Version string EF writes into __EFMigrationsHistory. It is only compared
+    /// for display, so the assembly version is as good as the exact one.
+    /// </summary>
+    private static readonly string EFProductVersion =
+        typeof(DbContext).Assembly.GetName().Version?.ToString() ?? "10.0.0";
+
+    /// <summary>
+    /// True when the schema is already present, judged by a table the baseline
+    /// migration creates. Also creates the history table if it is missing, since
+    /// stamping a baseline on a database that has never had one requires it.
+    /// </summary>
+    private static async Task<bool> TableExistsAsync(
+        DbConnection connection,
+        string historyTable,
+        string sentinelTable,
+        CancellationToken ct)
+    {
+        var isSqlServer = connection.GetType().Name.Contains("SqlConnection", StringComparison.Ordinal);
+
+        await using (var probe = connection.CreateCommand())
+        {
+            probe.CommandText = isSqlServer
+                ? $"SELECT CASE WHEN OBJECT_ID(N'[dbo].[{sentinelTable}]', N'U') IS NULL THEN 0 ELSE 1 END"
+                : $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{sentinelTable}'";
+            var result = await probe.ExecuteScalarAsync(ct);
+            if (result is null || Convert.ToInt64(result) == 0)
+            {
+                return false;
+            }
+        }
+
+        // Schema exists, so make sure there is somewhere to record the baseline.
+        await using (var ensure = connection.CreateCommand())
+        {
+            ensure.CommandText = isSqlServer
+                ? "IF OBJECT_ID(N'[dbo].[__EFMigrationsHistory]', N'U') IS NULL " +
+                  "CREATE TABLE [dbo].[__EFMigrationsHistory] (" +
+                  "[MigrationId] nvarchar(150) NOT NULL CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY, " +
+                  "[ProductVersion] nvarchar(32) NOT NULL)"
+                : "CREATE TABLE IF NOT EXISTS \"__EFMigrationsHistory\" (" +
+                  "\"MigrationId\" TEXT NOT NULL CONSTRAINT \"PK___EFMigrationsHistory\" PRIMARY KEY, " +
+                  "\"ProductVersion\" TEXT NOT NULL)";
+            await ensure.ExecuteNonQueryAsync(ct);
+        }
+
+        return true;
     }
 
     private static string QuoteLiteral(string value)

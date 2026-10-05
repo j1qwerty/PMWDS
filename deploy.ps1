@@ -8,6 +8,14 @@
     over scp, extracts on the server, fixes ownership, restarts the service and
     verifies the result against both public hosts.
 
+    Every deploy also keeps a rolling backup set. Each archive that actually ships is
+    filed under backups\<variant>\<api|web>\ with a timestamped name, both locally and on
+    the server, and only the newest -KeepBackups of each are retained. Before the API is
+    replaced the SQLite database is copied into backups\<variant>\db\ (locally) and
+    /var/backups/pmwds-<variant>/db (on the server), and that copy is pulled back down to
+    the local folder. Missing server directories are created on the fly, so a first
+    deploy onto a clean box needs no manual mkdir.
+
 .PARAMETER Target
     api | web | both. Prompted for when omitted.
 
@@ -22,14 +30,23 @@
 .PARAMETER SkipVerify
     Deploy without the post-deploy verification pass.
 
+.PARAMETER KeepBackups
+    How many recent archives to retain per option (api, web) and for the database, locally
+    and on the server. Defaults to 5. Set to 0 to keep everything, or a large number to
+    effectively disable rotation.
+
 .PARAMETER Host_
     SSH host alias. Defaults to "contabo".
+
+.PARAMETER BackupRoot
+    Local backup folder. Defaults to <repo>\backups.
 
 .EXAMPLE
     .\deploy.ps1
     .\deploy.ps1 -Target both
     .\deploy.ps1 -Variant mssql -Target both
     .\deploy.ps1 -Variant sqlite -Target web -SkipConfirm
+    .\deploy.ps1 -KeepBackups 10
 #>
 [CmdletBinding()]
 param(
@@ -41,7 +58,13 @@ param(
 
     [switch] $SkipConfirm,
     [switch] $SkipVerify,
-    [string] $Host_ = 'contabo'
+
+    [ValidateRange(0, 100)]
+    [int] $KeepBackups = 5,
+
+    [string] $Host_ = 'contabo',
+
+    [string] $BackupRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -53,6 +76,11 @@ $PublishDir  = Join-Path $RepoRoot 'pmwds-pub'
 $DistDir     = Join-Path $RepoRoot 'Client\dist'
 $ApiArchive  = Join-Path $RepoRoot 'pmwds-api.tar.gz'
 $WebArchive  = Join-Path $RepoRoot 'pmwds-web.tar.gz'
+
+# Rolling deploy backups. One folder per variant so the two deployments never mix, and one
+# subfolder per option so the api and web archives are rotated independently.
+$BackupDir   = if ($BackupRoot) { $BackupRoot } else { Join-Path $RepoRoot 'backups' }
+$BackupDir   = [System.IO.Path]::GetFullPath($BackupDir)
 
 $WebUser     = 'www-data'
 
@@ -76,6 +104,8 @@ $VariantTable = @{
         ServiceName = 'pmwds-sqlite'
         EnvFile     = '/etc/pmwds/pmwds-sqlite.env'
         DataDir     = '/var/lib/pmwds-sqlite'
+        DbFile      = '/var/lib/pmwds-sqlite/database/pmwds.sqlite'
+        RemoteBack  = '/var/backups/pmwds-sqlite'
         ApiPort     = 5001
         PublicHost  = 'http://147.93.155.185'
         HostLabel   = 'IP       '
@@ -89,6 +119,8 @@ $VariantTable = @{
         ServiceName = 'pmwds-mssql'
         EnvFile     = '/etc/pmwds/pmwds-mssql.env'
         DataDir     = '/var/lib/pmwds-mssql'
+        DbFile      = ''
+        RemoteBack  = '/var/backups/pmwds-mssql'
         ApiPort     = 5002
         PublicHost  = 'https://pmwds.dharmaatribe.app'
         HostLabel   = 'subdomain'
@@ -213,6 +245,68 @@ function Invoke-Checked {
 
 function Test-CommandExists { param([string]$Name) return [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
 
+# ── Backup helpers ──────────────────────────────────────────────────────
+# A single timestamp identifies one deploy and is used for every file it produces, locally
+# and on the server, so a given backup can be traced back to the commit that produced it.
+function New-BackupStamp {
+    param([string] $Head)
+    $stamp = (Get-Date).ToString('yyyyMMdd-HHmmss')
+    if ($Head) { return "$stamp-$Head" }
+    return $stamp
+}
+
+function Get-BackupDir {
+    param([string] $VariantKey, [string] $Kind)
+    return (Join-Path (Join-Path $BackupDir $VariantKey) $Kind)
+}
+
+# Files are named <stamp>-<name>, so sorting by name descending is the same as sorting by
+# time descending and stays correct even when several deploys land in the same second.
+function Remove-StaleBackups {
+    param(
+        [Parameter(Mandatory)] [string]   $Dir,
+        [Parameter(Mandatory)] [int]      $Keep,
+        [Parameter(Mandatory)] [string]   $Label
+    )
+    if (-not (Test-Path $Dir)) { return }
+    if ($Keep -eq 0) {
+        $n = @(Get-ChildItem $Dir -File).Count
+        Write-Detail "$Label retention disabled, keeping all $n file(s)"
+        return
+    }
+    $all = @(Get-ChildItem $Dir -File | Sort-Object Name -Descending)
+    if ($all.Count -le $Keep) { return }
+    foreach ($old in $all[$Keep..($all.Count - 1)]) {
+        Remove-Item $old.FullName -Force
+        Write-Detail "pruned old $Label backup: $($old.Name)"
+    }
+    Write-Detail ("{0}: kept newest {1} of {2}" -f $Label, $Keep, $all.Count)
+}
+
+# Copies one artifact into the local backup tree and rotates that folder.
+function Save-LocalBackup {
+    param(
+        [Parameter(Mandatory)] [string] $SourceFile,
+        [Parameter(Mandatory)] [string] $Dir,
+        [Parameter(Mandatory)] [string] $Name,
+        [Parameter(Mandatory)] [int]    $Keep,
+        [Parameter(Mandatory)] [string] $Label
+    )
+    if (-not (Test-Path $Dir)) { New-Item -ItemType Directory -Force -Path $Dir | Out-Null }
+    $dest = Join-Path $Dir $Name
+    Copy-Item $SourceFile $dest -Force
+    $mb = (Get-Item $dest).Length / 1MB
+    Write-Ok ("{0}: {1} ({2:N2} MB)" -f $Label, $Name, $mb)
+    Remove-StaleBackups -Dir $Dir -Keep $Keep -Label $Label
+    return $dest
+}
+
+function Get-BackupCount {
+    param([string] $Dir)
+    if (Test-Path $Dir) { return @(Get-ChildItem $Dir -File).Count }
+    return 0
+}
+
 # ── Preflight ───────────────────────────────────────────────────────────
 Write-Banner
 Write-Step 'Preflight'
@@ -277,6 +371,18 @@ $RemoteApp   = $V.RemoteApp
 $RemoteWeb   = $V.RemoteWeb
 $ServiceName = $V.ServiceName
 $DataDir     = $V.DataDir
+$RemoteBack  = $V.RemoteBack
+$DbFile      = $V.DbFile
+
+# Local backup tree for this variant. Created on demand by Save-LocalBackup.
+$VariantBackDir = Join-Path $BackupDir $Variant
+$ApiBackDir     = Get-BackupDir -VariantKey $Variant -Kind 'api'
+$WebBackDir     = Get-BackupDir -VariantKey $Variant -Kind 'web'
+$DbBackDir      = Get-BackupDir -VariantKey $Variant -Kind 'db'
+
+# One stamp per run: every archive, the server copies of them, and the database snapshot
+# all carry it, so a bad deploy can be undone from a single folder listing.
+$Stamp = New-BackupStamp -Head $head
 
 $PublicHosts = @(
     @{ Label = $V.HostLabel; Url = $V.PublicHost; Insecure = $false }
@@ -360,7 +466,19 @@ if ($doApi) {
     Invoke-Checked tar @('-czf', $ApiArchive, '-C', $PublishDir, '.') -What 'tar api' | Out-Null
     $sz = (Get-Item $ApiArchive).Length / 1MB
     Write-Ok ("{0:N1} MB" -f $sz)
-    $uploads += @{ Local = $ApiArchive; Remote = '/tmp/pmwds-api.tar.gz' }
+
+    # The stamped name is what both sides file the archive under. Uploading the plain
+    # /tmp name and renaming server-side would give two names for one artifact, which is
+    # exactly what makes a backup folder untrustworthy.
+    $bakName = "pmwds-api-$Stamp.tar.gz"
+    $uploads += @{
+        Local     = $ApiArchive
+        Remote    = '/tmp/pmwds-api.tar.gz'
+        Kind      = 'api'
+        BackupDir = $ApiBackDir
+        BakName   = $bakName
+        RemoteBak = "$RemoteBack/api/$bakName"
+    }
 }
 
 if ($doWeb) {
@@ -376,7 +494,16 @@ if ($doWeb) {
         Fail 'archive contains backslash path separators - this is the Compress-Archive bug, refusing to deploy'
     }
     Write-Ok ("{0:N2} MB, {1} entries, no backslashes" -f ((Get-Item $WebArchive).Length / 1MB), $entries.Count)
-    $uploads += @{ Local = $WebArchive; Remote = '/tmp/pmwds-web.tar.gz' }
+
+    $bakName = "pmwds-web-$Stamp.tar.gz"
+    $uploads += @{
+        Local     = $WebArchive
+        Remote    = '/tmp/pmwds-web.tar.gz'
+        Kind      = 'web'
+        BackupDir = $WebBackDir
+        BakName   = $bakName
+        RemoteBak = "$RemoteBack/web/$bakName"
+    }
 }
 
 # ── Confirm ─────────────────────────────────────────────────────────────
@@ -392,6 +519,10 @@ Write-Host "         service    $ServiceName   (port $($V.ApiPort))" -Foreground
 Write-Host "         api dir    $RemoteApp" -ForegroundColor Gray
 Write-Host "         web dir    $RemoteWeb" -ForegroundColor Gray
 Write-Host "         data dir   $DataDir  (never touched by this script)" -ForegroundColor Gray
+Write-Host "         backup     $VariantBackDir  (keeping $KeepBackups newest per option)" -ForegroundColor Gray
+Write-Host "         backup     $RemoteBack  (server copy, same retention)" -ForegroundColor Gray
+if ($DbFile) { Write-Host "         db backup  $DbFile -> copied before the API is replaced" -ForegroundColor Gray }
+else        { Write-Host '         db backup  skipped (SQL Server variant - no SQLite file)' -ForegroundColor Gray }
 if (-not $V.Tls) {
     Write-Host ''
     Write-Host '         NOTE: this variant is served over plain HTTP on a bare IP.' -ForegroundColor Yellow
@@ -408,6 +539,22 @@ if (-not $SkipConfirm) {
     }
 }
 Write-Ok 'confirmed'
+
+# ── Local archive backup ────────────────────────────────────────────────
+# The working archives in the repo root are overwritten by the next deploy, so each one is
+# filed under a stamped name before it goes up. This happens after the confirmation so an
+# aborted run does not leave a backup for a deploy that never happened.
+if ($uploads.Count) {
+    Write-Step 'Archive to local backup folder'
+    Write-Running "copying $(($uploads | ForEach-Object { $_.Kind }) -join ', ') into $VariantBackDir"
+    foreach ($u in $uploads) {
+        Save-LocalBackup -SourceFile $u.Local -Dir $u.BackupDir -Name $u.BakName `
+            -Keep $KeepBackups -Label $u.Kind | Out-Null
+    }
+    Write-Ok "local backup root: $VariantBackDir"
+} else {
+    Write-Info 'nothing to archive'
+}
 
 # ── Upload ──────────────────────────────────────────────────────────────
 $script:Start = Get-Date
@@ -453,8 +600,9 @@ Write-Step 'Deploy on server'
 Write-Running 'remote extraction, permissions, and service restart are running. Server output will appear live below.'
 
 # Written to a script file rather than inlined: $ and quoting behave differently
-# when a command crosses the Windows -> ssh boundary. The variant's paths and service name
-# are passed as arguments rather than baked in, so one script body serves both deployments.
+# when a command crosses the Windows -> ssh boundary. The variant's paths, service name,
+# backup root, database file, retention count and stamp are passed as arguments rather than
+# baked in, so one script body serves both deployments.
 $remoteScript = @'
 set -e
 APP="$1"
@@ -462,12 +610,76 @@ WEB="$2"
 SERVICE="$3"
 DATA="$4"
 TARGET="$5"
+BACK="$6"
+DB="$7"
+KEEP="$8"
+STAMP="$9"
+
+# Keep only the newest $KEEP files in a backup folder. The names start with the deploy
+# stamp, so ordering by name and ordering by time agree and the retention is deterministic.
+prune() {
+  dir="$1"
+  keep="$2"
+  [ -d "$dir" ] || return 0
+  if [ "$keep" -le 0 ]; then
+    echo "  retention disabled in $dir, keeping $(ls -1 "$dir" | wc -l) file(s)"
+    return 0
+  fi
+  total=$(ls -1 "$dir" | wc -l)
+  if [ "$total" -gt "$keep" ]; then
+    ls -1 "$dir" | sort -r | tail -n "+$((keep + 1))" | while read -r old; do
+      rm -f "$dir/$old"
+      echo "  pruned $old"
+    done
+  fi
+  echo "  kept $(ls -1 "$dir" | wc -l) of max $keep in $dir"
+}
+
+# Every directory this deployment depends on is created if it is missing, so a first deploy
+# onto a clean box needs no manual mkdir. $BACK lives outside the app directory because
+# app/ is wiped on every deploy.
+mkdir -p "$APP" "$WEB" "$DATA" "$DATA/database" "$DATA/data" \
+         "$DATA/data/avatars" "$DATA/data/documents" \
+         "$BACK" "$BACK/api" "$BACK/web" "$BACK/db"
+echo "directories ready under $APP $WEB $DATA $BACK"
+
+# ── Database snapshot, before anything is touched ─────────────────────────
+# Taken every run, for web-only deploys too, because that is exactly the deploy that gets
+# forgotten when a rollback is needed. .backup is SQLite's online backup API, so it is
+# consistent even while the service is writing.
+DB_OUT=""
+if [ -z "$DB" ]; then
+  echo "db backup: no SQLite file for this variant (SQL Server) - skipped"
+elif [ ! -f "$DB" ]; then
+  echo "db backup: $DB does not exist yet - skipped"
+else
+  DB_OUT="$BACK/db/pmwds-$STAMP.sqlite"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    sqlite3 "$DB" ".backup '$DB_OUT'"
+    echo "db backup: $DB -> $DB_OUT"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c "import sqlite3,sys; s=sqlite3.connect(sys.argv[1]); d=sqlite3.connect(sys.argv[2]); s.backup(d); d.close(); s.close()" "$DB" "$DB_OUT"
+    echo "db backup: $DB -> $DB_OUT (python3 sqlite3 module)"
+  else
+    echo "FATAL: cannot back up $DB - install sqlite3 on the server (apt-get install -y sqlite3)" >&2
+    echo "       a file copy would not be a usable backup of a live database" >&2
+    exit 1
+  fi
+  chmod 600 "$DB_OUT"
+  echo "db backup size: $(du -h "$DB_OUT" | cut -f1)"
+  # Machine-readable, so the caller can pull exactly this file back down.
+  echo "DBBACKUP=$DB_OUT"
+  prune "$BACK/db" "$KEEP"
+fi
 
 if [ -f /tmp/pmwds-api.tar.gz ]; then
+  API_ZIP="$BACK/api/pmwds-api-$STAMP.tar.gz"
+  echo "filing api archive as $API_ZIP"
+  mv /tmp/pmwds-api.tar.gz "$API_ZIP"
+  prune "$BACK/api" "$KEEP"
   echo "extracting api -> $APP"
-  mkdir -p "$APP" "$DATA"
   rm -rf /tmp/dep-api && mkdir -p /tmp/dep-api
-  tar -xzf /tmp/pmwds-api.tar.gz -C /tmp/dep-api
+  tar -xzf "$API_ZIP" -C /tmp/dep-api
   # Clear the previous build but keep the directory itself, so a bind mount or an open
   # handle on it cannot turn the restart into a "no such file" failure.
   find "$APP" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
@@ -479,9 +691,13 @@ if [ -f /tmp/pmwds-api.tar.gz ]; then
 fi
 
 if [ -f /tmp/pmwds-web.tar.gz ]; then
+  WEB_ZIP="$BACK/web/pmwds-web-$STAMP.tar.gz"
+  echo "filing web archive as $WEB_ZIP"
+  mv /tmp/pmwds-web.tar.gz "$WEB_ZIP"
+  prune "$BACK/web" "$KEEP"
   echo "extracting web -> $WEB"
   rm -rf /tmp/dep-web && mkdir -p /tmp/dep-web
-  tar -xzf /tmp/pmwds-web.tar.gz -C /tmp/dep-web
+  tar -xzf "$WEB_ZIP" -C /tmp/dep-web
   rm -rf "$WEB"
   mkdir -p "$WEB"
   cp -a /tmp/dep-web/. "$WEB"/
@@ -511,19 +727,52 @@ fi
 
 $tmpScript = Join-Path ([System.IO.Path]::GetTempPath()) ("pmwds-deploy-" + [guid]::NewGuid().ToString('N') + '.sh')
 [System.IO.File]::WriteAllText($tmpScript, ($remoteScript -replace "`r`n", "`n"))
+$remoteDeployOutput = ''
 try {
     scp -o BatchMode=yes -o ConnectTimeout=10 $tmpScript "${Host_}:/tmp/pmwds-deploy.sh" | Out-Null
 
-    $remoteArgs = "bash /tmp/pmwds-deploy.sh '$RemoteApp' '$RemoteWeb' '$ServiceName' '$DataDir' '$Target'"
+    $remoteArgs = "bash /tmp/pmwds-deploy.sh '$RemoteApp' '$RemoteWeb' '$ServiceName' '$DataDir' '$Target' " +
+                  "'$RemoteBack' '$DbFile' '$KeepBackups' '$Stamp'"
     $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, $remoteArgs) `
         -What 'remote deploy' -StreamOutput -OutputLabel 'server'
+    $remoteDeployOutput = $out
 
-    $out | Select-String -Pattern 'service: active' | Out-Null
-    if (-not $?) { Fail "$ServiceName did not report active after restart" }
+    # Only meaningful when the API was actually shipped: a web-only deploy never restarts
+    # the service, so the service line is absent by design and asserting on it would fail
+    # every web deploy.
+    if ($doApi) {
+        $out | Select-String -Pattern 'service: active' | Out-Null
+        if (-not $?) { Fail "$ServiceName did not report active after restart" }
+    }
     Write-Ok 'remote deploy complete'
 } finally {
     Remove-Item $tmpScript -Force -ErrorAction SilentlyContinue
     ssh -o BatchMode=yes $Host_ 'rm -f /tmp/pmwds-deploy.sh' 2>&1 | Out-Null
+}
+
+# ── Pull the database backup down ───────────────────────────────────────
+# The snapshot exists on the server, but a backup that only lives on the machine that was
+# just replaced is not a backup. Copy it into the local backup tree and rotate that folder
+# the same way the archives are rotated.
+$dbBackupLine = ($remoteDeployOutput -split "`r?`n" | Where-Object { $_ -match '^DBBACKUP=' } | Select-Object -First 1)
+if ($dbBackupLine) {
+    $script:Start = Get-Date
+    Write-Step 'Download database backup'
+    $remoteDbPath = ($dbBackupLine -replace '^DBBACKUP=', '').Trim()
+    Write-Running "fetching $($remoteDbPath -replace '^.*/', '') from $Host_"
+
+    if (-not (Test-Path $DbBackDir)) { New-Item -ItemType Directory -Force -Path $DbBackDir | Out-Null }
+    $localDbName = "pmwds-$Stamp.sqlite"
+    $localDbPath = Join-Path $DbBackDir $localDbName
+    # scp, not Copy-Item: the file is on the other machine.
+    & scp '-o' 'BatchMode=yes' '-o' 'ConnectTimeout=10' "${Host_}:$remoteDbPath" $localDbPath
+    if ($LASTEXITCODE -ne 0) { Fail "scp of the database backup failed (exit $LASTEXITCODE)" }
+    if (-not (Test-Path $localDbPath)) { Fail "scp reported success but $localDbName is not there" }
+
+    Write-Ok ("db: {0} ({1:N2} MB) <- {2}" -f $localDbName, ((Get-Item $localDbPath).Length / 1MB), $remoteDbPath)
+    Remove-StaleBackups -Dir $DbBackDir -Keep $KeepBackups -Label 'db'
+} else {
+    Write-Info 'no database backup was produced for this variant - nothing to download'
 }
 
 # ── Verify ──────────────────────────────────────────────────────────────
@@ -531,7 +780,13 @@ if ($SkipVerify) {
     Write-Step 'Verify'
     Write-Running 'verification was skipped by -SkipVerify'
     Write-Warn2 'skipped by -SkipVerify'
-    Write-Banner; Write-Host '  Deploy finished (unverified).' -ForegroundColor Green; Write-Host ''
+    Write-Banner
+    Write-Host '  Deploy finished (unverified).' -ForegroundColor Green
+    Write-Host ''
+    Write-Host "   Backups   $VariantBackDir  (api {0}, web {1}, db {2} kept of {3})" -f `
+        (Get-BackupCount $ApiBackDir), (Get-BackupCount $WebBackDir), (Get-BackupCount $DbBackDir), $KeepBackups -ForegroundColor Gray
+    Write-Host "   Server    $RemoteBack  (same layout, same retention)" -ForegroundColor Gray
+    Write-Host ''
     exit 0
 }
 
@@ -718,6 +973,10 @@ if ($allOk) {
     Write-Host "   Service   $ServiceName" -ForegroundColor Gray
     Write-Host "   API       $RemoteApp" -ForegroundColor Gray
     Write-Host "   Web       $RemoteWeb" -ForegroundColor Gray
+    Write-Host "   Backups   $VariantBackDir  (api {0}, web {1}, db {2} kept of {3})" -f `
+        (Get-BackupCount $ApiBackDir), (Get-BackupCount $WebBackDir), (Get-BackupCount $DbBackDir), $KeepBackups -ForegroundColor Gray
+    Write-Host "   Server    $RemoteBack  (same layout, same retention)" -ForegroundColor Gray
+    Write-Host "   Stamp     $Stamp" -ForegroundColor Gray
     Write-Host ''
     exit 0
 } else {
