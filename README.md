@@ -54,6 +54,7 @@ The app supports two database modes:
 ```powershell
 dotnet build PMWDS.slnx
 dotnet run --project PMWDS.API --urls http://localhost:5177
+$env:Database__ForceSqlite="true"; dotnet run --project PMWDS.API
 ```
 
 The SQLite database is at `PMWDS.API/App_Data/pmwds-dev.sqlite`. The API automatically uses SQLite because `appsettings.Development.json` has `Database:ForceSqlite: true`.

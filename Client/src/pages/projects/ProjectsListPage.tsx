@@ -705,6 +705,29 @@ function ProjectSummaryCard({
     ? project.departments.map((d) => d.departmentName).filter(Boolean).join(", ")
     : project.departmentName || "";
 
+  // Compact date: e.g. "12 Mar" (or "12 Mar 25" if not current year)
+  const compactDate = (date?: string | Date) => {
+    if (!date) return "—";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    const day = d.getDate();
+    const month = d.toLocaleString("en-GB", { month: "short" });
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    return sameYear ? `${day} ${month}` : `${day} ${month} ${String(d.getFullYear()).slice(-2)}`;
+  };
+
+  // Full date for tooltips: e.g. "12 March 2025"
+  const fullDate = (date?: string | Date) => {
+    if (!date) return "Not set";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "Not set";
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   return (
     <button
       type="button"
@@ -749,7 +772,18 @@ function ProjectSummaryCard({
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${priority.bg} ${priority.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${priority.dot}`} />
               {project.priority}
+        
             </span>
+
+                   {/* Overdue tasks */}
+        {project.overdueTasks > 0 && (
+          <span
+            className="text-red-500 text-xs"
+            title={`${project.overdueTasks} overdue task${project.overdueTasks > 1 ? "s" : ""}`}
+          >
+            {project.overdueTasks} overdue tasks
+          </span>
+        )}
             {deptNames && (
               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                 {deptNames}
@@ -766,13 +800,16 @@ function ProjectSummaryCard({
         </p>
       )}
 
-      {/* Manager + budget */}
-      <div className="flex items-center gap-2 flex-wrap mt-3">
+      
+
+      {/* Footer: dates · milestones · tasks · budget · open */}
+      <div className="flex items-center gap-2 flex-wrap text-[10px] text-slate-500 mt-3 pt-3 border-t border-slate-100">
+        {/* --- Commented out: Project Manager ---
         {project.projectManagerId && (
-          <span className="flex items-center gap-1.5" title="Project Manager">
+          <span className="flex items-center gap-1.5 min-w-0" title="Project Manager">
             <Avatark person={manager} name={project.projectManagerName} size="xs" />
             <span
-              className={`text-[11px] font-medium max-w-[140px] truncate ${
+              className={`font-medium max-w-[100px] truncate ${
                 manager?.isActive === false ? "text-red-500" : "text-slate-600"
               }`}
             >
@@ -780,34 +817,44 @@ function ProjectSummaryCard({
             </span>
           </span>
         )}
-        <span className="text-[11px] text-slate-500" title="Planned budget (in lakhs)">
+        */}
+
+        {/* Dates — each with its own full-date tooltip */}
+        <span className="flex items-center gap-1 text-slate-400" title={`Start: ${fullDate(project.plannedStartDate)}`}>
+          <Icon name="calendar" size={12} />
+          <span>{compactDate(project.plannedStartDate)}</span>
+        </span>
+        <span className="text-slate-300">→</span>
+        <span className="flex items-center gap-1 text-slate-400" title={`End: ${fullDate(project.plannedEndDate)}`}>
+          <span>{compactDate(project.plannedEndDate)}</span>
+        </span>
+
+        {/* Milestones — icon + count with tooltip */}
+        <span
+          className="flex items-center gap-1 text-slate-400"
+          title={`${project.totalMilestones ?? 0} milestone${(project.totalMilestones ?? 0) === 1 ? "" : "s"}`}
+        >
+          <Icon name="hi-flag" size={14} />
+          <span>{project.totalMilestones ?? 0} Milestones</span>
+        </span>
+
+        {/* Tasks — icon + count with tooltip */}
+        <span
+          className="flex items-center gap-1 text-slate-400"
+          title={`${project.totalTasks ?? 0} task${(project.totalTasks ?? 0) === 1 ? "" : "s"}`}
+        >
+          <Icon name="hi-clipboard" size={14} />
+          <span>{project.totalTasks ?? 0} Tasks</span>
+        </span>
+
+       
+
+        {/* Budget */}
+        <span className="ml-auto font-medium text-slate-500" title="Planned budget (in lakhs)">
           {formatLakhs(project.plannedBudget)}
         </span>
-      </div>
 
-      {/* Dates */}
-      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-2 flex-wrap">
-        <Icon name="calendar" size={12} />
-        <span>{formatShortDate(project.plannedStartDate)}</span>
-        <span className="text-slate-300">→</span>
-        <span>{formatShortDate(project.plannedEndDate)}</span>
-        {project.overdueTasks > 0 && (
-          <span className="text-[10px] font-bold text-red-500">
-            {project.overdueTasks} overdue task{project.overdueTasks > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
-
-      {/* Footer counts */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100">
-        <span className="flex items-center gap-1.5">
-          <Icon name="hi-flag" size={14} className="text-slate-400" />
-          {project.totalMilestones ?? 0} milestones
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Icon name="hi-clipboard" size={14} className="text-slate-400" />
-          {project.totalTasks} tasks
-        </span>
+        {/* Open hint */}
         <span className="flex items-center gap-1 text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
           Open
           <Icon name="arrow_forward" size={12} />
@@ -816,4 +863,3 @@ function ProjectSummaryCard({
     </button>
   );
 }
-
