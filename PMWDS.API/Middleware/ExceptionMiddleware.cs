@@ -22,6 +22,30 @@ public class ExceptionMiddleware
         {
             await _next(ctx);
         }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            // The client went away mid-request: navigating away, closing a tab, a
+            // refresh racing an in-flight fetch. Nothing is wrong server-side, so
+            // this is logged as information rather than as an error.
+            //
+            // It used to be logged at Error, which made every deploy report an
+            // unhandled exception in the journal purely because someone browsed
+            // the site during verification. EF surfaces the cancellation as a
+            // TaskCanceledException from the running query, so this cannot be
+            // distinguished by exception type alone.
+            _logger.LogInformation(
+                "Request aborted by the client: {Method} {Path}",
+                ctx.Request.Method,
+                ctx.Request.Path);
+
+            // 499 is nginx's "client closed request". The client is gone, so
+            // there is nobody to read a body, but a real status beats leaving
+            // the response as a bare 200.
+            if (!ctx.Response.HasStarted)
+            {
+                ctx.Response.StatusCode = 499;
+            }
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,
