@@ -11,25 +11,27 @@ interface ActivityProps {
   onFilterChange?: (filter: string) => void;
 }
 
-export function Activity({ 
+export function Activity({
   data,
   title = "Activity",
   filterOptions = ["All Tasks"],
   selectedFilter = "All Tasks",
   onFilterChange
 }: ActivityProps) {
-  // Default data if none provided
-  const defaultData: ActivityDataPoint[] = [
-    { day: "Sun", value: 120 },
-    { day: "Mon", value: 100 },
-    { day: "Tue", value: 110 },
-    { day: "Wed", value: 90 },
-    { day: "Thu", value: 100 },
-    { day: "Fri", value: 60 },
-    { day: "Sat", value: 20 },
-  ];
-
-  const activityData = data || defaultData;
+  // No dummy data. When the caller has nothing yet, every day reads zero - which is the
+  // truth, not a placeholder curve.
+  const activityData: ActivityDataPoint[] =
+    data && data.length > 0
+      ? data
+      : [
+          { day: "Sun", value: 0 },
+          { day: "Mon", value: 0 },
+          { day: "Tue", value: 0 },
+          { day: "Wed", value: 0 },
+          { day: "Thu", value: 0 },
+          { day: "Fri", value: 0 },
+          { day: "Sat", value: 0 },
+        ];
   
   // Chart dimensions
   const width = 300;
@@ -61,7 +63,7 @@ export function Activity({
   const areaPath = linePath + ` L${points[points.length - 1].x},${height} L${points[0].x},${height} Z`;
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-md">
+    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-md h-[430px] flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
         {filterOptions.length > 0 && (
@@ -77,7 +79,7 @@ export function Activity({
         )}
       </div>
       
-      <div className="h-48 relative">
+      <div className="flex-1 min-h-0 relative">
         <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
           <defs>
             <linearGradient id="activityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
