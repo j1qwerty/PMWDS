@@ -65,6 +65,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _db;
     private readonly ISensitiveDataProtector _sensitiveData;
+    private readonly ILogger<OpenAICompatibleChatEngine> _logger;
 
     // In-memory session history (production: use Redis)
     private static readonly ConcurrentDictionary<string, List<ChatMessagePayload>> Sessions = new();
@@ -84,13 +85,15 @@ public class OpenAICompatibleChatEngine : IChatEngine
         IOptions<AISettings> settings,
         IUnitOfWork uow,
         ApplicationDbContext db,
-        ISensitiveDataProtector sensitiveData)
+        ISensitiveDataProtector sensitiveData,
+        ILogger<OpenAICompatibleChatEngine> logger)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _uow = uow;
         _db = db;
         _sensitiveData = sensitiveData;
+        _logger = logger;
     }
 
     public async Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default)
@@ -176,7 +179,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
         try
         {
-            var content = await CompleteChatAsync(
+            var completion = await CompleteChatAsync(
                 resolvedProvider,
                 resolvedModel,
                 [
@@ -187,10 +190,15 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
             return new AIProviderTestResultDto(
                 Provider: provider,
-                Model: resolvedModel,
+                // Report the model that actually answered, not the one requested, so
+                // a test that silently fell back does not read as a pass on the
+                // primary model.
+                Model: completion.Model,
                 Success: true,
-                Message: "Provider call succeeded.",
-                RawResponse: content,
+                Message: completion.UsedFallback
+                    ? $"Provider call succeeded on the fallback model (the requested model was rate limited)."
+                    : "Provider call succeeded.",
+                RawResponse: completion.Content,
                 ExecutedAtUtc: DateTime.UtcNow);
         }
         catch (Exception ex)
@@ -291,11 +299,11 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
         var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
-        var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, requestMessages, ct);
+        var completion = await CompleteChatAsync(resolvedProvider, resolvedModel, requestMessages, ct);
 
         lock (session)
         {
-            session.Add(new ChatMessagePayload("assistant", reply));
+            session.Add(new ChatMessagePayload("assistant", completion.Content));
 
             // Trim the oldest turns, but always keep the standing instructions at
             // the front. Without them a long session degrades into the old
@@ -313,10 +321,18 @@ public class OpenAICompatibleChatEngine : IChatEngine
         }
 
         return new ChatResponseDto(
-            Message: reply,
+            Message: completion.Content,
             Intent: intent,
             SuggestedActions: ChatIntents.SuggestedActions(intent),
-            ContextData: new { dossierCharacters = contextDossier.Length },
+            ContextData: new
+            {
+                dossierCharacters = contextDossier.Length,
+                modelUsed = completion.Model,
+                // Surfaced so the UI can say which model answered. Silently swapping
+                // models would leave the reader believing a 550B model produced the
+                // answer when a random free model did.
+                usedFallbackModel = completion.UsedFallback
+            },
             RequiresConfirmation: ChatIntents.NeedsConfirmation(intent));
     }
 
@@ -334,7 +350,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
 
-        return await CompleteChatAsync(
+        return (await CompleteChatAsync(
             resolvedProvider,
             resolvedModel,
             [
@@ -343,7 +359,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
                     "You are a concise project management analyst. Generate a brief 2-3 sentence summary."),
                 new ChatMessagePayload("user", context)
             ],
-            ct);
+            ct)).Content;
     }
 
     public async Task<string> GenerateStructuredReportAsync(
@@ -360,17 +376,104 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var resolvedProvider = await ResolveProviderAsync(null, ct);
         var resolvedModel = ResolveModel(resolvedProvider, null, false);
 
-        return await CompleteChatAsync(
+        return (await CompleteChatAsync(
             resolvedProvider,
             resolvedModel,
             [
                 new ChatMessagePayload("system", systemPrompt),
                 new ChatMessagePayload("user", userContext)
             ],
-            ct);
+            ct)).Content;
     }
 
-    private async Task<string> CompleteChatAsync(
+    /// <summary>
+    /// Runs a completion, retrying once on the fallback model if the primary is rate
+    /// limited.
+    ///
+    /// The result carries which model actually answered rather than keeping it in a
+    /// field. The engine is registered as a transient, so instance state would
+    /// appear to work and then leak between concurrent requests - one caller could
+    /// be told it used the fallback because a different caller triggered it.
+    /// </summary>
+    private async Task<Completion> CompleteChatAsync(
+        ResolvedProviderConfig provider,
+        string model,
+        IReadOnlyList<ChatMessagePayload> messages,
+        CancellationToken ct)
+    {
+        try
+        {
+            return new Completion(
+                await CompleteChatOnceAsync(provider, model, messages, ct), model, false);
+        }
+        catch (AiProviderException failure) when (ShouldRetryOnFallback(provider, model, failure))
+        {
+            var fallback = _settings.RateLimitFallbackModel.Trim();
+
+            // Logged at Information, not Error. Being rate limited is the documented
+            // behaviour of the free tier, not a fault, and an operator watching for
+            // errors should not have to distinguish this from a real one.
+            _logger.LogInformation(
+                "Model {Model} is rate limited on {Provider}; retrying once on {Fallback}.",
+                model,
+                provider.ProviderId,
+                fallback);
+
+            try
+            {
+                var content = await CompleteChatOnceAsync(provider, fallback, messages, ct);
+                return new Completion(content, fallback, true);
+            }
+            catch (AiProviderException fallbackFailure)
+            {
+                // The fallback is rate limited too. Report that rather than the
+                // original, because it is the more recent and more accurate
+                // account-level fact: the whole key has no quota left, not just
+                // one model.
+                throw new AiProviderException(
+                    $"{provider.ProviderId} has rate limited this account on both " +
+                    $"'{model}' and the fallback '{fallback}', so it cannot answer right now. " +
+                    "This is a quota limit on the provider, not a problem with your data. " +
+                    $"Provider said: {fallbackFailure.Message}",
+                    "rate_limited",
+                    fallbackFailure,
+                    429);
+            }
+        }
+    }
+
+    private sealed record Completion(string Content, string Model, bool UsedFallback);
+
+    /// <summary>
+    /// Whether a failed call should be retried on the fallback model.
+    ///
+    /// Narrow on purpose. Only a 429 qualifies: retrying a 401 (bad key) or a 404
+    /// (unknown model) on a different model cannot succeed, and retrying those would
+    /// double the latency of a failure that is already correctly diagnosed.
+    ///
+    /// Also OpenRouter only, because the fallback is an OpenRouter model id. Asking
+    /// OpenAI for "openrouter/free" returns a 404 and turns one clear error into two.
+    /// </summary>
+    private bool ShouldRetryOnFallback(
+        ResolvedProviderConfig provider,
+        string model,
+        AiProviderException failure)
+    {
+        if (!_settings.EnableRateLimitFallback ||
+            failure.UpstreamStatusCode != 429 ||
+            !provider.ProviderId.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var fallback = _settings.RateLimitFallbackModel?.Trim();
+
+        return !string.IsNullOrWhiteSpace(fallback)
+            && !string.IsNullOrWhiteSpace(model)
+            && !model.Equals(fallback, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<string> CompleteChatOnceAsync(
         ResolvedProviderConfig provider,
         string model,
         IReadOnlyList<ChatMessagePayload> messages,

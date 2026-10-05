@@ -1,6 +1,6 @@
 import { GlassCard, InfoTip } from "../shared";
 import { Icon } from "../../components/ui/Icon";
-import { isChatError, type ChatResponse } from "./chatTypes";
+import { chatContext, isChatError, type ChatResponse } from "./chatTypes";
 
 interface AIChatPanelProps {
   chatPrompt: string;
@@ -22,6 +22,7 @@ export function AIChatPanel({
   model,
 }: AIChatPanelProps) {
   const isError = isChatError(chatResult);
+  const context = chatContext(chatResult);
 
   return (
     <GlassCard className="p-5">
@@ -112,6 +113,16 @@ export function AIChatPanel({
             <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isError ? "text-red-700" : "text-slate-700"}`}>
               {chatResult.message}
             </p>
+            {context?.usedFallbackModel && !isError && (
+              <p className="text-[11px] text-amber-600 mt-2 flex items-start gap-1.5">
+                <span className="material-symbols-outlined text-[13px] mt-px">bolt</span>
+                <span>
+                  Your configured model was rate limited, so this answer came from the
+                  backup model{context.modelUsed ? ` (${context.modelUsed})` : ""}. It is
+                  still your project data, but expect a shorter or less polished reply.
+                </span>
+              </p>
+            )}
             {isError && (
               <p className="text-[11px] text-red-500 mt-2">
                 Check the provider, API key, and model under AI Settings, then try again.

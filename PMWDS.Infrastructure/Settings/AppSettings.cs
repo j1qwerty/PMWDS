@@ -61,6 +61,29 @@ public class AISettings
     /// JSON will not parse and the report falls back.
     /// </summary>
     public int MaxOutputTokens { get; set; } = 16000;
+
+    /// <summary>
+    /// Model to switch to when the primary model is rate limited (HTTP 429).
+    ///
+    /// OpenRouter's free tier allows 50 requests a day per account, shared across
+    /// everyone using this deployment. Once spent, every AI feature fails at once -
+    /// the assistant, report generation and summaries - with no way for the user to
+    /// do anything about it except wait for the reset.
+    ///
+    /// <c>openrouter/free</c> is OpenRouter's router model: it picks a currently
+    /// available free model at random and filters for the features the request
+    /// needs. So it is a different quota bucket from any one named free model, which
+    /// makes it a usable fallback when a specific model is exhausted.
+    ///
+    /// Blank disables the fallback, leaving the original behaviour of failing fast.
+    /// </summary>
+    public string RateLimitFallbackModel { get; set; } = "openrouter/free";
+
+    /// <summary>
+    /// Whether to retry on the fallback model after a 429. Kept separate from the
+    /// model name so the fallback can be disabled without editing configuration.
+    /// </summary>
+    public bool EnableRateLimitFallback { get; set; } = true;
     public AIProviderOptions OpenAI { get; set; } = new()
     {
         Enabled = true,

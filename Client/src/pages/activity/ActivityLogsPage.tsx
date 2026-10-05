@@ -24,7 +24,15 @@ export function ActivityLogsPage() {
   const isAdmin = perm.isAdmin;
   const isManager = perm.has(PERMISSION_GROUPS.activityLog.view);
   const canViewAll = perm.has(PERMISSION_GROUPS.activityLog.view);
-  const canCreateActivity = perm.has(PERMISSION_GROUPS.activityLog.create);
+
+  // The manual "Log Activity" form is superadmin-only.
+  //
+  // It was previously gated on the activityLog.create permission, which is granted
+  // to more than one role, so anyone holding it saw a form that writes entries
+  // straight into the audit trail. Activity logs are meant to record what the
+  // system actually did; letting a user type their own rows into that trail makes
+  // it unreliable as evidence, which is the only reason to keep it.
+  const canCreateActivity = perm.isSuperAdmin;
 
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<ActivityLogRecord[]>([]);

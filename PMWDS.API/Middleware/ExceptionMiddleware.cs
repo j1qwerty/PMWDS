@@ -46,6 +46,23 @@ public class ExceptionMiddleware
                 ctx.Response.StatusCode = 499;
             }
         }
+        catch (AiProviderException ex)
+        {
+            // Handled explicitly rather than left to the catch-all below.
+            //
+            // An exhausted provider quota is an expected, actionable upstream
+            // condition, not a fault in this application. Letting it fall through
+            // logged it as "Unhandled exception" with a stack trace at Error, which
+            // is the same noise problem as the client-abort case above: it makes
+            // the deploy verification report a failure for a condition an operator
+            // can see coming and has a documented remedy for.
+            _logger.LogWarning(
+                "AI provider call failed ({Reason}): {Message}",
+                ex.Reason,
+                ex.Message);
+
+            await HandleExceptionAsync(ctx, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,

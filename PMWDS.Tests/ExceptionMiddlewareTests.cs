@@ -122,11 +122,12 @@ public class ExceptionMiddlewareTests
         int expectedStatus,
         string expectedCode)
     {
+        var logger = new CapturingLogger();
         var middleware = new ExceptionMiddleware(
             _ => throw new AiProviderException(
                 "OpenRouter has rate limited this account.", "rate_limited",
                 upstreamStatusCode: upstreamStatus),
-            new CapturingLogger());
+            logger);
 
         var ctx = BuildContext(abort: false);
 
@@ -134,6 +135,12 @@ public class ExceptionMiddlewareTests
 
         ctx.Response.StatusCode.Should().Be(expectedStatus);
         (await ReadBody(ctx)).Should().Contain(expectedCode);
+
+        // An exhausted quota is expected and has a documented remedy, so it must
+        // not be logged as an unhandled server error. Doing so reported every
+        // deploy as failed purely because the free tier ran out.
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
+        logger.Entries.Should().Contain(e => e.Message.Contains("rate_limited"));
     }
 
     [Fact]
