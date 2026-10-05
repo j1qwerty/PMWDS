@@ -13,9 +13,24 @@ public class AiProviderException : Exception
 {
     public string Reason { get; }
 
-    public AiProviderException(string message, string reason, Exception? inner = null)
+    /// <summary>
+    /// The HTTP status the upstream provider returned, when there was one.
+    ///
+    /// Needed because "429 rate limited" and "401 bad API key" need different
+    /// answers. Both were previously reported as an opaque 500 with the message
+    /// "An unexpected error occurred", which told the user nothing about whether
+    /// to wait, add credits, or fix their settings.
+    /// </summary>
+    public int? UpstreamStatusCode { get; }
+
+    public AiProviderException(
+        string message,
+        string reason,
+        Exception? inner = null,
+        int? upstreamStatusCode = null)
         : base(message, inner)
     {
         Reason = reason;
+        UpstreamStatusCode = upstreamStatusCode;
     }
 }

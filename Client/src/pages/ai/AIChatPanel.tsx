@@ -32,11 +32,13 @@ export function AIChatPanel({
         </div>
         <InfoTip
           title="AI Assistant"
-          summary="Ask a plain-language question about your projects and get an answer back."
+          summary="Ask a plain-language question and get an answer based on your real project data."
           points={[
-            "Good questions name what you want to know: which project is worst off, who is overloaded, which budget is at risk.",
-            "The assistant reads the same project, task, and budget data the rest of this page shows.",
-            "It cannot take actions - it only reads and explains.",
+            "The assistant is given your projects, tasks, subtasks, milestones and document lists before it answers. It is not guessing, and it will not ask you to upload a file or connect another tool.",
+            "It only sees what your role allows. A department head cannot reach another department's projects by asking a question, and the assistant will say so if asked about something you cannot see.",
+            "Questions that name a subject get the most detail: asking about tasks returns your own assignments and open work across your projects, asking about documents returns document titles and metadata.",
+            "It reads and explains only. It cannot change a task, reassign anyone, or update a project.",
+            "If the provider is rate limited or the API key is wrong, it says which, rather than claiming you have no data.",
           ]}
           note={provider ? `Answering with ${provider}${model ? ` using ${model}` : ""}.` : undefined}
         />
@@ -48,8 +50,29 @@ export function AIChatPanel({
           onChange={(e) => setChatPrompt(e.target.value)}
           rows={3}
           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
-          placeholder="Ask the AI assistant..."
+          placeholder="Ask about your projects, tasks, milestones or documents..."
         />
+
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            "Tell me about all the projects",
+            "Which projects are delayed?",
+            "Show my open tasks",
+            "List the milestones",
+            "Who is overloaded?",
+            "Show me the documents",
+          ].map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => setChatPrompt(suggestion)}
+              disabled={pending}
+              className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-3">
           <button

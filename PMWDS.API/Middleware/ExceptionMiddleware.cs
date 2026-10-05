@@ -79,12 +79,19 @@ public class ExceptionMiddleware
             statusCode = HttpStatusCode.Conflict;
             message = ex.Message;
         }
-        else if (ex is AiProviderException)
+        else if (ex is AiProviderException aiFailure)
         {
-            // 502, not 500: the failure is upstream, and the message is written
-            // for the user rather than swallowed into "an unexpected error".
-            statusCode = HttpStatusCode.BadGateway;
-            message = ex.Message;
+            // The failure is upstream, so 502 by default rather than 500 - 500
+            // reads as "this application is broken" and sends people to the logs.
+            //
+            // A 429 is passed through unchanged because it means something different
+            // to the caller: it is a quota limit that clears on its own. Reporting it
+            // as 502 told users to retry immediately against a limit that had not
+            // reset, and told operators to go looking for a fault that was not there.
+            statusCode = aiFailure.UpstreamStatusCode == 429
+                ? (HttpStatusCode)429
+                : HttpStatusCode.BadGateway;
+            message = aiFailure.Message;
         }
         else
         {
@@ -112,6 +119,7 @@ public class ExceptionMiddleware
             StatusCodes.Status404NotFound => "not_found",
             StatusCodes.Status409Conflict => "conflict",
             StatusCodes.Status502BadGateway => "ai_provider_unavailable",
+            429 => "ai_provider_rate_limited",
             _ => "server_error"
         };
 }

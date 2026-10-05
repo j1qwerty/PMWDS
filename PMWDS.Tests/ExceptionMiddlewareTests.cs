@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using PMWDS.API.Middleware;
+using PMWDS.Application.Exceptions;
 using Xunit;
 
 namespace PMWDS.Tests;
@@ -106,6 +107,56 @@ public class ExceptionMiddlewareTests
 
         ctx.Response.StatusCode.Should().Be(StatusCodes.Status200OK);
         logger.Entries.Should().BeEmpty();
+    }
+
+    [Theory]
+    // A provider quota limit is not an application fault, and telling the user so
+    // differently matters: 502 says "upstream is broken, retry", which is the wrong
+    // advice for a limit that has not reset, and sends operators hunting a fault
+    // that is not there.
+    [InlineData(429, 429, "ai_provider_rate_limited")]
+    [InlineData(401, 502, "ai_provider_unavailable")]
+    [InlineData(500, 502, "ai_provider_unavailable")]
+    public async Task Provider_failures_report_a_status_that_says_what_to_do(
+        int upstreamStatus,
+        int expectedStatus,
+        string expectedCode)
+    {
+        var middleware = new ExceptionMiddleware(
+            _ => throw new AiProviderException(
+                "OpenRouter has rate limited this account.", "rate_limited",
+                upstreamStatusCode: upstreamStatus),
+            new CapturingLogger());
+
+        var ctx = BuildContext(abort: false);
+
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(expectedStatus);
+        (await ReadBody(ctx)).Should().Contain(expectedCode);
+    }
+
+    [Fact]
+    public async Task Provider_failure_without_an_upstream_status_is_still_502()
+    {
+        // Report generation throws AiProviderException without an upstream status,
+        // because the failure was detected before any request was made.
+        var middleware = new ExceptionMiddleware(
+            _ => throw new AiProviderException("AI provider is not configured.", "not_configured"),
+            new CapturingLogger());
+
+        var ctx = BuildContext(abort: false);
+
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+    }
+
+    private static async Task<string> ReadBody(DefaultHttpContext ctx)
+    {
+        ctx.Response.Body.Position = 0;
+        using var reader = new StreamReader(ctx.Response.Body);
+        return await reader.ReadToEndAsync();
     }
 
     private static DefaultHttpContext BuildContext(bool abort)

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Services;
+using PMWDS.Application.Common;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Features.AI.Commands;
 using PMWDS.Application.Features.AI.Queries;
@@ -28,6 +29,8 @@ public class AIController : BaseApiController
     private readonly IUnitOfWork _uow;
     private readonly RoleScopeService _scope;
     private readonly ISensitiveDataProtector _sensitiveData;
+    private readonly ChatContextBuilder _contextBuilder;
+    private readonly ILogger<AIController> _logger;
 
     public AIController(
         IMediator mediator,
@@ -40,7 +43,9 @@ public class AIController : BaseApiController
         ApplicationDbContext db,
         IUnitOfWork uow,
         RoleScopeService scope,
-        ISensitiveDataProtector sensitiveData) : base(mediator)
+        ISensitiveDataProtector sensitiveData,
+        ChatContextBuilder contextBuilder,
+        ILogger<AIController> logger) : base(mediator)
     {
         _recommendations = recommendations;
         _predictions = predictions;
@@ -52,6 +57,8 @@ public class AIController : BaseApiController
         _uow = uow;
         _scope = scope;
         _sensitiveData = sensitiveData;
+        _contextBuilder = contextBuilder;
+        _logger = logger;
     }
 
     [HttpGet("settings")]
@@ -338,7 +345,31 @@ public class AIController : BaseApiController
             return Unauthorized();
         }
 
-        return Ok(await _chat.ProcessChatMessageAsync(userId, req.Message, req.Provider, req.Model, ct));
+        // Detect the intent and build the data here rather than inside the AI layer.
+        //
+        // Role scoping lives in RoleScopeService, which the AI project cannot reach -
+        // it sits in this project and depends on ICurrentUserService. Building the
+        // dossier at the edge keeps one implementation of "what may this user see"
+        // instead of a second, subtly different one inside the assistant.
+        var intent = ChatIntents.Detect(req.Message);
+
+        var dossier = await _contextBuilder.BuildAsync(userId, intent, ct);
+        if (dossier == null)
+        {
+            // Only reachable if the token's user id is not a GUID, which means the
+            // data cannot be scoped to anybody. Refuse rather than send an
+            // unscoped dossier to the provider.
+            _logger.LogWarning("Chat request rejected: user id could not be parsed.");
+            return BadRequest(new { message = "Could not identify your account for data scoping." });
+        }
+
+        _logger.LogInformation(
+            "Chat intent {Intent} resolved to a {Characters}-character dossier.",
+            intent,
+            dossier.Length);
+
+        return Ok(await _chat.ProcessChatMessageAsync(
+            userId, req.Message, dossier, req.Provider, req.Model, ct));
     }
 
     [HttpGet("providers")]

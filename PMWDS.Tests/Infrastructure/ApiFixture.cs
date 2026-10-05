@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace PMWDS.Tests.Infrastructure;
@@ -97,6 +98,27 @@ public sealed class ApiFixture : IAsyncLifetime
 
     /// <summary>True when Hangfire/SQL Server behaviour is reachable in this run.</summary>
     public bool RunsAgainstSqlServer { get; private set; }
+
+    /// <summary>
+    /// A DI scope over the real container.
+    ///
+    /// Needed by tests that exercise a scoped service directly rather than through
+    /// HTTP - for example ChatContextBuilder, which depends on the scoped
+    /// ApplicationDbContext and on ICurrentUserService reading IHttpContextAccessor.
+    /// Resolving it from a scope keeps the test honest: it is the same instance graph
+    /// the controller gets.
+    /// </summary>
+    public IServiceScope CreateServiceScope()
+    {
+        if (ApiFactory.UsesExternalServer)
+        {
+            throw new InvalidOperationException(
+                "CreateServiceScope needs the in-process host. Direct-service tests cannot run " +
+                "against an external server, because the test process does not own its container.");
+        }
+
+        return _factory!.Services.CreateScope();
+    }
 
     /// <summary>
     /// Directory documents and uploads are written to. Null when pointed at an external
