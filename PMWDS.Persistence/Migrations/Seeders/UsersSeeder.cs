@@ -42,7 +42,7 @@ internal static class UsersSeeder
             {
                 user = ApplicationUser.Create(spec.Email, spec.FirstName, spec.LastName, spec.EmployeeCode, spec.JobTitle, spec.DepartmentId);
                 user.SetCreatedBy(SeedConstants.SeedUser);
-                user.SetPassword(PasswordHelper.HashPassword(user, SeedConstants.DefaultPassword));
+                user.SetPassword(PasswordHelper.HashPassword(user, SeedConstants.RequireDefaultPassword()));
                 user.UpdateAvailability(spec.Availability, spec.AvailabilityPercent);
                 user.UpdateAIScores(spec.Performance, spec.Workload, spec.Burnout);
                 if (org != null && spec.Role != RoleKeys.SuperAdmin)

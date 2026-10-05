@@ -191,11 +191,18 @@ wsl --import docker-desktop-data D:\docker\wsl\ D:\docker\docker-desktop-data.ta
 
 ## Default Credentials
 
-All seeded accounts use this default password:
+All seeded accounts share one password, and **it is not stored in the repository**. Set it
+before the first run:
 
 ```text
-Pmwds@123
+# .env
+Seed__DefaultPassword=<a strong password>
 ```
+
+If it is missing, the app refuses to create the seeded accounts and says so, rather than
+falling back to a published default. The value is read once, when a user does not yet exist
+- it never resets an existing account's password on a later boot. Change it after the first
+login.
 
 | Email | Role | Notes |
 |-------|------|-------|
@@ -262,8 +269,9 @@ under `%TEMP%\pmwds-tests\`, seeds it, and deletes both afterwards. **Your
 `App_Data/pmwds-dev.sqlite` is never touched**, and no `.env` or `appsettings` value from
 your machine leaks in - the test host is configured entirely from code.
 
-Tests require the seeded accounts, so run them against a seeded database. The default
-password is `Pmwds@123`.
+Tests require the seeded accounts, so run them against a seeded database. They use their own
+fixed test password, configured in code by the test fixture, so they do not depend on
+`Seed__DefaultPassword`.
 
 ### Running against a real server
 

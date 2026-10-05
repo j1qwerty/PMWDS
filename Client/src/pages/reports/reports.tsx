@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -24,6 +24,16 @@ import { ReportFilters } from "./ReportFilters";
 import { ReportGenerator } from "./ReportGenerator";
 import { GeneratedReports } from "./GeneratedReports";
 import { useReportGeneration } from "./ReportGenerationContext";
+import { GenerationErrorBanner } from "./GenerationErrorBanner";
+
+/** Human label for each report type, used in banners and toasts. */
+const REPORT_LABELS: Record<string, string> = {
+  "project-status": "Project Status",
+  "budget-variance": "Budget Variance",
+  "task-completion": "Task Completion",
+  "department-workload": "Department Workload",
+  "delay-analysis": "Delay Analysis",
+};
 
 export function ReportsPage() {
   const navigate = useNavigate();
@@ -35,7 +45,7 @@ export function ReportsPage() {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
   const [storedReportsLoading, setStoredReportsLoading] = useState(true);
-  const { generate, isGeneratingType, pendingReportType } = useReportGeneration();
+  const { generate, isGeneratingType, pendingReportType, lastFailure, clearFailure } = useReportGeneration();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -46,6 +56,9 @@ export function ReportsPage() {
     endDate: "",
     status: "",
   });
+  // The last request body per type, so a failure banner can offer Retry without
+  // the user having to re-pick every filter.
+  const lastRequestRef = useRef<Record<string, Record<string, unknown>>>({});
 
   const { setNavHeader } = useNavHeader();
 
@@ -130,14 +143,31 @@ export function ReportsPage() {
       return;
     }
 
+    lastRequestRef.current[reportType] = body;
+
     try {
       const { report, exportParams } = await generate(reportType, body, reportFilterPayload());
       navigate("/reports/view", { state: { report, exportParams } });
       loadStoredReports();
       addToast(`${label} report generated successfully.`);
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Generation failed", "error");
+      return true;
+    } catch {
+      // The failure itself is rendered as a persistent banner by
+      // <GenerationErrorBanner>, so keep the toast short and non-duplicative.
+      addToast(`${label} report could not be generated.`, "error");
+      return false;
     }
+  };
+
+  const handleRetry = () => {
+    const type = lastFailure?.reportType;
+    if (!type) return;
+    const body = lastRequestRef.current[type];
+    if (!body) {
+      clearFailure();
+      return;
+    }
+    void handleGenerate(REPORT_LABELS[type] ?? type, type, body);
   };
 
   const handleDownloadPdf = async (reportType: string) => {
@@ -254,6 +284,15 @@ export function ReportsPage() {
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         {/* Left: Filters & Report Generation */}
         <div className="flex flex-col gap-6">
+          {lastFailure && (
+            <GenerationErrorBanner
+              failure={lastFailure}
+              onRetry={handleRetry}
+              onDismiss={clearFailure}
+              retryDisabled={isGeneratingType(lastFailure.reportType)}
+            />
+          )}
+
           <ReportFilters
             filters={filters}
             projects={visibleProjects}

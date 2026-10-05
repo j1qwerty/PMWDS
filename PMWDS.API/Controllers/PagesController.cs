@@ -382,7 +382,10 @@ public class PagesController : BaseApiController
                 n.IsRead,
                 n.CreatedDate,
                 n.ReadDate,
-                n.ActionUrl),
+                n.ActionUrl ?? NotificationLinks.FallbackFor(n.Type),
+                n.RelatedEntityId,
+                n.RelatedEntityType,
+                n.IsAIGenerated),
             ct);
 
     private Task<PaginatedResponse<PageNotificationTemplateDto>> GetNotificationTemplatesAsync(PaginationQuery pagination, CancellationToken ct)

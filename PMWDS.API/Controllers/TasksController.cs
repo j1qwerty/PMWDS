@@ -1,4 +1,4 @@
-using PMWDS.Application.DTOs.Controllers;
+﻿using PMWDS.Application.DTOs.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -193,7 +193,6 @@ public class TasksController : BaseApiController
                 .Include(t => t.Comments)
                 .Include(t => t.Attachments)
                 .Include(t => t.Dependencies)
-                .Include(t => t.TimeEntries)
                 .Include(t => t.Project);
         }
         else
@@ -208,7 +207,6 @@ public class TasksController : BaseApiController
                 .Include(t => t.Comments)
                 .Include(t => t.Attachments)
                 .Include(t => t.Dependencies)
-                .Include(t => t.TimeEntries)
                 .Include(t => t.Project)
                 .Include(t => t.Milestone);
         }
@@ -651,91 +649,6 @@ public class TasksController : BaseApiController
         return Ok(new { Message = "Attachment uploaded.", FileName = file.FileName });
     }
 
-    [HttpPost("{id:guid}/time/start")]
-    public async Task<IActionResult> StartTimer(Guid id, [FromBody] StartTimerRequest req, CancellationToken ct)
-    {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task == null)
-            return NotFound();
-
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
-        {
-            return Forbid();
-        }
-
-        task.Start();
-        var entry = TimeEntry.StartTimer(
-            id,
-            Guid.TryParse(_currentUser.UserId, out var timerUserId)
-                ? timerUserId
-                : throw new InvalidOperationException("Invalid current user id."),
-            req.Description,
-            req.IsBillable);
-        await _uow.TimeEntries.AddAsync(entry, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
-            ActivityType: "Timer Started",
-            Description: $"{_currentUser.FullName} started timer on task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
-            Metadata: new Dictionary<string, object>
-            {
-                ["taskId"] = task.Id,
-                ["taskTitle"] = task.Title,
-                ["projectId"] = task.ProjectId,
-                ["entryId"] = entry.Id
-            },
-            ProjectId: task.ProjectId
-        );
-
-        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
-
-        return Ok(new { Message = "Timer started.", EntryId = entry.Id });
-    }
-
-    [HttpPost("{id:guid}/time/stop")]
-    public async Task<IActionResult> StopTimer(Guid id, CancellationToken ct)
-    {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task == null)
-            return NotFound();
-
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
-        {
-            return Forbid();
-        }
-
-        var currentTimerUserId = Guid.TryParse(_currentUser.UserId, out var parsedTimerUserId)
-            ? parsedTimerUserId
-            : Guid.Empty;
-        var entry = (await _uow.TimeEntries.FindAsync(
-            e => e.TaskId == id
-                && e.UserId == currentTimerUserId
-                && !e.EndTime.HasValue,
-            ct)).FirstOrDefault();
-        if (entry == null)
-            return NotFound("No running timer found.");
-
-        entry.StopTimer();
-        await _uow.SaveChangesAsync(ct);
-
-        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
-            ActivityType: "Timer Stopped",
-            Description: $"{_currentUser.FullName} stopped timer on task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
-            Metadata: new Dictionary<string, object>
-            {
-                ["taskId"] = task.Id,
-                ["taskTitle"] = task.Title,
-                ["projectId"] = task.ProjectId,
-                ["entryId"] = entry.Id,
-                ["durationMinutes"] = entry.Duration.TotalMinutes
-            },
-            ProjectId: task.ProjectId
-        );
-
-        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
-
-        return Ok(new { Message = "Timer stopped.", DurationMinutes = entry.Duration.TotalMinutes });
-    }
 
     [HttpGet("overdue")]
     [Authorize(Policy = AuthorizationPolicies.Manager)]
@@ -748,7 +661,15 @@ public class TasksController : BaseApiController
                 task.DueDate < DateTime.UtcNow &&
                 task.Status != TaskStatus.Completed &&
                 task.Status != TaskStatus.Cancelled)
-            .Include(task => task.Project);
+            // Milestone and Assignments are needed for the row to be
+            // self-describing. Without them the DTO's MilestoneName and
+            // AssignedToUserName are always null, because the query is
+            // AsNoTracking and there is no lazy loading to fall back on.
+            .Include(task => task.Project)
+            .Include(task => task.Milestone)
+            .Include(task => task.Assignments)
+                .ThenInclude(assignment => assignment.User)
+            .AsSplitQuery();
         var totalCount = await query.CountAsync(ct);
         var tasks = await query
             .OrderBy(task => task.DueDate)
@@ -831,7 +752,6 @@ public class TasksController : BaseApiController
             .Include(task => task.Attachments)
             .Include(task => task.Dependencies)
                 .ThenInclude(dependency => dependency.PredecessorTask)
-            .Include(task => task.TimeEntries)
             .Include(task => task.Project)
             .Include(task => task.Milestone);
         var totalCount = await query.CountAsync(ct);

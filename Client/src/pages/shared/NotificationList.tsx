@@ -1,17 +1,32 @@
+import { useNavigate } from "react-router-dom";
 import type { NotificationItem } from "../../types";
+import { DASHBOARD_OVERVIEW_CARD_HEIGHT } from "../constants";
+import { notificationTarget, notificationTargetLabel, notificationVisual } from "./notificationLinks";
 
 export function NotificationList({
   items,
   title = "Notifications",
+  onOpen,
 }: {
   items: NotificationItem[];
   title?: string;
+  /** Optional override; defaults to navigating to the notification's target. */
+  onOpen?: (item: NotificationItem) => void;
 }) {
+  const navigate = useNavigate();
   const itemsArray = Array.isArray(items) ? items : [];
+
+  const handleOpen = (item: NotificationItem) => {
+    if (onOpen) {
+      onOpen(item);
+      return;
+    }
+    navigate(notificationTarget(item));
+  };
 
   if (!itemsArray.length) {
     return (
-      <div className="bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[430px] flex flex-col overflow-hidden">
+      <div className={`bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20 ${DASHBOARD_OVERVIEW_CARD_HEIGHT} flex flex-col overflow-hidden`}>
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
@@ -32,42 +47,6 @@ export function NotificationList({
     );
   }
 
-  const getNotificationType = (item: NotificationItem) => {
-    const priority = item.priority || "Info";
-    
-    switch (priority) {
-      case "Critical":
-        return {
-          type: "critical",
-          icon: "error",
-          bg: "bg-error-container-10",
-          iconColor: "text-error",
-          highlightColor: "text-error",
-          badge: "bg-error text-white",
-        };
-      case "High":
-        return {
-          type: "mention",
-          icon: "chat",
-          bg: "bg-primary/10",
-          iconColor: "text-primary",
-          highlightColor: "text-primary",
-          badge: "bg-primary text-white",
-        };
-      case "Info":
-      case "Success":
-      default:
-        return {
-          type: "release",
-          icon: "info",
-          bg: "bg-secondary-container-10",
-          iconColor: "text-secondary",
-          highlightColor: "text-secondary",
-          badge: "bg-secondary text-white",
-        };
-    }
-  };
-
   const formatTime = (dateStr: string) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -85,7 +64,7 @@ export function NotificationList({
   const unreadCount = itemsArray.filter(item => !item.isRead).length;
 
   return (
-    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[430px] flex flex-col overflow-hidden">
+    <div className={`bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20 ${DASHBOARD_OVERVIEW_CARD_HEIGHT} flex flex-col overflow-hidden`}>
       <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
           <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
@@ -99,8 +78,8 @@ export function NotificationList({
       </div>
       <div className="flex flex-col gap-sm flex-1 min-h-0 overflow-y-auto pr-1">
         {itemsArray.map((item) => {
-          const config = getNotificationType(item);
-          
+          const config = notificationVisual(item);
+
           // Extract highlighted text from message if it contains a colon or specific pattern
           let mainText = item.title;
           let highlightedText = "";
@@ -116,45 +95,49 @@ export function NotificationList({
           }
 
           return (
-            <div 
-              key={item.id} 
-              className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30 shrink-0"
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleOpen(item)}
+              title={notificationTargetLabel(item)}
+              className="group flex gap-3 items-start text-left w-full p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30 shrink-0"
             >
-              <div className={`w-9 h-9 rounded-xl ${config.bg} flex items-center justify-center shrink-0 shadow-sm`}>
-                <span className={`material-symbols-outlined ${config.iconColor} text-[18px]`} style={{ fontVariationSettings: "'FILL' 1" }}>
+              <span className={`w-9 h-9 rounded-xl ${config.accent} flex items-center justify-center shrink-0 shadow-sm relative`}>
+                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {config.icon}
                 </span>
-                <div className="flex items-center gap-2 mt-1.5">
-                  {!item.isRead && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                  )}
-                </div>
-              </div>
-               
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-primary font-semibold">{formatTime(item.createdDate)}</span>
+                {!item.isRead && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary border-2 border-white" />
+                )}
+              </span>
 
-                  <span className="text-[13px] text-on-surface font-semibold truncate">
+              <span className="flex-1 min-w-0 block">
+                <span className="flex items-center gap-2">
+                  <span className="text-[11px] text-primary font-semibold shrink-0">{formatTime(item.createdDate)}</span>
+
+                  <span className="text-[13px] text-on-surface font-semibold truncate group-hover:text-primary transition-colors">
                     {mainText}
                   </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${config.badge}`}>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${config.chip} shrink-0`}>
                     {item.priority}
                   </span>
-                </div>
+                </span>
                 {highlightedText && (
-                  <span className={`text-[13px] font-medium ${config.highlightColor}`}>
+                  <span className={`text-[13px] font-medium text-primary`}>
                     {highlightedText}
                   </span>
                 )}
                 {item.message && (
-                  <p className="text-[12px] text-on-surface-variant mt-1 line-clamp-2">
+                  <span className="block text-[12px] text-on-surface-variant mt-1 line-clamp-2">
                     {item.message.slice(0, 80)}
-                  </p>
+                  </span>
                 )}
-               
-              </div>
-            </div>
+                <span className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+                  {notificationTargetLabel(item)}
+                </span>
+              </span>
+            </button>
           );
         })}
       </div>

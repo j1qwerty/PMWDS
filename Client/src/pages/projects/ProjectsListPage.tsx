@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -99,8 +99,13 @@ export function ProjectsListPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // The dashboard stat cards deep-link into this page as /projects?status=OnHold
+  // so a click lands on the already-filtered list instead of the full set.
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get("status") ?? "";
+
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
   const [priorityFilter, setPriorityFilter] = useState("");
   const [orgId, setOrgId] = useState("");
   const [deptId, setDeptId] = useState("");
@@ -125,6 +130,13 @@ export function ProjectsListPage() {
   }, [filtersOpen]);
 
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
+
+  // Keep the filter in step with the URL. A dashboard stat card navigating to
+  // /projects?status=Delayed after this page has already mounted (e.g. the user
+  // came back via the sidebar) must still apply the filter.
+  useEffect(() => {
+    setStatusFilter(urlStatus);
+  }, [urlStatus]);
 
   useEffect(() => {
     const actions = canManageProjects

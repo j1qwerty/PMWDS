@@ -1,4 +1,4 @@
-import { GlassCard } from "../shared";
+import { GlassCard, InfoTip } from "../shared";
 
 interface ReportGeneratorProps {
   filters: {
@@ -82,20 +82,35 @@ export function ReportGenerator({ filters, generatingReportType, isGeneratingTyp
       <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
         <span className="material-symbols-outlined text-indigo-500">description</span>
         Generate Reports
+        <span className="ml-auto">
+          <InfoTip
+            title="Report Generation"
+            summary="Each tile asks the configured AI provider to write a report from the project, task, and budget data matching your filters."
+            points={[
+              "Project Status and Budget Variance need a project selected in the filters above. The other three can run across a whole department.",
+              "Generation can take a minute or more on a large model, but it keeps running if you navigate away.",
+              "If the provider fails, you get an error explaining what to fix rather than an empty report."
+            ]}
+            note="Generated reports are saved so you can reopen or download them later."
+          />
+        </span>
       </h3>
       <p className="text-xs text-slate-500 mb-5">
         Select a report type to generate an AI-powered report. Reports can be viewed inline or downloaded as PDF.
       </p>
 
       {anyGenerating && (
-        <div className="mb-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0" />
-          <span className="text-sm text-indigo-700 font-medium">
-            Generating {REPORT_TYPES.find((r) => r.id === generatingReportType)?.title ?? "report"} with AI...
-          </span>
-          <span className="text-[11px] text-indigo-400 ml-auto hidden sm:inline">
-            This keeps running if you switch pages
-          </span>
+        <div className="mb-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-start gap-3">
+          <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <span className="text-sm text-indigo-700 font-medium block">
+              Generating {REPORT_TYPES.find((r) => r.id === generatingReportType)?.title ?? "report"} with AI...
+            </span>
+            <span className="text-[11px] text-indigo-500 block mt-0.5">
+              Large models can take a few minutes. This keeps running if you switch pages, and you can
+              start another report type in the meantime.
+            </span>
+          </div>
         </div>
       )}
 
@@ -103,10 +118,11 @@ export function ReportGenerator({ filters, generatingReportType, isGeneratingTyp
         {REPORT_TYPES.map((report) => {
           const colors = colorMap[report.color];
           const isThisGenerating = isGeneratingType(report.id);
-          // Only block a card while *its own* request is pending, or while it
-          // cannot run. Other types stay clickable unless already in flight.
+          // A card is only blocked while *its own* request is pending, or when
+          // it cannot run. Disabling every other type for the duration of one
+          // slow generation made the panel feel stuck.
           const needsProject = report.requiresProject && !filters.projectId;
-          const isDisabled = isThisGenerating || needsProject || (anyGenerating && !isThisGenerating);
+          const isDisabled = isThisGenerating || needsProject;
 
           const handler = handlers[report.onClick];
 

@@ -16,7 +16,7 @@ export function ProjectList({ projects, selectedProjectId, onSelectProject }: Pr
       </div>
       
       <div className="flex flex-col gap-1.5">
-        {projects.map((project, index) => {
+        {projects.map((project) => {
           const isSelected = selectedProjectId === project.id;
           return (
             <button
@@ -30,18 +30,18 @@ export function ProjectList({ projects, selectedProjectId, onSelectProject }: Pr
                 }
               `}
             >
-              <div className="flex items-center justify-between">
-                <span className={`text-sm font-bold ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`text-sm font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>
                   {project.name}
                 </span>
-                <span className={`w-2 h-2 rounded-full ${
-                  isSelected 
-                    ? "bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)] animate-pulse" 
+                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                  isSelected
+                    ? "bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)] animate-pulse"
                     : "bg-slate-300"
                 }`}></span>
               </div>
-              <span className="text-[11px] text-slate-400">
-                {project.category || "Core Project"}
+              <span className="text-[11px] text-slate-400 truncate">
+                {project.category || "Core Project"} · {Math.round(project.progressPercentage ?? 0)}% done
               </span>
             </button>
           );

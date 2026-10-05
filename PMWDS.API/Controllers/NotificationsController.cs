@@ -60,7 +60,13 @@ public class NotificationsController : BaseApiController
                 n.IsRead,
                 n.CreatedDate,
                 n.ReadDate,
-                n.ActionUrl))
+                // Older rows predate the routed ActionUrl values. Derive a
+                // reachable target at read time rather than returning null,
+                // otherwise the click handler has nothing to navigate to.
+                n.ActionUrl ?? NotificationLinks.FallbackFor(n.Type),
+                n.RelatedEntityId,
+                n.RelatedEntityType,
+                n.IsAIGenerated))
             .ToList();
 
         return Ok(notifications);
@@ -164,7 +170,11 @@ public class NotificationsController : BaseApiController
             req.Message,
             PMWDS.Domain.Enums.NotificationType.SystemAlert,
             PMWDS.Domain.Enums.NotificationPriority.Normal,
-            req.ActionUrl));
+            // A broadcast is not tied to one entity, so default the target to
+            // the notifications page when the sender left the field blank.
+            string.IsNullOrWhiteSpace(req.ActionUrl)
+                ? NotificationLinks.ForNotifications()
+                : req.ActionUrl));
 
         await _notifications.SendBulkAsync(dtos, ct);
 

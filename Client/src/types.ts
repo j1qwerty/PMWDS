@@ -249,7 +249,6 @@ export interface Task {
   dependencies?: TaskDependency[];
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
-  timeEntries?: TaskTimeEntry[];
   subTasks?: Task[];
   hasSubTasks?: boolean;
   aiOptimalAssigneeScore?: number;
@@ -266,7 +265,11 @@ export interface NotificationItem {
   isRead: boolean;
   createdDate: string;
   readDate?: string | null;
+  /** In-app route this notification opens. Server-derived, see NotificationLinks. */
   actionUrl?: string | null;
+  relatedEntityId?: string | null;
+  relatedEntityType?: string | null;
+  isAIGenerated?: boolean;
 }
 
 export interface NotificationTemplateRecord {
@@ -898,18 +901,6 @@ export interface UtilizationCertificateCapabilities {
   canReview: boolean;
   canDelete: boolean;
   isOwner: boolean;
-}
-
-export interface TaskTimeEntry {
-  id: string;
-  taskId: string;
-  userId: string;
-  userName?: string | null;
-  description?: string | null;
-  startTime: string;
-  endTime?: string | null;
-  durationMinutes: number;
-  isBillable: boolean;
 }
 
 export interface AISettingsRequest {

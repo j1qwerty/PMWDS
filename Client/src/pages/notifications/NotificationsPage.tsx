@@ -42,6 +42,9 @@ export function NotificationsPage() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"inbox" | "templates" | "rules">("inbox");
+  // Sub-filter for the inbox: "all" shows every notification, "unread" only
+  // the ones still flagged. Defaults to "all" so nothing looks silently lost.
+  const [inboxFilter, setInboxFilter] = useState<"all" | "unread">("all");
 
   // Modal states
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -95,6 +98,8 @@ export function NotificationsPage() {
   }, [activeTab, canConfigure]);
 
   const unreadCount = items.filter(i => !i.isRead).length;
+  const readCount = items.length - unreadCount;
+  const visibleItems = inboxFilter === "unread" ? items.filter(i => !i.isRead) : items;
 
   const handleMarkAllRead = async () => {
     if (!auth) return;
@@ -172,9 +177,17 @@ export function NotificationsPage() {
 
 
       {/* Stats Row */}
-      <div className={`relative z-10 grid grid-cols-2 ${canConfigure ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3 mb-5`}>
+      {/* Column count follows the card count. Non-superadmins get three cards
+          (Total, Unread, Read), and a two-column grid left the third stranded
+          on its own row. */}
+      <div
+        className={`relative z-10 grid grid-cols-2 gap-3 mb-5 ${
+          canConfigure ? "lg:grid-cols-4" : "sm:grid-cols-3 lg:grid-cols-3"
+        }`}
+      >
         <StatCard label="Total Notifications" value={items.length} color="indigo" icon="notifications" />
         <StatCard label="Unread" value={unreadCount} color="amber" icon="mark_email_unread" />
+        <StatCard label="Read" value={readCount} color="emerald" icon="mark_email_read" />
         {canConfigure && (
           <>
             <StatCard label="Templates" value={templates.length} color="emerald" icon="description" />
@@ -185,12 +198,25 @@ export function NotificationsPage() {
 
       {/* Tab Navigation */}
       <div className="relative z-10 mb-5">
-        <div className="flex gap-2 border-b border-slate-200 pb-0">
+        <div className="flex gap-2 border-b border-slate-200 pb-0 flex-wrap">
           <TabButton
-            active={activeTab === "inbox"}
-            onClick={() => setActiveTab("inbox")}
-            icon="inbox"
-            label="Inbox"
+            active={activeTab === "inbox" && inboxFilter === "all"}
+            onClick={() => {
+              setActiveTab("inbox");
+              setInboxFilter("all");
+            }}
+            icon="notifications"
+            label="All Notifications"
+            count={items.length}
+          />
+          <TabButton
+            active={activeTab === "inbox" && inboxFilter === "unread"}
+            onClick={() => {
+              setActiveTab("inbox");
+              setInboxFilter("unread");
+            }}
+            icon="mark_email_unread"
+            label="Unread"
             count={unreadCount}
             countColor="amber"
           />
@@ -219,12 +245,18 @@ export function NotificationsPage() {
       <div className="relative z-10">
         {activeTab === "inbox" && (
           <NotificationInbox
-            items={items}
+            items={visibleItems}
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
             onDelete={handleDeleteNotification}
             onBroadcast={() => setBroadcastOpen(true)}
             canWrite={canBroadcast}
+            emptyTitle={inboxFilter === "unread" ? "No unread notifications" : "No notifications"}
+            emptySubtitle={
+              inboxFilter === "unread"
+                ? `All ${items.length} notification${items.length === 1 ? "" : "s"} read. Nothing needs your attention.`
+                : "You're all caught up!"
+            }
           />
         )}
 

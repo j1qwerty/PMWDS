@@ -103,12 +103,14 @@ public static class DatabaseConnectionService
 
             // Production SQLite: never drop the database. Apply EF migrations forward only.
             Console.WriteLine("[PMWDS] Applying SQLite migrations (production, no destructive reset)...");
+            await ReconcileMigrationHistoryAsync(db, ct);
             await db.Database.MigrateAsync(ct);
             await EnsureSqliteCompatibilityColumnsAsync(db, ct);
             return;
         }
 
         Console.WriteLine("[PMWDS] Applying database migrations...");
+        await ReconcileMigrationHistoryAsync(db, ct);
         try
         {
             await db.Database.MigrateAsync(ct);
@@ -131,7 +133,139 @@ public static class DatabaseConnectionService
             await db.Database.EnsureDeletedAsync(ct);
             await db.Database.MigrateAsync(ct);
         }
+
+        await RemoveLegacyAiSettingsIsActiveColumnSqlServerAsync(db, ct);
     }
+
+    /// <summary>
+    /// SQL Server counterpart of the SQLite legacy-column repair. See
+    /// <see cref="RemoveLegacyAiSettingsIsActiveColumnAsync(DbConnection, CancellationToken)"/>
+    /// for why the column exists and why this is safe to run on every boot.
+    /// </summary>
+    private static async Task RemoveLegacyAiSettingsIsActiveColumnSqlServerAsync(
+        ApplicationDbContext db,
+        CancellationToken ct)
+    {
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        try
+        {
+            if (!await HasSqlServerColumnAsync(connection, "AIGlobalSettings", "IsActive", ct))
+            {
+                return;
+            }
+
+            Console.WriteLine("[PMWDS] Dropping legacy AIGlobalSettings.IsActive column.");
+            await using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE [dbo].[AIGlobalSettings] DROP COLUMN [IsActive]";
+            await command.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Drops __EFMigrationsHistory rows for migrations that are no longer in the
+    /// assembly, before MigrateAsync runs.
+    ///
+    /// The migration chain was squashed into InitialSchema. On a database built
+    /// from the old chain, EF would otherwise see the old ids, conclude the new
+    /// InitialSchema was still pending, and try to create every table on a
+    /// database that already has them. Pruning first lets the consolidated
+    /// migrations apply cleanly to both fresh and existing databases.
+    ///
+    /// Only rows for ids the assembly does not contain are removed, so this is a
+    /// no-op on a database whose history is already current, and it can never
+    /// mark a genuinely pending migration as applied.
+    /// </summary>
+    private static async Task ReconcileMigrationHistoryAsync(
+        ApplicationDbContext db,
+        CancellationToken ct)
+    {
+        var known = new HashSet<string>(
+            db.Database.GetMigrations(),
+            StringComparer.OrdinalIgnoreCase);
+
+        // dbo is the default schema on SQL Server; SQLite has no schemas.
+        var historyTable = db.Database.ProviderName?.Contains("SqlServer", StringComparison.Ordinal) == true
+            ? "[dbo].[__EFMigrationsHistory]"
+            : "\"__EFMigrationsHistory\"";
+
+        var connection = db.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+        {
+            try
+            {
+                await connection.OpenAsync(ct);
+            }
+            catch
+            {
+                // Cannot reach the database here; MigrateAsync will surface the
+                // real problem with a better message.
+                return;
+            }
+        }
+
+        try
+        {
+            List<string> applied;
+            await using (var read = connection.CreateCommand())
+            {
+                read.CommandText = $"SELECT \"MigrationId\" FROM {historyTable}";
+                applied = new List<string>();
+                await using var reader = await read.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    applied.Add(reader.GetString(0));
+                }
+            }
+
+            var stale = applied.Where(id => !known.Contains(id)).ToList();
+            if (stale.Count == 0)
+            {
+                return;
+            }
+
+            // Console.WriteLine, not the Serilog logger: this file runs before the
+            // host is built, and Console.WriteLine does not accept {Named} templates.
+            Console.WriteLine(
+                $"[PMWDS] Pruning {stale.Count} superseded migration history row(s): {string.Join(", ", stale)}");
+
+            foreach (var id in stale)
+            {
+                await using var delete = connection.CreateCommand();
+                delete.CommandText =
+                    $"DELETE FROM {historyTable} WHERE \"MigrationId\" = {QuoteLiteral(id)}";
+                await delete.ExecuteNonQueryAsync(ct);
+            }
+        }
+        catch (DbException)
+        {
+            // The history table does not exist yet on a brand new database, which
+            // is the normal case and needs no reconciliation.
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static string QuoteLiteral(string value)
+        => $"'{value.Replace("'", "''")}'";
 
     /// <summary>
     /// Outside Development the SQLite file must live outside the application directory. The usual
@@ -498,7 +632,6 @@ public static class DatabaseConnectionService
                 "MilestoneDependencies",
                 "Tasks",
                 "TaskAssignments",
-                "TimeEntries",
                 "AIGlobalSettings"
             };
 
@@ -519,8 +652,7 @@ public static class DatabaseConnectionService
                 await HasSqlServerColumnTypeAsync(connection, "Tasks", "AssignedByUserId", "uniqueidentifier", ct) &&
                 await HasSqlServerColumnTypeAsync(connection, "Tasks", "AIRecommendedAssigneeId", "uniqueidentifier", ct) &&
                 await HasSqlServerColumnTypeAsync(connection, "TaskAssignments", "UserId", "uniqueidentifier", ct) &&
-                await HasSqlServerColumnTypeAsync(connection, "TaskComments", "UserId", "uniqueidentifier", ct) &&
-                await HasSqlServerColumnTypeAsync(connection, "TimeEntries", "UserId", "uniqueidentifier", ct);
+                await HasSqlServerColumnTypeAsync(connection, "TaskComments", "UserId", "uniqueidentifier", ct);
         }
         finally
         {
@@ -653,6 +785,7 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
             }
 
             await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
+            await RemoveLegacyAiSettingsIsActiveColumnAsync(connection, ct);
         }
         finally
         {
@@ -661,6 +794,77 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await connection.CloseAsync();
             }
         }
+    }
+
+    /// <summary>
+    /// Drops AIGlobalSettings.IsActive on databases left over from before the
+    /// migration chain was consolidated.
+    ///
+    /// The old InitialCreate emitted that column, but AIGlobalSetting inherits
+    /// from BaseEntity and has never had an IsActive property, so it was created
+    /// NOT NULL with no default. EF inserts omit the column, and every write to
+    /// the table then failed with "NOT NULL constraint failed:
+    /// AIGlobalSettings.IsActive" - which meant the seeder could never store the
+    /// AI provider credentials. Only migration-built databases were affected; the
+    /// SQLite development path used EnsureCreated, which never created it.
+    ///
+    /// The consolidated InitialSchema no longer creates the column, so this only
+    /// has anything to do on a legacy database. It lives here rather than in the
+    /// migration because dropping a column needs an existence check and SQLite
+    /// has no conditional DDL. AIGlobalSettings holds a handful of rows, so the
+    /// SQLite table rebuild is cheap.
+    /// </summary>
+    private static async Task RemoveLegacyAiSettingsIsActiveColumnAsync(
+        DbConnection connection,
+        CancellationToken ct)
+    {
+        if (!await HasSqliteColumnAsync(connection, "AIGlobalSettings", "IsActive", ct))
+        {
+            return;
+        }
+
+        Console.WriteLine("[PMWDS] Dropping legacy AIGlobalSettings.IsActive column.");
+
+        // SQLite cannot drop a column that an index or constraint references.
+        // AIGlobalSettings has only its primary key, which is on Id, so the
+        // documented rebuild is safe here.
+        await ExecuteSqliteAsync(
+            connection,
+            """
+            CREATE TABLE "AIGlobalSettings_Rebuilt" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_AIGlobalSettings" PRIMARY KEY,
+                "DefaultProvider" TEXT NOT NULL,
+                "DefaultModel" TEXT NOT NULL,
+                "RiskThreshold" REAL NOT NULL,
+                "UseLocalModel" INTEGER NOT NULL,
+                "MLModelPath" TEXT NOT NULL,
+                "CreatedDate" TEXT NOT NULL,
+                "ModifiedDate" TEXT NULL,
+                "CreatedBy" TEXT NOT NULL,
+                "ModifiedBy" TEXT NULL,
+                "IsDeleted" INTEGER NOT NULL,
+                "RowVersion" INTEGER NOT NULL
+            )
+            """,
+            ct);
+
+        await ExecuteSqliteAsync(
+            connection,
+            """
+            INSERT INTO "AIGlobalSettings_Rebuilt"
+                ("Id","DefaultProvider","DefaultModel","RiskThreshold","UseLocalModel","MLModelPath",
+                 "CreatedDate","ModifiedDate","CreatedBy","ModifiedBy","IsDeleted","RowVersion")
+            SELECT "Id","DefaultProvider","DefaultModel","RiskThreshold","UseLocalModel","MLModelPath",
+                   "CreatedDate","ModifiedDate","CreatedBy","ModifiedBy","IsDeleted","RowVersion"
+            FROM "AIGlobalSettings"
+            """,
+            ct);
+
+        await ExecuteSqliteAsync(connection, "DROP TABLE \"AIGlobalSettings\"", ct);
+        await ExecuteSqliteAsync(
+            connection,
+            "ALTER TABLE \"AIGlobalSettings_Rebuilt\" RENAME TO \"AIGlobalSettings\"",
+            ct);
     }
 
     private static async Task NormalizeSqliteNullableGuidColumnsAsync(DbConnection connection, CancellationToken ct)

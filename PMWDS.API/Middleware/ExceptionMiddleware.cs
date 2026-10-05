@@ -55,6 +55,13 @@ public class ExceptionMiddleware
             statusCode = HttpStatusCode.Conflict;
             message = ex.Message;
         }
+        else if (ex is AiProviderException)
+        {
+            // 502, not 500: the failure is upstream, and the message is written
+            // for the user rather than swallowed into "an unexpected error".
+            statusCode = HttpStatusCode.BadGateway;
+            message = ex.Message;
+        }
         else
         {
             statusCode = HttpStatusCode.InternalServerError;
@@ -80,6 +87,7 @@ public class ExceptionMiddleware
             StatusCodes.Status401Unauthorized => "unauthorized",
             StatusCodes.Status404NotFound => "not_found",
             StatusCodes.Status409Conflict => "conflict",
+            StatusCodes.Status502BadGateway => "ai_provider_unavailable",
             _ => "server_error"
         };
 }

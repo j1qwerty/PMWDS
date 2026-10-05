@@ -137,7 +137,7 @@ When using SQLite:
 **Entity Sets:**
 - `Departments`, `Projects`, `Milestones`, `ProjectTasks`
 - `TaskDependencies`, `TaskAssignments`, `TaskComments`, `TaskAttachments`
-- `TimeEntries`, `ProjectDocuments`
+- `ProjectDocuments`
 - `Skills`, `UserSkills`
 - `Notifications`, `AuditLogs`
 

@@ -99,9 +99,9 @@ public class NotificationService : INotificationService
             Message: $"You have been assigned: {task.Title}",
             Type: NotificationType.TaskAssigned,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: NotificationLinks.ForTask(task.ProjectId, taskId),
             RelatedEntityId: taskId.ToString(),
-            RelatedEntityType: "Task"),
+            RelatedEntityType: NotificationLinks.TaskEntityType),
             ct);
     }
 
@@ -124,9 +124,9 @@ public class NotificationService : INotificationService
             Priority: daysRemaining <= 1
                 ? NotificationPriority.Urgent
                 : NotificationPriority.High,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: NotificationLinks.ForTask(task.ProjectId, taskId),
             RelatedEntityId: taskId.ToString(),
-            RelatedEntityType: "Task"),
+            RelatedEntityType: NotificationLinks.TaskEntityType),
             ct);
     }
 
@@ -153,9 +153,9 @@ public class NotificationService : INotificationService
             Message: $"Task '{task.Title}' requires attention.",
             Type: NotificationType.TaskEscalated,
             Priority: NotificationPriority.Urgent,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: NotificationLinks.ForTask(task.ProjectId, taskId),
             RelatedEntityId: taskId.ToString(),
-            RelatedEntityType: "Task"),
+            RelatedEntityType: NotificationLinks.TaskEntityType),
             ct);
     }
 
@@ -175,9 +175,9 @@ public class NotificationService : INotificationService
             Message: $"You are the project manager for '{project.Name}'.",
             Type: NotificationType.ProjectAlert,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/projects/{projectId}",
+            ActionUrl: NotificationLinks.ForProject(projectId),
             RelatedEntityId: projectId.ToString(),
-            RelatedEntityType: "Project"),
+            RelatedEntityType: NotificationLinks.ProjectEntityType),
             ct);
     }
 
@@ -199,9 +199,9 @@ public class NotificationService : INotificationService
             Message: $"'{project.Name}' changed from {oldStatus} to {newStatus}.",
             Type: NotificationType.ProjectAlert,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/projects/{projectId}",
+            ActionUrl: NotificationLinks.ForProject(projectId),
             RelatedEntityId: projectId.ToString(),
-            RelatedEntityType: "Project"),
+            RelatedEntityType: NotificationLinks.ProjectEntityType),
             ct);
     }
 
@@ -216,6 +216,7 @@ public class NotificationService : INotificationService
             Message: insight,
             Type: NotificationType.AIInsight,
             Priority: NotificationPriority.Normal,
+            ActionUrl: NotificationLinks.ForAi(),
             IsAIGenerated: true),
             ct);
 

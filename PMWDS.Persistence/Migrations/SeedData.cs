@@ -16,8 +16,13 @@ public static class SeedData
         ApplicationDbContext context,
         CancellationToken ct = default,
         IReadOnlyDictionary<string, string?>? aiProviderKeys = null,
-        string? storageBasePath = null)
+        string? storageBasePath = null,
+        string? defaultPassword = null)
     {
+        // Registered before any seeder runs so a missing value fails with a
+        // message about configuration rather than deep inside UsersSeeder.
+        SeedConstants.SetDefaultPassword(defaultPassword);
+
         var strategy = context.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {

@@ -1109,6 +1109,26 @@ Not code bugs, but each one cost a deploy cycle.
 
 Not yet addressed. Listed so they are not lost.
 
+### Deployment prerequisite: the seed password
+
+The seeded accounts no longer have a password in source. `SeedConstants` used to hardcode
+`Pmwds@123`, which meant a committed credential was live on any deployment that never set
+one. It now reads `Seed__DefaultPassword`, and **seeding fails with a message naming the key
+if it is absent** rather than creating accounts with a published default.
+
+Both server-side env files must therefore gain this line before the next deploy, or the API
+will refuse to start:
+
+```
+# /etc/pmwds/pmwds-sqlite.env and /etc/pmwds/pmwds-mssql.env
+Seed__DefaultPassword=<a strong password>
+```
+
+`deploy.ps1` does not write these files - it reads the ones already on the server - so this is
+a manual one-time edit. Choose a different value per environment. Existing accounts are not
+affected: the value is only read when a user does not yet exist, so it never resets a password
+on a later boot.
+
 ### Must do before real users
 
 1. **Secrets — done, but rotate before real traffic.** A fresh 88-character `Jwt__Secret` was

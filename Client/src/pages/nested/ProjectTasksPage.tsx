@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -36,6 +37,11 @@ export function ProjectTasksPage() {
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
   const [selectedTaskId, setSelectedTaskId] = useState("");
+  // Notification and dashboard escalation links arrive as
+  // /projects/:id/tasks?task=<taskId>. The task itself is fetched separately
+  // because a deep-linked task may not be on the first page of the board.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkedTaskId = searchParams.get("task") ?? "";
   const [taskModal, setTaskModal] = useState<{ open: boolean; edit?: Task; milestoneId?: string }>({
     open: false,
   });
@@ -163,6 +169,44 @@ export function ProjectTasksPage() {
   const selectedMilestone = selectedTask
     ? ws.milestones.find((m) => m.id === selectedTask.milestoneId) ?? null
     : null;
+
+  /**
+   * Open the task named by ?task=. Fetched directly rather than looked up in
+   * ws.tasks, because the board only holds the project's loaded page of tasks
+   * and the deep-linked task may not be among them.
+   */
+  useEffect(() => {
+    if (!auth || !deepLinkedTaskId) return;
+
+    let cancelled = false;
+    const inBoard = ws.tasks.some((t) => t.id === deepLinkedTaskId);
+    if (inBoard) {
+      setSelectedTaskId(deepLinkedTaskId);
+      return;
+    }
+
+    api
+      .getTask(auth.token, deepLinkedTaskId)
+      .then((task) => {
+        if (cancelled) return;
+        setViewTask(task);
+        // Drop the param so closing the modal does not reopen it on re-render.
+        const next = new URLSearchParams(searchParams);
+        next.delete("task");
+        setSearchParams(next, { replace: true });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        addToast("That task could not be found in this project.", "error");
+        const next = new URLSearchParams(searchParams);
+        next.delete("task");
+        setSearchParams(next, { replace: true });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, deepLinkedTaskId]);
 
   const handleTaskSubmit = async (form: Record<string, unknown>) => {
     if (!auth || !ws.project) return;

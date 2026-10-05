@@ -1,3 +1,7 @@
+import { useRef } from "react";
+import { InfoTip, StatHoverCard } from "../../shared";
+import { DASHBOARD_OVERVIEW_CARD_HEIGHT } from "../../constants";
+
 interface ActivityDataPoint {
   day: string;
   value: number;
@@ -9,6 +13,15 @@ interface ActivityProps {
   filterOptions?: string[];
   selectedFilter?: string;
   onFilterChange?: (filter: string) => void;
+  /**
+   * Optional breakdown for the hover panel: what the activity actually was.
+   * Counted from the same log entries that produce the chart, so the panel can
+   * never disagree with the line.
+   */
+  breakdown?: { label: string; count: number }[];
+  /** True when the figures are limited to one person, matching the chart. */
+  isFiltered?: boolean;
+  filterLabel?: string;
 }
 
 export function Activity({
@@ -16,7 +29,10 @@ export function Activity({
   title = "Activity",
   filterOptions = ["All Tasks"],
   selectedFilter = "All Tasks",
-  onFilterChange
+  onFilterChange,
+  breakdown = [],
+  isFiltered = false,
+  filterLabel,
 }: ActivityProps) {
   // No dummy data. When the caller has nothing yet, every day reads zero - which is the
   // truth, not a placeholder curve.
@@ -32,6 +48,36 @@ export function Activity({
           { day: "Fri", value: 0 },
           { day: "Sat", value: 0 },
         ];
+
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const total = activityData.reduce((sum, point) => sum + point.value, 0);
+  const busiest = activityData.reduce((top, point) => (point.value > top.value ? point : top), activityData[0]);
+  const quietest = activityData.reduce((low, point) => (point.value < low.value ? point : low), activityData[0]);
+
+  // Panel rows. When a breakdown is available it lists what the activity
+  // actually was - that is the part the line cannot show - and falls back to
+  // the per-day counts otherwise, so the panel is never empty for no reason.
+  const dayRows = [...activityData]
+    .sort((a, b) => b.value - a.value)
+    .map((point) => ({
+      title: point.day,
+      subtitle: point.value === 0 ? "Nothing logged" : `${point.value} event${point.value === 1 ? "" : "s"}`,
+      meta: total > 0 ? `${Math.round((point.value / total) * 100)}%` : undefined,
+    }));
+
+  const eventRows = breakdown.map((entry) => ({
+    title: entry.label,
+    meta: `${entry.count}`,
+    subtitle: total > 0 ? `${Math.round((entry.count / total) * 100)}% of activity` : undefined,
+  }));
+
+  const scope = isFiltered
+    ? `${filterLabel ?? selectedFilter} · last 7 days`
+    : "Your workspace · last 7 days";
+
+  const panelRows = eventRows.length > 0 ? eventRows : dayRows;
+  const panelHint = eventRows.length > 0 ? scope : `${scope} · by day`;
   
   // Chart dimensions
   const width = 300;
@@ -63,9 +109,27 @@ export function Activity({
   const areaPath = linePath + ` L${points[points.length - 1].x},${height} L${points[0].x},${height} Z`;
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-md h-[430px] flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+    <div
+      ref={cardRef}
+      className={`group bg-white rounded-2xl p-5 border border-slate-100 shadow-md ${DASHBOARD_OVERVIEW_CARD_HEIGHT} flex flex-col`}
+    >
+      <StatHoverCard
+        anchorRef={cardRef}
+        content={{
+          heading: `${title} · last 7 days`,
+          hint: panelHint,
+          rows: panelRows,
+          emptyText: "No activity recorded in this period.",
+          footer:
+            total === 0
+              ? "Nothing logged in the last 7 days"
+              : `${total} event${total === 1 ? "" : "s"} in total · busiest ${busiest.day} (${busiest.value}), quietest ${quietest.day} (${quietest.value})`,
+        }}
+      />
+
+      <div className="flex justify-between items-center mb-4 relative">
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+        <div className="flex items-center gap-2">
         {filterOptions.length > 0 && (
           <select 
             className="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 bg-white cursor-pointer"
@@ -77,6 +141,17 @@ export function Activity({
             ))}
           </select>
         )}
+        <InfoTip
+          title="Activity"
+          summary="How much happened in your workspace on each of the last seven days."
+          points={[
+            "Each point counts activity log entries recorded that day: tasks created, updated, commented on, escalated or completed, plus project and milestone changes.",
+            "The label under each point is the real calendar date, not just the weekday.",
+            "A day at zero means nothing was logged, not that the data is missing."
+          ]}
+          note="This is a count of recorded events, not a measure of how much work was done."
+        />
+        </div>
       </div>
       
       <div className="flex-1 min-h-0 relative">

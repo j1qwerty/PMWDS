@@ -1,7 +1,8 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using PMWDS.Application.DTOs.Reports;
+using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 
@@ -38,15 +39,15 @@ public class ReportService : IReportService
         _logger = logger;
     }
 
-    // ──────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  JSON generation (inline viewing)
-    // ──────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public async Task<AiReportResponse> GenerateProjectStatusReportJsonAsync(
         Guid projectId, CancellationToken ct = default)
     {
         var project = await _uow.Projects.GetWithDetailsAsync(projectId, ct)
-            ?? throw new InvalidOperationException($"Project {projectId} not found.");
+            ?? throw new PMWDS.Application.Exceptions.NotFoundException("Project", projectId);
 
         var tasks = project.Tasks.ToList();
         var milestones = project.Milestones.ToList();
@@ -103,7 +104,7 @@ public class ReportService : IReportService
         Guid projectId, CancellationToken ct = default)
     {
         var project = await _uow.Projects.GetWithDetailsAsync(projectId, ct)
-            ?? throw new InvalidOperationException($"Project {projectId} not found.");
+            ?? throw new PMWDS.Application.Exceptions.NotFoundException("Project", projectId);
 
         var tasks = project.Tasks.ToList();
         var budgetUtilization = tasks
@@ -201,7 +202,7 @@ public class ReportService : IReportService
         Guid departmentId, DateRange dateRange, CancellationToken ct = default)
     {
         var department = await _uow.Departments.GetByIdAsync(departmentId, ct)
-            ?? throw new InvalidOperationException($"Department {departmentId} not found.");
+            ?? throw new PMWDS.Application.Exceptions.NotFoundException("Department", departmentId);
 
         var users = (await _uow.Users.GetByDepartmentWithSkillsAsync(departmentId, ct)).ToList();
 
@@ -318,9 +319,9 @@ public class ReportService : IReportService
             context, ct);
     }
 
-    // ──────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Binary download (PDF/Excel)
-    // ──────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public async Task<byte[]> DownloadProjectStatusReportAsync(
         Guid projectId, string format = "pdf", CancellationToken ct = default)
@@ -359,9 +360,9 @@ public class ReportService : IReportService
         return await RenderToFormatAsync(report, format, ct);
     }
 
-    // ──────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  Private helpers
-    // ──────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private async Task<AiReportResponse> GenerateReportAsync(
         string reportType,
@@ -413,6 +414,21 @@ You MUST respond with ONLY valid JSON matching this schema:
             var responseText = await _ai.GenerateStructuredReportAsync(systemPrompt, userContext, ct);
             var parsed = ParseReportResponse(responseText, reportType);
 
+            // A model that returns prose instead of JSON is a failure, not a
+            // report. Fail loudly so the user is not handed an empty document
+            // dressed up as a successful generation.
+            if (parsed.metrics.Count == 0 && parsed.tables.Count == 0 && parsed.sections.Count == 0)
+            {
+                _logger.LogWarning(
+                    "AI returned no usable content for {ReportType}. Response began: {Preview}",
+                    reportType, Truncate(responseText, 300));
+                throw new AiProviderException(
+                    "The AI provider replied, but the response contained no readable report content. " +
+                    "This usually means the model returned prose instead of the requested JSON. " +
+                    "Try a different model in Settings > AI Configuration and generate again.",
+                    "unparseable_response");
+            }
+
             var report = new AiReportResponse(
                 reportId,
                 reportType,
@@ -428,15 +444,45 @@ You MUST respond with ONLY valid JSON matching this schema:
             await StoreReportAsync(reportType, report, ct);
             return report;
         }
+        catch (AiProviderException)
+        {
+            // Already a user-facing failure with an actionable message.
+            throw;
+        }
         catch (Exception ex)
         {
-            // Log the provider error instead of silently degrading, so a wrong
-            // provider/model pairing stays diagnosable.
+            // Previously this returned a report-shaped object describing the
+            // failure, which the client then reported as a success and stored
+            // in the user's report list. Surface it as a real error instead.
             _logger.LogError(ex, "AI report generation failed for report type {ReportType}", reportType);
-            var fallback = BuildFallbackReport(reportId, reportType, ex);
-            await StoreReportAsync(reportType, fallback, ct);
-            return fallback;
+
+            var hint = ex is OperationCanceledException or TaskCanceledException or TimeoutException
+                ? " The request timed out - large models can take several minutes, so raise AI__RequestTimeoutSeconds if this keeps happening."
+                : string.Empty;
+
+            throw new AiProviderException(
+                "The AI provider could not generate this report. " +
+                DescribeProviderFailure(ex) + hint,
+                "provider_error",
+                ex);
         }
+    }
+
+    /// <summary>
+    /// Turns a provider exception into one actionable sentence. The raw message
+    /// is included because the most common failures (bad key, wrong model id,
+    /// rate limit) are only diagnosable from what the provider said.
+    /// </summary>
+    private static string DescribeProviderFailure(Exception ex)
+    {
+        if (ex is InvalidOperationException && ex.Message.Contains("not configured", StringComparison.OrdinalIgnoreCase))
+        {
+            return "No AI provider is configured, so there is nothing to generate with. " +
+                   "Add an API key for OpenAI or OpenRouter in Settings > AI Configuration.";
+        }
+
+        var detail = Truncate(ex.Message, 300);
+        return $"Provider response: {detail} Check the API key, provider, and model in Settings > AI Configuration.";
     }
 
     private (string title, string summary, List<ReportMetric> metrics, List<ReportTable> tables,
@@ -556,45 +602,6 @@ You MUST respond with ONLY valid JSON matching this schema:
         return text;
     }
 
-    private static AiReportResponse BuildFallbackReport(Guid reportId, string reportType, Exception? error = null)
-    {
-        var title = ReportTitle(reportType);
-        var detail = error is null
-            ? "Configure an AI provider in Settings to enable intelligent report generation."
-            : $"The configured AI provider rejected the request: {Truncate(error.Message, 300)}";
-
-        return new AiReportResponse(
-            reportId,
-            reportType,
-            title,
-            $"{title} could not be generated with AI assistance. {detail}",
-            new List<ReportMetric>(),
-            new List<ReportTable>(),
-            new List<ReportSection>
-            {
-                new("AI Generation Failed",
-                    (error is null
-                        ? "This report requires an AI provider (OpenAI or OpenRouter) to be configured. "
-                        : $"Provider error: {Truncate(error.Message, 500)} ")
-                    + "Go to AI Settings to verify the default provider, its API key, and the default model, " +
-                    "then regenerate this report for AI-powered insights.",
-                    "recommendation")
-            },
-            new List<string>
-            {
-                "Verify the default AI provider and model in Settings > AI Configuration.",
-                error is null
-                    ? "Reports require an API key for OpenAI or OpenRouter."
-                    : "A model id that does not belong to the selected provider is the most common cause."
-            },
-            new List<string>
-            {
-                "Go to Settings > AI Configuration and test the provider with a custom prompt.",
-                "After configuration, regenerate this report for AI-powered insights."
-            },
-            DateTime.UtcNow);
-    }
-
     private static string Truncate(string value, int maxLength)
         => value.Length <= maxLength ? value : value[..maxLength] + "...";
 
@@ -637,7 +644,7 @@ You MUST respond with ONLY valid JSON matching this schema:
             "json" => json,
             "txt" => System.Text.Encoding.UTF8.GetBytes(
                 $"{report.Title}\n{new string('-', 40)}\n\n{report.Summary}\n\n" +
-                string.Join("\n", report.Insights.Select(i => $"• {i}")) +
+                string.Join("\n", report.Insights.Select(i => $"â€¢ {i}")) +
                 $"\n\nRecommendations:\n" +
                 string.Join("\n", report.Recommendations.Select(r => $"  - {r}"))),
             _ => json

@@ -717,9 +717,9 @@ public class MilestonesController : BaseApiController
                 Message: $"'{project.Name}' has been assigned to your department.",
                 Type: NotificationType.ProjectAlert,
                 Priority: NotificationPriority.Normal,
-                ActionUrl: $"/projects/{projectId}/milestones",
+                ActionUrl: NotificationLinks.ForMilestone(projectId),
                 RelatedEntityId: projectId.ToString(),
-                RelatedEntityType: "Project"),
+                RelatedEntityType: NotificationLinks.ProjectEntityType),
                 ct);
         }
     }

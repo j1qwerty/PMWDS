@@ -2582,70 +2582,6 @@ namespace PMWDS.Persistence.Migrations
                     b.ToTable("TaskDependencies", (string)null);
                 });
 
-            modelBuilder.Entity("PMWDS.Domain.Entities.TimeEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("EndTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsBillable")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsManualEntry")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RowVersion")
-                        .IsConcurrencyToken()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("StartTime");
-
-                    b.HasIndex("TaskId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("IsDeleted", "TaskId", "UserId", "StartTime");
-
-                    b.ToTable("TimeEntries", (string)null);
-                });
-
             modelBuilder.Entity("PMWDS.Domain.Entities.TrainingDataPoint", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3456,25 +3392,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("SuccessorTask");
                 });
 
-            modelBuilder.Entity("PMWDS.Domain.Entities.TimeEntry", b =>
-                {
-                    b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
-                        .WithMany("TimeEntries")
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PMWDS.Domain.Entities.ApplicationUser", "User")
-                        .WithMany("TimeEntries")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Task");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("PMWDS.Domain.Entities.UserDepartment", b =>
                 {
                     b.HasOne("PMWDS.Domain.Entities.Department", "Department")
@@ -3605,8 +3522,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Skills");
 
                     b.Navigation("TaskAssignments");
-
-                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Dashboard", b =>
@@ -3665,8 +3580,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Dependencies");
 
                     b.Navigation("SubTasks");
-
-                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Skill", b =>

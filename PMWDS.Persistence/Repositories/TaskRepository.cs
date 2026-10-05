@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PMWDS.Application.Interfaces.Repositories;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
@@ -21,13 +21,11 @@ public class TaskRepository
     .Include(t => t.SubTasks)
         .ThenInclude(st => st.Dependencies)
     .Include(t => t.SubTasks)
-        .ThenInclude(st => st.TimeEntries)
     .Include(t => t.Comments)
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
         .ThenInclude(d => d.PredecessorTask)
     .Include(t => t.Assignments)
-    .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
     .AsSplitQuery()
@@ -43,7 +41,6 @@ public class TaskRepository
     .Include(t => t.Comments)
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
-    .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
     .AsSplitQuery()
@@ -63,7 +60,6 @@ public class TaskRepository
     .Include(t => t.Comments)
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
-    .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
     .AsSplitQuery()
@@ -130,7 +126,6 @@ public class TaskRepository
     .Include(t => t.Attachments)
     .Include(t => t.Dependencies)
         .ThenInclude(d => d.PredecessorTask)
-    .Include(t => t.TimeEntries)
     .Include(t => t.Project)
     .Include(t => t.Milestone)
     .AsSplitQuery()

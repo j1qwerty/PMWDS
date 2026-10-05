@@ -2,6 +2,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import type { Department, Project, Task } from "../../../types";
 import { getStatusColor, getPriorityColor } from "../colors";
 import { Icon } from "../../../components/ui/Icon";
+import { InfoTip } from "../../shared";
 
 export type TaskPerformanceQuery = {
   page: number;
@@ -28,6 +29,8 @@ type TaskPerformanceProps = {
   onViewTask?: (task: Task) => void | Promise<void>;
   onEditTask?: (task: Task) => void | Promise<void>;
   canEdit?: boolean;
+  /** Seed status filter from outside, e.g. a dashboard stat card click. */
+  initialStatuses?: string[];
 };
 
 // Progress bar color utility
@@ -69,13 +72,14 @@ export default function TaskPerformanceTable({
   onViewTask,
   onEditTask,
   canEdit = false,
+  initialStatuses = [],
 }: TaskPerformanceProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [canDelete, setCanDelete] = useState(false);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>(initialStatuses);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [projectFilter, setProjectFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -92,6 +96,19 @@ export default function TaskPerformanceTable({
   useEffect(() => {
     setCurrentPage(page);
   }, [page]);
+
+  // Adopt a new status seed during render rather than in an effect. A dashboard
+  // stat card click changes initialStatuses, and React's documented pattern for
+  // adjusting state in response to a prop change is to compare against the
+  // previously applied value here - doing it in an effect would paint the stale
+  // filter for a frame and trigger a second render pass.
+  const seedKey = initialStatuses.join(",");
+  const [appliedSeedKey, setAppliedSeedKey] = useState(seedKey);
+  if (seedKey !== appliedSeedKey) {
+    setAppliedSeedKey(seedKey);
+    setStatusFilter(initialStatuses);
+    setCurrentPage(1);
+  }
 
   useEffect(() => {
     onQueryChange?.({
@@ -293,7 +310,20 @@ export default function TaskPerformanceTable({
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
       <div className="flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center mb-6 pb-2 border-b border-b-slate-200">
-        <h3 className="text-md font-bold text-slate-700">Task Performance</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-md font-bold text-slate-700">Task Performance</h3>
+          <InfoTip
+            title="Task Performance"
+            summary="Every task in the workspace, searchable and filterable, showing how far along each one is."
+            points={[
+              "The filters above narrow the list by project, department, status, priority, or text - the text box also matches project and assignee names.",
+              "This is the whole workspace, not just your own tasks. The task cards above it count only yours.",
+              "Click a task name to open its full details, or use the action buttons to edit or delete it.",
+              "Sorting is by any column heading, and paging is server-side, so the counts stay correct on every page."
+            ]}
+            note="Progress is the task's own percentage, or the average of its subtasks when it has any."
+          />
+        </div>
         <div className="flex items-center gap-3">
           {hasActiveFilters && (
             <button
@@ -488,7 +518,21 @@ export default function TaskPerformanceTable({
                   <td className="py-4 px-2">
                     <button className="text-left" onClick={() => onViewTask?.(task)}>
                       <div className="font-medium text-slate-700">{task.title}</div>
-                      <div className="text-xs text-slate-400">{task.projectName ?? "General"}</div>
+                      {/* Project and milestone together: the title alone rarely
+                          identifies a task, and the milestone is what the work is
+                          being delivered under. */}
+                      <div className="text-xs text-slate-400 flex items-center gap-1 flex-wrap">
+                        <span>{task.projectName ?? "General"}</span>
+                        {task.milestoneName && (
+                          <>
+                            <span className="text-slate-300">/</span>
+                            <span className="inline-flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[11px] text-slate-300">flag</span>
+                              {task.milestoneName}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </button>
                   </td>
                   <td className="py-4 px-2">

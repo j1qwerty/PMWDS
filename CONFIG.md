@@ -236,10 +236,14 @@ Production changes:
 
 ## Seeded Credentials
 
-Default seeded password:
+Every seeded account is created with the password from `Seed__DefaultPassword` (set it in
+`.env`). There is no default in the code: if the value is missing, seeding fails with a
+message naming the key instead of creating accounts with a password that is published in
+the repository.
 
 ```text
-Pmwds@123
+# .env
+Seed__DefaultPassword=<a strong password>
 ```
 
 Seeded users include:
@@ -503,7 +507,7 @@ Deploy the generated `Client/dist` folder to a static web host or serve it behin
 | Hangfire dashboard missing | SQLite is active | Use SQL Server for Hangfire-enabled runs |
 | SQLite migration update fails | SQL Server-shaped migration history is not fully portable | Use API startup SQLite bootstrap or implement provider-specific migrations |
 | Client cannot call API | Wrong API base URL or CORS origin | Set `VITE_API_BASE_URL` and add the client origin to `AllowedOrigins` |
-| Login fails | Wrong seeded password or stale database | Use `Pmwds@123`; restart API to rebuild stale SQLite schema if needed |
+| Login fails | Wrong seeded password or stale database | Use the value of `Seed__DefaultPassword`; restart API to rebuild stale SQLite schema if needed |
 | AI provider test fails | Missing API key, disabled provider, or wrong model | Enable provider and configure key/model in settings |
 
 ## Production Hardening

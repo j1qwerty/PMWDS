@@ -11,8 +11,8 @@ using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260708075323_NormalizeTaskUserIds")]
-    partial class NormalizeTaskUserIds
+    [Migration("20261005161042_ConsolidateExistingDatabases")]
+    partial class ConsolidateExistingDatabases
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -513,6 +513,7 @@ namespace PMWDS.Persistence.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("EmployeeCode")
@@ -1386,6 +1387,7 @@ namespace PMWDS.Persistence.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -1876,6 +1878,11 @@ namespace PMWDS.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1927,9 +1934,11 @@ namespace PMWDS.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Category");
+
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("ProjectDocuments");
+                    b.ToTable("ProjectDocuments", (string)null);
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.ProjectTask", b =>
@@ -2576,70 +2585,6 @@ namespace PMWDS.Persistence.Migrations
                     b.ToTable("TaskDependencies", (string)null);
                 });
 
-            modelBuilder.Entity("PMWDS.Domain.Entities.TimeEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("EndTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsBillable")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsManualEntry")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RowVersion")
-                        .IsConcurrencyToken()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("StartTime");
-
-                    b.HasIndex("TaskId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("IsDeleted", "TaskId", "UserId", "StartTime");
-
-                    b.ToTable("TimeEntries", (string)null);
-                });
-
             modelBuilder.Entity("PMWDS.Domain.Entities.TrainingDataPoint", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2878,6 +2823,110 @@ namespace PMWDS.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserSkills");
+                });
+
+            modelBuilder.Entity("PMWDS.Domain.Entities.UtilizationCertificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("AmountClaimed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountUtilized")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CertificateNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FundingSource")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("MilestoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReviewedOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SubmittedByUserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SubmittedOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CertificateNumber");
+
+                    b.HasIndex("DocumentId")
+                        .IsUnique();
+
+                    b.HasIndex("MilestoneId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("UtilizationCertificates", (string)null);
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Webhook", b =>
@@ -3346,25 +3395,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("SuccessorTask");
                 });
 
-            modelBuilder.Entity("PMWDS.Domain.Entities.TimeEntry", b =>
-                {
-                    b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
-                        .WithMany("TimeEntries")
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PMWDS.Domain.Entities.ApplicationUser", "User")
-                        .WithMany("TimeEntries")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Task");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("PMWDS.Domain.Entities.UserDepartment", b =>
                 {
                     b.HasOne("PMWDS.Domain.Entities.Department", "Department")
@@ -3412,6 +3442,37 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Skill");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PMWDS.Domain.Entities.UtilizationCertificate", b =>
+                {
+                    b.HasOne("PMWDS.Domain.Entities.ProjectDocument", "Document")
+                        .WithOne()
+                        .HasForeignKey("PMWDS.Domain.Entities.UtilizationCertificate", "DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PMWDS.Domain.Entities.Milestone", "Milestone")
+                        .WithMany()
+                        .HasForeignKey("MilestoneId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PMWDS.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Document");
+
+                    b.Navigation("Milestone");
+
+                    b.Navigation("Task");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Webhook", b =>
@@ -3464,8 +3525,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Skills");
 
                     b.Navigation("TaskAssignments");
-
-                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Dashboard", b =>
@@ -3524,8 +3583,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Dependencies");
 
                     b.Navigation("SubTasks");
-
-                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Skill", b =>

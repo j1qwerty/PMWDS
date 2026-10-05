@@ -442,7 +442,11 @@ using (var scope = app.Services.CreateScope())
         ["OpenRouter"] = aiSettings.OpenRouter?.ApiKey
     };
 
-    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys, storageBasePath: storageRoot);
+    await SeedData.SeedAsync(
+        db,
+        aiProviderKeys: aiProviderKeys,
+        storageBasePath: storageRoot,
+        defaultPassword: builder.Configuration["Seed:DefaultPassword"]);
     await SensitiveDataMigrationService.ProtectExistingAsync(
         db,
         scope.ServiceProvider.GetRequiredService<ISensitiveDataProtector>());

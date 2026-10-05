@@ -19,7 +19,6 @@ interface TaskEditModalProps {
   onAddComment: (taskId: string, text: string) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
   onEscalate?: () => void;
-  onStartTimer: (taskId: string, description: string) => Promise<void>;
   onRefresh: () => void;
 }
 
@@ -34,7 +33,6 @@ export function TaskEditModal({
   onAddComment,
   onDelete,
   onEscalate,
-  onStartTimer,
   onRefresh,
 }: TaskEditModalProps) {
   const { addToast } = useToast();
@@ -44,7 +42,6 @@ export function TaskEditModal({
   const [editStatus, setEditStatus] = useState(task.status);
   const [editPriority, setEditPriority] = useState(task.priority || "Medium");
   const [commentText, setCommentText] = useState("");
-  const [timerDescription, setTimerDescription] = useState("Focused execution block");
 
   const subtaskCount = task.subTasks?.length ?? 0;
   const entityType = task.parentTaskId ? "subtask" : "task";
@@ -101,11 +98,6 @@ export function TaskEditModal({
       setIsDeleting(false);
       addToast("Failed to delete task.");
     }
-  };
-
-  const handleStartTimer = () => {
-    onStartTimer(task.id, timerDescription);
-    addToast("Timer started.");
   };
 
   const hasChanges =
@@ -252,25 +244,6 @@ export function TaskEditModal({
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                  <FiClock className="w-3.5 h-3.5" /> Timer
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    value={timerDescription}
-                    onChange={(e) => setTimerDescription(e.target.value)}
-                    placeholder="What are you working on?"
-                    className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
-                  />
-                  <button
-                    onClick={handleStartTimer}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-1 shrink-0"
-                  >
-                    <FiClock className="w-3.5 h-3.5" /> Start
-                  </button>
-                </div>
               </div>
             </div>
           )}

@@ -1,4 +1,5 @@
-import { Icon } from "../../../components/ui/Icon";
+import { InfoTip } from "../../shared";
+import { DASHBOARD_OVERVIEW_CARD_HEIGHT } from "../../constants";
 
 interface ProjectOverviewProps {
   newProjects?: number;
@@ -24,15 +25,24 @@ export function ProjectOverview({
   const doneOffset = -(newDash + pendingDash);
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-md border border-slate-100 h-[430px] flex flex-col overflow-hidden">
+    <div className={`bg-white rounded-2xl p-6 shadow-md border border-slate-100 ${DASHBOARD_OVERVIEW_CARD_HEIGHT} flex flex-col overflow-hidden`}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-semibold text-slate-700">Project Overview</h3>
-        <button className="text-slate-400 hover:text-slate-600">
-          <Icon name="hi-dots-vertical" size={20} />
-        </button>
+        <InfoTip
+          title="Project Overview"
+          summary="A split of every project in your workspace by where it sits in its lifecycle."
+          points={[
+            "New: planned or not yet started.",
+            "Pending: started but unfinished - this includes on hold and delayed projects.",
+            "Done: finished, or with all tasks complete.",
+          ]}
+          note="Each slice is sized by its share of the total, so a workspace with no projects shows an empty ring rather than a misleading full one."
+        />
       </div>
       
-      <div className="flex justify-center mb-4">
+      {/* flex-1 so the donut is centred in whatever height the card has, rather
+          than sitting at the top with a gap beneath it. */}
+      <div className="flex-1 flex items-center justify-center mb-4 min-h-0">
         <svg width="180" height="180" viewBox="0 0 180 180">
           {/* Background circle */}
           <circle 

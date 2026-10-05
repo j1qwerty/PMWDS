@@ -67,6 +67,8 @@ type ApiOptions = {
   headers?: Record<string, string>;
   query?: Record<string, string | number | boolean | undefined | null>;
   responseType?: 'json' | 'blob';
+  /** Lets a long-running call be cancelled or given a longer budget. */
+  signal?: AbortSignal;
 };
 
 export type PaginatedResponse<T> = {
@@ -130,11 +132,25 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     body = JSON.stringify(body);
   }
 
-  const response = await fetch(url.toString(), {
-    method: options.method ?? "GET",
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method: options.method ?? "GET",
+      headers,
+      body,
+      signal: options.signal,
+    });
+  } catch (e) {
+    // Distinguish an abort from a genuine network failure, so callers can say
+    // "timed out" rather than "could not reach the server".
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new ApiError("The request was cancelled or timed out.", 0);
+    }
+    throw new ApiError(
+      "Could not reach the server. Check that the API is running and that you are online.",
+      0
+    );
+  }
 
 if (!response.ok) {
     const text = await response.text();
@@ -363,6 +379,14 @@ export const api = {
   getOverdueTasks(token: string) {
     return requestList<Task>("tasks/overdue", { token });
   },
+  /**
+   * Paginated form of the overdue list, for callers that need the true total
+   * alongside a short page of rows. `getOverdueTasks` discards the total
+   * because it unwraps to items only.
+   */
+  getOverdueTasksPage(token: string, query: { page?: number; pageSize?: number } = {}) {
+    return request<PaginatedResponse<Task>>("tasks/overdue", { token, query });
+  },
   getEscalatedTasks(token: string) {
     return requestList<Task>("tasks/escalated", { token });
   },
@@ -423,16 +447,6 @@ export const api = {
     const form = new FormData();
     form.set("file", file);
     return request<Task>(`tasks/${id}/attachments`, { token, method: "POST", body: form });
-  },
-  startTaskTimer(token: string, id: string, description: string, isBillable = false) {
-    return request<Task>(`tasks/${id}/time/start`, {
-      token,
-      method: "POST",
-      body: { description, isBillable },
-    });
-  },
-  stopTaskTimer(token: string, id: string) {
-    return request<Task>(`tasks/${id}/time/stop`, { token, method: "POST" });
   },
   deleteTask(token: string, id: string) {
     return request<void>(`tasks/${id}`, { token, method: "DELETE" });
@@ -875,11 +889,17 @@ export const api = {
   getModelPerformance(token: string) {
     return request<Record<string, number>>("ai/performance", { token });
   },
-  generateReport(token: string, reportType: string, body: Record<string, unknown>) {
+  generateReport(
+    token: string,
+    reportType: string,
+    body: Record<string, unknown>,
+    signal?: AbortSignal
+  ) {
     return request<AiReportResponse>(`reports/${reportType}/generate`, {
       token,
       method: "POST",
       body,
+      signal,
     });
   },
   downloadReport(
