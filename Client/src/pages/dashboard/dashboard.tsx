@@ -14,7 +14,7 @@ import { notificationTarget } from "../shared/notificationLinks";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import TaskStats from "../shared/dash/TaskStats";
-import type { TaskStatBucket, TaskStatKind } from "../shared/dash/TaskStats";
+import type { TaskStatBucket, TaskStatFilter, TaskStatKind } from "../shared/dash/TaskStats";
 import TaskPerformanceTable, { type TaskPerformanceQuery } from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
@@ -103,8 +103,10 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("All Tasks");
-  // Status filter seeded into the task performance table by a TaskStats click.
-  const [taskStatusFilter, setTaskStatusFilter] = useState<string[]>([]);
+  // Filter seeded into the task performance table by a TaskStats click.
+  // A filter object rather than a status string because the Delayed card needs
+  // "past due", which no status value expresses.
+  const [taskTableFilter, setTaskTableFilter] = useState<TaskStatFilter>({});
 
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -155,10 +157,12 @@ export function DashboardPage() {
       ["InProgress", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, statuses: "InProgress", sortBy: "dueDate", sortDirection: "asc" })],
       ["OnHold", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, statuses: "OnHold", sortBy: "dueDate", sortDirection: "asc" })],
       ["Completed", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, statuses: "Completed", sortBy: "dueDate", sortDirection: "desc" })],
-      // Delayed is past-due-and-unfinished, which is what the overdue endpoint
-      // returns. A plain status filter for "Delayed" would miss an in-progress
-      // task that has already run out of time.
-      ["Delayed", api.getOverdueTasksPage(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE })],
+      // Delayed is past-due-and-unfinished of any status. It must come from this
+      // same endpoint rather than tasks/overdue: that endpoint does not exclude
+      // subtasks, so it reported 77 against this one's 20 for the same
+      // workspace, and the card would still have disagreed with the list its own
+      // click opens. Every other card already counts top-level tasks only.
+      ["Delayed", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, overdue: true, sortBy: "dueDate", sortDirection: "asc" })],
     ];
 
     const settled = await Promise.allSettled(statusQueries.map(([, promise]) => promise));
@@ -246,6 +250,7 @@ export function DashboardPage() {
         departmentId: query.departmentId,
         statuses: query.statuses?.join(","),
         priorities: query.priorities?.join(","),
+        overdue: query.overdueOnly || undefined,
         sortBy: query.sortBy,
         sortDirection: query.sortDirection,
       });
@@ -314,8 +319,8 @@ export function DashboardPage() {
     navigate(notificationTarget(item));
   };
 
-  const handleTaskStatsSelect = (status: string) => {
-    setTaskStatusFilter(status ? status.split(",").filter(Boolean) : []);
+  const handleTaskStatsSelect = (filter: TaskStatFilter) => {
+    setTaskTableFilter(filter);
   };
 
 
@@ -504,7 +509,7 @@ export function DashboardPage() {
         )}
 
         <div className="py-4">
-          <TaskStats buckets={taskBuckets} loading={taskBucketsLoading} onSelectStatus={handleTaskStatsSelect} />
+          <TaskStats buckets={taskBuckets} loading={taskBucketsLoading} onSelectFilter={handleTaskStatsSelect} />
         </div>
 
         <TaskPerformanceTable
@@ -520,7 +525,7 @@ export function DashboardPage() {
           onViewTask={openTaskDetails}
           onEditTask={openTaskEditor}
           canEdit={canEditTasks}
-          initialStatuses={taskStatusFilter}
+          initialFilter={taskTableFilter}
         />
 
       </section>

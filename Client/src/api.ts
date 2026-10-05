@@ -87,6 +87,8 @@ export type TaskListQuery = {
   search?: string;
   statuses?: string;
   priorities?: string;
+  /** Past due and unfinished, regardless of status. */
+  overdue?: boolean;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
 };
@@ -378,14 +380,6 @@ export const api = {
   },
   getOverdueTasks(token: string) {
     return requestList<Task>("tasks/overdue", { token });
-  },
-  /**
-   * Paginated form of the overdue list, for callers that need the true total
-   * alongside a short page of rows. `getOverdueTasks` discards the total
-   * because it unwraps to items only.
-   */
-  getOverdueTasksPage(token: string, query: { page?: number; pageSize?: number } = {}) {
-    return request<PaginatedResponse<Task>>("tasks/overdue", { token, query });
   },
   getEscalatedTasks(token: string) {
     return requestList<Task>("tasks/escalated", { token });

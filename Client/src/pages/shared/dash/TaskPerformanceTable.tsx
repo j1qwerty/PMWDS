@@ -12,8 +12,20 @@ export type TaskPerformanceQuery = {
   departmentId?: string;
   statuses?: string[];
   priorities?: string[];
+  /**
+   * Past due and unfinished, independent of status. Needed because the
+   * dashboard's Delayed card counts that way, and a `statuses=Delayed` filter
+   * excluded every task that overran while still NotStarted.
+   */
+  overdueOnly?: boolean;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
+};
+
+/** Filter seeded from outside the table, e.g. by a dashboard stat card click. */
+export type TaskTableFilter = {
+  statuses?: string[];
+  overdueOnly?: boolean;
 };
 
 type TaskPerformanceProps = {
@@ -29,8 +41,8 @@ type TaskPerformanceProps = {
   onViewTask?: (task: Task) => void | Promise<void>;
   onEditTask?: (task: Task) => void | Promise<void>;
   canEdit?: boolean;
-  /** Seed status filter from outside, e.g. a dashboard stat card click. */
-  initialStatuses?: string[];
+  /** Seed filter from outside, e.g. a dashboard stat card click. */
+  initialFilter?: TaskTableFilter;
 };
 
 // Progress bar color utility
@@ -56,6 +68,29 @@ const getProgressTextColor = (progress: number) => {
 type SortDirection = "asc" | "desc";
 type SortField = "title" | "progress" | "status" | "priority" | "dueDate" | null;
 
+/**
+ * Past due and not finished.
+ *
+ * Identical to the server's /tasks/overdue predicate. Deliberately not the same
+ * as `status === "Delayed"`: a task can blow through its due date while still
+ * sitting in NotStarted, and conflating the two hides the most common kind of
+ * slippage.
+ */
+function isOverdueTask(task: Task): boolean {
+  if (task.status === "Completed" || task.status === "Cancelled") return false;
+  if (!task.dueDate) return false;
+  const due = new Date(task.dueDate).getTime();
+  if (Number.isNaN(due)) return false;
+  return due < Date.now();
+}
+
+/** Whole days past the due date; 0 when not late. */
+function daysOverdue(task: Task): number {
+  const due = new Date(task.dueDate).getTime();
+  if (Number.isNaN(due)) return 0;
+  return Math.max(0, Math.floor((Date.now() - due) / 86_400_000));
+}
+
 const statusOptions = ["NotStarted", "InProgress", "Completed", "Delayed", "OnHold", "Cancelled"];
 const priorityOptions = ["Low", "Medium", "High", "Critical"];
 
@@ -72,14 +107,15 @@ export default function TaskPerformanceTable({
   onViewTask,
   onEditTask,
   canEdit = false,
-  initialStatuses = [],
+  initialFilter = {},
 }: TaskPerformanceProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [canDelete, setCanDelete] = useState(false);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [statusFilter, setStatusFilter] = useState<string[]>(initialStatuses);
+  const [statusFilter, setStatusFilter] = useState<string[]>(initialFilter.statuses ?? []);
+  const [overdueOnly, setOverdueOnly] = useState<boolean>(initialFilter.overdueOnly ?? false);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [projectFilter, setProjectFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -97,16 +133,17 @@ export default function TaskPerformanceTable({
     setCurrentPage(page);
   }, [page]);
 
-  // Adopt a new status seed during render rather than in an effect. A dashboard
-  // stat card click changes initialStatuses, and React's documented pattern for
+  // Adopt a new seed during render rather than in an effect. A dashboard stat
+  // card click changes initialFilter, and React's documented pattern for
   // adjusting state in response to a prop change is to compare against the
   // previously applied value here - doing it in an effect would paint the stale
   // filter for a frame and trigger a second render pass.
-  const seedKey = initialStatuses.join(",");
+  const seedKey = `${(initialFilter.statuses ?? []).join(",")}|${initialFilter.overdueOnly ? "1" : "0"}`;
   const [appliedSeedKey, setAppliedSeedKey] = useState(seedKey);
   if (seedKey !== appliedSeedKey) {
     setAppliedSeedKey(seedKey);
-    setStatusFilter(initialStatuses);
+    setStatusFilter(initialFilter.statuses ?? []);
+    setOverdueOnly(initialFilter.overdueOnly ?? false);
     setCurrentPage(1);
   }
 
@@ -119,6 +156,7 @@ export default function TaskPerformanceTable({
       departmentId: departmentFilter || undefined,
       statuses: statusFilter,
       priorities: priorityFilter,
+      overdueOnly: overdueOnly || undefined,
       sortBy: sortField ?? undefined,
       sortDirection,
     });
@@ -130,6 +168,7 @@ export default function TaskPerformanceTable({
     departmentFilter,
     statusFilter,
     priorityFilter,
+    overdueOnly,
     sortField,
     sortDirection,
     onQueryChange,
@@ -252,10 +291,13 @@ export default function TaskPerformanceTable({
       
       // Priority filter
       const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(task.priority);
-      
+
       const matchesProject = !projectFilter || task.projectId === projectFilter;
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+      // Mirrors the server's overdue predicate so the two paths agree.
+      const matchesOverdue = !overdueOnly || isOverdueTask(task);
+
+      return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesOverdue;
     });
 
     // Sort
@@ -282,7 +324,7 @@ export default function TaskPerformanceTable({
     }
 
     return result;
-  }, [tasks, searchTerm, sortField, sortDirection, statusFilter, priorityFilter, projectFilter, onQueryChange]);
+  }, [tasks, searchTerm, sortField, sortDirection, statusFilter, priorityFilter, projectFilter, overdueOnly, onQueryChange]);
 
   const effectiveTotalCount = totalCount ?? filteredAndSortedTasks.length;
   const effectiveTotalPages = totalPages ?? Math.max(1, Math.ceil(filteredAndSortedTasks.length / itemsPerPage));
@@ -305,7 +347,7 @@ export default function TaskPerformanceTable({
     );
   };
 
-  const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0 || Boolean(projectFilter) || Boolean(departmentFilter) || Boolean(searchTerm);
+  const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0 || Boolean(projectFilter) || Boolean(departmentFilter) || Boolean(searchTerm) || overdueOnly;
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
@@ -319,18 +361,45 @@ export default function TaskPerformanceTable({
               "The filters above narrow the list by project, department, status, priority, or text - the text box also matches project and assignee names.",
               "This is the whole workspace, not just your own tasks. The task cards above it count only yours.",
               "Click a task name to open its full details, or use the action buttons to edit or delete it.",
-              "Sorting is by any column heading, and paging is server-side, so the counts stay correct on every page."
+              "Sorting is by any column heading, and paging is server-side, so the counts stay correct on every page.",
+              "Overdue and Delayed are not the same thing. Overdue is a date - unfinished and past its due date. Delayed is a status someone set.",
+              'A task can be overdue while still showing "Not Started". Those rows carry a red "Nd overdue" badge so the two are never confused.',
+              "The Overdue only chip appears when the list is filtered to past-due tasks of any status, which is what clicking the dashboard's Delayed card does."
             ]}
             note="Progress is the task's own percentage, or the average of its subtasks when it has any."
           />
         </div>
         <div className="flex items-center gap-3">
+          {/*
+            The overdue view is not expressed by the status dropdown, so it needs
+            its own chip. Without it the list looks like an unfiltered one with
+            odd numbers in it and the user has no way to tell why.
+          */}
+          {overdueOnly && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-rose-700">
+              <span className="material-symbols-outlined text-[13px]">running_with_errors</span>
+              Overdue only
+              <span className="font-normal text-rose-500">· any status</span>
+              <button
+                onClick={() => {
+                  setOverdueOnly(false);
+                  setCurrentPage(1);
+                }}
+                title="Stop filtering to overdue tasks"
+                aria-label="Clear the overdue filter"
+                className="ml-0.5 text-rose-400 hover:text-rose-700"
+              >
+                <Icon name="close" size={11} />
+              </button>
+            </span>
+          )}
           {hasActiveFilters && (
             <button
               onClick={() => {
                 setSearchTerm("");
                 setProjectFilter("");
                 setDepartmentFilter("");
+                setOverdueOnly(false);
                 clearStatusFilter();
                 clearPriorityFilter();
               }}
@@ -513,6 +582,14 @@ export default function TaskPerformanceTable({
               const progressBarColor = getProgressColor(progress);
               const progressTextColor = getProgressTextColor(progress);
 
+              // Late is a fact about the date; Delayed is a status someone set.
+              // A task can be late while still sitting in NotStarted, so the two
+              // are shown as separate badges rather than merged - otherwise the
+              // overdue list looks full of "Not Started" and reads as wrong.
+              const late = isOverdueTask(task);
+              const flaggedDelayed = task.status === "Delayed";
+              const lateDays = late ? daysOverdue(task) : 0;
+
               return (
                 <tr key={task.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                   <td className="py-4 px-2">
@@ -547,12 +624,39 @@ export default function TaskPerformanceTable({
                     </div>
                   </td>
                   <td className="py-4 px-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}>{task.status}</span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}>{task.status}</span>
+                      {/*
+                        Only shown when the task is late but its status does not
+                        already say so. A task flagged Delayed needs no second
+                        badge; a Not Started task that overran does.
+                      */}
+                      {late && !flaggedDelayed && (
+                        <span
+                          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}. Its status is still ${task.status}, so nothing has flagged it yet.`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
+                        >
+                          <span className="material-symbols-outlined text-[11px] leading-none">schedule</span>
+                          {lateDays}d overdue
+                        </span>
+                      )}
+                      {late && flaggedDelayed && (
+                        <span
+                          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}.`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-500 border border-rose-100 whitespace-nowrap"
+                        >
+                          <span className="material-symbols-outlined text-[11px] leading-none">schedule</span>
+                          {lateDays}d
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 px-2">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}>{task.priority}</span>
                   </td>
-                  <td className="py-4 px-2 text-slate-500">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not set"}</td>
+                  <td className={`py-4 px-2 ${late ? "font-semibold text-rose-600" : "text-slate-500"}`}>
+                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not set"}
+                  </td>
                   <td className="py-4 px-2">
                     <div className="flex items-center gap-0.5">
                       <button

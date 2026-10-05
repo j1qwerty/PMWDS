@@ -18,6 +18,18 @@ export type TaskStatBucket = {
   items: Task[];
 };
 
+/**
+ * What a card click asks the task table for.
+ *
+ * Deliberately able to express "past due" rather than only a status list: the
+ * Delayed card counts every overdue task whatever its status, so asking the
+ * table for status=Delayed would open a list missing most of them.
+ */
+export type TaskStatFilter = {
+  statuses?: string[];
+  overdueOnly?: boolean;
+};
+
 interface StatCardProps {
   icon: React.ReactNode;
   value: number;
@@ -135,8 +147,8 @@ const TaskStats: React.FC<{
    * performance table's status filter so the click filters the list already
    * on screen instead of navigating away to an unrelated route.
    */
-  onSelectStatus?: (status: string) => void;
-}> = ({ buckets = {}, loading = false, onSelectStatus }) => {
+  onSelectFilter?: (filter: TaskStatFilter) => void;
+}> = ({ buckets = {}, loading = false, onSelectFilter }) => {
   const emptyBucket: TaskStatBucket = { total: 0, items: [] };
 
   const card = (kind: TaskStatKind) => {
@@ -172,7 +184,7 @@ const TaskStats: React.FC<{
   const completedCard = card("Completed");
   const delayedCard = card("Delayed");
 
-  const select = (statuses: string[]) => () => onSelectStatus?.(statuses.join(","));
+  const select = (filter: TaskStatFilter) => () => onSelectFilter?.(filter);
 
   const stats: StatCardProps[] = [
     {
@@ -185,7 +197,7 @@ const TaskStats: React.FC<{
       rows: totalCard.rows,
       footer: totalCard.footer,
       to: '/',
-      onClick: select([]),
+      onClick: select({}),
       tip: {
         summary: 'All work items across every project you have access to, whatever state they are in.',
         points: [
@@ -208,7 +220,7 @@ const TaskStats: React.FC<{
       rows: inProgressCard.rows,
       footer: inProgressCard.footer,
       to: '/',
-      onClick: select(["InProgress"]),
+      onClick: select({ statuses: ["InProgress"] }),
       tip: {
         summary: 'Tasks where work has already begun. These are the ones moving right now.',
         points: [
@@ -227,7 +239,7 @@ const TaskStats: React.FC<{
       rows: onHoldCard.rows,
       footer: onHoldCard.footer,
       to: '/',
-      onClick: select(["OnHold"]),
+      onClick: select({ statuses: ["OnHold"] }),
       tip: {
         summary: 'Tasks that are paused on purpose - blocked on a decision, a dependency, or waiting on someone else. They are not counted as late.',
         points: [
@@ -246,7 +258,7 @@ const TaskStats: React.FC<{
       rows: completedCard.rows,
       footer: completedCard.footer,
       to: '/',
-      onClick: select(["Completed"]),
+      onClick: select({ statuses: ["Completed"] }),
       tip: {
         summary: 'Work that has been finished, either marked Complete or ticked off to 100%.',
         points: [
@@ -264,14 +276,16 @@ const TaskStats: React.FC<{
       rows: delayedCard.rows,
       footer: delayedCard.footer,
       to: '/',
-      onClick: select(["Delayed"]),
+      onClick: select({ overdueOnly: true }),
       tip: {
         summary: 'Tasks that have slipped past the date they were due. The figure on each row is how many days late it is.',
         points: [
           'A task counts as delayed when it is not finished, not cancelled, and today is already past its due date.',
+          'That is a date, not a status, so it includes tasks still sitting in Not Started that simply ran out of time.',
           'Hover to see which are the furthest behind, with the project and milestone each one belongs to.',
+          'Click the card to open that list - each row says how many days late it is, and whether anything has flagged it yet.',
         ],
-        note: 'The count comes from the same overdue query as the Overdue list, so the two always agree.',
+        note: 'Counted the same way as the Total card, so subtasks are not included and this number always matches the list it opens.',
       },
     },
   ];

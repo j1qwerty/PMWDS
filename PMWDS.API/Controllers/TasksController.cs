@@ -59,6 +59,7 @@ public class TasksController : BaseApiController
         [FromQuery] string? search,
         [FromQuery] string[]? statuses,
         [FromQuery] string[]? priorities,
+        [FromQuery] bool? overdue,
         [FromQuery] string? sortBy,
         [FromQuery] string? sortDirection,
         [FromQuery] PaginationQuery pagination,
@@ -121,6 +122,20 @@ public class TasksController : BaseApiController
         if (priorityValues.Count > 0)
         {
             query = query.Where(task => priorityValues.Contains(task.Priority));
+        }
+
+        // "Overdue" is a date fact, not a status. Filtering on status=Delayed
+        // misses every task that ran out of time while still sitting in
+        // NotStarted, which is most of them in practice - so the dashboard's
+        // Delayed card counted them and the table it opened could not show them.
+        // Deliberately identical to the /tasks/overdue predicate so the card and
+        // the list it opens always report the same number.
+        if (overdue == true)
+        {
+            query = query.Where(task =>
+                task.DueDate < DateTime.UtcNow &&
+                task.Status != TaskStatus.Completed &&
+                task.Status != TaskStatus.Cancelled);
         }
 
         query = (sortBy?.Trim().ToLowerInvariant(), sortDirection?.Trim().ToLowerInvariant()) switch
