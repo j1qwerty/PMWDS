@@ -1,4 +1,5 @@
 import type { Milestone, MilestoneDependency } from "../../../types";
+import { dependencyMilestoneName, isOutOfScopeMilestone } from "../../shared";
 
 interface DependenciesPanelProps {
   dependencies: MilestoneDependency[];
@@ -17,7 +18,11 @@ export function DependenciesPanel({
   onEdit,
   onDelete,
 }: DependenciesPanelProps) {
-  const getMilestoneName = (id: string) => milestones.find((m) => m.id === id)?.name || "Unknown";
+  // Progress and status still come from the local list, because the dependency
+  // payload carries only names for the other milestone. For an out-of-scope
+  // prerequisite these therefore read as 0% / blank, which is why the condition chip
+  // is not shown at all in that case - better to say nothing than to assert
+  // "0% / 50% threshold" about a milestone nobody here can see.
   const getMilestoneProgress = (id: string) => milestones.find((m) => m.id === id)?.progressPercentage || 0;
   const getMilestoneStatus = (id: string) => milestones.find((m) => m.id === id)?.status || "";
 
@@ -69,6 +74,7 @@ export function DependenciesPanel({
         )}
 
         {dependencies.map((dep) => {
+          const prereqInScope = !isOutOfScopeMilestone(dep, "prerequisite", milestones);
           const prereqProgress = getMilestoneProgress(dep.prerequisiteMilestoneId);
           const prereqStatus = getMilestoneStatus(dep.prerequisiteMilestoneId);
           return (
@@ -85,28 +91,48 @@ export function DependenciesPanel({
                   {dep.isMet ? "check_circle" : "block"}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-medium text-slate-700 truncate leading-tight">
-                    {getMilestoneName(dep.prerequisiteMilestoneId)}
+                  <p className={`text-[10px] font-medium truncate leading-tight ${
+                    prereqInScope ? "text-slate-700" : "text-slate-500 italic"
+                  }`}>
+                    {dependencyMilestoneName(dep, "prerequisite", milestones)}
                   </p>
                   <p className="text-[9px] text-slate-400">blocks</p>
-                  <p className="text-[10px] font-medium text-slate-700 truncate leading-tight">
-                    {getMilestoneName(dep.dependentMilestoneId)}
+                  <p
+                    className={`text-[10px] font-medium truncate leading-tight ${
+                      isOutOfScopeMilestone(dep, "dependent", milestones)
+                        ? "text-slate-500 italic"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {dependencyMilestoneName(dep, "dependent", milestones)}
                   </p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {dep.type === "CompletionBased" ? (
-                      <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
-                        prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                      }`}>
-                        Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                  {prereqInScope ? (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {dep.type === "CompletionBased" ? (
+                        <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
+                          prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                        }`}>
+                          Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                        </span>
+                      ) : (
+                        <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
+                          prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+                        }`}>
+                          {prereqProgress}% / {dep.thresholdPercentage}%
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    // The prerequisite belongs to a department this person cannot
+                    // see, so its status and progress are genuinely unknown here.
+                    // Saying "Must complete ✗" would be asserting something we
+                    // cannot know.
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-slate-100 text-slate-500">
+                        Another department
                       </span>
-                    ) : (
-                      <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
-                        prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
-                      }`}>
-                        {prereqProgress}% / {dep.thresholdPercentage}%
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 {canManage && (
                   <div className="flex items-center gap-0.5 shrink-0">

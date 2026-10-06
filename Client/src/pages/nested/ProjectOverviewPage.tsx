@@ -15,6 +15,8 @@ import {
   usePermission,
   useToast,
   UtilizationCertificates,
+  dependencyMilestoneName,
+  isOutOfScopeMilestone,
 } from "../shared";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
@@ -293,7 +295,6 @@ export function ProjectOverviewPage() {
     }
   };
 
-  const getMilestoneName = (id: string) => ws.milestones.find((m) => m.id === id)?.name || "Unknown";
   const getMilestoneProgress = (id: string) => ws.milestones.find((m) => m.id === id)?.progressPercentage || 0;
   const getMilestoneStatus = (id: string) => ws.milestones.find((m) => m.id === id)?.status || "";
 
@@ -763,26 +764,34 @@ export function ProjectOverviewPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="text-[11px] font-semibold text-amber-700 truncate max-w-[130px]">
-                                  {getMilestoneName(dep.prerequisiteMilestoneId)}
+                                  {dependencyMilestoneName(dep, "prerequisite", ws.milestones)}
                                 </span>
                                 <span className="text-[9px] text-slate-400 shrink-0">blocks</span>
                                 <span className="text-[11px] font-semibold text-slate-700 truncate max-w-[130px]">
-                                  {getMilestoneName(dep.dependentMilestoneId)}
+                                  {dependencyMilestoneName(dep, "dependent", ws.milestones)}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 mt-1">
-                                {dep.type === "CompletionBased" ? (
-                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                                    }`}>
-                                    Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                              {isOutOfScopeMilestone(dep, "prerequisite", ws.milestones) ? (
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-slate-100 text-slate-500">
+                                    Another department
                                   </span>
-                                ) : (
-                                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
-                                    }`}>
-                                    {prereqProgress}% / {dep.thresholdPercentage}%
-                                  </span>
-                                )}
-                              </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 mt-1">
+                                  {dep.type === "CompletionBased" ? (
+                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                                      }`}>
+                                      Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+                                      }`}>
+                                      {prereqProgress}% / {dep.thresholdPercentage}%
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>

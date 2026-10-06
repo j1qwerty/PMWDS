@@ -40,6 +40,10 @@ export {
   canManageMilestoneDependencies,
   MILESTONE_MANAGER_PERMISSION_CODES,
 } from "./milestonePermissions";
+export {
+  dependencyMilestoneName,
+  isOutOfScopeMilestone,
+} from "./dependencyMilestoneNames";
 
 export {
   departmentColorPalette,
