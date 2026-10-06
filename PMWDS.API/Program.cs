@@ -389,10 +389,14 @@ if (exposeApiDocs)
 }
 
 app.UseHttpsRedirection();
-
 // Serve everything under the one resolved root: /files exposes the documents and seeded
 // profile images the seeder writes, /avatars exposes uploaded avatars. Both are served from
 // storageRoot so what was written is always what is served.
+//
+// storageRoot, azureStorageSettings and fileStorageSettings are resolved once, before
+// builder.Build(), at line ~339, and PostConfigure pins FileStorage:BasePath to it. That
+// single resolution is deliberate: resolving the root again per consumer is how the two halves
+// end up disagreeing about where uploads are written versus where they are served from.
 var filesRequestPath = azureStorageSettings.LocalBaseUrl ?? "/files";
 Directory.CreateDirectory(storageRoot);
 Directory.CreateDirectory(Path.Combine(storageRoot, fileStorageSettings.DocumentsPath));
