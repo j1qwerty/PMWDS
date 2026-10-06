@@ -29,13 +29,13 @@ export function AIRecommendations({ project, health, tasks, burnout }: AIRecomme
         </div>
         <InfoTip
           title="Recommendations"
-          summary="Concrete things worth doing about the project you are looking at, most urgent first. Each one names the data that triggered it."
+          summary="Suggestions on "
           points={[
-            "Budget overrun: raised when spend is above the planned budget.",
-            "Overdue tasks: lists the ones past their due date, furthest behind first.",
-            "Unassigned work: open tasks with nobody responsible.",
-            "Stalled tasks: a start date in the past but no progress recorded.",
-            "Team load: anyone whose burnout risk is 60% or above.",
+            "Budget overrun",
+            "Overdue tasks",
+            "Unassigned work",
+            "Stalled tasks",
+            "Team load",
           ]}
           note="When the AI health service is available its own weaknesses are added to the end of the list."
         />

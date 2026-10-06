@@ -87,11 +87,8 @@ export function ReportGenerator({ filters, generatingReportType, isGeneratingTyp
             title="Report Generation"
             summary="Each tile asks the configured AI provider to write a report from the project, task, and budget data matching your filters."
             points={[
-              "Project Status and Budget Variance need a project selected in the filters above. The other three can run across a whole department.",
-              "Generation can take a minute or more on a large model, but it keeps running if you navigate away.",
-              "If the provider fails, you get an error explaining what to fix rather than an empty report."
+              
             ]}
-            note="Generated reports are saved so you can reopen or download them later."
           />
         </span>
       </h3>

@@ -56,14 +56,9 @@ export function HealthCard({ project, health, tasks }: HealthCardProps) {
           </span>
           <InfoTip
             title="Overall Health Score"
-            summary="One number for how well a project is going, from 0% to 100%. Higher is better. Anything under 60% means the project needs attention."
+            summary=""
             points={[
-              "Schedule (40% of the score): compares how much work is finished against how much of the planned time has already passed.",
-              "Budget (30%): compares money spent against budget, adjusted for how much of the work is actually done.",
-              "Team (30%): the share of tasks that are not past their due date.",
-              'A project marked "AI analysed" was scored by the AI service. "Calculated" means the same formula was applied directly to this project\'s data because AI was unavailable.',
             ]}
-            note="A project with no tasks yet scores on its dates and budget alone, which can read as healthy before any work has started."
           />
         </div>
       </div>

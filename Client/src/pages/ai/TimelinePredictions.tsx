@@ -31,14 +31,10 @@ export function TimelinePredictions({ projects }: TimelinePredictionsProps) {
         </div>
         <InfoTip
           title="Timeline Predictions"
-          summary="Where each open project is heading, and roughly when it will finish if the current pace holds."
+          summary="Shows timeline for each project."
           points={[
-            "The bar is the project's real completion percentage.",
-            "The projected date assumes work continues at the same rate it has gone so far - the elapsed time divided by the work done.",
-            "At Risk means the projection is more than a week past the planned end date. Ahead means more than three days early. Otherwise it is On Track.",
-            "Finished projects are left out, since there is nothing left to predict.",
+          
           ]}
-          note="This is a straight-line projection, so it will move as progress is reported. It is a planning aid, not a commitment."
         />
       </div>
 

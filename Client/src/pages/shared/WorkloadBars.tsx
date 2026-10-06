@@ -83,11 +83,8 @@ export function WorkloadBars({
           title={title}
           summary="How much work each department is carrying, as a percentage of a fair share."
           points={[
-            "A department's score is its open tasks per member, compared against the same figure across the whole organization.",
-            "Under 80% is shown as Optimal, 80% or more as Capacity, and 100% or more as Overflow.",
-            "The 'active' figure is the number of tasks in that department that are not yet finished.",
+         
           ]}
-          note="A score above 100% does not mean anyone is at 100% of their ability - it means the department holds more open work per person than the workspace average."
         />
       </div>
       <div className="flex flex-col gap-lg mt-md">

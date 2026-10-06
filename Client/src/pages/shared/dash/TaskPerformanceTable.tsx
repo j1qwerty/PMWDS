@@ -360,7 +360,6 @@ export default function TaskPerformanceTable({
             points={[
               'A task can be overdue while still showing "Not Started". Those rows carry a red badge showing how many days past due they are, such as "7d", so the two are never confused.',
             ]}
-            note="Progress is the task's own percentage, or the average of its subtasks when it has any."
           />
         </div>
         <div className="flex items-center gap-3">

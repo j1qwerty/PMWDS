@@ -44,12 +44,8 @@ export function RiskPredictionCard({ project, health, tasks }: RiskPredictionCar
             title="Risk Prediction"
             summary="Three separate chances that something on this project goes wrong, each from 0% to 100%. Higher means more likely."
             points={[
-              "Budget Overrun: money spent compared with budget, scaled by how much work is actually done.",
-              "Schedule Delay: how far behind the project is against its own planned dates.",
-              "Resource Conflict: how much of the work is past due, which is the usual sign people are stretched.",
-              "Under 40% is Low, 40-60% Medium, 60-80% High, and above 80% Critical.",
+             
             ]}
-            note="These are calculated from the project's real dates, budget and task list. The AI service refines them when it is available."
           />
         </div>
       </div>

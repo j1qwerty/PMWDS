@@ -385,11 +385,8 @@ export function AIPage() {
                   summary="The chance that one specific task will finish late, from 0% to 100%."
                   points={[
                     "The AI model weighs how much of the time budget is left against how much of the work is done.",
-                    "It also counts how late the due date is, whether the task has already slipped, and whether the assignee is overloaded.",
-                    "Risk Level is a plain-language band: Low, Medium, High, or Critical.",
-                    "The factors listed are the specific reasons behind the number.",
+            
                   ]}
-                  note="Predicted completion is a straight-line estimate from today to the due date adjusted by the risk."
                 />
               </div>
               <div className="space-y-3">

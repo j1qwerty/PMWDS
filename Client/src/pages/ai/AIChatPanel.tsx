@@ -35,13 +35,9 @@ export function AIChatPanel({
           title="AI Assistant"
           summary="Ask a plain-language question and get an answer based on your real project data."
           points={[
-            "The assistant is given your projects, tasks, subtasks, milestones and document lists before it answers. It is not guessing, and it will not ask you to upload a file or connect another tool.",
-            "It only sees what your role allows. A department head cannot reach another department's projects by asking a question, and the assistant will say so if asked about something you cannot see.",
-            "Questions that name a subject get the most detail: asking about tasks returns your own assignments and open work across your projects, asking about documents returns document titles and metadata.",
-            "It reads and explains only. It cannot change a task, reassign anyone, or update a project.",
-            "If the provider is rate limited or the API key is wrong, it says which, rather than claiming you have no data.",
+            "The assistant is given your projects, tasks, subtasks, milestones and document lists before it answers. ",
           ]}
-          note={provider ? `Answering with ${provider}${model ? ` using ${model}` : ""}.` : undefined}
+          // note={provider ? `Answering with ${provider}${model ? ` using ${model}` : ""}.` : undefined}
         />
       </div>
 

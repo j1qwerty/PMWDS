@@ -36,14 +36,11 @@ export function BurnoutPanel({ burnout, isFallback = false }: BurnoutPanelProps)
           )}
           <InfoTip
             title="Burnout Risk"
-            summary="How likely each person is to be overloaded, from 0% to 100%. It is a workload signal, not a judgement about the person."
+            summary="How likely each person is to be overloaded, from 0% to 100%."
             points={[
               "Workload score: how much open work someone has compared with a fair share across the team.",
-              "Burnout risk rises when someone carries more than their share, and rises further if their tasks are already late.",
               "Under 40% is Low, 40-60% Medium, 60-80% High, and above 80% Critical.",
-              "The fix is almost always redistribution, not more effort from that person.",
             ]}
-            note='"Calculated" means the AI endpoint was unavailable and the same formula was applied directly to the live task list.'
           />
         </div>
       </div>

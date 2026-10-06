@@ -167,14 +167,10 @@ export function Activity({
           )}
           <InfoTip
             title="Activity"
-            summary="How much happened in your workspace on each of the last seven days."
+            summary="Activity on last seven days."
             points={[
-              "Each point counts activity log entries recorded that day: tasks created, updated, commented on, escalated or completed, plus project and milestone changes.",
-              "The label under each point is the real calendar date, not just the weekday.",
-              "Hover a point, or its label, to see what was logged that day. Click to keep it open.",
-              "A day at zero means nothing was logged, not that the data is missing.",
+              "tasks created, updated, commented on, escalated or completed, plus project and milestone changes.",
             ]}
-            note="This is a count of recorded events, not a measure of how much work was done."
           />
         </div>
       </div>

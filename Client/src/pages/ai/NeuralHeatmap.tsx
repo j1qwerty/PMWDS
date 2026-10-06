@@ -33,12 +33,9 @@ export function NeuralHeatmap({ project, tasks, loading = false }: NeuralHeatmap
             title="Workload Heatmap"
             summary="How much work each milestone is currently carrying. A taller bar means more unfinished work sitting in that milestone."
             points={[
-              "Each bar is one milestone from this project's own task list, tallest first.",
-              "The bar height is roughly two-thirds how much of that milestone is still open, plus one-third how much of it is past due.",
-              "A bar turns red once the milestone is at 60% load or more, or when 40% of its tasks are late.",
+              
               "Milestones with no tasks are grouped under 'Unassigned'.",
             ]}
-            note="This replaces the earlier sample chart, which showed invented department names rather than your milestones."
           />
         </div>
       </div>
