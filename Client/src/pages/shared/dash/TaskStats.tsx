@@ -42,10 +42,17 @@ interface StatCardProps {
   to: string;
   tip: { summary: string; points?: string[]; note?: string };
   onClick?: () => void;
+  /**
+   * Whether to show the "?" explainer in the corner.
+   *
+   * Hidden on the dashboard at the owner's request - the copy is still here and
+   * still drives the hover panel, so this is a display switch rather than a removal.
+   */
+  showInfoTip?: boolean;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  icon, value, label, statusKey, heading, hint, rows, footer, to, tip, onClick,
+  icon, value, label, statusKey, heading, hint, rows, footer, to, tip, onClick, showInfoTip = true,
 }) => {
   const navigate = useNavigate();
   const colors = getStatusColor(statusKey);
@@ -68,17 +75,22 @@ const StatCard: React.FC<StatCardProps> = ({
       {/* Animated blur background */}
       <div className={`absolute bottom-1/2 right-0 w-24 h-24 ${colors.bg} rounded-full blur-lg group-hover:opacity-80 transition-all pointer-events-none opacity-40`} />
 
-      {/* Top row - Icon and Label */}
-      <div className="relative flex items-center gap-2 mb-2 pr-5">
+      {/* Top row - Icon and Label.
+          The right padding only existed to keep the label clear of the absolutely
+          positioned "?", so it goes when the "?" does. Leaving it would leave a
+          visible gap at the end of every label. */}
+      <div className={`relative flex items-center gap-2 mb-2 ${showInfoTip ? "pr-5" : ""}`}>
         <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
           {icon}
         </div>
         <span className="text-xs font-medium text-slate-500 uppercase tracking-wider truncate">
           {label}
         </span>
-        <span className="absolute top-0 right-0">
-          <InfoTip title={heading} summary={tip.summary} points={tip.points} note={tip.note} />
-        </span>
+        {showInfoTip && (
+          <span className="absolute top-0 right-0">
+            <InfoTip title={heading} summary={tip.summary} points={tip.points} note={tip.note} />
+          </span>
+        )}
       </div>
 
       {/* Value */}
@@ -148,7 +160,9 @@ const TaskStats: React.FC<{
    * on screen instead of navigating away to an unrelated route.
    */
   onSelectFilter?: (filter: TaskStatFilter) => void;
-}> = ({ buckets = {}, loading = false, onSelectFilter }) => {
+  /** Hides the "?" explainer on every card. See StatCardProps.showInfoTip. */
+  showInfoTip?: boolean;
+}> = ({ buckets = {}, loading = false, onSelectFilter, showInfoTip = true }) => {
   const emptyBucket: TaskStatBucket = { total: 0, items: [] };
 
   const card = (kind: TaskStatKind) => {
@@ -293,7 +307,7 @@ const TaskStats: React.FC<{
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {stats.map((stat) => (
-        <StatCard key={stat.label} {...stat} />
+        <StatCard key={stat.label} {...stat} showInfoTip={showInfoTip} />
       ))}
     </div>
   );

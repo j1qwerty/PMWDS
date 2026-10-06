@@ -441,6 +441,9 @@ export function DashboardPage() {
               newProjects={projects.filter((p) => p.status === "Planned" || p.status === "NotStarted").length}
               pendingProjects={projects.filter((p) => p.status === "InProgress" || p.status === "OnHold" || p.status === "Delayed").length}
               doneProjects={projects.filter((p) => p.status === "Completed" || p.progressPercentage === 100).length}
+              // The "?" explainer is hidden here at the owner's request. The copy stays
+              // in ProjectOverview, so passing true again brings it back.
+              showInfoTip={false}
             />
 
             {/* Activity Chart - the task filter dropdown is hidden via SHOW_ACTIVITY_FILTER */}
@@ -509,7 +512,14 @@ export function DashboardPage() {
         )}
 
         <div className="py-4">
-          <TaskStats buckets={taskBuckets} loading={taskBucketsLoading} onSelectFilter={handleTaskStatsSelect} />
+          <TaskStats
+            buckets={taskBuckets}
+            loading={taskBucketsLoading}
+            onSelectFilter={handleTaskStatsSelect}
+            // The "?" explainer is hidden here at the owner's request. The hover
+            // panel on each card still works and still uses the same copy.
+            showInfoTip={false}
+          />
         </div>
 
         <TaskPerformanceTable

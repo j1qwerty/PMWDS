@@ -5,12 +5,21 @@ interface ProjectOverviewProps {
   newProjects?: number;
   pendingProjects?: number;
   doneProjects?: number;
+  /**
+   * Whether to show the "?" explainer in the corner.
+   *
+   * Hidden on the dashboard at the owner's request. The copy is untouched and still
+   * rendered wherever the prop is left on, so this is a display switch rather than a
+   * removal.
+   */
+  showInfoTip?: boolean;
 }
 
-export function ProjectOverview({ 
-  newProjects = 0, 
-  pendingProjects = 0, 
-  doneProjects = 0 
+export function ProjectOverview({
+  newProjects = 0,
+  pendingProjects = 0,
+  doneProjects = 0,
+  showInfoTip = true
 }: ProjectOverviewProps) {
   const total = newProjects + pendingProjects + doneProjects;
   
@@ -28,16 +37,18 @@ export function ProjectOverview({
     <div className={`bg-white rounded-2xl p-6 shadow-md border border-slate-100 ${DASHBOARD_OVERVIEW_CARD_HEIGHT} flex flex-col overflow-hidden`}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-semibold text-slate-700">Project Overview</h3>
-        <InfoTip
-          title="Project Overview"
-          summary="A split of every project in your workspace by where it sits in its lifecycle."
-          points={[
-            "New: planned or not yet started.",
-            "Pending: started but unfinished - this includes on hold and delayed projects.",
-            "Done: finished, or with all tasks complete.",
-          ]}
-          note="Each slice is sized by its share of the total, so a workspace with no projects shows an empty ring rather than a misleading full one."
-        />
+        {showInfoTip && (
+          <InfoTip
+            title="Project Overview"
+            summary="A split of every project in your workspace by where it sits in its lifecycle."
+            points={[
+              "New: planned or not yet started.",
+              "Pending: started but unfinished - this includes on hold and delayed projects.",
+              "Done: finished, or with all tasks complete.",
+            ]}
+            note="Each slice is sized by its share of the total, so a workspace with no projects shows an empty ring rather than a misleading full one."
+          />
+        )}
       </div>
       
       {/* flex-1 so the donut is centred in whatever height the card has, rather
