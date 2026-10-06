@@ -1,4 +1,5 @@
 import type { RoleRecord } from "../../types";
+import { roleDisplayName } from "../../permissions";
 import { GlassCard, GradientButton } from "../shared";
 
 interface RolesTableProps {
@@ -44,7 +45,7 @@ export function RolesTable({ roles, onEdit, onDelete, onCreate, isAdmin }: Roles
                       <span className="material-symbols-outlined text-indigo-600 text-lg">shield</span>
                     </div>
                     <div>
-                      <div className="font-semibold text-slate-800">{role.name}</div>
+                      <div className="font-semibold text-slate-800">{roleDisplayName(role.name)}</div>
                       {role.description && (
                         <div className="text-xs text-slate-400 mt-0.5">{role.description}</div>
                       )}

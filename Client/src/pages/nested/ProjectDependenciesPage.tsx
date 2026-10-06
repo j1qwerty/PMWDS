@@ -4,7 +4,6 @@ import { useAuth } from "../../auth";
 import {
   LoadingPage,
   useNavHeader,
-  usePermission,
   useToast,
 } from "../shared";
 import { useProjectWorkspace } from "./nestedShared";
@@ -14,11 +13,13 @@ import { MilestoneDependencyPanel } from "../projectsK/components";
 export function ProjectDependenciesPage() {
   const ws = useProjectWorkspace();
   const { auth } = useAuth();
-  const perm = usePermission();
   const { setNavHeader } = useNavHeader();
   const { addToast } = useToast();
 
-  const canManage = perm.isSuperAdmin || perm.roles.includes("Director");
+  // Server-computed per project: superadmin, this project's manager, the primary
+  // department's head, or a director. Permission codes cannot express this, because
+  // a department head of another department holds PROJECT_MANAGE too.
+  const canManage = ws.canManageDependencies;
 
   useEffect(() => {
     if (ws.project) {

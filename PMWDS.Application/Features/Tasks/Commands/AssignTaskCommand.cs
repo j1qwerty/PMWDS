@@ -15,13 +15,13 @@ public class AssignTaskCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IAuditService _audit;
     private readonly INotificationService _notifications;
-    private readonly IAIService _ai;
+    private readonly IRecommendationService _ai;
     public AssignTaskCommandHandler(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
     IAuditService audit,
     INotificationService notifications,
-    IAIService ai)
+    IRecommendationService ai)
     {
         _uow = uow;
         _currentUser = currentUser;
@@ -45,16 +45,18 @@ public class AssignTaskCommandHandler
             finalAssigneeId =
             recommendation.RecommendedUserId;
         }
+        var finalAssigneeGuid = ParseUserId(finalAssigneeId, "assignee");
+        var assignedBy = ParseUserId(_currentUser.UserId, "current user");
         var assignee = await _uow.Users
         .GetByIdAsync(
-        Guid.Parse(finalAssigneeId), ct)
+        finalAssigneeGuid, ct)
         ?? throw new NotFoundException(
         "User", finalAssigneeId);
         var oldAssignee = task.AssignedToUserId;
         task.AssignTo(
-        finalAssigneeId,
-        _currentUser.UserId ?? "system");
-        var assignment = Domain.Entities.TaskAssignment.Create(task.Id, finalAssigneeId);
+        finalAssigneeGuid,
+        assignedBy);
+        var assignment = Domain.Entities.TaskAssignment.Create(task.Id, finalAssigneeGuid);
         await _uow.TaskAssignments.AddAsync(assignment, ct);
         await _uow.SaveChangesAsync(ct);
         await _notifications.SendTaskAssignmentAlertAsync(
@@ -66,7 +68,7 @@ public class AssignTaskCommandHandler
         new { AssignedTo = oldAssignee },
         new
         {
-            AssignedTo = finalAssigneeId,
+            AssignedTo = finalAssigneeGuid,
             AIUsed = req.UseAIRecommendation
         },
         isAI: req.UseAIRecommendation,
@@ -75,4 +77,9 @@ public class AssignTaskCommandHandler
         ct: ct);
         return TaskDto.FromEntity(task);
     }
+
+    private static Guid ParseUserId(string? userId, string fieldName)
+        => Guid.TryParse(userId, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException($"Invalid {fieldName} id.");
 }

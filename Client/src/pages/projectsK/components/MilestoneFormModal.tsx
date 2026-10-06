@@ -9,6 +9,19 @@ interface MilestoneFormModalProps {
   initialData?: Milestone;
   departments: Department[];
   organizations: OrganizationRecord[];
+  /**
+   * Departments already assigned to this project.
+   *
+   * The dropdown is limited to these. It used to offer every department in the
+   * user's organisation, so picking one the project did not have produced a 400 from
+   * the API with the reason buried - the save simply failed and nothing on screen
+   * said why.
+   *
+   * Left empty, no restriction is applied: the server now adds the department to the
+   * project, and a project whose department list has not loaded yet should not
+   * present an empty picker.
+   */
+  projectDepartmentIds?: string[];
   isSuperAdmin: boolean;
   userOrganizationId?: string | null;
   projectEndDate: string;
@@ -17,7 +30,7 @@ interface MilestoneFormModalProps {
   serverError?: string;
 }
 
-export function MilestoneFormModal({ open, projectId, initialData, departments, organizations, isSuperAdmin, userOrganizationId, projectEndDate, onSubmit, onClose, serverError }: MilestoneFormModalProps) {
+export function MilestoneFormModal({ open, projectId, initialData, departments, organizations, projectDepartmentIds, isSuperAdmin, userOrganizationId, projectEndDate, onSubmit, onClose, serverError }: MilestoneFormModalProps) {
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -46,15 +59,36 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
   }, [open, initialData, projectEndDate]);
 
   const filteredDepartments = useMemo(() => {
+    let list = departments;
+
+    // Organisation scope first, then narrow to the project's own departments.
     if (isSuperAdmin) {
-      if (!form.organizationId) return departments;
-      return departments.filter((d) => d.organizationId === form.organizationId);
+      if (form.organizationId) {
+        list = list.filter((d) => d.organizationId === form.organizationId);
+      }
+    } else if (userOrganizationId) {
+      list = list.filter((d) => d.organizationId === userOrganizationId);
     }
-    if (userOrganizationId) {
-      return departments.filter((d) => d.organizationId === userOrganizationId);
+
+    if (projectDepartmentIds && projectDepartmentIds.length > 0) {
+      const allowed = new Set(projectDepartmentIds);
+      const restricted = list.filter((d) => allowed.has(d.id));
+
+      // Keep the milestone's current department selectable even when it is not in the
+      // project's list. Seeded data contains such rows, and hiding the current value
+      // from its own picker would silently drop it the next time the form was saved.
+      const currentId = form.departmentId;
+      const current = currentId
+        ? departments.find((d) => d.id === currentId)
+        : undefined;
+
+      return current && !restricted.some((d) => d.id === current.id)
+        ? [...restricted, current]
+        : restricted;
     }
-    return departments;
-  }, [isSuperAdmin, userOrganizationId, form.organizationId, departments]);
+
+    return list;
+  }, [isSuperAdmin, userOrganizationId, form.organizationId, form.departmentId, departments, projectDepartmentIds]);
 
   if (!open) return null;
 

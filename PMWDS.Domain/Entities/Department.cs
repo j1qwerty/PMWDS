@@ -42,7 +42,7 @@ public class Department : AuditableEntity
             ParentDepartmentId = parentId
         };
     }
-    public void AssignHead(string userId)
+    public void AssignHead(string? userId)
     => DepartmentHeadUserId = userId;
     public void AssignToOrganization(Guid? organizationId)
     => OrganizationId = organizationId;

@@ -8,6 +8,7 @@ interface DependencyFormModalProps {
   milestones: Milestone[];
   onAdd: (payload: Record<string, unknown>) => Promise<void>;
   onUpdate: (id: string, payload: Record<string, unknown>) => Promise<void>;
+  onDelete?: (id: string) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -17,6 +18,7 @@ export function DependencyFormModal({
   milestones,
   onAdd,
   onUpdate,
+  onDelete,
   onClose,
 }: DependencyFormModalProps) {
   const { addToast } = useToast();
@@ -27,6 +29,7 @@ export function DependencyFormModal({
     thresholdPercentage: 50,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -66,9 +69,14 @@ export function DependencyFormModal({
       };
 
       if (editDep) {
+        // The milestone dropdowns are editable, so their values are sent too. The
+        // server re-validates them: both must exist in the project, must not be
+        // equal, must not duplicate another dependency, and must not create a cycle.
         await onUpdate(editDep.id, {
           type: form.type,
           thresholdPercentage: form.type === "ProgressThreshold" ? form.thresholdPercentage : null,
+          prerequisiteMilestoneId: form.prerequisiteMilestoneId,
+          dependentMilestoneId: form.dependentMilestoneId,
         });
       } else {
         await onAdd(payload);
@@ -82,6 +90,19 @@ export function DependencyFormModal({
     }
   };
 
+  const handleDelete = async () => {
+    if (!editDep || !onDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete(editDep.id);
+      onClose();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Failed to delete dependency", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -91,7 +112,9 @@ export function DependencyFormModal({
           <div> 
             <h3 className="text-lg font-bold text-slate-900">{editDep ? "Edit Dependency" : "New Dependency"}</h3>
             <p className="text-xs text-slate-400 mt-1">
-              {editDep ? "Update the dependency condition" : "Define which milestone blocks another"}
+              {editDep
+                ? "Change which milestones are linked, or the condition that releases the block"
+                : "Define which milestone blocks another"}
             </p>
           </div>
 
@@ -103,8 +126,7 @@ export function DependencyFormModal({
               <select
                 value={form.prerequisiteMilestoneId}
                 onChange={(e) => setForm({ ...form, prerequisiteMilestoneId: e.target.value })}
-                disabled={!!editDep}
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm bg-white"
+                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm bg-white disabled:opacity-60"
               >
                 <option value="">Select...</option>
                 {milestones.map((m) => (
@@ -121,8 +143,7 @@ export function DependencyFormModal({
               <select
                 value={form.dependentMilestoneId}
                 onChange={(e) => setForm({ ...form, dependentMilestoneId: e.target.value })}
-                disabled={!!editDep}
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm bg-white"
+                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm bg-white disabled:opacity-60"
               >
                 <option value="">Select...</option>
                 {milestones.map((m) => (
@@ -178,21 +199,35 @@ export function DependencyFormModal({
             )}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-5 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50"
-          >
-            {submitting ? "Saving..." : editDep ? "Update" : "Add"}
-          </button>
+        <div className="flex items-center justify-between gap-2 p-6 border-t border-slate-100">
+          {editDep && onDelete ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting || submitting}
+              className="px-4 py-2.5 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || deleting}
+              className="px-5 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50"
+            >
+              {submitting ? "Saving..." : editDep ? "Update" : "Add"}
+            </button>
+          </div>
         </div>
       </form>
     </ModalOverlay>

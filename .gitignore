@@ -97,6 +97,23 @@ PMWDS.API/App_Data/
 Data/
 PMWDS.API/Data/
 
+# Production SQLite database folder
+Database/
+PMWDS.API/Database/
+PMWDS.Database/
+
+# Build output
+PMWDS.API/publish/
+Client/dist/
+
+# Local deploy artifacts (packaged with tar, uploaded to the VPS)
+pmwds-pub/
+pmwds-api.tar.gz
+pmwds-web.tar.gz
+
+# Rolling deploy backups (archives + sqlite copies kept by deploy.ps1)
+backups/
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -112,8 +129,9 @@ node_modules/
 **/node_modules/
 dist/
 **/dist/
-status
-status\api-build
+docs/status
+status/api-build
+docs/temp
 
 # Docker
 .env
@@ -121,6 +139,7 @@ docker-compose.yml
 
 # Local artifacts / scratch dirs
 docs/role-flows/
+docs\role-flows\tools\node_modules
 pmwds-api.tar.gz
 pmwds-web.tar.gz
 pmwds-pub/

@@ -128,6 +128,14 @@ export function MilestoneDetailk({
               </span>
             </div>
             <div className="flex flex-col gap-2">
+              {/* Always shown, including when unset, so "no department" is visibly a
+                  fact about the milestone rather than an absence of information. */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Icon name="groups" size={14} className="text-slate-400" />
+                <span className={milestone.departmentName ? "" : "text-slate-400 italic"}>
+                  {milestone.departmentName || "No department assigned"}
+                </span>
+              </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Icon name="calendar_today" size={14} className="text-slate-400" />
                 <span>{milestone.dueDate ? formatDate(milestone.dueDate) : "No due date"}</span>

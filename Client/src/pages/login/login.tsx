@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { LoginSidebar } from "./LoginSidebar";
 import { Icon } from "../../components/ui/Icon";
+import { SHOW_SUPERADMIN_DEMO_LOGIN } from "../../featureFlags";
 
 type LoginMode = "signin" | "signup" | "forgot" | "reset";
 
@@ -30,23 +31,24 @@ const authSchemas = {
   }),
 };
 
-const demoAccountGroups = [
+const allDemoAccountGroups = [
   {
     label: "Executive",
     accounts: [
-      { email: "admin@org1.com", label: "Admin", icon: "shield_person", color: "bg-red-500" },
-      { email: "director@org1.com", label: "Director", icon: "account_balance", color: "bg-purple-500" },
+      { email: "superadmin@org1.com", label: "SuperAdmin", icon: "shield_person", color: "bg-red-500" },
+      { email: "admin@org1.com", label: "Admin", icon: "admin_panel_settings", color: "bg-purple-500" },
       { email: "manager@org1.com", label: "Manager", icon: "supervisor_account", color: "bg-blue-500" },
     ]
   },
   {
     label: "Department Heads",
     accounts: [
-      { email: "head.eng@org1.com", label: "Engineering", icon: "code", color: "bg-teal-500" },
-      { email: "head.pmo@org1.com", label: "Program Mgmt", icon: "account_tree", color: "bg-cyan-500" },
-      { email: "head.ops@org1.com", label: "Operations", icon: "settings", color: "bg-amber-500" },
-      { email: "head.bstr@org1.com", label: "Strategy", icon: "insights", color: "bg-rose-500" },
-      { email: "head.csv@org1.com", label: "Client Services", icon: "support_agent", color: "bg-violet-500" },
+      { email: "head.eng@org1.com", label: "Civil Division", icon: "foundation", color: "bg-teal-500" },
+      { email: "head.pmo@org1.com", label: "PWD Coordination", icon: "account_tree", color: "bg-cyan-500" },
+      { email: "head.ops@org1.com", label: "Procurement", icon: "receipt_long", color: "bg-amber-500" },
+      { email: "head.bstr@org1.com", label: "Revenue Dept", icon: "landscape", color: "bg-rose-500" },
+      { email: "head.csv@org1.com", label: "Quality Assurance", icon: "verified", color: "bg-violet-500" },
+      { email: "sunil.yadav@up.gov.in", label: "Tehsildar", icon: "gavel", color: "bg-orange-500" },
     ]
   },
   {
@@ -54,9 +56,27 @@ const demoAccountGroups = [
     accounts: [
       { email: "member@org1.com", label: "Team Member", icon: "person", color: "bg-green-500" },
       { email: "viewer@org1.com", label: "Viewer", icon: "visibility", color: "bg-orange-500" },
+      { email: "dinesh.kumar@pwd.up.gov.in", label: "Executive Engineer", icon: "precision_manufacturing", color: "bg-lime-500" },
+      { email: "pradeep.mishra@up.gov.in", label: "Jal Nigam", icon: "water_drop", color: "bg-blue-600" },
+      { email: "suresh.pandey@up.gov.in", label: "Electrical", icon: "bolt", color: "bg-yellow-500" },
+      { email: "ramesh.yadav@up.gov.in", label: "Sewerage", icon: "plumbing", color: "bg-stone-500" },
     ]
   }
 ];
+
+/**
+ * SuperAdmin is hidden from the quick-login list by default. Filtering here
+ * keeps the account definition in place so the flag can restore it.
+ * Groups that end up empty are dropped so no orphaned heading renders.
+ */
+const demoAccountGroups = allDemoAccountGroups
+  .map((group) => ({
+    ...group,
+    accounts: group.accounts.filter(
+      (account) => SHOW_SUPERADMIN_DEMO_LOGIN || account.email !== "superadmin@org1.com"
+    ),
+  }))
+  .filter((group) => group.accounts.length > 0);
 
 export function LoginPage() {
   const [email, setEmail] = useState("admin@org1.com");
@@ -135,7 +155,6 @@ export function LoginPage() {
     setEmail(demoEmail);
     setPassword("Pmwds@123");
     setMode("signin");
-    // Auto-submit after a brief delay to show the user what's happening
     setTimeout(() => {
       const form = document.getElementById("login-form") as HTMLFormElement;
       if (form) form.requestSubmit();
@@ -169,13 +188,10 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-br from-slate-50 to-indigo-50/30 font-sans">
-      {/* Left Panel - Only visible on desktop */}
-      {/* <LoginSidebar/> */}
-
-      {/* Right Panel - Login Form */}
+      {/* Left Panel - Login Form */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-[440px]">
-          {/* Mobile Logo - Only visible on mobile */}
+          {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
@@ -190,7 +206,6 @@ export function LoginPage() {
 
           {/* Login Card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 p-8">
-            {/* Error Banner */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3 animate-shake">
                 <Icon name="error" size={20} className="text-red-500 shrink-0 mt-0.5" />
@@ -211,7 +226,6 @@ export function LoginPage() {
               </div>
             )}
 
-            {/* Success Banner */}
             {success && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3">
                 <Icon name="check_circle" size={20} className="text-emerald-500 shrink-0 mt-0.5" />
@@ -221,7 +235,6 @@ export function LoginPage() {
               </div>
             )}
 
-            {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800">{title}</h2>
               <button
@@ -238,7 +251,6 @@ export function LoginPage() {
               </button>
             </div>
 
-            {/* Form */}
             <form id="login-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
               {mode === "signup" && (
                 <div className="grid grid-cols-2 gap-3">
@@ -289,7 +301,6 @@ export function LoginPage() {
                 </div>
               )}
 
-              {/* Email Field */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
                   Email Address
@@ -347,7 +358,6 @@ export function LoginPage() {
                 </div>
               )}
 
-              {/* Password Field */}
               {mode !== "forgot" && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-center">
@@ -392,6 +402,7 @@ export function LoginPage() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                      aria-label="Toggle password visibility"
                     >
                       <span className="material-symbols-outlined text-xl">
                         {showPassword ? "visibility_off" : "visibility"}
@@ -407,7 +418,6 @@ export function LoginPage() {
                 </div>
               )}
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -426,7 +436,6 @@ export function LoginPage() {
                 )}
               </button>
 
-              {/* Create Account Button - Only show on signin mode */}
               {mode === "signin" && (
                 <button
                   type="button"
@@ -445,9 +454,9 @@ export function LoginPage() {
             </form>
           </div>
 
-          {/* Demo Accounts Section */}
+          {/* Demo Accounts - Mobile only */}
           {mode === "signin" && (
-            <div className="mt-5">
+            <div className="mt-5 lg:hidden">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1 h-px bg-slate-200" />
                 <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -483,9 +492,6 @@ export function LoginPage() {
                               {account.email}
                             </div>
                           </div>
-                          <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-500 text-[14px] ml-auto shrink-0 transition-colors opacity-0 group-hover:opacity-100">
-                            arrow_forward
-                          </span>
                         </button>
                       ))}
                     </div>
@@ -499,6 +505,138 @@ export function LoginPage() {
           )}
         </div>
       </div>
+
+      {/* Right Panel - Demo Accounts (Desktop) */}
+      {mode === "signin" && (
+        <div className="hidden lg:flex w-[45%] xl:w-[50%] relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white rounded-full -translate-x-1/4 translate-y-1/4" />
+            <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] bg-white rounded-full -translate-x-1/2 -translate-y-1/2 opacity-50" />
+          </div>
+
+          <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 w-full">
+            
+
+            
+
+            {/* Heading */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-indigo-200 text-lg">science</span>
+                <h2 className="text-base font-semibold text-white">Dev Quick Login</h2>
+              </div>
+              <p className="text-xs text-indigo-200/70">
+                Click any account to instantly sign in with password <code className="bg-white/10 px-1.5 py-0.5 rounded text-indigo-200 font-mono text-[10px]">Pmwds@123</code>
+              </p>
+            </div>
+
+            {/* Demo Accounts */}
+            <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-16rem)] pr-2">
+              {demoAccountGroups.map((group) => (
+                <div key={group.label}>
+                  <div className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mb-2">
+                    {group.label}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.accounts.map((account) => (
+                      <button
+                        key={account.email}
+                        onClick={() => handleDemoLogin(account.email)}
+                        disabled={loading}
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className={`w-8 h-8 rounded-lg ${account.color} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <span className="material-symbols-outlined text-white text-[15px]">
+                            {account.icon}
+                          </span>
+                        </div>
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-white group-hover:text-indigo-100 transition-colors truncate">
+                            {account.label}
+                          </div>
+                          <div className="text-[10px] text-indigo-200/70 truncate">
+                            {account.email}
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined text-indigo-300/50 group-hover:text-white text-sm ml-auto shrink-0 transition-all opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0">
+                          arrow_forward
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Info */}
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="flex items-center gap-4 text-[10px] text-indigo-200/60">
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">apartment</span>
+                  11 Departments
+                </span>
+                <span className="w-px h-3 bg-white/20" />
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">flag</span>
+                  13 Milestones
+                </span>
+                <span className="w-px h-3 bg-white/20" />
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">group</span>
+                  21 Users
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Right Panel - Non-signin modes (show features) */}
+      {mode !== "signin" && (
+        <div className="hidden lg:flex lg:w-[45%] xl:w-[50%] relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white rounded-full -translate-x-1/4 translate-y-1/4" />
+            <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] bg-white rounded-full -translate-x-1/2 -translate-y-1/2 opacity-50" />
+          </div>
+          <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 w-full">
+            <div className="mb-12">
+              <div className="inline-flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Icon name="rocket_launch" size={24} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl xl:text-4xl font-bold text-white tracking-tight">
+                    PMWDS
+                  </h1>
+                  <p className="text-sm text-indigo-200 mt-0.5">
+                    Project Monitoring & Workflow Distribution System
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="group bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300 hover:scale-105"
+                >
+                  <span className="material-symbols-outlined text-2xl text-indigo-200 mb-2 block">
+                    {feature.icon}
+                  </span>
+                  <h3 className="text-sm font-semibold text-white mb-1">
+                    {feature.title}
+                  </h3>
+                  <p className="text-xs text-indigo-200/80 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

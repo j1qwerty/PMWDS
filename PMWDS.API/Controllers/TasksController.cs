@@ -1,3 +1,5 @@
+﻿using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +15,7 @@ using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
 using TaskDependency = PMWDS.Domain.Entities.TaskDependency;
+using TaskPriority = PMWDS.Domain.Enums.TaskPriority;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 
 namespace PMWDS.API.Controllers;
@@ -23,35 +26,150 @@ public class TasksController : BaseApiController
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
     private readonly IFileStorageService _files;
+    private readonly ITaskWorkflowService _taskWorkflow;
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
+    private readonly IDataChangeNotifier _changes;
 
     public TasksController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         INotificationService notifications,
         IFileStorageService files,
+        ITaskWorkflowService taskWorkflow,
         RoleScopeService scope,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
         _notifications = notifications;
         _files = files;
+        _taskWorkflow = taskWorkflow;
         _scope = scope;
         _db = db;
+        _changes = changes;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] Guid? projectId,
+        [FromQuery] Guid? departmentId,
+        [FromQuery] string? search,
+        [FromQuery] string[]? statuses,
+        [FromQuery] string[]? priorities,
+        [FromQuery] bool? overdue,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortDirection,
+        [FromQuery] PaginationQuery pagination,
+        CancellationToken ct)
+    {
+        if (projectId.HasValue && !await _scope.CanAccessProjectAsync(projectId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
+        {
+            return Forbid();
+        }
+
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task => allowedProjectIds.Contains(task.ProjectId) && task.ParentTaskId == null)
+            .Include(task => task.Project)
+                .ThenInclude(project => project!.ProjectDepartments)
+            .Include(task => task.Milestone)
+            .Include(task => task.Assignments)
+                .ThenInclude(assignment => assignment.User)
+            .Include(task => task.SubTasks)
+            .AsSplitQuery()
+            .AsQueryable();
+
+        if (projectId.HasValue)
+        {
+            query = query.Where(task => task.ProjectId == projectId.Value);
+        }
+
+        if (departmentId.HasValue)
+        {
+            query = query.Where(task =>
+                task.Project!.DepartmentId == departmentId.Value ||
+                task.Project.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId.Value) ||
+                (task.Milestone != null && task.Milestone.DepartmentId == departmentId.Value));
+        }
+
+        var normalizedSearch = search?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            query = query.Where(task =>
+                task.Title.Contains(normalizedSearch) ||
+                task.Project!.Name.Contains(normalizedSearch) ||
+                task.Assignments.Any(assignment =>
+                    assignment.IsActive &&
+                    assignment.User != null &&
+                    assignment.User.FullName.Contains(normalizedSearch)));
+        }
+
+        var statusValues = ParseEnumFilters<TaskStatus>(statuses);
+        if (statusValues.Count > 0)
+        {
+            query = query.Where(task => statusValues.Contains(task.Status));
+        }
+
+        var priorityValues = ParseEnumFilters<TaskPriority>(priorities);
+        if (priorityValues.Count > 0)
+        {
+            query = query.Where(task => priorityValues.Contains(task.Priority));
+        }
+
+        // "Overdue" is a date fact, not a status. Filtering on status=Delayed
+        // misses every task that ran out of time while still sitting in
+        // NotStarted, which is most of them in practice - so the dashboard's
+        // Delayed card counted them and the table it opened could not show them.
+        // Deliberately identical to the /tasks/overdue predicate so the card and
+        // the list it opens always report the same number.
+        if (overdue == true)
+        {
+            query = query.Where(task =>
+                task.DueDate < DateTime.UtcNow &&
+                task.Status != TaskStatus.Completed &&
+                task.Status != TaskStatus.Cancelled);
+        }
+
+        query = (sortBy?.Trim().ToLowerInvariant(), sortDirection?.Trim().ToLowerInvariant()) switch
+        {
+            ("title", "desc") => query.OrderByDescending(task => task.Title),
+            ("title", _) => query.OrderBy(task => task.Title),
+            ("progress", "desc") => query.OrderByDescending(task => task.ProgressPercentage),
+            ("progress", _) => query.OrderBy(task => task.ProgressPercentage),
+            ("duedate", "desc") => query.OrderByDescending(task => task.DueDate),
+            ("duedate", _) => query.OrderBy(task => task.DueDate),
+            _ => query.OrderByDescending(task => task.CreatedDate)
+        };
+
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("by-project/{projectId:guid}")]
-    [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> GetByProject(Guid projectId, [FromQuery] PaginationQuery pagination, CancellationToken ct)
+    public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
         {
             return Forbid();
         }
 
-        var tasksQuery = _db.Tasks.Where(task => task.ProjectId == projectId);
+        var tasksQuery = _db.Tasks
+            .Include(t => t.SubTasks)
+            .Where(task => task.ProjectId == projectId);
 
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
@@ -70,80 +188,76 @@ public class TasksController : BaseApiController
         var tasks = await tasksQuery
             .OrderByDescending(task => task.CreatedDate)
             .ToListAsync(ct);
-        var items = tasks
-            .Skip(pagination.Skip)
-            .Take(pagination.NormalizedPageSize)
-            .Select(TaskDto.FromEntity)
-            .ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+        return Ok(tasks.Select(TaskDto.FromEntity).ToList());
     }
 
     [HttpGet("my-tasks")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetMyTasks([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(_currentUser.UserId))
+        if (!Guid.TryParse(_currentUser.UserId, out var currentUserId))
             return Unauthorized();
 
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        List<ProjectTask> tasks;
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        IQueryable<ProjectTask> query = _db.Tasks.AsNoTracking()
+            .Where(t => allowedProjectIds.Contains(t.ProjectId));
         if (_scope.IsSuperAdmin)
         {
-            tasks = await _db.Tasks
+            query = query
                 .Include(t => t.Assignments)
                 .Include(t => t.SubTasks)
                 .Include(t => t.Comments)
                 .Include(t => t.Attachments)
                 .Include(t => t.Dependencies)
-                .Include(t => t.TimeEntries)
-                .Include(t => t.Project)
-                .Where(t => allowedProjectIds.Contains(t.ProjectId))
-                .OrderByDescending(t => t.CreatedDate)
-                .ToListAsync(ct);
+                .Include(t => t.Project);
         }
         else
         {
-            tasks = (await _uow.Tasks.GetByAssigneeAsync(_currentUser.UserId, ct))
-                .Where(task => allowedProjectIds.Contains(task.ProjectId))
-                .OrderByDescending(task => task.CreatedDate)
-                .ToList();
+            query = query
+                .Where(t => (t.AssignedToUserId == currentUserId ||
+                    t.Assignments.Any(a => a.UserId == currentUserId && a.IsActive)) &&
+                    t.Status != TaskStatus.Completed &&
+                    t.Status != TaskStatus.Cancelled)
+                .Include(t => t.Assignments)
+                .Include(t => t.SubTasks)
+                .Include(t => t.Comments)
+                .Include(t => t.Attachments)
+                .Include(t => t.Dependencies)
+                .Include(t => t.Project)
+                .Include(t => t.Milestone);
         }
 
-        var items = tasks
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .AsSplitQuery()
+            .OrderByDescending(task => task.CreatedDate)
             .Skip(pagination.Skip)
             .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var response = items
             .Select(TaskDto.FromEntity)
             .ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+        return Ok(PaginatedResponse<TaskDto>.Create(response, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        try
+        var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        if (task == null)
         {
-            var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
-            if (task == null)
-            {
-                return NotFound();
-            }
-
-            if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
-            {
-                return Forbid();
-            }
-
-            return Ok(TaskDto.FromEntity(task));
+            return NotFound();
         }
-        catch (Exception ex)
+
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
         {
-            return StatusCode(500, new { message = "Failed to load task", error = ex.Message, stackTrace = ex.StackTrace });
+            return Forbid();
         }
+
+        return Ok(TaskDto.FromEntity(task));
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create([FromBody] CreateTaskDto dto, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
@@ -152,7 +266,7 @@ public class TasksController : BaseApiController
         }
 
         if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
-            !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, dto.ProjectId, ct))
+            !await _taskWorkflow.IsUserInProjectOrganizationAsync(dto.AssignedToUserId, dto.ProjectId, ct))
         {
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
@@ -161,7 +275,7 @@ public class TasksController : BaseApiController
         if (dto.MilestoneId.HasValue)
         {
             var createdTask = await _uow.Tasks.GetByIdAsync(result.Id, ct);
-            if (createdTask != null) await RecalculateTaskMilestoneAsync(createdTask, ct);
+            if (createdTask != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(createdTask, ct);
         }
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
@@ -171,7 +285,7 @@ public class TasksController : BaseApiController
             {
                 ["taskId"] = result.Id,
                 ["taskTitle"] = result.Title,
-                ["milestoneId"] = result.MilestoneId?.ToString(),
+                ["milestoneId"] = result.MilestoneId?.ToString() ?? string.Empty,
                 ["milestoneName"] = result.MilestoneName ?? "",
                 ["projectId"] = result.ProjectId,
                 ["projectName"] = result.ProjectName ?? ""
@@ -179,11 +293,15 @@ public class TasksController : BaseApiController
             ProjectId: result.ProjectId
         );
 
+        // Task counts and completion feed the project rollup.
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, result.Id.ToString(), result.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, result.ProjectId.ToString(), result.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "TaskEditor")]
+    [Authorize(Policy = AuthorizationPolicies.TaskEditor)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -196,7 +314,7 @@ public class TasksController : BaseApiController
         }
 
         if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
-            task.AssignedToUserId != (_scope.CurrentUserId?.ToString()))
+            task.AssignedToUserId != _scope.CurrentUserId)
         {
             return Forbid();
         }
@@ -212,7 +330,7 @@ public class TasksController : BaseApiController
             dto.MilestoneId);
         task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
-        if (dto.MilestoneId.HasValue) await RecalculateTaskMilestoneAsync(task, ct);
+        if (dto.MilestoneId.HasValue) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         if (oldMilestoneId.HasValue && oldMilestoneId != dto.MilestoneId)
         {
             var oldMilestone = await _db.Milestones
@@ -230,7 +348,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Updated",
-            Description: $"{_currentUser.FullName} updated task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} updated task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -240,25 +358,27 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, task.ProjectId.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(task));
     }
 
     [HttpPatch("{id:guid}/progress")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+        if (task != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Progress Updated",
-            Description: $"{_currentUser.FullName} updated progress of task \"{task?.Title}\" to {dto.ProgressPercentage}% in project \"{await ResolveProjectNameAsync(task?.ProjectId ?? Guid.Empty, ct)}\"",
+            Description: $"{_currentUser.FullName} updated progress of task \"{task?.Title}\" to {dto.ProgressPercentage}% in project \"{await _taskWorkflow.ResolveProjectNameAsync(task?.ProjectId ?? Guid.Empty, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = id,
@@ -269,11 +389,16 @@ public class TasksController : BaseApiController
             ProjectId: task?.ProjectId
         );
 
+        if (task is not null)
+        {
+            await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+            await _changes.NotifyAsync(DataChangeScopes.Projects, task.ProjectId.ToString(), task.ProjectId, ct);
+        }
+
         return Ok(result);
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -286,13 +411,13 @@ public class TasksController : BaseApiController
         }
 
         var oldStatus = task.Status;
-        await ApplyStatusChangeAsync(task, req, ct);
-        await RecalculateTaskMilestoneAsync(task, ct);
+        await _taskWorkflow.ApplyStatusChangeAsync(task, req, ct);
+        await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Status Changed",
-            Description: $"{_currentUser.FullName} changed task \"{task.Title}\" status from \"{oldStatus}\" to \"{req.NewStatus}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} changed task \"{task.Title}\" status from \"{oldStatus}\" to \"{req.NewStatus}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -304,11 +429,14 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, task.ProjectId.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
 
     [HttpPost("{id:guid}/assign")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Assign(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
     {
         var assigneeIds = req.AssigneeIds?.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToList();
@@ -331,7 +459,7 @@ public class TasksController : BaseApiController
                 return Forbid();
             }
 
-            if (!await IsUserInProjectOrganizationAsync(assigneeId, singleTask.ProjectId, ct))
+            if (!await _taskWorkflow.IsUserInProjectOrganizationAsync(assigneeId, singleTask.ProjectId, ct))
             {
                 return BadRequest(new { message = "Assignee must belong to the selected project organization." });
             }
@@ -371,41 +499,44 @@ public class TasksController : BaseApiController
         {
             if (!Guid.TryParse(userId, out var parsedUserId) ||
                 await _uow.Users.GetByIdAsync(parsedUserId, ct) == null ||
-                !await IsUserInProjectOrganizationAsync(userId, task.ProjectId, ct))
+                !await _taskWorkflow.IsUserInProjectOrganizationAsync(userId, task.ProjectId, ct))
             {
                 return BadRequest(new { message = $"Invalid assignee '{userId}'." });
             }
         }
 
-        foreach (var active in task.Assignments.Where(a => a.IsActive && !assigneeIds.Contains(a.UserId)))
+        var parsedAssigneeIds = assigneeIds.Select(Guid.Parse).ToList();
+        foreach (var active in task.Assignments.Where(a => a.IsActive && !parsedAssigneeIds.Contains(a.UserId)))
         {
             active.Release();
         }
 
-        var assignedBy = _currentUser.UserId ?? "system";
-        task.AssignTo(assigneeIds[0], assignedBy);
+        var assignedBy = Guid.TryParse(_currentUser.UserId, out var assignedById)
+            ? assignedById
+            : throw new InvalidOperationException("Invalid current user id.");
+        task.AssignTo(parsedAssigneeIds[0], assignedBy);
 
-        foreach (var userId in assigneeIds)
+        foreach (var userId in parsedAssigneeIds)
         {
             if (task.Assignments.All(a => a.UserId != userId || !a.IsActive))
             {
                 await _uow.TaskAssignments.AddAsync(TaskAssignment.Create(task.Id, userId), ct);
-                await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId, ct);
+                await _notifications.SendTaskAssignmentAlertAsync(task.Id, userId.ToString(), ct);
             }
         }
 
-        task.SetModified(assignedBy);
+        task.SetModified(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
 
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         var assigneeNames = await _db.Users
-            .Where(u => assigneeIds.Contains(u.Id.ToString()))
+            .Where(u => parsedAssigneeIds.Contains(u.Id))
             .Select(u => u.FullName)
             .ToListAsync(ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Assigned",
-            Description: $"{_currentUser.FullName} assigned task \"{task.Title}\" to {string.Join(", ", assigneeNames)} in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} assigned task \"{task.Title}\" to {string.Join(", ", assigneeNames)} in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -417,19 +548,20 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(refreshed!));
     }
 
     [HttpGet("{id:guid}/ai/recommend-assignee")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAIAssignee(Guid id, CancellationToken ct)
         => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(id), ct));
 
     [HttpGet("{id:guid}/ai/delay-prediction")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDelayPrediction(Guid id, CancellationToken ct)
     {
-        if (!await CanAccessTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanAccessTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -438,40 +570,41 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/escalate")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Escalate(Guid id, CancellationToken ct)
     {
-        if (!await CanManageTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(id, ct))
         {
             return Forbid();
         }
 
-        return Ok(await Mediator.Send(new EscalateTaskCommand(id), ct));
+        var result = await Mediator.Send(new EscalateTaskCommand(id), ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), null, ct);
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/comments")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var comment = TaskComment.Create(
             id,
-            _currentUser.UserId ?? "system",
+            Guid.TryParse(_currentUser.UserId, out var commentUserId) ? commentUserId : null,
             req.Comment);
         await _uow.TaskComments.AddAsync(comment, ct);
         await _uow.SaveChangesAsync(ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Comment Added",
-            Description: $"{_currentUser.FullName} commented on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} commented on task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -482,18 +615,19 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(new { Message = "Comment added.", Comment = comment.Content });
     }
 
     [HttpPost("{id:guid}/attachments")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -513,7 +647,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Attachment Uploaded",
-            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to task \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskId"] = task.Id,
@@ -525,157 +659,135 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Documents, attachment.Id.ToString(), task.ProjectId, ct);
+
         return Ok(new { Message = "Attachment uploaded.", FileName = file.FileName });
     }
 
-    [HttpPost("{id:guid}/time/start")]
-    [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> StartTimer(Guid id, [FromBody] StartTimerRequest req, CancellationToken ct)
-    {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task == null)
-            return NotFound();
-
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
-        {
-            return Forbid();
-        }
-
-        task.Start();
-        var entry = TimeEntry.StartTimer(
-            id,
-            _currentUser.UserId ?? "system",
-            req.Description,
-            req.IsBillable);
-        await _uow.TimeEntries.AddAsync(entry, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
-            ActivityType: "Timer Started",
-            Description: $"{_currentUser.FullName} started timer on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
-            Metadata: new Dictionary<string, object>
-            {
-                ["taskId"] = task.Id,
-                ["taskTitle"] = task.Title,
-                ["projectId"] = task.ProjectId,
-                ["entryId"] = entry.Id
-            },
-            ProjectId: task.ProjectId
-        );
-
-        return Ok(new { Message = "Timer started.", EntryId = entry.Id });
-    }
-
-    [HttpPost("{id:guid}/time/stop")]
-    [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> StopTimer(Guid id, CancellationToken ct)
-    {
-        var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task == null)
-            return NotFound();
-
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct))
-        {
-            return Forbid();
-        }
-
-        var entry = _uow.TimeEntries.FindAsync(
-            e => e.TaskId == id
-                && e.UserId == (_currentUser.UserId ?? "system")
-                && !e.EndTime.HasValue,
-            ct).Result.FirstOrDefault();
-        if (entry == null)
-            return NotFound("No running timer found.");
-
-        entry.StopTimer();
-        await _uow.SaveChangesAsync(ct);
-
-        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
-            ActivityType: "Timer Stopped",
-            Description: $"{_currentUser.FullName} stopped timer on task \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
-            Metadata: new Dictionary<string, object>
-            {
-                ["taskId"] = task.Id,
-                ["taskTitle"] = task.Title,
-                ["projectId"] = task.ProjectId,
-                ["entryId"] = entry.Id,
-                ["durationMinutes"] = entry.Duration.TotalMinutes
-            },
-            ProjectId: task.ProjectId
-        );
-
-        return Ok(new { Message = "Timer stopped.", DurationMinutes = entry.Duration.TotalMinutes });
-    }
 
     [HttpGet("overdue")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetOverdue([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetOverdueTasksAsync(ct))
-            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task =>
+                allowedProjectIds.Contains(task.ProjectId) &&
+                task.DueDate < DateTime.UtcNow &&
+                task.Status != TaskStatus.Completed &&
+                task.Status != TaskStatus.Cancelled)
+            // Milestone and Assignments are needed for the row to be
+            // self-describing. Without them the DTO's MilestoneName and
+            // AssignedToUserName are always null, because the query is
+            // AsNoTracking and there is no lazy loading to fall back on.
+            .Include(task => task.Project)
+            .Include(task => task.Milestone)
+            .Include(task => task.Assignments)
+                .ThenInclude(assignment => assignment.User)
+            .AsSplitQuery();
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
             .OrderBy(task => task.DueDate)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
+    }
+
+    private static IReadOnlyCollection<TEnum> ParseEnumFilters<TEnum>(IEnumerable<string>? rawValues)
+        where TEnum : struct, Enum
+    {
+        if (rawValues == null)
+        {
+            return Array.Empty<TEnum>();
+        }
+
+        return rawValues
+            .SelectMany(value => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Select(value => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) ? parsed : (TEnum?)null)
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .Distinct()
             .ToList();
-        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
     }
 
     [HttpGet("escalated")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetEscalated([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetEscalatedTasksAsync(ct))
-            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task =>
+                allowedProjectIds.Contains(task.ProjectId) &&
+                task.IsEscalated &&
+                task.Status != TaskStatus.Completed)
+            .Include(task => task.Project);
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
             .OrderByDescending(task => task.ModifiedDate ?? task.CreatedDate)
-            .ToList();
-        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("unassigned")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetUnassigned([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        var allowedProjectIds = await GetAccessibleProjectIdsAsync(ct);
-        var tasks = (await _uow.Tasks.GetUnassignedTasksAsync(ct))
-            .Where(task => allowedProjectIds.Contains(task.ProjectId))
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task =>
+                allowedProjectIds.Contains(task.ProjectId) &&
+                task.AssignedToUserId == null &&
+                task.Status == TaskStatus.NotStarted)
+            .Include(task => task.Project);
+        var totalCount = await query.CountAsync(ct);
+        var tasks = await query
             .OrderByDescending(task => task.CreatedDate)
-            .ToList();
-        var items = tasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, tasks.Count));
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = tasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}/subtasks")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetSubtasks(Guid id, [FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
-        try
-        {
-            var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
-            if (parentTask == null) return NotFound();
-            if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
-            var subtasks = (await _uow.Tasks.GetSubtasksByParentIdAsync(id, ct))
-                .OrderByDescending(task => task.CreatedDate)
-                .ToList();
-            var items = subtasks.Skip(pagination.Skip).Take(pagination.NormalizedPageSize).Select(TaskDto.FromEntity).ToList();
-            return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, subtasks.Count));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to load subtasks", error = ex.Message, stackTrace = ex.StackTrace });
-        }
+        var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (parentTask == null) return NotFound();
+        if (!await _scope.CanAccessProjectAsync(parentTask.ProjectId, ct)) return Forbid();
+        var query = _db.Tasks.AsNoTracking()
+            .Where(task => task.ParentTaskId == id)
+            .Include(task => task.Assignments)
+            .Include(task => task.Comments)
+            .Include(task => task.Attachments)
+            .Include(task => task.Dependencies)
+                .ThenInclude(dependency => dependency.PredecessorTask)
+            .Include(task => task.Project)
+            .Include(task => task.Milestone);
+        var totalCount = await query.CountAsync(ct);
+        var subtasks = await query
+            .AsSplitQuery()
+            .OrderByDescending(task => task.CreatedDate)
+            .Skip(pagination.Skip)
+            .Take(pagination.NormalizedPageSize)
+            .ToListAsync(ct);
+        var items = subtasks.Select(TaskDto.FromEntity).ToList();
+        return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
     [HttpPost("{id:guid}/subtasks")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> CreateSubtask(Guid id, [FromBody] CreateSubtaskDto dto, CancellationToken ct)
     {
         var parentTask = await _uow.Tasks.GetByIdAsync(id, ct);
         if (parentTask == null)
             return NotFound();
 
-        if (!await CanWorkOnTaskAsync(parentTask.Id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(parentTask.Id, ct))
         {
             return Forbid();
         }
@@ -686,7 +798,7 @@ public class TasksController : BaseApiController
         }
 
         if (!string.IsNullOrWhiteSpace(dto.AssignedToUserId) &&
-            !await IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
+            !await _taskWorkflow.IsUserInProjectOrganizationAsync(dto.AssignedToUserId, parentTask.ProjectId, ct))
         {
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
@@ -720,11 +832,12 @@ public class TasksController : BaseApiController
             ProjectId: result.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, result.Id.ToString(), result.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     [HttpGet("subtasks/{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetSubtaskById(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -735,7 +848,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("subtasks/{id:guid}")]
-    [Authorize(Policy = "TaskEditor")]
+    [Authorize(Policy = AuthorizationPolicies.TaskEditor)]
     public async Task<IActionResult> UpdateSubtask(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -748,7 +861,7 @@ public class TasksController : BaseApiController
         }
 
         if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
-            task.AssignedToUserId != (_scope.CurrentUserId?.ToString()))
+            task.AssignedToUserId != _scope.CurrentUserId)
         {
             return Forbid();
         }
@@ -766,7 +879,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Subtask Updated",
-            Description: $"{_currentUser.FullName} updated subtask \"{task.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} updated subtask \"{task.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["subtaskId"] = task.Id,
@@ -776,26 +889,27 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDto.FromEntity(task));
     }
 
     [HttpPatch("subtasks/{id:guid}/progress")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await CanWorkOnTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var result = await Mediator.Send(new UpdateTaskProgressCommand(id, dto), ct);
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task != null) await RecalculateTaskMilestoneAsync(task, ct);
+        if (task != null) await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
+        if (task != null) await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
         return Ok(result);
     }
 
     [HttpPatch("subtasks/{id:guid}/status")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateSubtaskStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -807,14 +921,15 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        await ApplyStatusChangeAsync(task, req, ct);
-        await RecalculateTaskMilestoneAsync(task, ct);
+        await _taskWorkflow.ApplyStatusChangeAsync(task, req, ct);
+        await _taskWorkflow.RecalculateTaskMilestoneAsync(task, ct);
         var refreshed = await _uow.Tasks.GetWithDetailsAsync(id, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
         return Ok(TaskDto.FromEntity(refreshed ?? task));
     }
 
     [HttpPost("subtasks/{id:guid}/assign")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> AssignSubtask(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.AssigneeId))
@@ -822,22 +937,24 @@ public class TasksController : BaseApiController
             return BadRequest(new { message = "Assignee is required." });
         }
 
-        if (!await CanManageTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(id, ct))
         {
             return Forbid();
         }
 
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
-        if (task == null || !await IsUserInProjectOrganizationAsync(req.AssigneeId, task.ProjectId, ct))
+        if (task == null || !await _taskWorkflow.IsUserInProjectOrganizationAsync(req.AssigneeId, task.ProjectId, ct))
         {
             return BadRequest(new { message = "Assignee must belong to the selected project organization." });
         }
 
-        return Ok(await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct));
+        var assignResult = await Mediator.Send(new AssignTaskCommand(id, req.AssigneeId, req.UseAIRecommendation), ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+        return Ok(assignResult);
     }
 
     [HttpDelete("subtasks/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteSubtask(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -871,7 +988,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Subtask Deleted",
-            Description: $"{_currentUser.FullName} deleted subtask \"{subtaskTitle}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Description: $"{_currentUser.FullName} deleted subtask \"{subtaskTitle}\" from project \"{await _taskWorkflow.ResolveProjectNameAsync(projectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["subtaskTitle"] = subtaskTitle,
@@ -880,11 +997,16 @@ public class TasksController : BaseApiController
             ProjectId: projectId
         );
 
+        // Deleting a subtask recalculates its parent milestone and the project rollup.
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestoneId?.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
+
         return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -912,7 +1034,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Deleted",
-            Description: $"{_currentUser.FullName} deleted task \"{taskTitle}\" from project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Description: $"{_currentUser.FullName} deleted task \"{taskTitle}\" from project \"{await _taskWorkflow.ResolveProjectNameAsync(projectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["taskTitle"] = taskTitle,
@@ -921,31 +1043,28 @@ public class TasksController : BaseApiController
             ProjectId: projectId
         );
 
+        // Deleting a task removes it and its whole subtask subtree, and recalculates the
+        // parent milestone, so tasks, milestones and the project rollup all change.
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestoneId?.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
+
         return NoContent();
     }
 
     [HttpGet("{id:guid}/dependencies")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependencies(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var task = await _uow.Tasks.GetByIdAsync(id, ct);
-            if (task == null) return NotFound();
-            if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct)) return Forbid();
-            var dependencies = (await _uow.Tasks.GetDependenciesForTaskAsync(id, ct))
-                .Select(TaskDependencyDto.FromEntity)
-                .ToList();
-            return Ok(dependencies);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to load dependencies", error = ex.Message, stackTrace = ex.StackTrace });
-        }
+        var task = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (task == null) return NotFound();
+        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct)) return Forbid();
+        var dependencies = (await _uow.Tasks.GetDependenciesForTaskAsync(id, ct))
+            .Select(TaskDependencyDto.FromEntity)
+            .ToList();
+        return Ok(dependencies);
     }
 
     [HttpPost("{id:guid}/dependencies")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> CreateDependency(Guid id, [FromBody] CreateDependencyDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -977,7 +1096,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Dependency Added",
-            Description: $"{_currentUser.FullName} added dependency: \"{predecessor.Title}\" must precede \"{successor.Title}\" in project \"{await ResolveProjectNameAsync(task.ProjectId, ct)}\"",
+            Description: $"{_currentUser.FullName} added dependency: \"{predecessor.Title}\" must precede \"{successor.Title}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(task.ProjectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["dependencyId"] = dependency.Id,
@@ -990,19 +1109,20 @@ public class TasksController : BaseApiController
             ProjectId: task.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), task.ProjectId, ct);
+
         return Ok(TaskDependencyDto.FromEntity(dependency));
     }
 
     [HttpPut("dependencies/{depId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> UpdateDependency(Guid depId, [FromBody] UpdateDependencyDto dto, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
         if (dependency == null)
             return NotFound();
 
-        if (!await CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
-            !await CanManageTaskAsync(dependency.SuccessorTaskId, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await _taskWorkflow.CanManageTaskAsync(dependency.SuccessorTaskId, ct))
         {
             return Forbid();
         }
@@ -1010,19 +1130,19 @@ public class TasksController : BaseApiController
         dependency.UpdateType(dto.Type);
         dependency.UpdateLag(dto.LagDays);
         await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, depId.ToString(), null, ct);
         return Ok(TaskDependencyDto.FromEntity(dependency));
     }
 
     [HttpDelete("dependencies/{depId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> DeleteDependency(Guid depId, CancellationToken ct)
     {
         var dependency = await _uow.TaskDependencies.GetByIdAsync(depId, ct);
         if (dependency == null)
             return NotFound();
 
-        if (!await CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
-            !await CanManageTaskAsync(dependency.SuccessorTaskId, ct))
+        if (!await _taskWorkflow.CanManageTaskAsync(dependency.PredecessorTaskId, ct) ||
+            !await _taskWorkflow.CanManageTaskAsync(dependency.SuccessorTaskId, ct))
         {
             return Forbid();
         }
@@ -1045,7 +1165,7 @@ public class TasksController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Task Dependency Removed",
-            Description: $"{_currentUser.FullName} removed dependency between \"{predTitle}\" and \"{succTitle}\" in project \"{await ResolveProjectNameAsync(projectId, ct)}\"",
+            Description: $"{_currentUser.FullName} removed dependency between \"{predTitle}\" and \"{succTitle}\" in project \"{await _taskWorkflow.ResolveProjectNameAsync(projectId, ct)}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["dependencyId"] = depId,
@@ -1056,194 +1176,8 @@ public class TasksController : BaseApiController
             ProjectId: projectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, depId.ToString(), projectId, ct);
+
         return NoContent();
     }
-
-    private async Task RecalculateTaskMilestoneAsync(ProjectTask task, CancellationToken ct)
-    {
-        if (!task.MilestoneId.HasValue) return;
-        var milestone = await _db.Milestones
-            .Include(m => m.Tasks)
-            .FirstOrDefaultAsync(m => m.Id == task.MilestoneId.Value, ct);
-        if (milestone == null) return;
-        milestone.RecalculateProgressFromTasks();
-        milestone.RecalculateStatusFromTasks();
-        milestone.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Milestones.UpdateAsync(milestone, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        await RecalculateProjectFromMilestonesAsync(milestone.ProjectId, ct);
-    }
-
-    private async Task RecalculateProjectFromMilestonesAsync(Guid projectId, CancellationToken ct)
-    {
-        var project = await _db.Projects
-            .Include(p => p.Milestones)
-            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
-        if (project == null) return;
-        project.RecalculateProgressFromMilestones();
-        project.RecalculateStatusFromMilestones();
-        project.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Projects.UpdateAsync(project, ct);
-        await _uow.SaveChangesAsync(ct);
-    }
-
-    private async Task ApplyStatusChangeAsync(ProjectTask task, UpdateTaskStatusRequest req, CancellationToken ct)
-    {
-        if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.NotStarted
-            && task.ProgressPercentage > 0
-            && !req.ConfirmReset)
-        {
-            throw new ConflictException(
-                $"Task '{task.Title}' currently has {Math.Round(task.ProgressPercentage)}% progress. " +
-                "Switching to Not Started will reset this task and all of its subtasks to 0% progress. " +
-                "Re-submit with confirmReset=true to proceed.");
-        }
-
-        task.UpdateStatus(req.NewStatus);
-
-        if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.NotStarted
-            && req.ConfirmReset)
-        {
-            task.ResetAllProgress();
-        }
-        else if (req.NewStatus == PMWDS.Domain.Enums.TaskStatus.Completed)
-        {
-            task.MarkSubtaskCompleted();
-        }
-
-        task.SetModified(_currentUser.UserId ?? "system");
-        await _uow.Tasks.UpdateAsync(task, ct);
-        await _uow.SaveChangesAsync(ct);
-
-        if (task.ParentTaskId.HasValue)
-        {
-            var parent = await _uow.Tasks.GetWithDetailsAsync(task.ParentTaskId.Value, ct);
-            if (parent != null)
-            {
-                parent.RecalculateProgressFromSubtasks();
-                if (parent.ProgressPercentage >= 100)
-                {
-                    parent.MarkSubtaskCompleted();
-                }
-                parent.SetModified(_currentUser.UserId ?? "system");
-                await _uow.SaveChangesAsync(ct);
-            }
-        }
-    }
-
-    private async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
-    {
-        var projectId = await _db.Tasks
-            .Where(task => task.Id == taskId)
-            .Select(task => task.ProjectId)
-            .FirstOrDefaultAsync(ct);
-        return projectId != Guid.Empty && await _scope.CanAccessProjectAsync(projectId, ct);
-    }
-
-    private async Task<bool> CanManageTaskAsync(Guid taskId, CancellationToken ct)
-    {
-        var projectId = await _db.Tasks
-            .Where(task => task.Id == taskId)
-            .Select(task => task.ProjectId)
-            .FirstOrDefaultAsync(ct);
-        return projectId != Guid.Empty && await _scope.CanManageProjectAsync(projectId, ct);
-    }
-
-    private async Task<bool> CanWorkOnTaskAsync(Guid taskId, CancellationToken ct)
-    {
-        var currentUserId = _currentUser.UserId;
-        var task = await _db.Tasks
-            .Where(item => item.Id == taskId)
-            .Select(item => new
-            {
-                item.ProjectId,
-                item.AssignedToUserId,
-                HasAssignment = currentUserId != null && item.Assignments.Any(assignment => assignment.UserId == currentUserId)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (task == null)
-        {
-            return false;
-        }
-
-        if (await _scope.CanManageProjectAsync(task.ProjectId, ct))
-        {
-            return true;
-        }
-
-        return !string.IsNullOrWhiteSpace(currentUserId) &&
-            (task.AssignedToUserId == currentUserId || task.HasAssignment);
-    }
-
-    private async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
-    {
-        var scopedProjects = await _scope.ScopeProjectsAsync(
-            _db.Projects.Include(project => project.Department).AsQueryable(),
-            ct);
-        return (await scopedProjects.Select(project => project.Id).ToListAsync(ct)).ToHashSet();
-    }
-
-    private async Task<bool> IsUserInProjectOrganizationAsync(string userId, Guid projectId, CancellationToken ct)
-    {
-        if (!Guid.TryParse(userId, out var parsedUserId))
-        {
-            return false;
-        }
-
-        var organizationIds = await _db.Projects
-            .Where(project => project.Id == projectId)
-            .Select(project => new
-            {
-                PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
-                AssignedOrganizationIds = project.ProjectDepartments
-                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
-                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
-                    .ToList()
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (organizationIds == null)
-        {
-            return false;
-        }
-
-        var validOrganizationIds = organizationIds.AssignedOrganizationIds.ToHashSet();
-        if (organizationIds.PrimaryOrganizationId.HasValue)
-        {
-            validOrganizationIds.Add(organizationIds.PrimaryOrganizationId.Value);
-        }
-
-        if (validOrganizationIds.Count == 0)
-        {
-            return false;
-        }
-
-        return await _db.Users.AnyAsync(user =>
-            user.Id == parsedUserId &&
-            ((user.OrganizationId.HasValue && validOrganizationIds.Contains(user.OrganizationId.Value)) ||
-             user.DepartmentAssignments.Any(assignment =>
-                assignment.Department.OrganizationId.HasValue &&
-                validOrganizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
-             user.Department != null &&
-                user.Department.OrganizationId.HasValue &&
-                validOrganizationIds.Contains(user.Department.OrganizationId.Value)),
-            ct);
-    }
-
-    private async Task<string> ResolveProjectNameAsync(Guid projectId, CancellationToken ct)
-    {
-        if (projectId == Guid.Empty) return "Unknown Project";
-        var name = await _db.Projects
-            .Where(p => p.Id == projectId)
-            .Select(p => p.Name)
-            .FirstOrDefaultAsync(ct);
-        return name ?? "Unknown Project";
-    }
 }
-
-public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus, bool ConfirmReset = false);
-public record AssignTaskRequest(string? AssigneeId, bool UseAIRecommendation = false, List<string>? AssigneeIds = null);
-public record AddCommentRequest(string Comment);
-public record StartTimerRequest(string Description, bool IsBillable = false);

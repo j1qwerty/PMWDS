@@ -34,6 +34,14 @@ public class RequestLoggingMiddleware
             && ctx.Response.StatusCode < 400
             && Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
+            // Deliberately not ctx.RequestAborted. The write happens after the
+            // response has already been produced, so honouring an aborted
+            // request here would silently drop the audit record for a change
+            // that was actually committed - or throw, and turn a successful
+            // write into a 500 the user never sees an explanation for. An audit
+            // trail must not depend on the client staying connected.
+            var auditToken = CancellationToken.None;
+
             // Check if the controller already prepared a rich activity log
             if (ctx.Items["ActivityLog"] is ActivityLogContext logCtx)
             {
@@ -44,8 +52,8 @@ public class RequestLoggingMiddleware
                     logCtx.Metadata,
                     logCtx.ProjectId);
                 log.SetCreatedBy(userId.ToString());
-                await uow.ActivityLogs.AddAsync(log, ctx.RequestAborted);
-                await uow.SaveChangesAsync(ctx.RequestAborted);
+                await uow.ActivityLogs.AddAsync(log, auditToken);
+                await uow.SaveChangesAsync(auditToken);
             }
             else
             {
@@ -62,8 +70,8 @@ public class RequestLoggingMiddleware
                         elapsedMs = sw.ElapsedMilliseconds
                     });
                 log.SetCreatedBy(userId.ToString());
-                await uow.ActivityLogs.AddAsync(log, ctx.RequestAborted);
-                await uow.SaveChangesAsync(ctx.RequestAborted);
+                await uow.ActivityLogs.AddAsync(log, auditToken);
+                await uow.SaveChangesAsync(auditToken);
             }
         }
     }

@@ -10,7 +10,7 @@ public interface IProjectRepository : IRepository<Project>
     Guid departmentId,
     CancellationToken ct = default);
     Task<IEnumerable<Project>> GetByManagerAsync(
-    string managerId,
+    Guid managerId,
     CancellationToken ct = default);
     Task<IEnumerable<Project>> GetByStatusAsync(
     ProjectStatus status,

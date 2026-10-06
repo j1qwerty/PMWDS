@@ -33,7 +33,6 @@ public record TaskDto(
     List<TaskDependencyDto> Dependencies,
     List<TaskCommentDto> Comments,
     List<TaskAttachmentDto> Attachments,
-    List<TaskTimeEntryDto> TimeEntries,
     List<TaskDto> SubTasks,
     bool HasSubTasks,
     double AIOptimalAssigneeScore,
@@ -46,7 +45,6 @@ public record TaskDto(
             var dependencies = t.Dependencies ?? new List<TaskDependency>();
             var comments = t.Comments ?? new List<TaskComment>();
             var attachments = t.Attachments ?? new List<TaskAttachment>();
-            var timeEntries = t.TimeEntries ?? new List<TimeEntry>();
             var subTasks = t.SubTasks ?? new List<ProjectTask>();
 
             var hasSubTasks = subTasks.Count > 0;
@@ -71,14 +69,14 @@ public record TaskDto(
             MilestoneId: t.MilestoneId,
             MilestoneName: t.Milestone?.Name,
             ParentTaskId: t.ParentTaskId,
-            AssignedToUserId: t.AssignedToUserId,
+            AssignedToUserId: t.AssignedToUserId?.ToString(),
             AssignedToUserName: assignments
             .Where(a => a.IsActive)
             .Select(a => a.User != null ? a.User.FullName : null)
             .FirstOrDefault(n => !string.IsNullOrEmpty(n)),
             Assignees: assignments
             .Where(a => a.IsActive)
-            .Select(a => new TaskAssigneeDto(a.UserId, a.User?.FullName))
+            .Select(a => new TaskAssigneeDto(a.UserId.ToString(), a.User?.FullName))
             .ToList(),
             IsEscalated: t.IsEscalated,
             EscalationLevel: t.EscalationLevel,
@@ -96,16 +94,13 @@ public record TaskDto(
             Attachments: attachments
             .Select(a => TaskAttachmentDto.FromEntity(a))
             .ToList(),
-            TimeEntries: timeEntries
-            .Select(e => TaskTimeEntryDto.FromEntity(e))
-            .ToList(),
             SubTasks: subTasks
             .Select(st => FromEntity(st))
             .ToList(),
             HasSubTasks: hasSubTasks,
             AIOptimalAssigneeScore: t.AIOptimalAssigneeScore,
             AIPredictedCompletionDate: t.AIPredictedCompletionDate,
-            AIRecommendedAssigneeId: t.AIRecommendedAssigneeId
+            AIRecommendedAssigneeId: t.AIRecommendedAssigneeId?.ToString()
             );
         }
     }
@@ -143,7 +138,7 @@ public record TaskDto(
         => new(
             Id: c.Id,
             TaskId: c.TaskId,
-            UserId: c.UserId,
+            UserId: c.UserId?.ToString() ?? "system",
             Content: c.Content,
             IsSystemGenerated: c.IsSystemGenerated,
             ParentCommentId: c.ParentCommentId,
@@ -170,30 +165,6 @@ public record TaskDto(
             FileSizeBytes: a.FileSizeBytes,
             UploadedByUserId: a.UploadedByUserId,
             CreatedDate: a.CreatedDate
-        );
-    }
-    public record TaskTimeEntryDto(
-        Guid Id,
-        Guid TaskId,
-        string UserId,
-        string? UserName,
-        string? Description,
-        DateTime StartTime,
-        DateTime? EndTime,
-        double DurationMinutes,
-        bool IsBillable)
-    {
-        public static TaskTimeEntryDto FromEntity(TimeEntry e)
-        => new(
-            Id: e.Id,
-            TaskId: e.TaskId,
-            UserId: e.UserId,
-            UserName: e.User?.FullName,
-            Description: e.Description,
-            StartTime: e.StartTime,
-            EndTime: e.EndTime,
-            DurationMinutes: e.Duration.TotalMinutes,
-            IsBillable: e.IsBillable
         );
     }
     public record TaskSummaryDto(

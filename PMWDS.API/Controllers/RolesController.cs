@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,61 +14,25 @@ namespace PMWDS.API.Controllers;
 
 public class RolesController : BaseApiController
 {
-    private static readonly HashSet<string> VisiblePermissionModules = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ProtectedRoleKeys = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Authentication",
-        "Authorization",
-        "System",
-        "Organization",
-        "Departments",
-        "Projects",
-        "Milestones",
-        "Tasks",
-        "Subtasks",
-        "Users",
-        "Notifications",
-        "Audit",
-        "Reports",
-        "AI"
-    };
-
-    private static readonly HashSet<string> AdminOnlyModules = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Authentication",
-        "Authorization",
-        "System"
-    };
-
-    private static readonly Dictionary<string, string[]> ManagePermissionCoverage = new(StringComparer.OrdinalIgnoreCase)
-    {
-        [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
-        [PermissionCodes.DepartmentManage] = new[] { PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete },
-        [PermissionCodes.ProjectManage] = new[] { PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete },
-        [PermissionCodes.MilestoneManage] = new[] { PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete },
-        [PermissionCodes.TaskManage] = new[] { PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete, PermissionCodes.TaskAssign, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack },
-        [PermissionCodes.SubtaskManage] = new[] { PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete },
-        [PermissionCodes.UserManage] = new[] { PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete, PermissionCodes.UserDepartmentManage, PermissionCodes.UserProfilePictureManage },
-        [PermissionCodes.RoleManage] = new[] { PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete },
-        [PermissionCodes.PermissionManage] = new[] { PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete },
-        [PermissionCodes.NotificationManage] = new[] { PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage },
-        [PermissionCodes.ActivityLogManage] = new[] { PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate },
-        [PermissionCodes.ReportManage] = new[] { PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete },
-        [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView }
+        RoleKeys.SuperAdmin
     };
 
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public RolesController(IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser)
+    public RolesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext context, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _context = context;
         _currentUser = currentUser;
+        _changes = changes;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetRoles(CancellationToken ct)
     {
         var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
@@ -76,12 +42,13 @@ public class RolesController : BaseApiController
             .OrderBy(r => r.PermissionLevel)
             .ToListAsync(ct);
 
-        var filtered = User.IsInRole("SuperAdmin")
+        var filtered = User.IsInRole(RoleKeys.SuperAdmin)
             ? roles
             : roles.Where(r => r.PermissionLevel < userMaxLevel).ToList();
 
         return Ok(filtered.Select(r => new RoleResponse(
             r.Id,
+            r.Key,
             r.Name,
             r.Description,
             r.PermissionLevel,
@@ -90,12 +57,11 @@ public class RolesController : BaseApiController
     }
 
     [HttpGet("permissions")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetPermissions(CancellationToken ct)
         => Ok((await VisiblePermissionQuery().OrderBy(p => p.Module).ThenBy(p => p.Name).ToListAsync(ct)).Select(MapPermission));
 
     [HttpPost]
-    [Authorize(Policy = "Roles.Create")]
+    [Authorize(Policy = AuthorizationPolicies.RolesCreate)]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest req, CancellationToken ct)
     {
         if (await _context.Roles.AnyAsync(r => r.Name == req.Name, ct))
@@ -103,7 +69,7 @@ public class RolesController : BaseApiController
             return Conflict(new { message = $"Role '{req.Name}' already exists." });
         }
 
-        if (!User.IsInRole("SuperAdmin"))
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (req.PermissionLevel >= userMaxLevel)
@@ -135,8 +101,10 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return CreatedAtAction(nameof(GetRoles), new { id = role.Id }, new RoleResponse(
             role.Id,
+            role.Key,
             role.Name,
             role.Description,
             role.PermissionLevel,
@@ -145,7 +113,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Roles.Edit")]
+    [Authorize(Policy = AuthorizationPolicies.RolesEdit)]
     public async Task<IActionResult> UpdateRole(Guid id, [FromBody] UpdateRoleRequest req, CancellationToken ct)
     {
         var role = await _context.Roles
@@ -156,7 +124,7 @@ public class RolesController : BaseApiController
             return NotFound();
         }
 
-        if (!User.IsInRole("SuperAdmin"))
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -169,6 +137,16 @@ public class RolesController : BaseApiController
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
         var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        var selectedCodes = permissions.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (role.Key == RoleKeys.SuperAdmin && !selectedCodes.Contains(PermissionCodes.SystemAdmin))
+        {
+            return BadRequest(new { message = "The SuperAdmin role must keep the SYSTEM_ADMIN permission." });
+        }
+
+        if (await WouldRemoveOwnSystemAdminAsync(role.Id, selectedCodes, ct))
+        {
+            return BadRequest(new { message = "You cannot remove your own SYSTEM_ADMIN permission." });
+        }
 
         role.Permissions.Clear();
         foreach (var permission in permissions)
@@ -189,17 +167,23 @@ public class RolesController : BaseApiController
             }
         );
 
-        return Ok(new RoleResponse(role.Id, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
+        return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Roles.Delete")]
+    [Authorize(Policy = AuthorizationPolicies.RolesDelete)]
     public async Task<IActionResult> DeleteRole(Guid id, CancellationToken ct)
     {
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role == null) return NotFound();
 
-        if (!User.IsInRole("SuperAdmin"))
+        if (ProtectedRoleKeys.Contains(role.Key))
+        {
+            return BadRequest(new { message = $"The built-in role '{role.Key}' cannot be deleted." });
+        }
+
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
         {
             var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
             if (role.PermissionLevel >= userMaxLevel)
@@ -222,11 +206,12 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return NoContent();
     }
 
     [HttpPost("permissions")]
-    [Authorize(Policy = "Permissions.Create")]
+    [Authorize(Policy = AuthorizationPolicies.PermissionsCreate)]
     public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionRequest req, CancellationToken ct)
     {
         if (await _context.Permissions.AnyAsync(p => p.Code == req.Code.ToUpper(), ct))
@@ -250,11 +235,12 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return CreatedAtAction(nameof(GetPermissions), new { id = permission.Id }, MapPermission(permission));
     }
 
     [HttpPut("permissions/{id:guid}")]
-    [Authorize(Policy = "Permissions.Edit")]
+    [Authorize(Policy = AuthorizationPolicies.PermissionsEdit)]
     public async Task<IActionResult> UpdatePermission(Guid id, [FromBody] UpdatePermissionRequest req, CancellationToken ct)
     {
         var permission = await _uow.Permissions.GetByIdAsync(id, ct);
@@ -278,16 +264,21 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return Ok(MapPermission(permission));
     }
 
     [HttpDelete("permissions/{id:guid}")]
-    [Authorize(Policy = "Permissions.Delete")]
+    [Authorize(Policy = AuthorizationPolicies.PermissionsDelete)]
     public async Task<IActionResult> DeletePermission(Guid id, CancellationToken ct)
     {
         var permission = await _uow.Permissions.GetByIdAsync(id, ct);
         var permName = permission?.Name ?? "Unknown";
         var permCode = permission?.Code ?? "";
+        if (permCode.Equals(PermissionCodes.SystemAdmin, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "The SYSTEM_ADMIN permission cannot be deleted." });
+        }
 
         await _uow.Permissions.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
@@ -302,6 +293,7 @@ public class RolesController : BaseApiController
             }
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return NoContent();
     }
 
@@ -309,10 +301,13 @@ public class RolesController : BaseApiController
         => new(permission.Id, permission.Code, permission.Name, permission.Description, permission.Module, permission.IsGlobal);
 
     private IQueryable<Permission> VisiblePermissionQuery()
-        => _context.Permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
+    {
+        var visibleModules = PermissionCatalog.VisibleModules.ToArray();
+        return _context.Permissions.Where(permission => visibleModules.Contains(permission.Module));
+    }
 
     private static IEnumerable<Permission> VisiblePermissions(IEnumerable<Permission> permissions)
-        => permissions.Where(permission => VisiblePermissionModules.Contains(permission.Module));
+        => permissions.Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module));
 
     private async Task<int> GetCurrentUserMaxLevelAsync(CancellationToken ct)
     {
@@ -329,7 +324,7 @@ public class RolesController : BaseApiController
 
     private async Task<HashSet<string>> GetCurrentUserPermissionCodesAsync(CancellationToken ct)
     {
-        if (User.IsInRole("SuperAdmin"))
+        if (User.IsInRole(RoleKeys.SuperAdmin))
         {
             var all = await _context.Permissions.Select(p => p.Code).ToListAsync(ct);
             return new HashSet<string>(all, StringComparer.OrdinalIgnoreCase);
@@ -348,7 +343,7 @@ public class RolesController : BaseApiController
         var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
         foreach (var manageCode in codes)
         {
-            if (ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
+            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
             {
                 foreach (var c in covered) expanded.Add(c);
             }
@@ -367,11 +362,11 @@ public class RolesController : BaseApiController
 
         var assignable = selected
             .Where(p => userPermissions.Contains(p.Code))
-            .Where(p => User.IsInRole("SuperAdmin") || !AdminOnlyModules.Contains(p.Module))
+            .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !PermissionCatalog.AdminOnlyModules.Contains(p.Module))
             .ToList();
 
         var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = ManagePermissionCoverage
+        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
             .Where(pair => selectedCodes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -380,25 +375,34 @@ public class RolesController : BaseApiController
             .Where(p => !coveredCodes.Contains(p.Code))
             .ToList();
     }
+
+    private async Task<bool> WouldRemoveOwnSystemAdminAsync(
+        Guid editedRoleId,
+        HashSet<string> replacementPermissionCodes,
+        CancellationToken ct)
+    {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrWhiteSpace(userId) || !Guid.TryParse(userId, out var parsedUserId))
+        {
+            return false;
+        }
+
+        var currentUser = await _context.Users
+            .Include(user => user.Roles)
+            .ThenInclude(role => role.Permissions)
+            .FirstOrDefaultAsync(user => user.Id == parsedUserId, ct);
+        if (currentUser == null || currentUser.Roles.All(role => role.Id != editedRoleId))
+        {
+            return false;
+        }
+
+        var remainingCodes = currentUser.Roles
+            .Where(role => role.Id != editedRoleId)
+            .SelectMany(role => role.Permissions)
+            .Select(permission => permission.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        remainingCodes.UnionWith(replacementPermissionCodes);
+        return !remainingCodes.Contains(PermissionCodes.SystemAdmin);
+    }
 }
-
-public record RoleResponse(
-    Guid Id,
-    string Name,
-    string Description,
-    int PermissionLevel,
-    int PaginationPageSize,
-    List<PermissionResponse> Permissions);
-
-public record PermissionResponse(
-    Guid Id,
-    string Code,
-    string Name,
-    string Description,
-    string Module,
-    bool IsGlobal);
-
-public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
-public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
-public record CreatePermissionRequest(string Code, string Name, string Description, string Module, bool IsGlobal);
-public record UpdatePermissionRequest(string Name, string Description, string Module, bool IsGlobal);

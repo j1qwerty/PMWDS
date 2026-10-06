@@ -34,7 +34,6 @@ PMWDS.S/
   },
   "Database": {
     "ForceSqlite": true,           // Force SQLite always in dev
-    "EnableSqliteFallback": true, // Fallback if SQL Server unavailable
     "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
   }
 }
@@ -44,7 +43,6 @@ PMWDS.S/
 ```json
 {
   "Database": {
-    "EnableSqliteFallback": true,
     "ForceSqlite": false,
     "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
   }
@@ -67,7 +65,6 @@ PMWDS.S/
 ```csharp
 public class DatabaseSettings
 {
-    public bool EnableSqliteFallback { get; set; } = true;
     public bool ForceSqlite { get; set; } = false;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
 }
@@ -82,12 +79,11 @@ The SQLite fallback is determined at startup:
 ```csharp
 var useSqlite = builder.Environment.IsDevelopment() &&
     (databaseSettings.ForceSqlite ||
-     (databaseSettings.EnableSqliteFallback &&
-      !CanConnectToSqlServer(sqlServerConnection)));
+     !CanConnectToSqlServer(sqlServerConnection));
 ```
 
 - **ForceSqlite = true**: Always use SQLite (ignores SQL Server)
-- **EnableSqliteFallback = true**: Tries SQL Server first, switches to SQLite if connection fails
+- **ForceSqlite = false**: Tries SQL Server first, then switches to SQLite in Development if connection fails
 - **CanConnectToSqlServer()**: Tests SQL Server with 2-second timeout
 
 ### DbContext Registration
@@ -141,7 +137,7 @@ When using SQLite:
 **Entity Sets:**
 - `Departments`, `Projects`, `Milestones`, `ProjectTasks`
 - `TaskDependencies`, `TaskAssignments`, `TaskComments`, `TaskAttachments`
-- `TimeEntries`, `ProjectDocuments`
+- `ProjectDocuments`
 - `Skills`, `UserSkills`
 - `Notifications`, `AuditLogs`
 
@@ -331,7 +327,6 @@ For SQLite-only development:
 {
   "Database": {
     "ForceSqlite": true,
-    "EnableSqliteFallback": false,
     "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
   }
 }
@@ -364,7 +359,7 @@ For SQLite-only development:
 | Login fails | Check SeedData.cs for seeded users; verify PasswordHash logic |
 | EF Core Design Time | Set `PMWDS_CONNECTION_STRING` env var for SQLite |
 | File upload hangs | Local file storage is now supported - restart API |
-| UploadDocument 500 (0 rows) | BaseRepository.UpdateAsync was using _dbSet.Update() which marks the entire entity graph as modified; changed to Entry().State = Modified |
+| UploadDocument 500 (0 rows) | EfRepository.UpdateAsync was using _dbSet.Update() which marks the entire entity graph as modified; changed to Entry().State = Modified |
 | GetProjectDetails 500 | GetProjectDetailsQueryHandler used AutoMapper without a mapping profile; changed to FromEntity() |
 
 ---

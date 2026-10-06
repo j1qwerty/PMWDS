@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Milestone, MilestoneDependency } from "../../../types";
-import { GlassCard, useToast } from "../../shared";
+import { GlassCard, dependencyMilestoneName, isOutOfScopeMilestone, useToast } from "../../shared";
 import { DependencyFormModal } from "./DependencyFormModal";
 
 interface MilestoneDependencyPanelProps {
@@ -26,8 +26,10 @@ export function MilestoneDependencyPanel({
   const [modalOpen, setModalOpen] = useState(false);
   const [editDep, setEditDep] = useState<MilestoneDependency | null>(null);
 
-  const getMilestoneName = (id: string) => milestones.find((m) => m.id === id)?.name || "Unknown";
-
+  // Status and progress still resolve locally: the dependency payload carries the
+  // milestone names but not their state. See the note in DependenciesPanel - for an
+  // out-of-scope prerequisite these are genuinely unknown, so the condition chip is
+  // replaced rather than shown as a misleading 0%.
   const getMilestoneStatus = (id: string) => milestones.find((m) => m.id === id)?.status || "";
 
   const getMilestoneProgress = (id: string) => milestones.find((m) => m.id === id)?.progressPercentage || 0;
@@ -80,6 +82,7 @@ export function MilestoneDependencyPanel({
         )}
 
         {dependencies.map((dep) => {
+          const prereqInScope = !isOutOfScopeMilestone(dep, "prerequisite", milestones);
           const prereqProgress = getMilestoneProgress(dep.prerequisiteMilestoneId);
           const prereqStatus = getMilestoneStatus(dep.prerequisiteMilestoneId);
           return (
@@ -98,29 +101,49 @@ export function MilestoneDependencyPanel({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className={`text-sm font-semibold ${dep.isMet ? "text-slate-500" : "text-slate-800"}`}>
-                    {getMilestoneName(dep.prerequisiteMilestoneId)}
+                  <span
+                    className={`text-sm font-semibold ${
+                      prereqInScope
+                        ? dep.isMet ? "text-slate-500" : "text-slate-800"
+                        : "text-slate-500 italic"
+                    }`}
+                  >
+                    {dependencyMilestoneName(dep, "prerequisite", milestones)}
                   </span>
                   <span className="material-symbols-outlined text-sm text-slate-400">arrow_forward</span>
-                  <span className={`text-sm font-semibold ${dep.isMet ? "text-slate-800" : "text-red-600"}`}>
-                    {getMilestoneName(dep.dependentMilestoneId)}
+                  <span
+                    className={`text-sm font-semibold ${
+                      isOutOfScopeMilestone(dep, "dependent", milestones)
+                        ? "text-slate-500 italic"
+                        : dep.isMet ? "text-slate-800" : "text-red-600"
+                    }`}
+                  >
+                    {dependencyMilestoneName(dep, "dependent", milestones)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {dep.type === "CompletionBased" ? (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                    }`}>
-                      Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                {prereqInScope ? (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {dep.type === "CompletionBased" ? (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        prereqStatus === "Completed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                      }`}>
+                        Must complete{prereqStatus === "Completed" ? " ✓" : ""}
+                      </span>
+                    ) : (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
+                      }`}>
+                        {prereqProgress}% / {dep.thresholdPercentage}% threshold
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                      Another department
                     </span>
-                  ) : (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      prereqProgress >= (dep.thresholdPercentage || 0) ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"
-                    }`}>
-                      {prereqProgress}% / {dep.thresholdPercentage}% threshold
-                    </span>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
               {canManage && (
                 <div className="flex items-center gap-1">
@@ -154,6 +177,7 @@ export function MilestoneDependencyPanel({
         milestones={milestones}
         onAdd={onAdd}
         onUpdate={onUpdate}
+        onDelete={handleDelete}
         onClose={() => { setModalOpen(false); setEditDep(null); }}
       />
     </>

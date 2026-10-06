@@ -73,6 +73,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("REAL");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("UseLocalModel")
@@ -153,6 +154,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("REAL");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -231,6 +233,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -295,6 +298,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -376,6 +380,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -440,6 +445,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Status")
@@ -479,6 +485,11 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<double>("AIWorkloadScore")
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<int>("AccessTokenVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<double>("AvailabilityPercentage")
                         .HasColumnType("decimal(5,2)");
 
@@ -499,6 +510,7 @@ namespace PMWDS.Persistence.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("EmployeeCode")
@@ -559,7 +571,18 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<string>("ProfilePictureUrl")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("RefreshTokenExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RefreshTokenRevokedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -635,6 +658,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("UserAgent")
@@ -694,6 +718,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -758,6 +783,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -829,6 +855,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -904,6 +931,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -968,6 +996,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Status")
@@ -1034,6 +1063,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("REAL");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1114,6 +1144,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1191,6 +1222,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Status")
@@ -1207,9 +1239,15 @@ namespace PMWDS.Persistence.Migrations
 
                     b.HasIndex("DueDate");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("ProjectId");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("IsDeleted", "DepartmentId");
+
+                    b.HasIndex("IsDeleted", "ProjectId", "Status", "DueDate");
 
                     b.ToTable("Milestones", (string)null);
                 });
@@ -1252,6 +1290,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1330,6 +1369,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
@@ -1344,15 +1384,20 @@ namespace PMWDS.Persistence.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedDate");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("IsRead");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("IsDeleted", "UserId", "IsRead", "CreatedDate");
 
                     b.ToTable("Notifications", (string)null);
                 });
@@ -1391,6 +1436,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SubjectTemplate")
@@ -1471,6 +1517,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1545,6 +1592,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1611,6 +1659,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1732,11 +1781,11 @@ namespace PMWDS.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProjectManagerId")
-                        .IsRequired()
+                    b.Property<Guid?>("ProjectManagerId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("StakeholderIds")
@@ -1804,6 +1853,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -1823,6 +1873,11 @@ namespace PMWDS.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ContentType")
@@ -1859,6 +1914,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
@@ -1875,9 +1931,11 @@ namespace PMWDS.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Category");
+
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("ProjectDocuments");
+                    b.ToTable("ProjectDocuments", (string)null);
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.ProjectTask", b =>
@@ -1895,7 +1953,7 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<DateTime?>("AIPredictedCompletionDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("AIRecommendedAssigneeId")
+                    b.Property<Guid?>("AIRecommendedAssigneeId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("AIRiskFactors")
@@ -1905,13 +1963,13 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<int>("ActualHours")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("AssignedByUserId")
+                    b.Property<Guid?>("AssignedByUserId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("AssignedDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("AssignedToUserId")
+                    b.Property<Guid?>("AssignedToUserId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("CompletedDate")
@@ -1986,6 +2044,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("StartDate")
@@ -2012,6 +2071,8 @@ namespace PMWDS.Persistence.Migrations
 
                     b.HasIndex("DueDate");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("IsEscalated");
 
                     b.HasIndex("MilestoneId");
@@ -2021,6 +2082,12 @@ namespace PMWDS.Persistence.Migrations
                     b.HasIndex("ProjectId");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("IsDeleted", "AssignedToUserId");
+
+                    b.HasIndex("IsDeleted", "MilestoneId");
+
+                    b.HasIndex("IsDeleted", "ProjectId", "Status");
 
                     b.ToTable("Tasks", (string)null);
                 });
@@ -2083,6 +2150,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -2148,6 +2216,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -2186,6 +2255,11 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("TEXT");
 
@@ -2209,12 +2283,16 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -2269,6 +2347,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -2323,23 +2402,26 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("TaskId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(64)
+                    b.Property<Guid>("UserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("IsActive");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("TaskId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("IsDeleted", "TaskId", "UserId", "IsActive");
 
                     b.ToTable("TaskAssignments", (string)null);
                 });
@@ -2382,6 +2464,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("TaskId")
@@ -2431,13 +2514,13 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("TaskId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -2476,6 +2559,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("SuccessorTaskId")
@@ -2496,67 +2580,6 @@ namespace PMWDS.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("TaskDependencies", (string)null);
-                });
-
-            modelBuilder.Entity("PMWDS.Domain.Entities.TimeEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("EndTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsBillable")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsManualEntry")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RowVersion")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StartTime");
-
-                    b.HasIndex("TaskId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TimeEntries", (string)null);
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.TrainingDataPoint", b =>
@@ -2601,6 +2624,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Source")
@@ -2655,6 +2679,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -2727,6 +2752,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
@@ -2778,6 +2804,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("SkillId")
@@ -2793,6 +2820,110 @@ namespace PMWDS.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserSkills");
+                });
+
+            modelBuilder.Entity("PMWDS.Domain.Entities.UtilizationCertificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("AmountClaimed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountUtilized")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CertificateNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FundingSource")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("MilestoneId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ReviewedOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SubmittedByUserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SubmittedOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CertificateNumber");
+
+                    b.HasIndex("DocumentId")
+                        .IsUnique();
+
+                    b.HasIndex("MilestoneId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("UtilizationCertificates", (string)null);
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Webhook", b =>
@@ -2841,6 +2972,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Secret")
@@ -2899,6 +3031,7 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("StatusCode")
@@ -3056,7 +3189,7 @@ namespace PMWDS.Persistence.Migrations
                     b.HasOne("PMWDS.Domain.Entities.Project", "Project")
                         .WithMany("Milestones")
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Department");
@@ -3117,6 +3250,11 @@ namespace PMWDS.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PMWDS.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectManagerId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("Department");
                 });
 
@@ -3125,7 +3263,7 @@ namespace PMWDS.Persistence.Migrations
                     b.HasOne("PMWDS.Domain.Entities.Department", "Department")
                         .WithMany("ProjectDepartments")
                         .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("PMWDS.Domain.Entities.Project", "Project")
@@ -3150,6 +3288,11 @@ namespace PMWDS.Persistence.Migrations
 
             modelBuilder.Entity("PMWDS.Domain.Entities.ProjectTask", b =>
                 {
+                    b.HasOne("PMWDS.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("PMWDS.Domain.Entities.Milestone", "Milestone")
                         .WithMany("Tasks")
                         .HasForeignKey("MilestoneId")
@@ -3201,7 +3344,15 @@ namespace PMWDS.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PMWDS.Domain.Entities.ApplicationUser", "User")
+                        .WithMany("TaskAssignments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.Navigation("Task");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.TaskAttachment", b =>
@@ -3239,17 +3390,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("PredecessorTask");
 
                     b.Navigation("SuccessorTask");
-                });
-
-            modelBuilder.Entity("PMWDS.Domain.Entities.TimeEntry", b =>
-                {
-                    b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
-                        .WithMany("TimeEntries")
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Task");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.UserDepartment", b =>
@@ -3301,6 +3441,37 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PMWDS.Domain.Entities.UtilizationCertificate", b =>
+                {
+                    b.HasOne("PMWDS.Domain.Entities.ProjectDocument", "Document")
+                        .WithOne()
+                        .HasForeignKey("PMWDS.Domain.Entities.UtilizationCertificate", "DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PMWDS.Domain.Entities.Milestone", "Milestone")
+                        .WithMany()
+                        .HasForeignKey("MilestoneId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PMWDS.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Document");
+
+                    b.Navigation("Milestone");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("PMWDS.Domain.Entities.Webhook", b =>
                 {
                     b.HasOne("PMWDS.Domain.Entities.Integration", "Integration")
@@ -3349,6 +3520,8 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Profile");
 
                     b.Navigation("Skills");
+
+                    b.Navigation("TaskAssignments");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Dashboard", b =>
@@ -3407,8 +3580,6 @@ namespace PMWDS.Persistence.Migrations
                     b.Navigation("Dependencies");
 
                     b.Navigation("SubTasks");
-
-                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("PMWDS.Domain.Entities.Skill", b =>

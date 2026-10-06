@@ -26,21 +26,64 @@ public class JwtSettings
     public string Secret { get; set; } = string.Empty;
     public string Issuer { get; set; } = string.Empty;
     public string Audience { get; set; } = string.Empty;
-    public int ExpiryMinutes { get; set; } = 60;
+    public int ExpiryMinutes { get; set; } = 30;
+    public int RefreshTokenDays { get; set; } = 14;
+}
+
+public class SecurityValidationSettings
+{
+    public bool ValidateSecretsOnStartup { get; set; } = true;
 }
 
 public class AISettings
 {
     public string OpenAIApiKey { get; set; } = string.Empty;
     public string OpenAIModel { get; set; } = "gpt-4o";
-    public string DefaultProvider { get; set; } = "OpenAI";
-    public string DefaultModel { get; set; } = string.Empty;
+    public string DefaultProvider { get; set; } = "OpenRouter";
+    public string DefaultModel { get; set; } = "nvidia/nemotron-3-ultra-550b-a55b:free";
     public string AppName { get; set; } = "PMWDS";
     public string AppUrl { get; set; } = "http://localhost:5177";
     public string MLModelPath { get; set; } = string.Empty;
     public bool UseLocalModel { get; set; } = false;
     public double RiskThreshold { get; set; } = 0.7;
     public int TrainingCronHour { get; set; } = 2; // 2 AM
+
+    /// <summary>
+    /// Overall timeout for provider calls. The default HttpClient timeout is
+    /// 100s, which is not enough for large structured report completions on a
+    /// large model such as the 550B default.
+    /// </summary>
+    public int RequestTimeoutSeconds { get; set; } = 600;
+
+    /// <summary>
+    /// Caps the completion length. Must be large enough to hold a complete
+    /// JSON report body; if the cap truncates the response mid-object the
+    /// JSON will not parse and the report falls back.
+    /// </summary>
+    public int MaxOutputTokens { get; set; } = 16000;
+
+    /// <summary>
+    /// Model to switch to when the primary model is rate limited (HTTP 429).
+    ///
+    /// OpenRouter's free tier allows 50 requests a day per account, shared across
+    /// everyone using this deployment. Once spent, every AI feature fails at once -
+    /// the assistant, report generation and summaries - with no way for the user to
+    /// do anything about it except wait for the reset.
+    ///
+    /// <c>openrouter/free</c> is OpenRouter's router model: it picks a currently
+    /// available free model at random and filters for the features the request
+    /// needs. So it is a different quota bucket from any one named free model, which
+    /// makes it a usable fallback when a specific model is exhausted.
+    ///
+    /// Blank disables the fallback, leaving the original behaviour of failing fast.
+    /// </summary>
+    public string RateLimitFallbackModel { get; set; } = "openrouter/free";
+
+    /// <summary>
+    /// Whether to retry on the fallback model after a 429. Kept separate from the
+    /// model name so the fallback can be disabled without editing configuration.
+    /// </summary>
+    public bool EnableRateLimitFallback { get; set; } = true;
     public AIProviderOptions OpenAI { get; set; } = new()
     {
         Enabled = true,
@@ -49,9 +92,9 @@ public class AISettings
     };
     public AIProviderOptions OpenRouter { get; set; } = new()
     {
-        Enabled = false,
+        Enabled = true,
         BaseUrl = "https://openrouter.ai/api/v1",
-        DefaultModel = "openai/gpt-4o-mini"
+        DefaultModel = "nvidia/nemotron-3-ultra-550b-a55b:free"
     };
 }
 
@@ -73,11 +116,31 @@ public class HangfireSettings
 
 public class DatabaseSettings
 {
-    public bool EnableSqliteFallback { get; set; } = true;
-    public bool EnableMySqlFallback { get; set; } = true;
     public bool ForceSqlite { get; set; } = false;
-    public string MySqlConnectionString { get; set; } = string.Empty;
     public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+
+    /// <summary>
+    /// Permits SQLite outside Development. Off by default so Production still demands SQL Server
+    /// unless a deployment deliberately opts in (single-instance hosting, no Hangfire).
+    /// </summary>
+    public bool AllowSqliteInProduction { get; set; } = false;
+
+    /// <summary>
+    /// Whether SQL Server is a candidate provider at all. True by default, which preserves the
+    /// existing probe-then-fallback behaviour.
+    ///
+    /// Set false on a deployment that has no SQL Server instance and no intention of gaining
+    /// one. Two things change. The startup connectivity probe is skipped, so the app does not
+    /// spend a connect timeout every boot waiting for something that is never there and does
+    /// not print a misleading "SQL Server unavailable or not configured" line. And SQL Server
+    /// cannot be selected even if a reachable instance happens to be listening on the default
+    /// port - which would otherwise be a silent, unplanned promotion of a deployment to a
+    /// database nobody backed up.
+    ///
+    /// Not a replacement for AllowSqliteInProduction: turning SQL Server off still requires
+    /// SQLite to be permitted for the environment.
+    /// </summary>
+    public bool EnableSqlServer { get; set; } = true;
 }
 
 public class LocalFileStorageSettings
@@ -85,10 +148,13 @@ public class LocalFileStorageSettings
     public string BasePath { get; set; } = string.Empty;
     public string AvatarsPath { get; set; } = "avatars";
     public string DocumentsPath { get; set; } = "documents";
-    public string FullAvatarsPath => string.IsNullOrWhiteSpace(BasePath)
-        ? Path.Combine(AppContext.BaseDirectory, "App_Data", AvatarsPath)
-        : Path.Combine(BasePath, AvatarsPath);
-    public string FullDocumentsPath => string.IsNullOrWhiteSpace(BasePath)
-        ? Path.Combine(AppContext.BaseDirectory, "App_Data", DocumentsPath)
-        : Path.Combine(BasePath, DocumentsPath);
+
+    // Resolve relative BasePath against AppContext.BaseDirectory so callers never get a
+    // working-directory-dependent path (systemd runs with a different working directory).
+    // Empty BasePath keeps the historical App_Data default.
+    private string ResolvedBasePath =>
+        StoragePathResolver.Resolve(BasePath, AppContext.BaseDirectory, "App_Data");
+
+    public string FullAvatarsPath => Path.Combine(ResolvedBasePath, AvatarsPath);
+    public string FullDocumentsPath => Path.Combine(ResolvedBasePath, DocumentsPath);
 }

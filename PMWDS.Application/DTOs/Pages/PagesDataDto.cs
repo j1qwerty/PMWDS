@@ -51,6 +51,7 @@ public record PageDepartmentDto(
 
 public record PageRoleDto(
     Guid Id,
+    string Key,
     string Name,
     string Description,
     int PermissionLevel,

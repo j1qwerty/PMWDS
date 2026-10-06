@@ -92,7 +92,7 @@ public partial class AIService
             insights.Add($"{highBurnout.Count()} team member(s) show high burnout risk.");
         }
 
-        if (_chat.IsConfigured())
+        if (await _chat.IsConfiguredAsync(ct: ct))
         {
             try
             {
@@ -136,7 +136,7 @@ public partial class AIService
             suggestions.Add(new ReallocationSuggestion(
                 task.Id,
                 task.Title,
-                task.AssignedToUserId ?? string.Empty,
+                task.AssignedToUserId?.ToString() ?? string.Empty,
                 string.Empty,
                 recommendation.RecommendedUserId,
                 recommendation.RecommendedUserName,
@@ -164,15 +164,15 @@ public partial class AIService
     public Task<AIProviderTestResultDto> TestProviderAsync(string provider, string? model = null, string? prompt = null, CancellationToken ct = default)
         => _chat.TestProviderAsync(provider, model, prompt, ct);
 
-    public Task<ChatResponseDto> ProcessChatMessageAsync(string userId, string message, string? provider = null, string? model = null, CancellationToken ct = default)
-        => _chat.ProcessAsync(userId, message, provider, model, ct);
+    public Task<ChatResponseDto> ProcessChatMessageAsync(string userId, string message, string contextDossier, string? provider = null, string? model = null, CancellationToken ct = default)
+        => _chat.ProcessAsync(userId, message, contextDossier, provider, model, ct);
 
     public async Task<string> GenerateStructuredReportAsync(
         string systemPrompt,
         string userContext,
         CancellationToken ct = default)
     {
-        if (!_chat.IsConfigured())
+        if (!await _chat.IsConfiguredAsync(ct: ct))
         {
             throw new InvalidOperationException(
                 "AI provider is not configured. Please configure AI settings first.");

@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
+import type { Department } from "../../types";
+import { lakhsToRupees } from "../../ui";
 import {
   GlassCard,
   useToast,
   LoadingPage,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
@@ -62,7 +65,15 @@ const LEGACY_STEPS: StepConfig[] = [
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
-const EXECUTIVE_STEPS: StepConfig[] = [
+// Standard flow: details, milestones, assign departments per milestone, dependencies.
+// The Departments / Users / Tasks steps are dropped by `visibleSteps` below, so the
+// project's departments come from the milestone assignments rather than a separate
+// step, and tasks are added afterwards from the project's Tasks tab.
+//
+// LEGACY_STEPS above remains only as a fallback for a role that holds PROJECT_MANAGE
+// without one of the recognised role keys - a custom role built on the Roles page.
+// Every seeded role that can open this wizard takes the standard flow.
+const STANDARD_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "milestones", label: "Milestones", icon: "flag" },
   { key: "milestoneDepartments", label: "Assign Departments", icon: "account_tree" },
@@ -77,7 +88,44 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const { auth } = useAuth();
   const { data, refresh } = useAppData();
   const { addToast } = useToast();
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(data.users, data.departments);
+  const [liveDepartments, setLiveDepartments] = useState<Department[] | null>(null);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+
+  // The wizard previously relied only on the paginated / cached appData
+  // departments (pages API). The Departments page fetches live via
+  // api.getDepartments, so newly created departments were visible there
+  // but missing here. Fetch live and merge so the dropdown never goes
+  // empty while cached data is stale.
+  useEffect(() => {
+    if (!auth) {
+      setLiveDepartments(null);
+      return;
+    }
+    let cancelled = false;
+    setDepartmentsLoading(true);
+    api.getDepartments(auth.token)
+      .then((departments) => {
+        if (!cancelled) setLiveDepartments(departments);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveDepartments(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDepartmentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth?.token]);
+
+  const allDepartments = useMemo(() => {
+    if (!liveDepartments) return data.departments;
+    const seen = new Set(liveDepartments.map((d) => d.id));
+    const missing = data.departments.filter((d) => !seen.has(d.id));
+    return [...liveDepartments, ...missing];
+  }, [data.departments, liveDepartments]);
+
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(data.users, allDepartments);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -105,17 +153,29 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 5: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
-  const isSuperAdmin = auth?.roles?.includes("SuperAdmin") ?? false;
-  const isDirector = auth?.roles?.includes("Director") ?? false;
-  const isDepartmentHead = auth?.roles?.includes("DepartmentHead") ?? false;
-  const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
-  const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
+  const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
+  const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
+  const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
+  const isProjectManager = hasRoleKey(auth?.roleKeys, RoleKey.ProjectManager);
+
+  // The wizard is only reachable by a holder of PROJECT_MANAGE, which in the seeded
+  // roles means these four. Project manager used to be left out of this list and so
+  // fell through to the six-step legacy flow - departments and users as separate
+  // steps - even though its own submit path was already the shared one below.
+  //
+  // Kept as an explicit list rather than "always the standard flow" because a custom
+  // role built on the Roles page can hold PROJECT_MANAGE without any of these role
+  // keys, and that role still needs steps to render.
+  const usesStandardFlow = isSuperAdmin || isDirector || isDepartmentHead || isProjectManager;
+  const steps = usesStandardFlow ? STANDARD_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
   const earlyFinishStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
+  const canEarlyFinish = usesStandardFlow && currentStep === earlyFinishStepIndex;
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  const visibleSteps = usesExecutiveFlow && !isSuperAdmin
+  // The standard flow stops after Dependencies: Departments / Users / Tasks are
+  // hidden, and the final visible step submits with "Finish" instead of "Next".
+  const visibleSteps = usesStandardFlow
     ? steps.slice(0, dependenciesStepIndex + 1)
     : steps;
 
@@ -140,9 +200,15 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const isStepComplete = (step: number): boolean => {
     switch (steps[step]?.key) {
-      case "details": return name.trim().length > 0 && startDate.trim().length > 0 && endDate.trim().length > 0;
+      case "details":
+        return (
+          name.trim().length > 0 &&
+          startDate.trim().length > 0 &&
+          endDate.trim().length > 0 &&
+          endDate >= startDate
+        );
       case "departments": return selectedDepartmentIds.length > 0;
-      case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
+      case "milestones": return usesStandardFlow ? milestones.length > 0 : true;
       case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
       case "dependencies": return true;
       case "users": return true;
@@ -155,7 +221,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
   const handleNext = () => {
     if (!canProceed) return;
-    if (currentStep < steps.length - 1) {
+    if (currentStep < visibleSteps.length - 1) {
       setCurrentStep((s) => s + 1);
     }
   };
@@ -166,7 +232,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const showSkip = !usesExecutiveFlow && currentStepKey === "milestones" && milestones.length === 0 && dependencies.length === 0;
+  const showSkip = !usesStandardFlow && currentStepKey === "milestones" && milestones.length === 0 && dependencies.length === 0;
 
   const handleSkip = () => {
     const tasksStepIndex = steps.findIndex((step) => step.key === "tasks");
@@ -176,10 +242,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const handleFinish = async () => {
     if (!auth) return;
     const milestoneDeptIds = Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]));
-    const assignedDepartmentIds = usesExecutiveFlow
+    const assignedDepartmentIds = usesStandardFlow
       ? milestoneDeptIds
       : selectedDepartmentIds;
-    const execPrimaryDeptId = usesExecutiveFlow && primaryDepartmentId
+    const resolvedPrimaryDeptId = usesStandardFlow && primaryDepartmentId
       ? primaryDepartmentId
       : (assignedDepartmentIds[0] || "");
     if (assignedDepartmentIds.length === 0) {
@@ -202,9 +268,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         category: "Monitoring",
         plannedStartDate: startDate,
         plannedEndDate: endDate || "",
-        plannedBudget: budget,
+        // The budget field is in lakhs; the API stores rupees.
+        plannedBudget: lakhsToRupees(budget),
         organizationId: "",
-        departmentId: execPrimaryDeptId,
+        departmentId: resolvedPrimaryDeptId,
         departmentIds: assignedDepartmentIds,
         projectManagerId: "",
         priority,
@@ -271,15 +338,21 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   };
 
   const scopedDepartments = useMemo(() => {
-    let filtered = data.departments;
+    let filtered = allDepartments;
     if (shouldFilterByOrg && userOrganizationId) {
-      filtered = filtered.filter((d) => d.organizationId === userOrganizationId);
+      const orgFiltered = filtered.filter((d) => d.organizationId === userOrganizationId);
+      // Fall back to the full server-scoped list instead of an empty
+      // dropdown when the client-side org id does not match (e.g. stale
+      // user scope or departments without an organization).
+      if (orgFiltered.length > 0) return orgFiltered;
+      // If every department lacks an organization, filtering is meaningless.
+      if (filtered.length > 0 && filtered.every((d) => !d.organizationId)) return filtered;
     }
     return filtered;
-  }, [data.departments, shouldFilterByOrg, userOrganizationId]);
+  }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
 
   const departmentUsers = useMemo(() => {
-    const effectiveDepartmentIds = usesExecutiveFlow
+    const effectiveDepartmentIds = usesStandardFlow
       ? milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]
       : selectedDepartmentIds;
     if (effectiveDepartmentIds.length === 0) return [];
@@ -289,13 +362,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       if (u.isActive === false) return false;
       if (seen.has(u.id)) return false;
       seen.add(u.id);
-      if (u.roles?.includes("SuperAdmin")) return false;
+      if (hasRoleKey(u.roleKeys ?? u.roles, RoleKey.SuperAdmin)) return false;
       const belongsToDept =
         (u.departmentId && deptSet.has(u.departmentId)) ||
         u.departments?.some((d) => deptSet.has(d.departmentId));
       return belongsToDept;
     });
-  }, [selectedDepartmentIds, milestones, data.users, usesExecutiveFlow]);
+  }, [selectedDepartmentIds, milestones, data.users, usesStandardFlow]);
 
   return (
     <div className="max-w-full mx-auto ">
@@ -386,7 +459,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">{steps[currentStep].label}</h2>
-            <p className="text-xs text-slate-400">Step {currentStep + 1} of {visibleSteps.length}</p>
+            <p className="text-xs text-slate-400">
+              Step {currentStep + 1} of {visibleSteps.length} ·{" "}
+              <span className="text-red-500">*</span> required
+            </p>
           </div>
         </div>
 
@@ -436,6 +512,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             <MilestoneDepartmentsStep
               milestones={milestones}
               departments={scopedDepartments}
+              organizations={data.organizations}
+              loading={departmentsLoading}
               onChange={setMilestones}
             />
           )}

@@ -5,7 +5,7 @@ using PMWDS.Persistence.Context;
 
 namespace PMWDS.Persistence.Repositories;
 
-public class UserRepository : BaseRepository<ApplicationUser>, IUserRepository
+public class UserRepository : EfRepository<ApplicationUser>, IUserRepository
 {
     public UserRepository(ApplicationDbContext ctx)
         : base(ctx)

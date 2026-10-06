@@ -72,7 +72,7 @@ public record ProjectDto(
         {
             new(p.DepartmentId, p.Department?.Name, true)
         },
-    ProjectManagerId: p.ProjectManagerId,
+    ProjectManagerId: p.ProjectManagerId?.ToString() ?? string.Empty,
     ProjectManagerName: projectManagerName,
     TotalTasks: p.Tasks?.Count ?? 0,
     CompletedTasks: p.Tasks?.Count(t =>

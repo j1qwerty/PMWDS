@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Milestone, MilestoneDependency, Project, Task, User } from "../../types";
+import { onDataChanged } from "../../realtime";
+import { PROJECT_WORKSPACE_SCOPES } from "../../realtimeScopes";
+import type { Department, Milestone, MilestoneDependency, Project, Task, User } from "../../types";
 import { projectBelongsToAnyDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
+
+/** See the matching constants in appData.tsx. */
+const REALTIME_DEBOUNCE_MS = 250;
+const FOCUS_DEBOUNCE_MS = 1000;
 
 export interface ProjectWorkspaceData {
   project: Project | null;
@@ -13,6 +19,14 @@ export interface ProjectWorkspaceData {
   tasks: Task[];
   users: User[];
   dependencies: MilestoneDependency[];
+  /**
+   * What this user may change on this project, as computed by the server.
+   *
+   * False until the access call resolves, so controls stay hidden for the moment
+   * before it lands rather than flashing into view and disappearing.
+   */
+  canManageMilestones: boolean;
+  canManageDependencies: boolean;
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
@@ -22,30 +36,34 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const { projectId } = useParams<{ projectId: string }>();
   const { auth } = useAuth();
   const { data } = useAppData();
+  const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(
-    data.users,
-    data.departments,
+    users.length ? users : data.users,
+    departments.length ? departments : data.departments,
   );
 
   const [project, setProject] = useState<Project | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
+  const [canManageMilestones, setCanManageMilestones] = useState(false);
+  const [canManageDependencies, setCanManageDependencies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const visibleProject = useMemo(() => {
     if (!project) return null;
     if (shouldFilterByOrg && userOrganizationId) {
-      const orgDeptIds = data.departments
+      const orgDeptIds = (departments.length ? departments : data.departments)
         .filter((d) => d.organizationId === userOrganizationId)
         .map((d) => d.id);
       if (!projectBelongsToAnyDepartment(project, orgDeptIds)) return null;
     }
     return project;
-  }, [project, data.departments, shouldFilterByOrg, userOrganizationId]);
+  }, [project, data.departments, departments, shouldFilterByOrg, userOrganizationId]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!auth || !projectId) {
       setLoading(false);
       return;
@@ -53,37 +71,91 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     setLoading(true);
     setError("");
     try {
-      const [projectData, milestoneData, taskData, dependencyData] = await Promise.all([
+      const [projectData, milestoneData, taskData, dependencyData, userData, departmentData, accessData] = await Promise.all([
         api.getProject(auth.token, projectId).catch(() => {
           return data.projects.find((p) => p.id === projectId) ?? null;
         }),
         api.getMilestonesByProject(auth.token, projectId),
         api.getTasksByProject(auth.token, projectId),
         api.getMilestoneDependencies(auth.token, projectId),
+        api.getUsers(auth.token).catch(() => data.users),
+        api.getDepartments(auth.token).catch(() => data.departments),
+        // Defaults to "cannot manage" if it fails, so a broken capability call hides
+        // the controls rather than showing them and then 403ing on save.
+        api.getMilestoneAccess(auth.token, projectId).catch(() => ({
+          canManageMilestones: false,
+          canManageDependencies: false,
+        })),
       ]);
       setProject(projectData);
       setMilestones(milestoneData);
       setTasks(taskData);
       setDependencies(dependencyData);
+      setUsers(userData);
+      setDepartments(departmentData);
+      setCanManageMilestones(accessData.canManageMilestones);
+      setCanManageDependencies(accessData.canManageDependencies);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load project data.");
     } finally {
       setLoading(false);
     }
-  };
+    // `data` is intentionally not a dependency: it is a large memo that changes on every
+    // refetch, which would make `load` unstable and re-trigger the effect below in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, projectId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token, projectId]);
+  }, [load]);
+
+  // Keep the workspace in sync with other sessions. Without this, an edit made in
+  // another browser stayed invisible here until the tab was reloaded.
+  useEffect(() => {
+    if (!auth || !projectId) return;
+
+    let debounceTimer: number | undefined;
+
+    const scheduleLoad = (delay: number) => {
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined;
+        void load();
+      }, delay);
+    };
+
+    const stopListening = onDataChanged((notification) => {
+      if (!PROJECT_WORKSPACE_SCOPES.includes(notification.scope)) return;
+      // Only react to events for this project when the server tells us which one it is.
+      // The projectId is null for some server-side cascades, so treat that as "mine".
+      if (notification.projectId && notification.projectId !== projectId) return;
+      scheduleLoad(REALTIME_DEBOUNCE_MS);
+    });
+
+    const onFocus = () => scheduleLoad(FOCUS_DEBOUNCE_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleLoad(FOCUS_DEBOUNCE_MS);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      stopListening();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [auth, projectId, load]);
 
   return {
     project: visibleProject,
     milestones,
     tasks,
-    users: data.users,
+    users: users.length ? users : data.users,
     dependencies,
+    canManageMilestones,
+    canManageDependencies,
     loading,
     error,
     refresh: load,

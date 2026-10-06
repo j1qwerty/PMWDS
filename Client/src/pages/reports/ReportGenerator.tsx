@@ -1,4 +1,4 @@
-import { GlassCard } from "../shared";
+import { GlassCard, InfoTip } from "../shared";
 
 interface ReportGeneratorProps {
   filters: {
@@ -8,7 +8,9 @@ interface ReportGeneratorProps {
     endDate: string;
     status: string;
   };
-  generating: boolean;
+  /** Report type currently being generated, or null when idle. */
+  generatingReportType: string | null;
+  isGeneratingType: (reportType: string) => boolean;
   onGenerateProjectStatus: () => void;
   onGenerateBudgetVariance: () => void;
   onGenerateTaskCompletion: () => void;
@@ -72,28 +74,56 @@ const colorMap: Record<string, { bg: string; text: string; border: string; hover
   red: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", hover: "hover:bg-red-100" },
 };
 
-export function ReportGenerator({ filters, generating, ...handlers }: ReportGeneratorProps) {
+export function ReportGenerator({ filters, generatingReportType, isGeneratingType, ...handlers }: ReportGeneratorProps) {
+  const anyGenerating = generatingReportType !== null;
+
   return (
     <GlassCard className="p-6">
       <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
         <span className="material-symbols-outlined text-indigo-500">description</span>
         Generate Reports
+        <span className="ml-auto">
+          <InfoTip
+            title="Report Generation"
+            summary="Each tile asks the configured AI provider to write a report from the project, task, and budget data matching your filters."
+            points={[
+              "Project Status and Budget Variance need a project selected in the filters above. The other three can run across a whole department.",
+              "Generation can take a minute or more on a large model, but it keeps running if you navigate away.",
+              "If the provider fails, you get an error explaining what to fix rather than an empty report."
+            ]}
+            note="Generated reports are saved so you can reopen or download them later."
+          />
+        </span>
       </h3>
       <p className="text-xs text-slate-500 mb-5">
         Select a report type to generate an AI-powered report. Reports can be viewed inline or downloaded as PDF.
       </p>
 
-      {generating && (
-        <div className="mb-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-indigo-700 font-medium">Generating report with AI...</span>
+      {anyGenerating && (
+        <div className="mb-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-start gap-3">
+          <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <span className="text-sm text-indigo-700 font-medium block">
+              Generating {REPORT_TYPES.find((r) => r.id === generatingReportType)?.title ?? "report"} with AI...
+            </span>
+            <span className="text-[11px] text-indigo-500 block mt-0.5">
+              Large models can take a few minutes. This keeps running if you switch pages, and you can
+              start another report type in the meantime.
+            </span>
+          </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {REPORT_TYPES.map((report) => {
           const colors = colorMap[report.color];
-          const isDisabled = (report.requiresProject && !filters.projectId) || generating;
+          const isThisGenerating = isGeneratingType(report.id);
+          // A card is only blocked while *its own* request is pending, or when
+          // it cannot run. Disabling every other type for the duration of one
+          // slow generation made the panel feel stuck.
+          const needsProject = report.requiresProject && !filters.projectId;
+          const isDisabled = isThisGenerating || needsProject;
+
           const handler = handlers[report.onClick];
 
           return (
@@ -101,10 +131,11 @@ export function ReportGenerator({ filters, generating, ...handlers }: ReportGene
               key={report.id}
               onClick={handler}
               disabled={isDisabled}
+              aria-busy={isThisGenerating}
               className={`
                 p-4 rounded-xl border text-left transition-all duration-200
-                ${isDisabled 
-                  ? "bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed" 
+                ${isDisabled
+                  ? "bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed"
                   : `${colors.bg} ${colors.border} ${colors.hover} cursor-pointer hover:shadow-sm`
                 }
               `}
@@ -112,11 +143,15 @@ export function ReportGenerator({ filters, generating, ...handlers }: ReportGene
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
                 isDisabled ? "bg-slate-200" : colors.bg
               }`}>
-                <span className={`material-symbols-outlined text-xl ${
-                  isDisabled ? "text-slate-400" : colors.text
-                }`}>
-                  {report.icon}
-                </span>
+                {isThisGenerating ? (
+                  <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className={`material-symbols-outlined text-xl leading-none ${
+                    isDisabled ? "text-slate-400" : colors.text
+                  }`}>
+                    {report.icon}
+                  </span>
+                )}
               </div>
               <h4 className={`text-sm font-bold mb-1 ${isDisabled ? "text-slate-400" : "text-slate-800"}`}>
                 {report.title}
@@ -124,17 +159,21 @@ export function ReportGenerator({ filters, generating, ...handlers }: ReportGene
               <p className="text-[11px] text-slate-500 leading-relaxed">
                 {report.description}
               </p>
-              {report.requiresProject && !filters.projectId && (
+              {needsProject && (
                 <p className="text-[10px] text-amber-500 mt-2 font-medium">
                   Requires project selection
                 </p>
               )}
               <div className="flex items-center gap-1.5 mt-3">
-                <span className={`material-symbols-outlined text-sm ${isDisabled ? "text-slate-400" : colors.text}`}>
-                  auto_awesome
+                <span className={`material-symbols-outlined text-sm leading-none ${
+                  isThisGenerating ? "text-indigo-500" : isDisabled ? "text-slate-400" : colors.text
+                }`}>
+                  {isThisGenerating ? "hourglass_top" : "auto_awesome"}
                 </span>
-                <span className={`text-xs font-semibold ${isDisabled ? "text-slate-400" : colors.text}`}>
-                  Generate & View
+                <span className={`text-xs font-semibold ${
+                  isThisGenerating ? "text-indigo-600" : isDisabled ? "text-slate-400" : colors.text
+                }`}>
+                  {isThisGenerating ? "Generating..." : "Generate & View"}
                 </span>
               </div>
             </button>

@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -10,20 +12,22 @@ public class IntegrationsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly ISensitiveDataProtector _sensitiveData;
 
-    public IntegrationsController(IUnitOfWork uow, ICurrentUserService currentUser)
+    public IntegrationsController(IMediator mediator, IUnitOfWork uow, ICurrentUserService currentUser, ISensitiveDataProtector sensitiveData) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _sensitiveData = sensitiveData;
     }
 
     [HttpGet]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
         => Ok((await _uow.Integrations.GetAllAsync(ct)).Select(MapIntegration));
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var integration = await _uow.Integrations.GetByIdAsync(id, ct);
@@ -37,10 +41,10 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Create([FromBody] UpsertIntegrationRequest req, CancellationToken ct)
     {
-        var integration = Integration.Create(req.IntegrationType, req.Name, req.Configuration, req.IsEnabled);
+        var integration = Integration.CreateWithConfigurationJson(req.IntegrationType, req.Name, _sensitiveData.ProtectJson(req.Configuration), req.IsEnabled);
         integration.SetCreatedBy(_currentUser.UserId ?? "system");
         integration.MarkSynced(req.Status);
         await _uow.Integrations.AddAsync(integration, ct);
@@ -49,7 +53,7 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertIntegrationRequest req, CancellationToken ct)
     {
         var integration = await _uow.Integrations.GetByIdAsync(id, ct);
@@ -58,14 +62,14 @@ public class IntegrationsController : BaseApiController
             return NotFound();
         }
 
-        integration.Update(req.IntegrationType, req.Name, req.Configuration, req.IsEnabled, req.Status);
+        integration.UpdateConfigurationJson(req.IntegrationType, req.Name, _sensitiveData.ProtectJson(req.Configuration), req.IsEnabled, req.Status);
         await _uow.Integrations.UpdateAsync(integration, ct);
         await _uow.SaveChangesAsync(ct);
         return Ok(MapIntegration(integration));
     }
 
     [HttpPatch("{id:guid}/sync")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Sync(Guid id, [FromBody] SyncIntegrationRequest req, CancellationToken ct)
     {
         var integration = await _uow.Integrations.GetByIdAsync(id, ct);
@@ -81,7 +85,7 @@ public class IntegrationsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _uow.Integrations.DeleteAsync(id, ct);
@@ -89,18 +93,13 @@ public class IntegrationsController : BaseApiController
         return NoContent();
     }
 
-    private static IntegrationResponse MapIntegration(Integration integration)
+    private IntegrationResponse MapIntegration(Integration integration)
         => new(
             integration.Id,
             integration.IntegrationType,
             integration.Name,
-            JsonSerializer.Deserialize<Dictionary<string, object>>(integration.ConfigurationJson) ?? new(),
+            _sensitiveData.UnprotectJson<Dictionary<string, object>>(integration.ConfigurationJson) ?? new(),
             integration.IsActive,
             integration.LastSync,
             integration.Status);
 }
-
-public record IntegrationResponse(Guid Id, string IntegrationType, string Name, Dictionary<string, object> Configuration, bool IsEnabled, DateTime? LastSync, string Status);
-public record IntegrationDetailResponse(IntegrationResponse Integration, List<WebhookResponse> Webhooks);
-public record UpsertIntegrationRequest(string IntegrationType, string Name, Dictionary<string, object> Configuration, bool IsEnabled, string Status);
-public record SyncIntegrationRequest(string Status);

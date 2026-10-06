@@ -24,6 +24,7 @@ import type {
   LessonLearnedRecord,
   Milestone,
   MilestoneDependency,
+  ProjectMilestoneAccess,
   NotificationItem,
   NotificationTemplateRecord,
   AlertRuleRecord,
@@ -49,7 +50,11 @@ import type {
   User,
   WebhookDetailRecord,
   WebhookRecord,
+  WorkspaceBootstrap,
   WorkloadReport,
+  SubmitUtilizationCertificatePayload,
+  UpdateUtilizationCertificatePayload,
+  UtilizationCertificate,
 } from "./types";
 
 const API_BASE_URL =
@@ -63,9 +68,11 @@ type ApiOptions = {
   headers?: Record<string, string>;
   query?: Record<string, string | number | boolean | undefined | null>;
   responseType?: 'json' | 'blob';
+  /** Lets a long-running call be cancelled or given a longer budget. */
+  signal?: AbortSignal;
 };
 
-type PaginatedResponse<T> = {
+export type PaginatedResponse<T> = {
   items: T[];
   page: number;
   pageSize: number;
@@ -73,8 +80,36 @@ type PaginatedResponse<T> = {
   totalPages: number;
 };
 
+export type TaskListQuery = {
+  page?: number;
+  pageSize?: number;
+  projectId?: string;
+  departmentId?: string;
+  search?: string;
+  statuses?: string;
+  priorities?: string;
+  /** Past due and unfinished, regardless of status. */
+  overdue?: boolean;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+};
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`);
+  // Resolve against the current origin so a relative API base such as "/api/v1" works. `new URL`
+  // throws "is not a valid URL" for a relative input with no base argument, which is why the
+  // absolute subdomain URL used to be required.
+  const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+  const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, "")}`, origin);
 
   if (options.query) {
     Object.entries(options.query).forEach(([key, value]) => {
@@ -100,20 +135,34 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     body = JSON.stringify(body);
   }
 
-  const response = await fetch(url.toString(), {
-    method: options.method ?? "GET",
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method: options.method ?? "GET",
+      headers,
+      body,
+      signal: options.signal,
+    });
+  } catch (e) {
+    // Distinguish an abort from a genuine network failure, so callers can say
+    // "timed out" rather than "could not reach the server".
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new ApiError("The request was cancelled or timed out.", 0);
+    }
+    throw new ApiError(
+      "Could not reach the server. Check that the API is running and that you are online.",
+      0
+    );
+  }
 
-  if (!response.ok) {
+if (!response.ok) {
     const text = await response.text();
     let message = text;
     try {
       const json = JSON.parse(text);
-      message = json.message || json.error || text;
+      message = json.error?.message || json.message || json.error || text;
     } catch {}
-    throw new Error(message || `Request failed with status ${response.status}`);
+    throw new ApiError(message || `Request failed with status ${response.status}`, response.status);
   }
 
   if (options.responseType === 'blob') {
@@ -122,7 +171,11 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    return (await response.json()) as T;
+    const json = await response.json();
+    if (json && typeof json === "object" && "success" in json && "data" in json) {
+      return json.data as T;
+    }
+    return json as T;
   }
 
   return (await response.blob()) as T;
@@ -155,11 +208,14 @@ export const api = {
       body: { email, token, newPassword },
     });
   },
-  refresh(token: string) {
-    return request<{ token: string; expiry: string }>("auth/refresh", {
+  refresh(userId: string, refreshToken: string) {
+    return request<{ token: string; expiry: string; refreshToken: string; refreshTokenExpiry: string }>("auth/refresh", {
       method: "POST",
-      token,
+      body: { userId, refreshToken },
     });
+  },
+  logout(token: string) {
+    return request<void>("auth/logout", { method: "POST", token });
   },
   getDashboard(token: string, departmentId?: string | null) {
     return request<DashboardData>("projects/dashboard", {
@@ -215,6 +271,62 @@ export const api = {
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
   },
+  getProjectUtilizationCertificates(token: string, projectId: string) {
+    return request<UtilizationCertificate[]>(`utilization-certificates/project/${projectId}`, { token });
+  },
+  getUtilizationCertificate(token: string, id: string) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}`, { token });
+  },
+  submitUtilizationCertificate(token: string, file: File, payload: SubmitUtilizationCertificatePayload) {
+    const form = new FormData();
+    form.set("file", file);
+    form.set("projectId", payload.projectId);
+    form.set("certificateNumber", payload.certificateNumber);
+    form.set("fundingSource", payload.fundingSource);
+    form.set("amountClaimed", String(payload.amountClaimed));
+    form.set("amountUtilized", String(payload.amountUtilized));
+    // Date-only fields: send yyyy-MM-dd so the server is not off by a timezone day.
+    form.set("periodStart", payload.periodStart.slice(0, 10));
+    form.set("periodEnd", payload.periodEnd.slice(0, 10));
+    if (payload.milestoneId) form.set("milestoneId", payload.milestoneId);
+    if (payload.taskId) form.set("taskId", payload.taskId);
+    if (payload.purpose) form.set("purpose", payload.purpose);
+    if (payload.title) form.set("title", payload.title);
+    if (payload.description) form.set("description", payload.description);
+    return request<UtilizationCertificate>("utilization-certificates", { token, method: "POST", body: form });
+  },
+  updateUtilizationCertificate(token: string, id: string, payload: UpdateUtilizationCertificatePayload) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}`, {
+      token,
+      method: "PUT",
+      body: {
+        certificateNumber: payload.certificateNumber,
+        fundingSource: payload.fundingSource,
+        amountClaimed: payload.amountClaimed,
+        amountUtilized: payload.amountUtilized,
+        periodStart: payload.periodStart.slice(0, 10),
+        periodEnd: payload.periodEnd.slice(0, 10),
+        milestoneId: payload.milestoneId ?? null,
+        taskId: payload.taskId ?? null,
+        purpose: payload.purpose ?? null,
+        title: payload.title ?? null,
+        description: payload.description ?? null,
+      },
+    });
+  },
+  submitUtilizationCertificateForReview(token: string, id: string) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}/submit`, { token, method: "POST" });
+  },
+  reviewUtilizationCertificate(token: string, id: string, approve: boolean, notes?: string) {
+    return request<UtilizationCertificate>(`utilization-certificates/${id}/review`, {
+      token,
+      method: "POST",
+      body: { approve, notes: notes ?? null },
+    });
+  },
+  deleteUtilizationCertificate(token: string, id: string) {
+    return request<void>(`utilization-certificates/${id}`, { token, method: "DELETE" });
+  },
   deleteProject(token: string, id: string) {
     return request<void>(`projects/${id}`, { token, method: "DELETE" });
   },
@@ -243,6 +355,17 @@ export const api = {
   getMilestoneDependencies(token: string, projectId: string) {
     return request<MilestoneDependency[]>(`milestones/by-project/${projectId}/dependencies`, { token });
   },
+  /**
+   * What the caller may change on this project: milestones and dependencies.
+   *
+   * Server-computed because the rule is per project, not per role - superadmin, the
+   * project's own manager, the primary department's head, or a director. A
+   * department head of another department holds PROJECT_MANAGE and passes every
+   * permission check, so the client cannot derive this from permissions alone.
+   */
+  getMilestoneAccess(token: string, projectId: string) {
+    return request<ProjectMilestoneAccess>(`milestones/by-project/${projectId}/access`, { token });
+  },
   createMilestoneDependency(token: string, payload: Record<string, unknown>) {
     return request<MilestoneDependency>("milestones/dependencies", { token, method: "POST", body: payload });
   },
@@ -257,6 +380,9 @@ export const api = {
   },
   getTasksByProject(token: string, projectId: string) {
     return requestList<Task>(`tasks/by-project/${projectId}`, { token });
+  },
+  getTasks(token: string, query: TaskListQuery = {}) {
+    return request<PaginatedResponse<Task>>("tasks", { token, query });
   },
   getMyTasks(token: string) {
     return requestList<Task>("tasks/my-tasks", { token });
@@ -328,16 +454,6 @@ export const api = {
     form.set("file", file);
     return request<Task>(`tasks/${id}/attachments`, { token, method: "POST", body: form });
   },
-  startTaskTimer(token: string, id: string, description: string, isBillable = false) {
-    return request<Task>(`tasks/${id}/time/start`, {
-      token,
-      method: "POST",
-      body: { description, isBillable },
-    });
-  },
-  stopTaskTimer(token: string, id: string) {
-    return request<Task>(`tasks/${id}/time/stop`, { token, method: "POST" });
-  },
   deleteTask(token: string, id: string) {
     return request<void>(`tasks/${id}`, { token, method: "DELETE" });
   },
@@ -392,7 +508,7 @@ export const api = {
   getUsers(token: string, departmentId?: string | null) {
     return requestList<User>("users", {
       token,
-      query: { departmentId: departmentId ?? undefined },
+      query: { departmentId: departmentId ?? undefined, pageSize: 500 },
     });
   },
   getMe(token: string) {
@@ -462,8 +578,8 @@ export const api = {
   reactivateUser(token: string, id: string) {
     return request<User>(`users/${id}/reactivate`, { token, method: "PATCH" });
   },
-  getDepartments(token: string) {
-    return requestList<Department>("departments", { token });
+  getDepartments(token: string, pageSize = 500) {
+    return requestList<Department>("departments", { token, query: { page: 1, pageSize } });
   },
   getRoles(token: string) {
     return request<RoleRecord[]>("roles", { token });
@@ -779,11 +895,17 @@ export const api = {
   getModelPerformance(token: string) {
     return request<Record<string, number>>("ai/performance", { token });
   },
-  generateReport(token: string, reportType: string, body: Record<string, unknown>) {
+  generateReport(
+    token: string,
+    reportType: string,
+    body: Record<string, unknown>,
+    signal?: AbortSignal
+  ) {
     return request<AiReportResponse>(`reports/${reportType}/generate`, {
       token,
       method: "POST",
       body,
+      signal,
     });
   },
   downloadReport(
@@ -979,6 +1101,9 @@ export const api = {
   },
   getDatabaseStatus(token: string) {
     return request<DatabaseStatus>("system/database", { token });
+  },
+  getWorkspaceBootstrap(token: string) {
+    return request<WorkspaceBootstrap>("workspace/bootstrap", { token });
   },
   saveAISettings(token: string, settings: AISettingsRequest) {
     return request<{ success: boolean; message: string }>("ai/settings", {

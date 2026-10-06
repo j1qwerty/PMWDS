@@ -4,11 +4,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
-import { api } from "./api";
+import { ApiError, api } from "./api";
 import { useAuth } from "./auth";
+import {
+  isRealtimeHealthy,
+  isRealtimeRecovering,
+  onDataChanged,
+  startRealtime,
+} from "./realtime";
+import { GLOBAL_SCOPES } from "./realtimeScopes";
 import type {
   ActivityLogRecord,
   AlertRuleRecord,
@@ -20,10 +28,27 @@ import type {
   PagesDataResponse,
   PermissionRecord,
   Project,
+  ProjectNavigationItem,
   RoleRecord,
   Task,
   User,
+  WorkspaceBootstrap,
 } from "./types";
+
+/** Coalesce a burst of DataChanged events (one mutation can fire several) into one refetch. */
+const REALTIME_DEBOUNCE_MS = 250;
+/** Focus/visibility refetch delay, long enough to ignore rapid tab switching. */
+const FOCUS_DEBOUNCE_MS = 1000;
+/** Fallback poll when the socket is not connected. */
+const POLL_INTERVAL_MS = 60_000;
+/** How often the watchdog re-evaluates whether the socket is alive. */
+const REALTIME_WATCHDOG_CHECK_MS = 5_000;
+/**
+ * How long the socket may be continuously unhealthy, with the tab visible, before the
+ * watchdog forces a fresh connection. Well above the 30s ceiling on the reconnect backoff,
+ * so a server that is merely slow to accept the socket is not fought with.
+ */
+const REALTIME_WATCHDOG_MS = 45_000;
 
 type AppData = {
   organizations: OrganizationRecord[];
@@ -75,6 +100,7 @@ function mapRoleRecords(pages: PagesDataResponse): RoleRecord[] {
   const permissionsByCode = new Map(items(pages.permissions).map((permission) => [permission.code, permission]));
   return items(pages.roles).map((role) => ({
     id: role.id,
+    key: role.key,
     name: role.name,
     description: role.description,
     permissionLevel: role.permissionLevel,
@@ -122,6 +148,7 @@ function mapUsers(pages: PagesDataResponse): User[] {
     isActive: user.isActive,
     lastLoginDate: null,
     roles: user.roles,
+    roleKeys: user.roleKeys,
     skills: user.skills?.map((skill) => skill.skillName) ?? [],
     skillDetails: user.skills?.map((skill) => ({
       skillId: skill.skillId,
@@ -151,36 +178,291 @@ function mapPagesData(pages: PagesDataResponse): AppData {
   };
 }
 
+function mapProjectNavigation(projects: ProjectNavigationItem[]): Project[] {
+  return projects.map((project) => ({
+    id: project.id,
+    projectCode: project.projectCode,
+    name: project.name,
+    description: null,
+    category: "",
+    status: project.status,
+    priority: project.priority,
+    plannedStartDate: project.createdDate,
+    plannedEndDate: project.createdDate,
+    actualStartDate: null,
+    actualEndDate: null,
+    plannedBudget: 0,
+    actualCost: 0,
+    budgetVariance: 0,
+    progressPercentage: project.progressPercentage,
+    aiHealthScore: 0,
+    aiDelayRiskScore: project.aiDelayRiskScore,
+    aiBudgetRiskScore: 0,
+    aiInsightsSummary: null,
+    departmentId: project.departmentId,
+    departmentName: null,
+    departmentIds: project.departmentIds,
+    departments: project.departmentIds.map((departmentId) => ({
+      departmentId,
+      departmentName: null,
+      isPrimary: departmentId === project.departmentId,
+    })),
+    projectManagerId: "",
+    projectManagerName: null,
+    totalTasks: project.totalTasks,
+    completedTasks: 0,
+    overdueTasks: 0,
+    totalMilestones: 0,
+    completedMilestones: 0,
+    createdDate: project.createdDate,
+    isNewForCurrentUser: project.isNewForCurrentUser,
+  }));
+}
+
+function mapBootstrapData(bootstrap: WorkspaceBootstrap): AppData {
+  return {
+    ...emptyData,
+    projects: mapProjectNavigation(bootstrap.projects),
+    users: [bootstrap.currentUser],
+    permissions: bootstrap.permissions.map((code) => ({
+      id: code,
+      code,
+      name: code,
+      description: "",
+      module: code.split("_")[0] ?? "",
+      isGlobal: false,
+    })),
+  };
+}
+
 export function AppDataProvider({ children }: PropsWithChildren) {
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
+  const [bootstrap, setBootstrap] = useState<WorkspaceBootstrap | null>(null);
   const [pages, setPages] = useState<PagesDataResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Guards against overlapping refetches. Without it, a burst of DataChanged events (or a
+  // poll landing mid-focus-refresh) can start several concurrent bootstrap+pages loads
+  // and let a slower earlier response overwrite a newer one.
+  const inFlightRef = useRef(false);
+
   const refresh = useCallback(async () => {
     if (!auth) {
+      setBootstrap(null);
       setPages(null);
       return;
     }
 
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
     setLoading(true);
     setError("");
     try {
+      const bootstrapResponse = await api.getWorkspaceBootstrap(auth.token);
+      setBootstrap(bootstrapResponse);
       const response = await api.getPagesData(auth.token);
       setPages(response);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to load application data.");
-      setPages(null);
+      if (cause instanceof ApiError && cause.status === 401) {
+        logout();
+        return;
+      }
+      try {
+        const response = await api.getPagesData(auth.token);
+        setPages(response);
+        setBootstrap(null);
+      } catch (fallbackCause) {
+        setError(fallbackCause instanceof Error ? fallbackCause.message : "Failed to load application data.");
+        setPages(null);
+      }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, logout]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!auth) {
+      setBootstrap(null);
+      setPages(null);
+      return;
+    }
 
-  const data = useMemo(() => (pages ? mapPagesData(pages) : emptyData), [pages]);
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+
+    api.getWorkspaceBootstrap(auth.token)
+      .then((bootstrapResponse) => {
+        if (cancelled) return;
+        setBootstrap(bootstrapResponse);
+        setLoading(false);
+        void api.getPagesData(auth.token)
+          .then((response) => {
+            if (!cancelled) setPages(response);
+          })
+          .catch(() => {
+            if (!cancelled) setPages(null);
+          });
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        if (cause instanceof ApiError && cause.status === 401) {
+          logout();
+          setLoading(false);
+          return;
+        }
+        void api.getPagesData(auth.token)
+          .then((response) => {
+            if (cancelled) return;
+            setPages(response);
+            setBootstrap(null);
+            setLoading(false);
+          })
+          .catch((fallbackCause) => {
+            if (cancelled) return;
+            setError(fallbackCause instanceof Error ? fallbackCause.message : "Failed to load application data.");
+            setBootstrap(null);
+            setPages(null);
+            setLoading(false);
+          });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, logout]);
+
+  // Keep the shared store in sync with other sessions.
+  //
+  // Before this, appData loaded once per auth token and never again, so a change made in
+  // one browser was invisible in another until a manual reload. Three layers keep it
+  // current: the DataChanged hub event (instant), a refetch when the tab regains focus
+  // (catches anything missed while asleep), and a slow poll (catches a dead socket).
+  useEffect(() => {
+    if (!auth) return;
+
+    let disposed = false;
+    let debounceTimer: number | undefined;
+
+    const scheduleRefresh = (delay: number) => {
+      if (disposed) return;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = undefined;
+        if (!disposed) void refresh();
+      }, delay);
+    };
+
+    // A single mutation can touch several scopes (deleting a project refreshes
+    // milestones, tasks and documents too), so coalesce bursts into one refetch.
+    const stopListening = onDataChanged((notification) => {
+      if (GLOBAL_SCOPES.includes(notification.scope)) {
+        scheduleRefresh(REALTIME_DEBOUNCE_MS);
+      }
+    });
+
+    void startRealtime();
+
+    // Refetch on focus / tab-visible. A backgrounded tab can miss socket events, and this
+    // is also the moment a user is most likely to be looking at stale data.
+    const onFocus = () => scheduleRefresh(FOCUS_DEBOUNCE_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleRefresh(FOCUS_DEBOUNCE_MS);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      disposed = true;
+      if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      stopListening();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [auth, refresh]);
+
+  // Safety net for a dead or unavailable socket. Skipped while the tab is hidden, and
+  // skipped while the socket is healthy so a working setup does not pay for both.
+  useEffect(() => {
+    if (!auth) return;
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (isRealtimeHealthy()) return;
+      void refresh();
+    }, POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [auth, refresh]);
+
+  // Watchdog. realtime.ts already self-heals, but it can only act on transitions it
+  // observes: if the socket dies while the tab is in the background, the browser may
+  // suspend timers entirely and the client never learns about it until the tab is
+  // refocused - by which point `onclose` may never have fired at all, leaving `connection`
+  // pointing at a socket in a state the retry policy is no longer driving.
+  //
+  // This is the belt-and-braces check: while the tab is visible and the socket has been
+  // unhealthy for longer than the threshold, ask for a fresh connection. It is deliberately
+  // not a poll - it only acts on a sustained outage, and it skips while a reconnect is
+  // already in progress so it cannot reset the backoff and spin.
+  useEffect(() => {
+    if (!auth) return;
+
+    let unhealthySince: number | null = null;
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") {
+        // Time spent hidden does not count against the socket.
+        unhealthySince = null;
+        return;
+      }
+
+      if (isRealtimeHealthy()) {
+        unhealthySince = null;
+        return;
+      }
+
+      // A connect or reconnect is already underway; let it finish rather than restarting
+      // it, which would throw away the accumulated backoff.
+      if (isRealtimeRecovering()) return;
+
+      const now = Date.now();
+      if (unhealthySince === null) {
+        unhealthySince = now;
+        return;
+      }
+
+      if (now - unhealthySince >= REALTIME_WATCHDOG_MS) {
+        unhealthySince = null;
+        void startRealtime();
+      }
+    }, REALTIME_WATCHDOG_CHECK_MS);
+
+    return () => window.clearInterval(timer);
+  }, [auth]);
+
+  const data = useMemo(() => {
+    if (pages) {
+      const pageData = mapPagesData(pages);
+      if (!bootstrap) return pageData;
+      return {
+        ...pageData,
+        // Navigation projects are independently server-scoped and are not
+        // limited to the first page of the monolithic pages response.
+        projects: mapProjectNavigation(bootstrap.projects),
+        // Keep the authenticated user available even when they are not on the
+        // first paginated users page.
+        users: pageData.users.some((user) => user.id === bootstrap.currentUser.id)
+          ? pageData.users
+          : [bootstrap.currentUser, ...pageData.users],
+      };
+    }
+    if (bootstrap) return mapBootstrapData(bootstrap);
+    return emptyData;
+  }, [bootstrap, pages]);
   const value = useMemo(
     () => ({ data, pages, loading, error, refresh }),
     [data, pages, loading, error, refresh],

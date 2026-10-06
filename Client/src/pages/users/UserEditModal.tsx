@@ -1,19 +1,11 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { Department, OrganizationRecord, Role, User } from "../../types";
+import type { Department, OrganizationRecord, User } from "../../types";
 import { Avatar } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { ROLE_DISPLAY_NAMES, ROLE_LEVELS, RoleKey, normalizeRoleKey, type RoleKeyCode } from "../../permissions";
 
-const roleOptions: Role[] = ["Viewer", "TeamMember", "DepartmentHead", "ProjectManager", "Director", "SuperAdmin"];
+const roleOptions: RoleKeyCode[] = [RoleKey.Viewer, RoleKey.TeamMember, RoleKey.DepartmentHead, RoleKey.ProjectManager, RoleKey.Director, RoleKey.SuperAdmin];
 const availabilityOptions = ["Available", "Busy", "Away", "InMeeting", "Offline", "DeepWork"];
-
-const ROLE_LEVEL_MAP: Record<string, number> = {
-  SuperAdmin: 100,
-  Director: 90,
-  ProjectManager: 80,
-  DepartmentHead: 70,
-  TeamMember: 40,
-  Viewer: 10,
-};
 
 type UserEditModalProps = {
   user: User;
@@ -38,14 +30,16 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
   const [availabilityStatus, setAvailabilityStatus] = useState(user.availabilityStatus || "Available");
   const [departmentIds, setDepartmentIds] = useState<string[]>(user.departments?.map((item) => item.departmentId) ?? (user.departmentId ? [user.departmentId] : []));
   const [organizationId, setOrganizationId] = useState(initialOrganizationId);
-  const [roles, setRoles] = useState<string[]>(user.roles?.length ? user.roles : ["Viewer"]);
+  const [roles, setRoles] = useState<string[]>(
+    user.roleKeys?.length ? user.roleKeys : (user.roles?.length ? user.roles.map(normalizeRoleKey) : [RoleKey.Viewer]),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [profilePictureUrl] = useState(user.profilePictureUrl ?? "");
   const visibleRoleOptions = roleOptions.filter((role) => {
-    if (role === "SuperAdmin" && !canSelectSuperAdminRole) return false;
+    if (role === RoleKey.SuperAdmin && !canSelectSuperAdminRole) return false;
     if (canSelectSuperAdminRole) return true;
-    return (ROLE_LEVEL_MAP[role] ?? 0) < userMaxLevel;
+    return (ROLE_LEVELS[role] ?? 0) < userMaxLevel;
   });
 
   const departmentsByOrg = useMemo(
@@ -70,7 +64,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
   const toggleRole = (role: string) => {
     setRoles((current) => {
       const next = current.includes(role) ? current.filter((item) => item !== role) : [...current, role];
-      return next.length ? next : ["Viewer"];
+      return next.length ? next : [RoleKey.Viewer];
     });
   };
 
@@ -142,7 +136,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
             <div className="flex flex-wrap gap-2">
               {visibleRoleOptions.map((role) => (
                 <button key={role} type="button" onClick={() => toggleRole(role)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${roles.includes(role) ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
-                  {role}
+                  {ROLE_DISPLAY_NAMES[role]}
                 </button>
               ))}
             </div>

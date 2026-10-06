@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +20,11 @@ public class ActivityLogsController : BaseApiController
     private readonly ApplicationDbContext _db;
 
     public ActivityLogsController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         RoleScopeService scope,
-        ApplicationDbContext db)
+        ApplicationDbContext db) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
@@ -30,7 +33,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetMine(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -48,7 +50,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("user/{userId:guid}")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> GetByUser(
         Guid userId,
         [FromQuery] int count = 50,
@@ -67,7 +69,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("team")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetTeam(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -88,7 +89,7 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("all")]
-    [Authorize(Policy = "Director")]
+    [Authorize(Policy = AuthorizationPolicies.Director)]
     public async Task<IActionResult> GetAll(
         [FromQuery] int count = 50,
         [FromQuery] PaginationQuery? pagination = null,
@@ -116,7 +117,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpGet("project/{projectId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetByProject(
         Guid projectId,
         [FromQuery] int count = 50,
@@ -135,7 +135,6 @@ public class ActivityLogsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Create([FromBody] CreateActivityLogRequest req, CancellationToken ct)
     {
         if (!Guid.TryParse(_currentUser.UserId, out var userId))
@@ -267,15 +266,3 @@ public class ActivityLogsController : BaseApiController
 
     private sealed record EntitySummary(Guid Id, string Type, string Name);
 }
-
-public record ActivityLogResponse(
-    Guid Id,
-    Guid UserId,
-    string? UserName,
-    Guid? ProjectId,
-    string? ProjectName,
-    string ActivityType,
-    string Description,
-    DateTime Timestamp,
-    Dictionary<string, object> Metadata);
-public record CreateActivityLogRequest(string ActivityType, string Description, Dictionary<string, object> Metadata, Guid? ProjectId = null);

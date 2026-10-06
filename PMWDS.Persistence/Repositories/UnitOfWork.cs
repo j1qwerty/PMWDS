@@ -1,6 +1,9 @@
+using MediatR;
+using PMWDS.Application.Common;
 using Microsoft.EntityFrameworkCore.Storage;
 using PMWDS.Application.Interfaces.Repositories;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Domain.Common;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
@@ -9,6 +12,7 @@ namespace PMWDS.Persistence.Repositories;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPublisher _publisher;
     private IDbContextTransaction? _transaction;
 
     public IProjectRepository Projects { get; }
@@ -42,80 +46,120 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<AllocationRecommendation> AllocationRecommendations { get; }
     public IRepository<DelayPrediction> DelayPredictions { get; }
     public IRepository<ProjectDocument> ProjectDocuments { get; }
+    public IRepository<UtilizationCertificate> UtilizationCertificates { get; }
     public IRepository<UserSkill> UserSkills { get; }
     public IRepository<TaskAssignment> TaskAssignments { get; }
     public IRepository<TaskComment> TaskComments { get; }
     public IRepository<TaskAttachment> TaskAttachments { get; }
     public IRepository<TaskDependency> TaskDependencies { get; }
     public IRepository<MilestoneDependency> MilestoneDependencies { get; }
-    public IRepository<TimeEntry> TimeEntries { get; }
 
-    public UnitOfWork(ApplicationDbContext context)
+    public UnitOfWork(ApplicationDbContext context, IPublisher publisher)
     {
         _context = context;
+        _publisher = publisher;
 
         Projects = new ProjectRepository(context);
         Tasks = new TaskRepository(context);
         Users = new UserRepository(context);
 
-        Departments = new BaseRepository<Department>(context);
-        Milestones = new BaseRepository<Milestone>(context);
-        Notifications = new BaseRepository<Notification>(context);
-        NotificationTemplates = new BaseRepository<NotificationTemplate>(context);
-        AlertRules = new BaseRepository<AlertRule>(context);
-        Dashboards = new BaseRepository<Dashboard>(context);
-        DashboardWidgets = new BaseRepository<DashboardWidget>(context);
-        Reports = new BaseRepository<Report>(context);
-        ReportSchedules = new BaseRepository<ReportSchedule>(context);
-        Integrations = new BaseRepository<Integration>(context);
-        Webhooks = new BaseRepository<Webhook>(context);
-        WebhookDeliveries = new BaseRepository<WebhookDelivery>(context);
-        KnowledgeArticles = new BaseRepository<KnowledgeArticle>(context);
-        LessonsLearned = new BaseRepository<LessonLearned>(context);
-        ActivityLogs = new BaseRepository<ActivityLog>(context);
-        AuditLogs = new BaseRepository<AuditLog>(context);
-        Skills = new BaseRepository<Skill>(context);
-        Roles = new BaseRepository<Role>(context);
-        Permissions = new BaseRepository<Permission>(context);
-        UserProfiles = new BaseRepository<UserProfile>(context);
-        Organizations = new BaseRepository<Organization>(context);
-        AIModels = new BaseRepository<AIModel>(context);
-        PredictionResults = new BaseRepository<PredictionResult>(context);
-        TrainingDataPoints = new BaseRepository<TrainingDataPoint>(context);
-        AllocationRecommendations = new BaseRepository<AllocationRecommendation>(context);
-        DelayPredictions = new BaseRepository<DelayPrediction>(context);
-        ProjectDocuments = new BaseRepository<ProjectDocument>(context);
-        UserSkills = new BaseRepository<UserSkill>(context);
-        TaskAssignments = new BaseRepository<TaskAssignment>(context);
-        TaskComments = new BaseRepository<TaskComment>(context);
-        TaskAttachments = new BaseRepository<TaskAttachment>(context);
-        TaskDependencies = new BaseRepository<TaskDependency>(context);
-        MilestoneDependencies = new BaseRepository<MilestoneDependency>(context);
-        TimeEntries = new BaseRepository<TimeEntry>(context);
+        Departments = new EfRepository<Department>(context);
+        Milestones = new EfRepository<Milestone>(context);
+        Notifications = new EfRepository<Notification>(context);
+        NotificationTemplates = new EfRepository<NotificationTemplate>(context);
+        AlertRules = new EfRepository<AlertRule>(context);
+        Dashboards = new EfRepository<Dashboard>(context);
+        DashboardWidgets = new EfRepository<DashboardWidget>(context);
+        Reports = new EfRepository<Report>(context);
+        ReportSchedules = new EfRepository<ReportSchedule>(context);
+        Integrations = new EfRepository<Integration>(context);
+        Webhooks = new EfRepository<Webhook>(context);
+        WebhookDeliveries = new EfRepository<WebhookDelivery>(context);
+        KnowledgeArticles = new EfRepository<KnowledgeArticle>(context);
+        LessonsLearned = new EfRepository<LessonLearned>(context);
+        ActivityLogs = new EfRepository<ActivityLog>(context);
+        AuditLogs = new EfRepository<AuditLog>(context);
+        Skills = new EfRepository<Skill>(context);
+        Roles = new EfRepository<Role>(context);
+        Permissions = new EfRepository<Permission>(context);
+        UserProfiles = new EfRepository<UserProfile>(context);
+        Organizations = new EfRepository<Organization>(context);
+        AIModels = new EfRepository<AIModel>(context);
+        PredictionResults = new EfRepository<PredictionResult>(context);
+        TrainingDataPoints = new EfRepository<TrainingDataPoint>(context);
+        AllocationRecommendations = new EfRepository<AllocationRecommendation>(context);
+        DelayPredictions = new EfRepository<DelayPrediction>(context);
+        ProjectDocuments = new EfRepository<ProjectDocument>(context);
+        UtilizationCertificates = new EfRepository<UtilizationCertificate>(context);
+        UserSkills = new EfRepository<UserSkill>(context);
+        TaskAssignments = new EfRepository<TaskAssignment>(context);
+        TaskComments = new EfRepository<TaskComment>(context);
+        TaskAttachments = new EfRepository<TaskAttachment>(context);
+        TaskDependencies = new EfRepository<TaskDependency>(context);
+        MilestoneDependencies = new EfRepository<MilestoneDependency>(context);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        var result = await _context.SaveChangesAsync(ct);
+
+        var domainEventEntities = _context.ChangeTracker
+            .Entries<IHasDomainEvents>()
+            .Select(entry => entry.Entity)
+            .Where(entity => entity.DomainEvents.Count > 0)
+            .ToList();
+
+        var domainEvents = domainEventEntities
+            .SelectMany(entity => entity.DomainEvents)
+            .ToList();
+
+        foreach (var entity in domainEventEntities)
+        {
+            entity.ClearDomainEvents();
+        }
+
+        foreach (var domainEvent in domainEvents)
+        {
+            var notificationType = typeof(DomainEventNotification<>).MakeGenericType(domainEvent.GetType());
+            var notification = Activator.CreateInstance(notificationType, domainEvent);
+            await _publisher.Publish(notification!, ct);
+        }
+
+        return result;
+    }
 
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
+        if (_transaction != null)
+        {
+            return;
+        }
+
         _transaction = await _context.Database.BeginTransactionAsync(ct);
     }
 
     public async Task CommitTransactionAsync(CancellationToken ct = default)
     {
-        if (_transaction != null)
+        if (_transaction == null)
         {
-            await _transaction.CommitAsync(ct);
+            return;
         }
+
+        await _transaction.CommitAsync(ct);
+        await _transaction.DisposeAsync();
+        _transaction = null;
     }
 
     public async Task RollbackTransactionAsync(CancellationToken ct = default)
     {
-        if (_transaction != null)
+        if (_transaction == null)
         {
-            await _transaction.RollbackAsync(ct);
+            return;
         }
+
+        await _transaction.RollbackAsync(ct);
+        await _transaction.DisposeAsync();
+        _transaction = null;
     }
 
     public void Dispose()

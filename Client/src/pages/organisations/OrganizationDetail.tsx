@@ -99,7 +99,7 @@ export function OrganizationDetail({
           <div className="mb-8 flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
             <Avatar person={organization.director} size="md" />
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Director</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Admin</div>
               <div className="text-sm font-bold text-slate-800">{organization.director.fullName}</div>
               <div className="text-xs text-slate-500">{organization.director.email}</div>
             </div>

@@ -10,7 +10,7 @@ public interface ITaskRepository : IRepository<ProjectTask>
       Guid projectId,
    CancellationToken ct = default);
    Task<IEnumerable<ProjectTask>> GetByAssigneeAsync(
-   string userId,
+   Guid userId,
    CancellationToken ct = default);
    Task<IEnumerable<ProjectTask>> GetOverdueTasksAsync(
    CancellationToken ct = default);

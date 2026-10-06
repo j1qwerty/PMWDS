@@ -111,6 +111,15 @@ export function MilestoneDetailModal({
 
           {/* Info chips */}
           <div className="flex flex-wrap gap-3">
+            {/* Always rendered, including when unset.
+                Conditionally hiding it meant an unassigned milestone looked identical
+                to one whose department merely failed to load, which is exactly the
+                distinction someone reading this view needs to make. */}
+            <Chip
+              icon="groups"
+              label="Department"
+              value={milestone.departmentName || "Not assigned"}
+            />
             <Chip icon="calendar_today" label="Due" value={milestone.dueDate ? formatDate(milestone.dueDate) : "Not set"} />
             <Chip icon="task_alt" label="Tasks" value={`${completedTasks}/${milestoneTasks.length} completed`} />
             {/* {milestone.order ? <Chip icon="format_list_numbered" label="Order" value={`#${milestone.order}`} /> : null} */}

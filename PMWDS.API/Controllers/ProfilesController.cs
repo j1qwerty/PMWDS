@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMWDS.API.Services;
@@ -13,9 +15,10 @@ public class ProfilesController : BaseApiController
     private readonly RoleScopeService _scope;
 
     public ProfilesController(
+        IMediator mediator,
         IUnitOfWork uow,
         ICurrentUserService currentUser,
-        RoleScopeService scope)
+        RoleScopeService scope) : base(mediator)
     {
         _uow = uow;
         _currentUser = currentUser;
@@ -23,7 +26,6 @@ public class ProfilesController : BaseApiController
     }
 
     [HttpGet("{userId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Get(Guid userId, CancellationToken ct)
     {
         if (!await _scope.CanAccessUserAsync(userId, ct))
@@ -36,7 +38,6 @@ public class ProfilesController : BaseApiController
     }
 
     [HttpPut("{userId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Upsert(Guid userId, [FromBody] UpsertProfileRequest req, CancellationToken ct)
     {
         if (!await _scope.CanManageUserAsync(userId, ct))
@@ -79,21 +80,3 @@ public class ProfilesController : BaseApiController
             profile.EmergencyContact,
             profile.LinkedInUrl);
 }
-
-public record UserProfileResponse(
-    Guid Id,
-    Guid UserId,
-    string? Bio,
-    string? JobTitle,
-    DateTime? DateOfBirth,
-    string? Address,
-    string? EmergencyContact,
-    string? LinkedInUrl);
-
-public record UpsertProfileRequest(
-    string? Bio,
-    string? JobTitle,
-    DateTime? DateOfBirth,
-    string? Address,
-    string? EmergencyContact,
-    string? LinkedInUrl);

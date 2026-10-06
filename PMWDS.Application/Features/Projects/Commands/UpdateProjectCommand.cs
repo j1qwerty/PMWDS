@@ -36,16 +36,19 @@ public class UpdateProjectCommandHandler
             project.PlannedBudget
         };
         var dto = req.Dto;
+        var projectManagerId = string.IsNullOrWhiteSpace(dto.ProjectManagerId)
+        ? (Guid?)null
+        : Guid.Parse(dto.ProjectManagerId);
         project.Update(
         dto.Name,
-        dto.Description,
+        dto.Description ?? string.Empty,
         dto.Category,
         dto.PlannedStartDate,
         dto.PlannedEndDate,
         dto.PlannedBudget,
         dto.Priority,
         dto.DepartmentId,
-        dto.ProjectManagerId);
+        projectManagerId);
         project.AssignDepartments(dto.DepartmentIds ?? new[] { dto.DepartmentId });
         project.SetModified(
         _currentUser.UserId ?? "system");
@@ -58,8 +61,8 @@ public class UpdateProjectCommandHandler
         oldValues,
         new { dto.Name, dto.PlannedEndDate },
         ct: ct);
-        var projectManagerName = Guid.TryParse(project.ProjectManagerId, out var managerId)
-            ? (await _uow.Users.GetByIdAsync(managerId, ct))?.FullName
+        var projectManagerName = project.ProjectManagerId.HasValue
+            ? (await _uow.Users.GetByIdAsync(project.ProjectManagerId.Value, ct))?.FullName
             : null;
         return ProjectDto.FromEntity(project, projectManagerName);
     }

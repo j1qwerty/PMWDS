@@ -35,6 +35,7 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.ProjectCreate, "Create Projects", "Create project records.", "Projects", false),
             (PermissionCodes.ProjectEdit, "Edit Projects", "Update project records.", "Projects", false),
             (PermissionCodes.ProjectDelete, "Delete Projects", "Delete project records.", "Projects", false),
+            (PermissionCodes.ProjectPrimaryDepartmentManage, "Manage Primary Department Projects", "Keep visibility and control of projects created by the primary department.", "Projects", false),
             (PermissionCodes.MilestoneManage, "Manage Milestones", "Manage all milestone permissions.", "Milestones", false),
             (PermissionCodes.MilestoneView, "View Milestones", "View milestone records.", "Milestones", false),
             (PermissionCodes.MilestoneCreate, "Create Milestones", "Create milestone records.", "Milestones", false),
@@ -93,7 +94,13 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.IntegrationEdit, "Edit Integrations", "Update integrations and webhooks.", "Integrations", true),
             (PermissionCodes.IntegrationDelete, "Delete Integrations", "Delete integrations and webhooks.", "Integrations", true),
             (PermissionCodes.AiView, "View AI", "View AI insights and predictions.", "AI", false),
-            (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true)
+            (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true),
+            (PermissionCodes.UtilizationCertificateView, "View Utilization Certificates", "View utilization certificates proving funds were spent as intended.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateCreate, "Submit Utilization Certificates", "Upload and submit a utilization certificate against a project milestone or task.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateEdit, "Edit Utilization Certificates", "Edit a draft or rejected utilization certificate you own.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateReview, "Review Utilization Certificates", "Approve or reject submitted utilization certificates as the finance sign-off authority.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateDelete, "Delete Utilization Certificates", "Delete draft or rejected utilization certificates.", "Utilization Certificates", false),
+            (PermissionCodes.UtilizationCertificateManage, "Manage Utilization Certificates", "Full control over utilization certificates, including review and deletion.", "Utilization Certificates", true)
         };
 
         foreach (var spec in specs)
@@ -164,6 +171,7 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
@@ -174,30 +182,44 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
-            PermissionCodes.AiManage
+            PermissionCodes.AiManage,
+            PermissionCodes.UtilizationCertificateManage
         };
         var projectManagerPermissionCodes = new[]
         {
             PermissionCodes.DepartmentView,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
             PermissionCodes.UserView,
             PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogCreate
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.UtilizationCertificateView,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateEdit
         };
         var departmentHeadPermissionCodes = new[]
         {
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
             PermissionCodes.UserManage,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogView,
-            PermissionCodes.ActivityLogCreate
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.UtilizationCertificateView,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateEdit,
+            // A department head owns their department's projects (they are the
+            // primary department), so they carry the same finance sign-off
+            // authority as a Director for those projects.
+            PermissionCodes.UtilizationCertificateReview,
+            PermissionCodes.UtilizationCertificateDelete
         };
         var teamMemberPermissionCodes = new[]
         {
@@ -206,7 +228,10 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
             PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
             PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogCreate
+            PermissionCodes.ActivityLogCreate,
+            PermissionCodes.UtilizationCertificateView,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateEdit
         };
         var viewerPermissionCodes = new[]
         {
@@ -217,28 +242,36 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.TaskView,
             PermissionCodes.SubtaskView,
             PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogView
+            PermissionCodes.ActivityLogView,
+            PermissionCodes.UtilizationCertificateView
         };
         var specs = new[]
         {
-            new SeedConstants.RoleSpec("SuperAdmin", "Full administrative access.", 100, allPermissionCodes),
-            new SeedConstants.RoleSpec("Director", "Organization administrator with full access inside one organization.", 90, directorPermissionCodes),
-            new SeedConstants.RoleSpec("ProjectManager", "Manages assigned projects and project teams.", 80, projectManagerPermissionCodes),
-            new SeedConstants.RoleSpec("DepartmentHead", "Manages department capacity and planning.", 70, departmentHeadPermissionCodes),
-            new SeedConstants.RoleSpec("TeamMember", "Contributes to project execution.", 40, teamMemberPermissionCodes),
-            new SeedConstants.RoleSpec("Viewer", "Read-only access.", 10, viewerPermissionCodes)
+            new SeedConstants.RoleSpec(RoleKeys.SuperAdmin, "SuperAdmin", "Full administrative access.", 100, allPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.Director, "Director", "Organization administrator with full access inside one organization.", 90, directorPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.ProjectManager, "ProjectManager", "Manages assigned projects and project teams.", 80, projectManagerPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.DepartmentHead, "DepartmentHead", "Manages department capacity and planning.", 70, departmentHeadPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.TeamMember, "TeamMember", "Contributes to project execution.", 40, teamMemberPermissionCodes),
+            new SeedConstants.RoleSpec(RoleKeys.Viewer, "Viewer", "Read-only access.", 10, viewerPermissionCodes)
         };
 
         foreach (var spec in specs)
         {
-            var role = await context.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Name == spec.Name, ct);
+            var role = await context.Roles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.Key == spec.Key || r.Name == spec.Name, ct);
             if (role == null)
             {
-                role = Role.Create(spec.Name, spec.Description, spec.Level);
+                role = Role.Create(spec.Key, spec.Name, spec.Description, spec.Level);
                 role.SetCreatedBy(SeedConstants.SeedUser);
                 await context.Roles.AddAsync(role, ct);
             }
-            role.UpdatePaginationPageSize(spec.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ? 50 : 10);
+            else
+            {
+                role.EnsureKey(spec.Key);
+            }
+
+            role.UpdatePaginationPageSize(spec.Key == RoleKeys.SuperAdmin ? 50 : 10);
 
             role.Permissions.Clear();
             foreach (var code in spec.PermissionCodes)

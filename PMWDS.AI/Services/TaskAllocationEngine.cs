@@ -15,7 +15,6 @@ public interface ITaskAllocationEngine
 public class MLTaskAllocationEngine : ITaskAllocationEngine
 {
     private readonly MLContext _ml;
-    private ITransformer? _model;
     public MLTaskAllocationEngine()
     => _ml = new MLContext(seed: 42);
     public async Task<AssigneeRecommendationDto>

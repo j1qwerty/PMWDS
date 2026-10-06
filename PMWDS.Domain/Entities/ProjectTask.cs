@@ -4,7 +4,7 @@ using PMWDS.Domain.Events;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Domain.Entities;
 
-public class ProjectTask : AuditableEntity
+public class ProjectTask : AuditableEntity, IHasDomainEvents
 {
     // Core Properties
     public Guid ProjectId { get; private set; }
@@ -15,8 +15,8 @@ public class ProjectTask : AuditableEntity
     public TaskStatus Status { get; private set; }
     public TaskPriority Priority { get; private set; }
     // Assignment
-    public string? AssignedToUserId { get; private set; }
-    public string? AssignedByUserId { get; private set; }
+    public Guid? AssignedToUserId { get; private set; }
+    public Guid? AssignedByUserId { get; private set; }
     public DateTime? AssignedDate { get; private set; }
     // Scheduling
     public DateTime StartDate { get; private set; }
@@ -37,7 +37,7 @@ public class ProjectTask : AuditableEntity
     public double AIDelayProbability { get; private set; }
     public DateTime? AIPredictedCompletionDate { get; private set; }
     public double AIOptimalAssigneeScore { get; private set; }
-    public string? AIRecommendedAssigneeId { get; private set; }
+    public Guid? AIRecommendedAssigneeId { get; private set; }
     public string? AIRiskFactors { get; private set; } // JSON
                                                        // Navigation
     public Project? Project { get; private set; }
@@ -53,8 +53,6 @@ public class ProjectTask : AuditableEntity
     _attachments.AsReadOnly();
     public IReadOnlyCollection<TaskAssignment> Assignments =>
     _assignments.AsReadOnly();
-    public IReadOnlyCollection<TimeEntry> TimeEntries =>
-    _timeEntries.AsReadOnly();
     public ICollection<AllocationRecommendation> AllocationRecommendations { get; private set; } = new List<AllocationRecommendation>();
     public ICollection<DelayPrediction> DelayPredictions { get; private set; } = new List<DelayPrediction>();
     private readonly List<ProjectTask> _subTasks = new();
@@ -62,7 +60,6 @@ public class ProjectTask : AuditableEntity
     private readonly List<TaskComment> _comments = new();
     private readonly List<TaskAttachment> _attachments = new();
     private readonly List<TaskAssignment> _assignments = new();
-    private readonly List<TimeEntry> _timeEntries = new();
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyList<IDomainEvent> DomainEvents =>
     _domainEvents.AsReadOnly();
@@ -73,7 +70,6 @@ public class ProjectTask : AuditableEntity
         _comments = new();
         _attachments = new();
         _assignments = new();
-        _timeEntries = new();
         _domainEvents = new();
         AllocationRecommendations = new List<AllocationRecommendation>();
         DelayPredictions = new List<DelayPrediction>();
@@ -103,13 +99,13 @@ public class ProjectTask : AuditableEntity
             EstimatedHours = estimatedHours
         };
     }
-    public void AssignTo(string userId, string assignedBy)
+    public void AssignTo(Guid userId, Guid assignedBy)
     {
         AssignedToUserId = userId;
         AssignedByUserId = assignedBy;
         AssignedDate = DateTime.UtcNow;
         _domainEvents.Add(new TaskAssignedEvent(
-        Id, userId, assignedBy));
+        Id, userId.ToString(), assignedBy.ToString()));
     }
     public void UpdateDetails(
     string title,
@@ -189,11 +185,6 @@ public class ProjectTask : AuditableEntity
         => _attachments.Add(attachment);
     public void AddDependency(TaskDependency dependency)
         => _dependencies.Add(dependency);
-    public void LogTime(TimeEntry entry)
-    {
-        _timeEntries.Add(entry);
-        ActualHours += (int)entry.Duration.TotalHours;
-    }
     public void Complete()
     {
         Status = TaskStatus.Completed;
@@ -215,7 +206,7 @@ public class ProjectTask : AuditableEntity
     {
         Status = TaskStatus.OnHold;
         AddComment(TaskComment.Create(
-        Id, "SYSTEM", $"Task put on hold: {reason}"));
+        Id, null, $"Task put on hold: {reason}", isSystem: true));
     }
     public void MarkDelayed(string reason)
     {
@@ -235,7 +226,7 @@ public class ProjectTask : AuditableEntity
     double delayProbability,
     DateTime predictedCompletion,
     string? riskFactors,
-    string? recommendedAssigneeId = null)
+    Guid? recommendedAssigneeId = null)
     {
         AIDelayProbability = delayProbability;
         AIPredictedCompletionDate = predictedCompletion;
@@ -244,7 +235,7 @@ public class ProjectTask : AuditableEntity
     }
     public void UpdateAIRecommendation(
     double optimalAssigneeScore,
-    string? recommendedAssigneeId)
+    Guid? recommendedAssigneeId)
     {
         AIOptimalAssigneeScore = optimalAssigneeScore;
         AIRecommendedAssigneeId = recommendedAssigneeId;

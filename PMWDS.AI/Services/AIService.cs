@@ -4,7 +4,12 @@ using PMWDS.Infrastructure.Settings;
 
 namespace PMWDS.AI.Services;
 
-public partial class AIService : IAIService
+public partial class AIService :
+    IRecommendationService,
+    IPredictionService,
+    IProjectHealthService,
+    IModelManagementService,
+    IChatService
 {
     private const string TaskAllocationModelType = "TaskAllocation";
     private const string DelayPredictionModelType = "DelayPrediction";

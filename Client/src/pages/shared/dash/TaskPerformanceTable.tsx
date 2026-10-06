@@ -1,13 +1,48 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import type { Task } from "../../../types";
+import type { Department, Project, Task } from "../../../types";
 import { getStatusColor, getPriorityColor } from "../colors";
 import { Icon } from "../../../components/ui/Icon";
+import { InfoTip } from "../../shared";
+
+export type TaskPerformanceQuery = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  projectId?: string;
+  departmentId?: string;
+  statuses?: string[];
+  priorities?: string[];
+  /**
+   * Past due and unfinished, independent of status. Needed because the
+   * dashboard's Delayed card counts that way, and a `statuses=Delayed` filter
+   * excluded every task that overran while still NotStarted.
+   */
+  overdueOnly?: boolean;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+};
+
+/** Filter seeded from outside the table, e.g. by a dashboard stat card click. */
+export type TaskTableFilter = {
+  statuses?: string[];
+  overdueOnly?: boolean;
+};
 
 type TaskPerformanceProps = {
   tasks?: Task[];
+  projects?: Project[];
+  departments?: Department[];
+  totalCount?: number;
+  totalPages?: number;
+  page?: number;
+  pageSize?: number;
+  loading?: boolean;
+  onQueryChange?: (query: TaskPerformanceQuery) => void;
   onViewTask?: (task: Task) => void | Promise<void>;
   onEditTask?: (task: Task) => void | Promise<void>;
   canEdit?: boolean;
+  /** Seed filter from outside, e.g. a dashboard stat card click. */
+  initialFilter?: TaskTableFilter;
 };
 
 // Progress bar color utility
@@ -33,41 +68,130 @@ const getProgressTextColor = (progress: number) => {
 type SortDirection = "asc" | "desc";
 type SortField = "title" | "progress" | "status" | "priority" | "dueDate" | null;
 
+/**
+ * Past due and not finished.
+ *
+ * Identical to the server's /tasks/overdue predicate. Deliberately not the same
+ * as `status === "Delayed"`: a task can blow through its due date while still
+ * sitting in NotStarted, and conflating the two hides the most common kind of
+ * slippage.
+ */
+function isOverdueTask(task: Task): boolean {
+  if (task.status === "Completed" || task.status === "Cancelled") return false;
+  if (!task.dueDate) return false;
+  const due = new Date(task.dueDate).getTime();
+  if (Number.isNaN(due)) return false;
+  return due < Date.now();
+}
+
+/** Whole days past the due date; 0 when not late. */
+function daysOverdue(task: Task): number {
+  const due = new Date(task.dueDate).getTime();
+  if (Number.isNaN(due)) return 0;
+  return Math.max(0, Math.floor((Date.now() - due) / 86_400_000));
+}
+
 const statusOptions = ["NotStarted", "InProgress", "Completed", "Delayed", "OnHold", "Cancelled"];
 const priorityOptions = ["Low", "Medium", "High", "Critical"];
 
-export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTask, canEdit = false }: TaskPerformanceProps) {
+export default function TaskPerformanceTable({
+  tasks = [],
+  projects = [],
+  departments = [],
+  totalCount,
+  totalPages,
+  page = 1,
+  pageSize = 10,
+  loading = false,
+  onQueryChange,
+  onViewTask,
+  onEditTask,
+  canEdit = false,
+  initialFilter = {},
+}: TaskPerformanceProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [canDelete, setCanDelete] = useState(false);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>(initialFilter.statuses ?? []);
+  const [overdueOnly, setOverdueOnly] = useState<boolean>(initialFilter.overdueOnly ?? false);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [projectFilter, setProjectFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
-  
+  const [statusMenuPos, setStatusMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [priorityMenuPos, setPriorityMenuPos] = useState<{ top: number; left: number } | null>(null);
+
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const priorityDropdownRef = useRef<HTMLDivElement>(null);
-  const statusButtonRef = useRef<HTMLButtonElement>(null);
-  const priorityButtonRef = useRef<HTMLButtonElement>(null);
   
-  const itemsPerPage = 10;
+  const itemsPerPage = pageSize;
+
+  useEffect(() => {
+    setCurrentPage(page);
+  }, [page]);
+
+  // Adopt a new seed during render rather than in an effect. A dashboard stat
+  // card click changes initialFilter, and React's documented pattern for
+  // adjusting state in response to a prop change is to compare against the
+  // previously applied value here - doing it in an effect would paint the stale
+  // filter for a frame and trigger a second render pass.
+  const seedKey = `${(initialFilter.statuses ?? []).join(",")}|${initialFilter.overdueOnly ? "1" : "0"}`;
+  const [appliedSeedKey, setAppliedSeedKey] = useState(seedKey);
+  if (seedKey !== appliedSeedKey) {
+    setAppliedSeedKey(seedKey);
+    setStatusFilter(initialFilter.statuses ?? []);
+    setOverdueOnly(initialFilter.overdueOnly ?? false);
+    setCurrentPage(1);
+  }
+
+  useEffect(() => {
+    onQueryChange?.({
+      page: currentPage,
+      pageSize: itemsPerPage,
+      search: searchTerm.trim() || undefined,
+      projectId: projectFilter || undefined,
+      departmentId: departmentFilter || undefined,
+      statuses: statusFilter,
+      priorities: priorityFilter,
+      overdueOnly: overdueOnly || undefined,
+      sortBy: sortField ?? undefined,
+      sortDirection,
+    });
+  }, [
+    currentPage,
+    itemsPerPage,
+    searchTerm,
+    projectFilter,
+    departmentFilter,
+    statusFilter,
+    priorityFilter,
+    overdueOnly,
+    sortField,
+    sortDirection,
+    onQueryChange,
+  ]);
 
   // Handle click outside and scroll for dropdowns
   useEffect(() => {
     const handleClose = (event: MouseEvent) => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setShowStatusDropdown(false);
+        setStatusMenuPos(null);
       }
       if (priorityDropdownRef.current && !priorityDropdownRef.current.contains(event.target as Node)) {
         setShowPriorityDropdown(false);
+        setPriorityMenuPos(null);
       }
     };
 
     const handleScroll = () => {
       setShowStatusDropdown(false);
       setShowPriorityDropdown(false);
+      setStatusMenuPos(null);
+      setPriorityMenuPos(null);
     };
 
     document.addEventListener("mousedown", handleClose);
@@ -81,15 +205,30 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
     };
   }, [showStatusDropdown, showPriorityDropdown]);
 
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: SortField, event?: React.MouseEvent<HTMLButtonElement>) => {
     if (field === "status" || field === "priority") {
-      // Toggle dropdown for status/priority
       if (field === "status") {
-        setShowStatusDropdown(!showStatusDropdown);
+        const opening = !showStatusDropdown;
+        setShowStatusDropdown(opening);
         setShowPriorityDropdown(false);
+        setPriorityMenuPos(null);
+        if (opening) {
+          const rect = event!.currentTarget.getBoundingClientRect();
+          setStatusMenuPos({ top: rect.bottom + 4, left: rect.left });
+        } else {
+          setStatusMenuPos(null);
+        }
       } else {
-        setShowPriorityDropdown(!showPriorityDropdown);
+        const opening = !showPriorityDropdown;
+        setShowPriorityDropdown(opening);
         setShowStatusDropdown(false);
+        setStatusMenuPos(null);
+        if (opening) {
+          const rect = event!.currentTarget.getBoundingClientRect();
+          setPriorityMenuPos({ top: rect.bottom + 4, left: rect.left });
+        } else {
+          setPriorityMenuPos(null);
+        }
       }
       return;
     }
@@ -102,6 +241,8 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
     }
     setShowStatusDropdown(false);
     setShowPriorityDropdown(false);
+    setStatusMenuPos(null);
+    setPriorityMenuPos(null);
   };
 
   const handleStatusFilter = (status: string) => {
@@ -133,6 +274,8 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
   };
 
   const filteredAndSortedTasks = useMemo(() => {
+    if (onQueryChange) return tasks;
+
     const query = searchTerm.toLowerCase();
     
     let result = tasks.filter(task => {
@@ -148,8 +291,13 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
       
       // Priority filter
       const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(task.priority);
-      
-      return matchesSearch && matchesStatus && matchesPriority;
+
+      const matchesProject = !projectFilter || task.projectId === projectFilter;
+
+      // Mirrors the server's overdue predicate so the two paths agree.
+      const matchesOverdue = !overdueOnly || isOverdueTask(task);
+
+      return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesOverdue;
     });
 
     // Sort
@@ -176,10 +324,13 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
     }
 
     return result;
-  }, [tasks, searchTerm, sortField, sortDirection, statusFilter, priorityFilter]);
+  }, [tasks, searchTerm, sortField, sortDirection, statusFilter, priorityFilter, projectFilter, overdueOnly, onQueryChange]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedTasks.length / itemsPerPage));
-  const paginatedTasks = filteredAndSortedTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const effectiveTotalCount = totalCount ?? filteredAndSortedTasks.length;
+  const effectiveTotalPages = totalPages ?? Math.max(1, Math.ceil(filteredAndSortedTasks.length / itemsPerPage));
+  const paginatedTasks = onQueryChange
+    ? tasks
+    : filteredAndSortedTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleDeleteTask = (id: string) => {
     console.log("Delete task:", id);
@@ -196,16 +347,53 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
     );
   };
 
-  const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0;
+  const hasActiveFilters = statusFilter.length > 0 || priorityFilter.length > 0 || Boolean(projectFilter) || Boolean(departmentFilter) || Boolean(searchTerm) || overdueOnly;
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
       <div className="flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center mb-6 pb-2 border-b border-b-slate-200">
-        <h3 className="text-md font-bold text-slate-700">Task Performance</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-md font-bold text-slate-700">Task Performance</h3>
+          <InfoTip
+            title="Task Performance"
+            summary="Every task in the workspace, searchable and filterable, showing how far along each one is."
+            points={[
+              'A task can be overdue while still showing "Not Started". Those rows carry a red badge showing how many days past due they are, such as "7d", so the two are never confused.',
+            ]}
+            note="Progress is the task's own percentage, or the average of its subtasks when it has any."
+          />
+        </div>
         <div className="flex items-center gap-3">
+          {/*
+            The overdue view is not expressed by the status dropdown, so it needs
+            its own chip. Without it the list looks like an unfiltered one with
+            odd numbers in it and the user has no way to tell why.
+          */}
+          {overdueOnly && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-rose-700">
+              <span className="material-symbols-outlined text-[13px]">running_with_errors</span>
+              Overdue only
+              <span className="font-normal text-rose-500">· any status</span>
+              <button
+                onClick={() => {
+                  setOverdueOnly(false);
+                  setCurrentPage(1);
+                }}
+                title="Stop filtering to overdue tasks"
+                aria-label="Clear the overdue filter"
+                className="ml-0.5 text-rose-400 hover:text-rose-700"
+              >
+                <Icon name="close" size={11} />
+              </button>
+            </span>
+          )}
           {hasActiveFilters && (
             <button
               onClick={() => {
+                setSearchTerm("");
+                setProjectFilter("");
+                setDepartmentFilter("");
+                setOverdueOnly(false);
                 clearStatusFilter();
                 clearPriorityFilter();
               }}
@@ -228,205 +416,363 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
               className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl w-full lg:w-72 focus:outline-none focus:border-cyan-400"
             />
           </div>
+          <select
+            value={projectFilter}
+            onChange={(event) => {
+              setProjectFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-xl w-full lg:w-56 bg-white focus:outline-none focus:border-cyan-400"
+          >
+            <option value="">All projects</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{project.name}</option>
+            ))}
+          </select>
+          <select
+            value={departmentFilter}
+            onChange={(event) => {
+              setDepartmentFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-xl w-full lg:w-56 bg-white focus:outline-none focus:border-cyan-400"
+          >
+            <option value="">All departments</option>
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>{department.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px]">
-          <thead>
-            <tr className="border-b border-slate-100">
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <button 
-                  onClick={() => handleSort("title")}
-                  className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+      <div className="relative">
+        {loading && (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-white/70 text-sm text-slate-500">
+            Loading tasks...
+          </div>
+        )}
+       <table className="w-full min-w-[680px]">
+  <thead>
+    <tr className="border-b border-slate-100">
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <button
+          onClick={() => handleSort("title")}
+          className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+        >
+          Task
+          {getSortIcon("title")}
+        </button>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <button
+          onClick={() => handleSort("progress")}
+          className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+        >
+          Progress
+          {getSortIcon("progress")}
+        </button>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <div ref={statusDropdownRef}>
+          <button
+            onClick={(e) => handleSort("status", e)}
+            className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+          >
+            Status
+            <Icon
+              name="chevron-down"
+              size={12}
+              className={`transition-transform ${
+                showStatusDropdown
+                  ? "rotate-180 text-slate-600"
+                  : "text-slate-300 group-hover:text-slate-400"
+              }`}
+            />
+            {statusFilter.length > 0 && (
+              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+            )}
+          </button>
+          {showStatusDropdown && statusMenuPos && (
+            <div
+              className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
+              style={{
+                top: statusMenuPos.top,
+                left: statusMenuPos.left,
+              }}
+            >
+              <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
+                <span className="text-xs font-medium text-slate-500">
+                  Filter by Status
+                </span>
+                <button
+                  onClick={clearStatusFilter}
+                  className="text-xs text-rose-400 hover:text-rose-600"
                 >
-                  Task
-                  {getSortIcon("title")}
+                  Clear
                 </button>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <button 
-                  onClick={() => handleSort("progress")}
-                  className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
-                >
-                  Progress
-                  {getSortIcon("progress")}
-                </button>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <div ref={statusDropdownRef}>
-                  <button 
-                    ref={statusButtonRef}
-                    onClick={() => handleSort("status")}
-                    className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+              </div>
+              {statusOptions.map((status) => {
+                const statusColor = getStatusColor(status);
+                return (
+                  <label
+                    key={status}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer"
                   >
-                    Status
-                    <Icon name="chevron-down" size={12} className={`transition-transform ${showStatusDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} />
-                    {statusFilter.length > 0 && (
-                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
-                    )}
-                  </button>
-                  {showStatusDropdown && (
-                    <div 
-                      className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
-                      style={{
-                        top: (statusButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
-                        left: statusButtonRef.current?.getBoundingClientRect().left ?? 0,
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
-                        <span className="text-xs font-medium text-slate-500">Filter by Status</span>
-                        <button onClick={clearStatusFilter} className="text-xs text-rose-400 hover:text-rose-600">Clear</button>
-                      </div>
-                      {statusOptions.map(status => {
-                        const statusColor = getStatusColor(status);
-                        return (
-                          <label key={status} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={statusFilter.includes(status)}
-                              onChange={() => handleStatusFilter(status)}
-                              className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
-                            />
-                            <span className={`text-xs font-medium ${statusColor.text}`}>{status}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <div ref={priorityDropdownRef}>
-                  <button 
-                    ref={priorityButtonRef}
-                    onClick={() => handleSort("priority")}
-                    className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
-                  >
-                    Priority
-                    <Icon name="chevron-down" size={12} className={`transition-transform ${showPriorityDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} />
-                    {priorityFilter.length > 0 && (
-                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
-                    )}
-                  </button>
-                  {showPriorityDropdown && (
-                    <div 
-                      className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
-                      style={{
-                        top: (priorityButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
-                        left: priorityButtonRef.current?.getBoundingClientRect().left ?? 0,
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
-                        <span className="text-xs font-medium text-slate-500">Filter by Priority</span>
-                        <button onClick={clearPriorityFilter} className="text-xs text-rose-400 hover:text-rose-600">Clear</button>
-                      </div>
-                      {priorityOptions.map(priority => {
-                        const priorityColor = getPriorityColor(priority);
-                        return (
-                          <label key={priority} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={priorityFilter.includes(priority)}
-                              onChange={() => handlePriorityFilter(priority)}
-                              className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
-                            />
-                            <span className={`text-xs font-medium ${priorityColor.text}`}>{priority}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <button 
-                  onClick={() => handleSort("dueDate")}
-                  className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+                    <input
+                      type="checkbox"
+                      checked={statusFilter.includes(status)}
+                      onChange={() => handleStatusFilter(status)}
+                      className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                    />
+                    <span className={`text-xs font-medium ${statusColor.text}`}>
+                      {status}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <div ref={priorityDropdownRef}>
+          <button
+            onClick={(e) => handleSort("priority", e)}
+            className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+          >
+            Priority
+            <Icon
+              name="chevron-down"
+              size={12}
+              className={`transition-transform ${
+                showPriorityDropdown
+                  ? "rotate-180 text-slate-600"
+                  : "text-slate-300 group-hover:text-slate-400"
+              }`}
+            />
+            {priorityFilter.length > 0 && (
+              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+            )}
+          </button>
+          {showPriorityDropdown && priorityMenuPos && (
+            <div
+              className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
+              style={{
+                top: priorityMenuPos.top,
+                left: priorityMenuPos.left,
+              }}
+            >
+              <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
+                <span className="text-xs font-medium text-slate-500">
+                  Filter by Priority
+                </span>
+                <button
+                  onClick={clearPriorityFilter}
+                  className="text-xs text-rose-400 hover:text-rose-600"
                 >
-                  Due Date
-                  {getSortIcon("dueDate")}
+                  Clear
                 </button>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {paginatedTasks.map(task => {
-              const statusColor = getStatusColor(task.status);
-              const priorityColor = getPriorityColor(task.priority);
-              const progress = task.progressPercentage || 0;
-              const progressBarColor = getProgressColor(progress);
-              const progressTextColor = getProgressTextColor(progress);
+              </div>
+              {priorityOptions.map((priority) => {
+                const priorityColor = getPriorityColor(priority);
+                return (
+                  <label
+                    key={priority}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={priorityFilter.includes(priority)}
+                      onChange={() => handlePriorityFilter(priority)}
+                      className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                    />
+                    <span className={`text-xs font-medium ${priorityColor.text}`}>
+                      {priority}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <button
+          onClick={() => handleSort("dueDate")}
+          className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+        >
+          Due Date
+          {getSortIcon("dueDate")}
+        </button>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        Actions
+      </th>
+    </tr>
+  </thead>
+  <tbody className="text-sm">
+    {paginatedTasks.map((task) => {
+      const statusColor = getStatusColor(task.status);
+      const priorityColor = getPriorityColor(task.priority);
+      const progress = task.progressPercentage || 0;
+      const progressBarColor = getProgressColor(progress);
+      const progressTextColor = getProgressTextColor(progress);
 
-              return (
-                <tr key={task.id} className="border-b border-slate-50 hover:bg-slate-50/60">
-                  <td className="py-4 px-2">
-                    <button className="text-left" onClick={() => onViewTask?.(task)}>
-                      <div className="font-medium text-slate-700">{task.title}</div>
-                      <div className="text-xs text-slate-400">{task.projectName ?? "General"}</div>
-                    </button>
-                  </td>
-                  <td className="py-4 px-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 bg-slate-100 rounded-full h-1.5">
-                        <div 
-                          className={`${progressBarColor} h-1.5 rounded-full transition-all duration-300`} 
-                          style={{ width: `${Math.min(progress, 100)}%` }} 
-                        />
-                      </div>
-                      <span className={`text-xs font-medium ${progressTextColor}`}>{progress}%</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}>{task.status}</span>
-                  </td>
-                  <td className="py-4 px-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}>{task.priority}</span>
-                  </td>
-                  <td className="py-4 px-2 text-slate-500">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not set"}</td>
-                  <td className="py-4 px-2">
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        className="text-cyan-500 bg-cyan-50 hover:text-cyan-500 hover:cursor-pointer hover:bg-cyan-100 rounded-lg inline-flex items-center justify-center"
-                        style={{ width: "28px", height: "28px" }}
-                        title="View task"
-                        onClick={() => onViewTask?.(task)}
-                      >
-                        <Icon name="view" size={16} />
-                      </button>
+      // Late is a fact about the date; Delayed is a status someone set.
+      // A task can be late while still sitting in NotStarted, so the two
+      // are shown as separate badges rather than merged - otherwise the
+      // overdue list looks full of "Not Started" and reads as wrong.
+      const late = isOverdueTask(task);
+      const flaggedDelayed = task.status === "Delayed";
+      const lateDays = late ? daysOverdue(task) : 0;
 
-                      {canEdit && (
-                        <button
-                          className="p-1 text-amber-500 bg-amber-50 hover:text-amber-700 hover:bg-amber-100 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
-                          style={{ width: "28px", height: "28px" }}
-                          title="Edit task"
-                          onClick={() => onEditTask?.(task)}
-                        >
-                          <Icon name="edit" size={16} /> 
-                        </button>
-                      )}
+      return (
+        <tr
+          key={task.id}
+          className="border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer [&_td]:cursor-pointer"
+        >
+          <td className="py-4 px-2">
+            <button
+              className="text-left cursor-pointer"
+              onClick={() => onViewTask?.(task)}
+            >
+              <div className="font-medium text-slate-700">{task.title}</div>
+              {/* Project and milestone together: the title alone rarely
+                  identifies a task, and the milestone is what the work is
+                  being delivered under. */}
+              <div className="text-xs text-slate-500 mt-1 flex flex-col gap-0.5 ">
+                <span>
+                  <span className=" italic text-slate-600">Proj : </span>
+                  {task.projectName ?? "General"}
+                </span>
+                {task.milestoneName && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <span className=" italic text-slate-600">Mile : </span>
+                    <span className="text-slate-300">/</span>
+                    {/* <span className="material-symbols-outlined text-[11px] text-slate-400">
+                      flag
+                    </span> */}
+                    {task.milestoneName}
+                  </span>
+                )}
+              </div>
+            </button>
+          </td>
+          <td className="py-4 px-2">
+            <div className="flex items-center gap-2">
+              <div className="w-24 bg-slate-100 rounded-full h-1.5">
+                <div
+                  className={`${progressBarColor} h-1.5 rounded-full transition-all duration-300`}
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+              <span className={`text-xs font-medium ${progressTextColor}`}>
+                {progress}%
+              </span>
+            </div>
+          </td>
+          <td className="py-4 px-2">
+            <div className="flex flex-col gap-1 items-start">
+              <span
+                className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}
+              >
+                {task.status}
+              </span>
+              {/*
+                Only shown when the task is late but its status does not
+                already say so. A task flagged Delayed needs no second
+                badge; a Not Started task that overran does.
+              */}
+              {late && !flaggedDelayed && (
+                <span
+                  title={`Past due by ${lateDays} day${
+                    lateDays === 1 ? "" : "s"
+                  }. Its status is still ${
+                    task.status
+                  }, so nothing has flagged it yet.`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-[11px] leading-none">
+                    schedule
+                  </span>
+                  {lateDays}d overdue
+                </span>
+              )}
+              {late && flaggedDelayed && (
+                <span
+                  title={`Past due by ${lateDays} day${
+                    lateDays === 1 ? "" : "s"
+                  }.`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-500 border border-rose-100 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-[11px] leading-none">
+                    schedule
+                  </span>
+                  {lateDays}d
+                </span>
+              )}
+            </div>
+          </td>
+          <td className="py-4 px-2">
+            <span
+              className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}
+            >
+              {task.priority}
+            </span>
+          </td>
+          <td
+            className={`py-4 px-2 ${
+              late ? "font-semibold text-rose-600" : "text-slate-500"
+            }`}
+          >
+            {task.dueDate
+              ? new Date(task.dueDate).toLocaleDateString()
+              : "Not set"}
+          </td>
+          <td className="py-4 px-2">
+            <div className="flex items-center gap-0.5">
+              <button
+                className="text-cyan-500 bg-cyan-50 hover:text-cyan-500 hover:cursor-pointer hover:bg-cyan-100 rounded-lg inline-flex items-center justify-center"
+                style={{ width: "28px", height: "28px" }}
+                title="View task"
+                onClick={() => onViewTask?.(task)}
+              >
+                <Icon name="view" size={16} />
+              </button>
 
-                      {canDelete && (
-                        <button
-                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg inline-flex items-center justify-center"
-                          style={{ width: "28px", height: "28px" }}
-                          title="Delete task"
-                          onClick={() => handleDeleteTask(task.id)}
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              {canEdit && (
+                <button
+                  className="p-1 text-amber-500 bg-amber-50 hover:text-amber-700 hover:bg-amber-100 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
+                  style={{ width: "28px", height: "28px" }}
+                  title="Edit task"
+                  onClick={() => onEditTask?.(task)}
+                >
+                  <Icon name="edit" size={16} />
+                </button>
+              )}
+
+              {canDelete && (
+                <button
+                  className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
+                  style={{ width: "28px", height: "28px" }}
+                  title="Delete task"
+                  onClick={() => handleDeleteTask(task.id)}
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    delete
+                  </span>
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
       </div>
 
-      {filteredAndSortedTasks.length === 0 && (
+      {effectiveTotalCount === 0 && !loading && (
         <div className="text-center py-12">
           <div className="text-slate-400 mb-2">
             <Icon name="hi-emoji-sad" size={48} className="mx-auto" />
@@ -437,10 +783,10 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
       )}
 
       <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
-        <div className="text-sm text-slate-500">
-          {filteredAndSortedTasks.length === 0
+        <div className="text-sm min-w-50 text-slate-500">
+          {effectiveTotalCount === 0
             ? 'No Results'
-            : `Showing ${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, filteredAndSortedTasks.length)} of ${filteredAndSortedTasks.length} Results`
+            : `Showing ${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, effectiveTotalCount)} of ${effectiveTotalCount} Results`
           }
         </div>
         <div className="flex items-center gap-2">
@@ -453,22 +799,36 @@ export default function TaskPerformanceTable({ tasks = [], onViewTask, onEditTas
             Previous
           </button>
 
-          {totalPages > 1 && Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${currentPage === page
-                  ? 'text-white bg-primary border border-primary'
-                  : 'text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
-            >
-              {page}
-            </button>
-          ))}
+          {effectiveTotalPages > 1 && (() => {
+            const pages: (number | "...")[] = [];
+            pages.push(1);
+            if (currentPage > 3) pages.push("...");
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(effectiveTotalPages - 1, currentPage + 1);
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (currentPage < effectiveTotalPages - 2) pages.push("...");
+            if (effectiveTotalPages > 1) pages.push(effectiveTotalPages);
+            return pages.map((page, idx) =>
+              page === "..." ? (
+                <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-sm text-slate-400">...</span>
+              ) : (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors duration-200 ${currentPage === page
+                      ? 'text-white bg-primary border border-primary'
+                      : 'text-slate-700 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                >
+                  {page}
+                </button>
+              )
+            );
+          })()}
 
           <button
             className="px-3 py-1.5 text-sm text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={currentPage === totalPages || filteredAndSortedTasks.length === 0}
+            disabled={currentPage === effectiveTotalPages || effectiveTotalCount === 0}
             onClick={() => setCurrentPage(currentPage + 1)}
           >
             Next

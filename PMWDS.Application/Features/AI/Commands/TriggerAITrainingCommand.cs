@@ -8,9 +8,9 @@ public record TriggerAITrainingCommand()
 public class TriggerAITrainingCommandHandler
  : IRequestHandler<TriggerAITrainingCommand, bool>
 {
- private readonly IAIService _aiService;
+ private readonly IModelManagementService _aiService;
  public TriggerAITrainingCommandHandler(
- IAIService aiService)
+ IModelManagementService aiService)
  => _aiService = aiService;
  public async Task<bool> Handle(
  TriggerAITrainingCommand req,

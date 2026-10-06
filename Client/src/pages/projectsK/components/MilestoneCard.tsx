@@ -34,7 +34,7 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
     isSelected
       ? "bg-indigo-50 border-blue-500 border-b hover:bg-blue-100"
       : milestone.isBlocked
-      ? "bg-amber-50/60 border-amber-200 hover:shadow-md hover:border-amber-400"
+      ? " border-amber-200 hover:shadow-md hover:border-amber-400"
       : "bg-white border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200"
   }`}
   style={{ animation: `slideIn 0.3s ease ${index * 0.05}s both` }}
@@ -73,14 +73,24 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
     </span>
   </div>
 
-  {/* Row 3: Critical tag and action buttons */}
+  {/* Row 3: Owning department, due date, critical tag, action buttons */}
   <div className="flex items-start justify-between gap-2">
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-1">
-      {milestone.departmentName && (
-        <span className="text-[10px] text-slate-400 break-words">
-          {milestone.departmentName}
+      {/* Always rendered rather than only when set. Previously an unassigned
+          milestone showed nothing here at all, so a milestone with no department was
+          indistinguishable from one whose department failed to load - and the
+          department is the field that decides who is expected to work on it. */}
+      <span
+        className={`text-[10px] flex items-center gap-0.5 min-w-0 ${
+          milestone.departmentName ? "text-slate-600" : "text-slate-400 italic"
+        }`}
+        title={milestone.departmentName || "No department assigned"}
+      >
+        <span className="material-symbols-outlined text-[11px] shrink-0">groups</span>
+        <span className="break-words">
+          {milestone.departmentName || "No department"}
         </span>
-      )}
+      </span>
       {milestone.dueDate && (
         <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
           Due {new Date(milestone.dueDate).toLocaleDateString()}

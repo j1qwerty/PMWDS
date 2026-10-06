@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { useAppData } from "./appData";
+import { onStatusChanged, type RealtimeStatus } from "./realtime";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
+import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
+import { roleDisplayNames } from "./permissions";
 
 import {
   HiOutlineHome,
@@ -21,11 +24,11 @@ import {
   HiOutlineChatAlt2,
   HiOutlineSearch,
   HiOutlineBell,
-  HiChat,
   HiOutlineChevronDoubleLeft,
   HiOutlineChevronDoubleRight,
   HiOutlineMenu,
   HiOutlineX,
+  HiOutlineRefresh,
 } from "react-icons/hi";
 import { Icon } from "./components/ui/Icon";
 
@@ -179,10 +182,26 @@ function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
   const perm = usePermission();
-  const { data } = useAppData();
+  const { data, refresh, loading } = useAppData();
 
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Live-update status. Shown as a hint rather than an error: while the socket is down
+  // the app still updates via focus-refetch and the 60s poll, just not instantly.
+  //
+  // The initial state is "connecting", not "disconnected". Starting at "disconnected"
+  // claimed the socket was dead before a single attempt had been made, so every page load
+  // painted the offline dot for the first second or two and it read as permanently broken.
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
+  useEffect(() => onStatusChanged(setRealtimeStatus), []);
+
+  const realtimeConnected = realtimeStatus === "connected";
+  // The dot means "you are not getting live updates right now". It is deliberately hidden
+  // while the very first connection is still being negotiated, because that is not yet a
+  // fault and showing it there is what made the indicator untrustworthy.
+  const realtimeOffline =
+    realtimeStatus === "disconnected" || realtimeStatus === "reconnecting";
 
   // Track screen size for responsive behavior
   const [isMobile, setIsMobile] = useState(false);
@@ -227,7 +246,10 @@ function Layout({ children }: { children: React.ReactNode }) {
         { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
         { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
         { path: "/profiles", label: "Profiles", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
-        { path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] },
+        // Skills page is temporarily hidden for all roles - see SHOW_SKILLS_PAGE.
+        ...(SHOW_SKILLS_PAGE
+          ? [{ path: "/skills", label: "Skills", icon: "skill", permissions: [PERMISSION_GROUPS.user.edit] }]
+          : []),
       ],
     },
     {
@@ -261,7 +283,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <NavHeaderProvider>
-      <div className="flex min-h-screen bg-background text-on-surface font-sans antialiased">
+      <div className="flex min-h-screen demo-bg text-on-surface font-sans antialiased">
         {/* Mobile overlay backdrop */}
         {mobileSidebarOpen && (
           <div
@@ -289,14 +311,20 @@ function Layout({ children }: { children: React.ReactNode }) {
           {/* Logo + Toggle */}
           <div className="flex items-center justify-between px-[clamp(12px,2vw,16px)] pt-[clamp(16px,2.5vw,20px)] pb-[clamp(8px,1.5vw,12px)]">
             {!sidebarCompact && (
-              <div className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap">
+              <Link
+                to="/"
+                onClick={() => setMobileSidebarOpen(false)}
+                title="Go to Dashboard"
+                className="text-[clamp(18px,2.5vw,22px)] font-black text-primary uppercase tracking-[0.22em] whitespace-nowrap transition-opacity hover:opacity-70"
+              >
                 PMWDS
-              </div>
+              </Link>
             )}
 
             {/* Hide toggle on mobile (sidebar closes via overlay click) */}
             <button
               onClick={() => setSidebarCompact(!sidebarCompact)}
+              aria-label="Toggle sidebar"
               className="hidden md:flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
               style={{
                 height: 'clamp(28px,4vw,32px)',
@@ -312,6 +340,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             {/* Mobile close button */}
             <button
               onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close sidebar"
               className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary"
               style={{
                 height: 'clamp(28px,4vw,32px)',
@@ -373,10 +402,10 @@ function Layout({ children }: { children: React.ReactNode }) {
               {/* Projects */}
               {(() => {
                 const theme = sectionThemes.Overview;
-                const active = isActive("/projectsK");
+                const active = isActive("/projects");
                 return (
                   <Link
-                    to="/projectsK"
+                    to="/projects"
                     onClick={() => setMobileSidebarOpen(false)}
                     className={classNames(
                       "relative flex items-center rounded-md transition-all duration-200 group",
@@ -455,43 +484,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 );
               })()}
 
-              {/* Chat */}
-              {/* {(() => {
-                const theme = sectionThemes.Overview;
-                const active = isActive("/chat");
-                return (
-                  <Link
-                    to="/chat"
-                    onClick={() => setMobileSidebarOpen(false)}
-                    className={classNames(
-                      "relative flex items-center rounded-md transition-all duration-200 group",
-                      sidebarCompact
-                        ? "justify-center px-0 py-[clamp(6px,0.9vw,8px)]"
-                        : "gap-[clamp(8px,1.5vw,12px)] px-[clamp(8px,1.5vw,12px)] py-[clamp(6px,0.9vw,8px)]",
-                      active
-                        ? `${theme.active} ${theme.borderActive}`
-                        : `${theme.textDefault} ${theme.hover} border-r-[3px] border-transparent`
-                    )}
-                    title={sidebarCompact ? "Chats" : undefined}
-                  >
-                    <span
-                      className={classNames(
-                        "transition-all duration-300 shrink-0",
-                        active
-                          ? `${theme.iconActive} scale-110`
-                          : `${theme.iconDefault} group-hover:scale-110`
-                      )}
-                    >
-                      {iconMap.chat}
-                    </span>
-                    {!sidebarCompact && (
-                      <span className="text-[clamp(11px,1.5vw,13px)] font-medium tracking-[0.01em]">
-                        Chats
-                      </span>
-                    )}
-                  </Link>
-                );
-              })()} */}
+
             </div>
 
             {/* Projects Group (Dynamic) */}
@@ -607,7 +600,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                       {auth?.fullName || "Alex Rivera"}
                     </span>
                     <span className="truncate text-[clamp(8px,1vw,9px)] uppercase tracking-[0.18em] text-outline group-hover:text-error/70 transition-colors">
-                      {auth?.roles?.join(", ") || "SuperAdmin"}
+                      {roleDisplayNames(auth?.roles).join(", ") || "SuperAdmin"}
                     </span>
                   </div>
                 )}
@@ -643,6 +636,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 {/* Mobile hamburger */}
                 <button
                   onClick={() => setMobileSidebarOpen(true)}
+                  aria-label="Open sidebar"
                   className="md:hidden flex items-center justify-center rounded-lg text-outline hover:text-primary hover:bg-primary/5 transition-all duration-200"
                   style={{ height: 'clamp(28px,4vw,32px)', width: 'clamp(28px,4vw,32px)' }}
                 >
@@ -653,16 +647,55 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Right actions */}
               <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
-                <NavActionButton />
-
-                {/* Chat button */}
-                <Link
-                  to="/chat"
-                  className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                <button
+                  onClick={() => void refresh()}
+                  disabled={loading}
+                  aria-label="Refresh workspace data"
+                  title={
+                    realtimeConnected
+                      ? "Live updates connected. Click to refresh now."
+                      : realtimeStatus === "connecting"
+                        ? "Connecting live updates. Click to refresh now."
+                        : realtimeStatus === "reconnecting"
+                          ? "Live updates reconnecting - data refreshes every 60s and on focus. Click to refresh now."
+                          : "Live updates offline - data refreshes every 60s and on focus. Click to refresh now."
+                  }
+                  className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110 disabled:opacity-50 disabled:hover:scale-100"
                   style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
                 >
-                  <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
-                </Link>
+                  <HiOutlineRefresh
+                    className={loading ? "animate-spin" : undefined}
+                    style={{
+                      height: 'clamp(16px,2.5vw,20px)',
+                      width: 'clamp(16px,2.5vw,20px)',
+                    }}
+                  />
+                  {realtimeOffline && (
+                    <span
+                      className="absolute rounded-full bg-warning"
+                      style={{
+                        height: 'clamp(5px,0.8vw,7px)',
+                        width: 'clamp(5px,0.8vw,7px)',
+                        top: 'clamp(3px,0.6vw,5px)',
+                        right: 'clamp(3px,0.6vw,5px)',
+                      }}
+                    />
+                  )}
+                </button>
+
+                <NavActionButton />
+
+                {/* Chat button is hidden for now - no /chat route is registered.
+                    Re-enable this block if the chat route comes back. */}
+                {SHOW_CHAT_BUTTON && (
+                  <Link
+                    to="/chat"
+                    className="relative flex items-center justify-center rounded-full text-on-surface-variant transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:scale-110"
+                    style={{ height: 'clamp(32px,4.5vw,38px)', width: 'clamp(32px,4.5vw,38px)' }}
+                  >
+                    <HiOutlineChatAlt2 style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} />
+                  </Link>
+                )}
 
                 {/* Notifications button */}
                 <Link
@@ -689,12 +722,14 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Content */}
           <main
-            className="flex flex-1 flex-col relative font-sans w-full"
+            className="flex flex-1 flex-col relative font-sans w-full "
             style={{
               padding: 'clamp(4px,2vw,16px)',
               gap: 'clamp(4px,2.5vw,16px)',
             }}
           >
+    
+
             {children}
           </main>
         </div>

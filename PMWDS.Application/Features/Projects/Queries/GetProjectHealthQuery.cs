@@ -8,10 +8,10 @@ public class GetProjectHealthQueryHandler
  : IRequestHandler<GetProjectHealthQuery, ProjectHealthDto>
 {
  private readonly IUnitOfWork _uow;
- private readonly IAIService _ai;
+ private readonly IProjectHealthService _ai;
  public GetProjectHealthQueryHandler(
  IUnitOfWork uow,
- IAIService ai)
+ IProjectHealthService ai)
  {
  _uow = uow;
  _ai = ai;

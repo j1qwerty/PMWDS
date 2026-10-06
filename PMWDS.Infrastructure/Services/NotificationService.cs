@@ -99,9 +99,9 @@ public class NotificationService : INotificationService
             Message: $"You have been assigned: {task.Title}",
             Type: NotificationType.TaskAssigned,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: NotificationLinks.ForTask(task.ProjectId, taskId),
             RelatedEntityId: taskId.ToString(),
-            RelatedEntityType: "Task"),
+            RelatedEntityType: NotificationLinks.TaskEntityType),
             ct);
     }
 
@@ -117,16 +117,16 @@ public class NotificationService : INotificationService
         }
 
         await SendAsync(new SendNotificationDto(
-            UserId: task.AssignedToUserId,
+            UserId: task.AssignedToUserId.Value.ToString(),
             Title: "Task Deadline Approaching",
             Message: $"Task '{task.Title}' is due in {daysRemaining} day(s).",
             Type: NotificationType.TaskDeadline,
             Priority: daysRemaining <= 1
                 ? NotificationPriority.Urgent
                 : NotificationPriority.High,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: NotificationLinks.ForTask(task.ProjectId, taskId),
             RelatedEntityId: taskId.ToString(),
-            RelatedEntityType: "Task"),
+            RelatedEntityType: NotificationLinks.TaskEntityType),
             ct);
     }
 
@@ -142,20 +142,20 @@ public class NotificationService : INotificationService
         }
 
         var project = await _uow.Projects.GetByIdAsync(task.ProjectId, ct);
-        if (project == null)
+        if (project?.ProjectManagerId == null)
         {
             return;
         }
 
         await SendAsync(new SendNotificationDto(
-            UserId: project.ProjectManagerId,
+            UserId: project.ProjectManagerId.Value.ToString(),
             Title: $"Task Escalated - Level {escalationLevel}",
             Message: $"Task '{task.Title}' requires attention.",
             Type: NotificationType.TaskEscalated,
             Priority: NotificationPriority.Urgent,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: NotificationLinks.ForTask(task.ProjectId, taskId),
             RelatedEntityId: taskId.ToString(),
-            RelatedEntityType: "Task"),
+            RelatedEntityType: NotificationLinks.TaskEntityType),
             ct);
     }
 
@@ -164,20 +164,20 @@ public class NotificationService : INotificationService
         CancellationToken ct = default)
     {
         var project = await _uow.Projects.GetByIdAsync(projectId, ct);
-        if (project == null)
+        if (project?.ProjectManagerId == null)
         {
             return;
         }
 
         await SendAsync(new SendNotificationDto(
-            UserId: project.ProjectManagerId,
+            UserId: project.ProjectManagerId.Value.ToString(),
             Title: "Project Created",
             Message: $"You are the project manager for '{project.Name}'.",
             Type: NotificationType.ProjectAlert,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/projects/{projectId}",
+            ActionUrl: NotificationLinks.ForProject(projectId),
             RelatedEntityId: projectId.ToString(),
-            RelatedEntityType: "Project"),
+            RelatedEntityType: NotificationLinks.ProjectEntityType),
             ct);
     }
 
@@ -188,20 +188,20 @@ public class NotificationService : INotificationService
         CancellationToken ct = default)
     {
         var project = await _uow.Projects.GetByIdAsync(projectId, ct);
-        if (project == null)
+        if (project?.ProjectManagerId == null)
         {
             return;
         }
 
         await SendAsync(new SendNotificationDto(
-            UserId: project.ProjectManagerId,
+            UserId: project.ProjectManagerId.Value.ToString(),
             Title: "Project Status Changed",
             Message: $"'{project.Name}' changed from {oldStatus} to {newStatus}.",
             Type: NotificationType.ProjectAlert,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/projects/{projectId}",
+            ActionUrl: NotificationLinks.ForProject(projectId),
             RelatedEntityId: projectId.ToString(),
-            RelatedEntityType: "Project"),
+            RelatedEntityType: NotificationLinks.ProjectEntityType),
             ct);
     }
 
@@ -216,6 +216,7 @@ public class NotificationService : INotificationService
             Message: insight,
             Type: NotificationType.AIInsight,
             Priority: NotificationPriority.Normal,
+            ActionUrl: NotificationLinks.ForAi(),
             IsAIGenerated: true),
             ct);
 

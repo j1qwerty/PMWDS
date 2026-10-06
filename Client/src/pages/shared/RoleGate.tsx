@@ -4,19 +4,20 @@ import {
   PERMISSION_GROUPS,
   Permission,
   ROLE_LEVELS,
+  RoleKey,
   expandPermissions,
   isSuperAdmin,
+  normalizeRoleKey,
   type PermissionCode,
   type PermissionModule,
 } from "../../permissions";
-import type { Role } from "../../types";
 
-export { Permission, PERMISSION_GROUPS, ROLE_LEVELS, expandPermissions };
+export { Permission, PERMISSION_GROUPS, ROLE_LEVELS, RoleKey, expandPermissions };
 export type { PermissionCode, PermissionModule };
 
 type RoleGateProps = {
-  allow?: Role[];
-  deny?: Role[];
+  allow?: string[];
+  deny?: string[];
   permissions?: string[];
   fallback?: ReactNode;
   children: ReactNode;
@@ -24,15 +25,16 @@ type RoleGateProps = {
 
 function canUseRole(userRoles: readonly string[] | undefined, allow?: readonly string[], deny?: readonly string[]) {
   if (!userRoles?.length) return false;
-  if (deny?.some((role) => userRoles.includes(role))) return false;
+  const normalized = userRoles.map(normalizeRoleKey);
+  if (deny?.some((role) => normalized.includes(normalizeRoleKey(role)))) return false;
   if (!allow?.length) return true;
-  return allow.some((role) => userRoles.includes(role));
+  return allow.some((role) => normalized.includes(normalizeRoleKey(role)));
 }
 
 export function RoleGate({ allow, deny, permissions, fallback = null, children }: RoleGateProps) {
   const { auth, hasPermission } = useAuth();
   const allowedByPermission = permissions?.length ? hasPermission(...permissions) : true;
-  const allowedByRole = allow?.length || deny?.length ? canUseRole(auth?.roles, allow, deny) : true;
+  const allowedByRole = allow?.length || deny?.length ? canUseRole(auth?.roleKeys, allow, deny) : true;
   return allowedByPermission && allowedByRole ? <>{children}</> : <>{fallback}</>;
 }
 
@@ -69,7 +71,8 @@ function buildModuleActions(
 }
 
 export type UsePermissionResult = {
-  roles: Role[];
+  roles: string[];
+  roleKeys: string[];
   permissions: readonly string[];
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -85,10 +88,12 @@ export function usePermission(): UsePermissionResult {
   const { auth, hasPermission, hasAllPermissions } = useAuth();
   const permissions = auth?.permissions ?? [];
   const roles = auth?.roles ?? [];
+  const roleKeys = auth?.roleKeys ?? [];
 
   return useMemo<UsePermissionResult>(() => {
     const result: UsePermissionResult = {
       roles,
+      roleKeys,
       permissions,
       isAdmin: isSuperAdmin(permissions),
       isSuperAdmin: isSuperAdmin(permissions),
@@ -106,5 +111,5 @@ export function usePermission(): UsePermissionResult {
       module: (name: PermissionModule) => buildModuleActions(name, hasPermission),
     };
     return result;
-  }, [roles, permissions, hasPermission, hasAllPermissions]);
+  }, [roles, roleKeys, permissions, hasPermission, hasAllPermissions]);
 }

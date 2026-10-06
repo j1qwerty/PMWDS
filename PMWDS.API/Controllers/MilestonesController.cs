@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,20 +22,56 @@ public class MilestonesController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly INotificationService _notifications;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDataChangeNotifier _changes;
 
-    public MilestonesController(IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser)
+    public MilestonesController(IMediator mediator, IUnitOfWork uow, ApplicationDbContext db, RoleScopeService scope, INotificationService notifications, ICurrentUserService currentUser, IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _db = db;
         _scope = scope;
         _notifications = notifications;
         _currentUser = currentUser;
+        _changes = changes;
+    }
+
+    /// <summary>
+    /// What the caller is allowed to change on this project.
+    ///
+    /// The client needs this because "can manage milestones" is a per-project
+    /// question, not a per-role one. CanManageProjectAsync resolves it to: the
+    /// superadmin, the project's own project manager, the department head of the
+    /// project's primary department, and a director of the owning organisation. A
+    /// department head of some *other* department holds PROJECT_MANAGE and so
+    /// satisfies every permission-based check, which is why a permission-code gate in
+    /// the browser cannot express this rule and got it wrong in both directions.
+    ///
+    /// Returned from the server rather than recomputed in the browser so there is one
+    /// implementation, and so the client can never offer a control that 403s or hide
+    /// one that would have worked.
+    /// </summary>
+    [HttpGet("by-project/{projectId:guid}/access")]
+    [ProducesResponseType(typeof(ProjectMilestoneAccessDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProjectAccess(Guid projectId, CancellationToken ct)
+    {
+        // Existence first. CanAccessProjectAsync short-circuits to true for a
+        // superadmin without touching the database, so without this an unknown id
+        // came back 200 claiming full manage rights for a project that is not there.
+        if (!await _db.Projects.AnyAsync(p => p.Id == projectId, ct))
+            return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+            return Forbid();
+
+        var canManage = await _scope.CanManageProjectAsync(projectId, ct);
+
+        return Ok(new ProjectMilestoneAccessDto(
+            CanManageMilestones: canManage,
+            CanManageDependencies: canManage));
     }
 
     // ── Milestone Dependency Endpoints ──────────────────────────────────
 
     [HttpGet("by-project/{projectId:guid}/dependencies")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependenciesByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -47,9 +85,16 @@ public class MilestonesController : BaseApiController
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            depsQuery = depsQuery.Where(d =>
-                (d.PrerequisiteMilestone.DepartmentId.HasValue && departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
-                (d.DependentMilestone.DepartmentId.HasValue && departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
+            {
+                depsQuery = depsQuery.Where(d =>
+                    (d.PrerequisiteMilestone != null &&
+                        d.PrerequisiteMilestone.DepartmentId.HasValue &&
+                        departmentIds.Contains(d.PrerequisiteMilestone.DepartmentId.Value)) ||
+                    (d.DependentMilestone != null &&
+                        d.DependentMilestone.DepartmentId.HasValue &&
+                        departmentIds.Contains(d.DependentMilestone.DepartmentId.Value)));
+            }
         }
 
         var deps = await depsQuery.ToListAsync(ct);
@@ -57,7 +102,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost("dependencies")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> CreateDependency([FromBody] CreateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
@@ -131,11 +176,13 @@ public class MilestonesController : BaseApiController
             ProjectId: dto.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, dep.Id.ToString(), dto.ProjectId, ct);
+
         return Ok(MilestoneDependencyDto.FromEntity(loaded));
     }
 
     [HttpPut("dependencies/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateDependency(Guid id, [FromBody] UpdateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -154,7 +201,42 @@ public class MilestonesController : BaseApiController
         if (depType == MilestoneDependencyType.ProgressThreshold && (dto.ThresholdPercentage == null || dto.ThresholdPercentage < 0 || dto.ThresholdPercentage > 100))
             return BadRequest(new { message = "Threshold percentage must be between 0 and 100" });
 
-        dep.Update(depType, dto.ThresholdPercentage);
+        // Re-wiring is optional. Omitting the ids keeps the current pair, so the older
+        // payload that only changes the condition still works - the tasks tab and any
+        // other caller depends on that.
+        var prerequisiteId = dto.PrerequisiteMilestoneId ?? dep.PrerequisiteMilestoneId;
+        var dependentId = dto.DependentMilestoneId ?? dep.DependentMilestoneId;
+
+        if (prerequisiteId != dep.PrerequisiteMilestoneId || dependentId != dep.DependentMilestoneId)
+        {
+            if (prerequisiteId == dependentId)
+                return BadRequest(new { message = "A milestone cannot depend on itself" });
+
+            if (!await _db.Milestones.AnyAsync(m => m.Id == prerequisiteId && m.ProjectId == dep.ProjectId, ct))
+                return BadRequest(new { message = "Prerequisite milestone not found in this project" });
+
+            if (!await _db.Milestones.AnyAsync(m => m.Id == dependentId && m.ProjectId == dep.ProjectId, ct))
+                return BadRequest(new { message = "Dependent milestone not found in this project" });
+
+            // Excludes this row, or re-saving an unchanged dependency would collide
+            // with itself and always 400.
+            var duplicate = await _db.MilestoneDependencies.AnyAsync(d =>
+                d.Id != id &&
+                d.PrerequisiteMilestoneId == prerequisiteId &&
+                d.DependentMilestoneId == dependentId &&
+                d.ProjectId == dep.ProjectId, ct);
+            if (duplicate)
+                return BadRequest(new { message = "This dependency already exists" });
+
+            var reverseExists = await _db.MilestoneDependencies.AnyAsync(d =>
+                d.PrerequisiteMilestoneId == dependentId &&
+                d.DependentMilestoneId == prerequisiteId &&
+                d.ProjectId == dep.ProjectId, ct);
+            if (reverseExists)
+                return BadRequest(new { message = "Circular dependency detected" });
+        }
+
+        dep.Update(depType, dto.ThresholdPercentage, prerequisiteId, dependentId);
         dep.SetModified("system");
 
         await _uow.MilestoneDependencies.UpdateAsync(dep, ct);
@@ -176,11 +258,13 @@ public class MilestonesController : BaseApiController
             ProjectId: dep.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), dep.ProjectId, ct);
+
         return Ok(MilestoneDependencyDto.FromEntity(dep));
     }
 
     [HttpDelete("dependencies/{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> DeleteDependency(Guid id, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -213,11 +297,12 @@ public class MilestonesController : BaseApiController
             ProjectId: projectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), projectId, ct);
+
         return NoContent();
     }
 
     [HttpGet("{id:guid}/dependency-status")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDependencyStatus(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -240,7 +325,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -257,11 +341,7 @@ public class MilestonesController : BaseApiController
         if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            var projectDeptId = await _db.Projects
-                .Where(p => p.Id == projectId)
-                .Select(p => p.DepartmentId)
-                .FirstOrDefaultAsync(ct);
-            if (!departmentIds.Contains(projectDeptId))
+            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
             {
                 query = query.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
             }
@@ -274,7 +354,6 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -299,7 +378,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create([FromBody] CreateMilestoneDto dto, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
@@ -307,9 +386,9 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (dto.DepartmentId.HasValue && !await IsDepartmentAssignedToProjectAsync(dto.ProjectId, dto.DepartmentId.Value, ct))
+        if (!await CanAssignDepartmentToMilestoneAsync(dto.DepartmentId, ct))
         {
-            return BadRequest(new { message = "Milestone department must be assigned to the project." });
+            return Forbid();
         }
 
         var milestone = Milestone.Create(dto.ProjectId, dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
@@ -331,11 +410,15 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        // Milestone counts roll up into the project, so both scopes must refetch.
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = milestone.Id }, MilestoneDto.FromEntity(milestone));
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMilestoneDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -356,9 +439,9 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (dto.DepartmentId.HasValue && !await IsDepartmentAssignedToProjectAsync(milestone.ProjectId, dto.DepartmentId.Value, ct))
+        if (!await CanAssignDepartmentToMilestoneAsync(dto.DepartmentId, ct))
         {
-            return BadRequest(new { message = "Milestone department must be assigned to the project." });
+            return Forbid();
         }
 
         milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
@@ -394,11 +477,14 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpPatch("{id:guid}/complete")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct, [FromQuery] bool forceComplete = false)
     {
         var milestone = await _db.Milestones
@@ -461,11 +547,14 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetMilestoneStatusDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -539,11 +628,14 @@ public class MilestonesController : BaseApiController
             ProjectId: milestone.ProjectId
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, milestone.Id.ToString(), milestone.ProjectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, milestone.ProjectId.ToString(), milestone.ProjectId, ct);
+
         return Ok(MilestoneDto.FromEntity(refreshed ?? milestone));
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
@@ -587,6 +679,11 @@ public class MilestonesController : BaseApiController
             ProjectId: projectId
         );
 
+        // Deleting a milestone cascades its subtasks.
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), projectId, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Projects, projectId.ToString(), projectId, ct);
+
         return NoContent();
     }
 
@@ -616,8 +713,17 @@ public class MilestonesController : BaseApiController
             .Where(p => projectIds.Contains(p.Id) && departmentIds.Contains(p.DepartmentId))
             .Select(p => p.Id)
             .ToListAsync(ct);
+        var primaryDeptAllowedProjectIds = new HashSet<Guid>();
+        foreach (var projectId in primaryDeptProjectIds)
+        {
+            if (await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
+            {
+                primaryDeptAllowedProjectIds.Add(projectId);
+            }
+        }
+
         return milestones
-            .Where(m => primaryDeptProjectIds.Contains(m.ProjectId) ||
+            .Where(m => primaryDeptAllowedProjectIds.Contains(m.ProjectId) ||
                         (m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value)))
             .ToList();
     }
@@ -632,19 +738,40 @@ public class MilestonesController : BaseApiController
         var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
         if (milestone.DepartmentId.HasValue && departmentIds.Contains(milestone.DepartmentId.Value))
             return true;
-        var projectDeptId = await _db.Projects
-            .Where(p => p.Id == milestone.ProjectId)
-            .Select(p => p.DepartmentId)
-            .FirstOrDefaultAsync(ct);
-        return departmentIds.Contains(projectDeptId);
+        return await _scope.CanAccessProjectAsPrimaryDepartmentAsync(milestone.ProjectId, ct);
     }
 
-    private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)
-        => _db.Projects.AnyAsync(project =>
-            project.Id == projectId &&
-            (project.DepartmentId == departmentId ||
-             project.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId)),
-            ct);
+    /// <summary>
+    /// True when the caller may put this department on this project's milestone.
+    ///
+    /// The rule used to be stricter: a milestone's department had to already be one of
+    /// the project's, enforced on both create and update, and anything else returned
+    /// 400. That turned out to be a footgun with no security value behind it.
+    ///
+    /// Organisation scoping already limits which departments a caller can see at all,
+    /// and the modal is now limited to the project's own departments, so the check was
+    /// only ever rejecting a reasonable action. Worse, it made 13 of the 15 seeded
+    /// milestones permanently uneditable: MilestonesSeeder had given them departments
+    /// their projects did not carry, and because the form resends the current value on
+    /// every save, those rows could not be saved even to rename one.
+    ///
+    /// What is still refused is a department the caller cannot see. That is the
+    /// boundary that matters, and it is enforced by scoping the department query
+    /// rather than by this method.
+    /// </summary>
+    private async Task<bool> CanAssignDepartmentToMilestoneAsync(
+        Guid? departmentId,
+        CancellationToken ct)
+    {
+        if (departmentId is not { } department)
+        {
+            // Clearing a milestone's department is always allowed.
+            return true;
+        }
+
+        return await _scope.CanAccessDepartmentAsync(department, ct);
+    }
+
 
     private async Task SendProjectAssignedNotificationAsync(Guid projectId, Guid? departmentId, CancellationToken ct)
     {
@@ -685,9 +812,9 @@ public class MilestonesController : BaseApiController
                 Message: $"'{project.Name}' has been assigned to your department.",
                 Type: NotificationType.ProjectAlert,
                 Priority: NotificationPriority.Normal,
-                ActionUrl: $"/projects/{projectId}/milestones",
+                ActionUrl: NotificationLinks.ForMilestone(projectId),
                 RelatedEntityId: projectId.ToString(),
-                RelatedEntityType: "Project"),
+                RelatedEntityType: NotificationLinks.ProjectEntityType),
                 ct);
         }
     }
@@ -702,34 +829,3 @@ public class MilestonesController : BaseApiController
         return project ?? "Unknown Project";
     }
 }
-
-public record SetMilestoneStatusDto(string Status, bool ForceComplete = false);
-
-public record CreateMilestoneDto(
-    Guid ProjectId,
-    string Name,
-    string Description,
-    DateTime DueDate,
-    int Order,
-    Guid? DepartmentId = null,
-    bool IsCritical = false);
-
-public record UpdateMilestoneDto(
-    string Name,
-    string Description,
-    DateTime DueDate,
-    int Order,
-    bool IsCritical,
-    Guid? DepartmentId,
-    double ProgressPercentage);
-
-public record CreateMilestoneDependencyDto(
-    Guid ProjectId,
-    Guid PrerequisiteMilestoneId,
-    Guid DependentMilestoneId,
-    string Type,
-    double? ThresholdPercentage = null);
-
-public record UpdateMilestoneDependencyDto(
-    string Type,
-    double? ThresholdPercentage = null);

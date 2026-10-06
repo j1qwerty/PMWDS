@@ -1,3 +1,5 @@
+using PMWDS.Application.DTOs.Controllers;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,19 +20,22 @@ namespace PMWDS.API.Controllers;
 public class ProjectsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
-    private readonly IAIService _ai;
+    private readonly IProjectHealthService _ai;
     private readonly ICurrentUserService _currentUser;
     private readonly ILocalFileStorageService _localFiles;
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
+    private readonly IDataChangeNotifier _changes;
 
     public ProjectsController(
+        IMediator mediator,
         IUnitOfWork uow,
-        IAIService ai,
+        IProjectHealthService ai,
         ICurrentUserService currentUser,
         ILocalFileStorageService localFiles,
         RoleScopeService scope,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        IDataChangeNotifier changes) : base(mediator)
     {
         _uow = uow;
         _ai = ai;
@@ -38,10 +43,10 @@ public class ProjectsController : BaseApiController
         _localFiles = localFiles;
         _scope = scope;
         _db = db;
+        _changes = changes;
     }
 
     [HttpGet("dashboard")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? departmentId, CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -49,9 +54,9 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        var now = DateTime.UtcNow;
         var query = _db.Projects
-            .Include(project => project.Department)
-            .Include(project => project.ProjectDepartments).ThenInclude(assignment => assignment.Department)
+            .AsNoTracking()
             .AsQueryable();
         if (departmentId.HasValue)
         {
@@ -61,22 +66,91 @@ public class ProjectsController : BaseApiController
         }
 
         query = await _scope.ScopeProjectsAsync(query, ct);
-        var list = await query.ToListAsync(ct);
+        var totalProjects = await query.CountAsync(ct);
+        var activeProjects = await query.CountAsync(project => project.Status == ProjectStatus.InProgress, ct);
+        var completedProjects = await query.CountAsync(project => project.Status == ProjectStatus.Completed, ct);
+        var overdueProjects = await query.CountAsync(project =>
+            (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
+            (!project.ActualEndDate.HasValue && now > project.PlannedEndDate),
+            ct);
+        var highRiskProjects = await query.CountAsync(project => project.AIDelayRiskScore >= 0.7, ct);
+        var averageHealthScore = totalProjects > 0
+            ? await query.AverageAsync(project => project.AIHealthScore, ct)
+            : 0;
+        var totalBudget = await query.SumAsync(project => project.PlannedBudget, ct);
+        var totalActualCost = await query.SumAsync(project => project.ActualCost, ct);
+        var recentProjectRows = await query
+            .OrderByDescending(project => project.CreatedDate)
+            .Take(5)
+            .Select(project => new
+            {
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status,
+                project.ProgressPercentage,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
+                project.ActualEndDate,
+                project.PlannedEndDate
+            })
+            .ToListAsync(ct);
+        var atRiskProjectRows = await query
+            .Where(project => project.AIDelayRiskScore >= 0.7)
+            .OrderByDescending(project => project.AIDelayRiskScore)
+            .Take(10)
+            .Select(project => new
+            {
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status,
+                project.ProgressPercentage,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
+                project.ActualEndDate,
+                project.PlannedEndDate
+            })
+            .ToListAsync(ct);
+        var recentProjects = recentProjectRows
+            .Select(project => new ProjectSummaryDto(
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status.ToString(),
+                project.ProgressPercentage,
+                (double)project.AIHealthScore,
+                (double)project.AIDelayRiskScore,
+                GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
+                project.PlannedEndDate))
+            .ToList();
+        var atRiskProjects = atRiskProjectRows
+            .Select(project => new ProjectSummaryDto(
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status.ToString(),
+                project.ProgressPercentage,
+                (double)project.AIHealthScore,
+                (double)project.AIDelayRiskScore,
+                GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
+                project.PlannedEndDate))
+            .ToList();
+
         return Ok(new ProjectDashboardDto(
-            TotalProjects: list.Count,
-            ActiveProjects: list.Count(project => project.Status == ProjectStatus.InProgress),
-            CompletedProjects: list.Count(project => project.Status == ProjectStatus.Completed),
-            OverdueProjects: list.Count(project => project.GetDelayDays() > 0),
-            HighRiskProjects: list.Count(project => project.AIDelayRiskScore >= 0.7),
-            AverageHealthScore: list.Any() ? list.Average(project => project.AIHealthScore) : 0,
-            TotalBudget: list.Sum(project => project.PlannedBudget),
-            TotalActualCost: list.Sum(project => project.ActualCost),
-            RecentProjects: list.OrderByDescending(project => project.CreatedDate).Take(5).Select(ProjectSummaryDto.FromEntity).ToList(),
-            AtRiskProjects: list.Where(project => project.AIDelayRiskScore >= 0.7).OrderByDescending(project => project.AIDelayRiskScore).Take(10).Select(ProjectSummaryDto.FromEntity).ToList()));
+            TotalProjects: totalProjects,
+            ActiveProjects: activeProjects,
+            CompletedProjects: completedProjects,
+            OverdueProjects: overdueProjects,
+            HighRiskProjects: highRiskProjects,
+            AverageHealthScore: averageHealthScore,
+            TotalBudget: totalBudget,
+            TotalActualCost: totalActualCost,
+            RecentProjects: recentProjects,
+            AtRiskProjects: atRiskProjects));
     }
 
     [HttpGet]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] ProjectStatus? status,
@@ -117,13 +191,16 @@ public class ProjectsController : BaseApiController
             .ToListAsync(ct);
         var managerNames = await ResolveProjectManagerNamesAsync(projects, ct);
         var items = projects
-            .Select(project => ProjectDto.FromEntity(project, managerNames.GetValueOrDefault(project.ProjectManagerId)))
+            .Select(project => ProjectDto.FromEntity(
+                project,
+                project.ProjectManagerId.HasValue
+                    ? managerNames.GetValueOrDefault(project.ProjectManagerId.Value)
+                    : null))
             .ToList();
         return Ok(PaginatedResponse<ProjectDto>.Create(items, pagination, totalCount));
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -135,7 +212,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken ct)
     {
         var departmentIds = ResolveDepartmentIds(dto.DepartmentId, dto.DepartmentIds);
@@ -160,7 +237,31 @@ public class ProjectsController : BaseApiController
             return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
 
-        var result = await Mediator.Send(new CreateProjectCommand(dto), ct);
+        // Default the manager to the creator when they hold the project-manager role
+        // and none was supplied.
+        //
+        // The wizard sends an empty ProjectManagerId, so every wizard-created project
+        // was managerless. That silently broke the project-manager role specifically:
+        // POST /milestones requires CanManageProjectAsync, which grants the project's
+        // own manager. Nobody was the manager, and a project manager is neither
+        // superadmin, nor a director, nor the head of the project's primary
+        // department, so the check failed and creating the first milestone returned
+        // 403. The project row was left behind with nothing on it. Super admin,
+        // director and department head never hit this because they satisfy
+        // CanManageProjectAsync through their own role.
+        //
+        // Scoped to the project-manager role on purpose. A director or department head
+        // creating a project is not thereby its manager, and defaulting them into that
+        // role would change who can edit the project afterwards.
+        var effectiveDto = dto;
+        if (string.IsNullOrEmpty(dto.ProjectManagerId) &&
+            _scope.IsProjectManager &&
+            _currentUser.UserId is { } creatorId)
+        {
+            effectiveDto = dto with { ProjectManagerId = creatorId };
+        }
+
+        var result = await Mediator.Send(new CreateProjectCommand(effectiveDto), ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Project Created",
@@ -173,11 +274,13 @@ public class ProjectsController : BaseApiController
             ProjectId: result.Id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Projects, result.Id.ToString(), result.Id, ct);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(id, ct))
@@ -210,11 +313,13 @@ public class ProjectsController : BaseApiController
             ProjectId: updateResult.Id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Projects, updateResult.Id.ToString(), updateResult.Id, ct);
+
         return Ok(updateResult);
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateProjectStatusRequest req, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(id, ct))
@@ -237,11 +342,12 @@ public class ProjectsController : BaseApiController
             ProjectId: statusResult.Id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Projects, statusResult.Id.ToString(), statusResult.Id, ct);
+
         return Ok(statusResult);
     }
 
     [HttpGet("{id:guid}/progress")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> GetProgress(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetWithDetailsAsync(id, ct);
@@ -265,7 +371,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/ai/health")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAIHealth(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -277,7 +383,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/ai/insights")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> GetAIInsights(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -289,7 +395,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/ai/optimize-resources")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> OptimizeResources(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanManageProjectAsync(id, ct))
@@ -301,8 +407,11 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
-    [Authorize(Policy = "Authenticated")]
-    public async Task<IActionResult> UploadDocument(Guid id, IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> UploadDocument(
+    Guid id,
+    IFormFile file,
+    [FromForm] DocumentCategory? category,
+    CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
@@ -312,6 +421,12 @@ public class ProjectsController : BaseApiController
         {
             return Forbid();
         }
+
+        // A Utilization Certificate carries extra finance metadata and an approval
+        // lifecycle, so it has to go through the dedicated UC endpoint instead.
+        var resolvedCategory = category is null || category == DocumentCategory.UtilizationCertificate
+            ? DocumentCategory.General
+            : category.Value;
 
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
@@ -323,7 +438,9 @@ public class ProjectsController : BaseApiController
             filePath,
             file.ContentType,
             file.Length,
-            _currentUser.UserId ?? "system");
+            _currentUser.UserId ?? "system",
+            description: null,
+            category: resolvedCategory);
 
         await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
@@ -342,11 +459,13 @@ public class ProjectsController : BaseApiController
             ProjectId: id
         );
 
+        await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
+
         return Ok();
     }
 
     [HttpGet("{id:guid}/documents")]
-    [Authorize(Policy = "Authenticated")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -370,12 +489,12 @@ public class ProjectsController : BaseApiController
             d.UploadedByUserId,
             d.Description,
             d.Version,
+            d.Category,
             d.CreatedDate
         }));
     }
 
     [HttpGet("{id:guid}/documents/{docId:guid}/download")]
-    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
     {
         var docs = await _uow.ProjectDocuments.FindAsync(d => d.Id == docId && d.ProjectId == id);
@@ -393,7 +512,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "Manager")]
+    [Authorize(Policy = AuthorizationPolicies.Manager)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -437,6 +556,13 @@ public class ProjectsController : BaseApiController
             ProjectId: id
         );
 
+        // Deleting a project cascades its milestones, tasks and documents, so every
+        // dependent scope has to refetch too.
+        await _changes.NotifyAsync(DataChangeScopes.Projects, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Milestones, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Tasks, id.ToString(), null, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, id.ToString(), null, ct);
+
         return NoContent();
     }
 
@@ -460,6 +586,14 @@ public class ProjectsController : BaseApiController
             .Distinct()
             .ToList();
 
+    private static int GetDelayDays(DateTime? actualEndDate, DateTime plannedEndDate, DateTime now)
+    {
+        var compareDate = actualEndDate ?? now;
+        return compareDate > plannedEndDate
+            ? (int)(compareDate - plannedEndDate).TotalDays
+            : 0;
+    }
+
     private async Task<bool> IsUserInDepartmentOrganizationsAsync(string userId, IReadOnlyCollection<Guid> departmentIds, CancellationToken ct)
     {
         if (!Guid.TryParse(userId, out var parsedUserId))
@@ -469,7 +603,7 @@ public class ProjectsController : BaseApiController
 
         var organizationIds = await _db.Departments
             .Where(department => departmentIds.Contains(department.Id) && department.OrganizationId.HasValue)
-            .Select(department => department.OrganizationId)
+            .Select(department => department.OrganizationId!.Value)
             .ToListAsync(ct);
 
         if (organizationIds.Count == 0)
@@ -479,31 +613,34 @@ public class ProjectsController : BaseApiController
 
         return await _db.Users.AnyAsync(user =>
             user.Id == parsedUserId &&
-            ((user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId)) ||
-             user.DepartmentAssignments.Any(assignment => organizationIds.Contains(assignment.Department.OrganizationId)) ||
-             user.Department != null && organizationIds.Contains(user.Department.OrganizationId)),
+            ((user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
+             user.DepartmentAssignments.Any(assignment =>
+                 assignment.Department != null &&
+                 assignment.Department.OrganizationId.HasValue &&
+                 organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
+             user.Department != null &&
+                 user.Department.OrganizationId.HasValue &&
+                 organizationIds.Contains(user.Department.OrganizationId.Value)),
             ct);
     }
 
-    private async Task<Dictionary<string, string>> ResolveProjectManagerNamesAsync(IEnumerable<Project> projects, CancellationToken ct)
+    private async Task<Dictionary<Guid, string>> ResolveProjectManagerNamesAsync(IEnumerable<Project> projects, CancellationToken ct)
     {
         var managerIds = projects
             .Select(project => project.ProjectManagerId)
-            .Where(id => Guid.TryParse(id, out _))
-            .Select(Guid.Parse)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
             .Distinct()
             .ToList();
 
         if (managerIds.Count == 0)
         {
-            return new Dictionary<string, string>();
+            return new Dictionary<Guid, string>();
         }
 
         return await _db.Users
             .AsNoTracking()
             .Where(user => managerIds.Contains(user.Id))
-            .ToDictionaryAsync(user => user.Id.ToString(), user => user.FullName, ct);
+            .ToDictionaryAsync(user => user.Id, user => user.FullName, ct);
     }
 }
-
-public record UpdateProjectStatusRequest(ProjectStatus NewStatus, string? Justification = null);

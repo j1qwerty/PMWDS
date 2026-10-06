@@ -35,8 +35,22 @@ public class MilestoneDependency : AuditableEntity
         };
     }
 
-    public void Update(MilestoneDependencyType type, double? thresholdPercentage = null)
+    public void Update(
+        MilestoneDependencyType type,
+        double? thresholdPercentage = null,
+        Guid? prerequisiteMilestoneId = null,
+        Guid? dependentMilestoneId = null)
     {
+        if (prerequisiteMilestoneId is { } prerequisite)
+        {
+            PrerequisiteMilestoneId = prerequisite;
+        }
+
+        if (dependentMilestoneId is { } dependent)
+        {
+            DependentMilestoneId = dependent;
+        }
+
         Type = type;
         ThresholdPercentage = type == MilestoneDependencyType.ProgressThreshold
             ? Math.Clamp(thresholdPercentage ?? 0, 0, 100)

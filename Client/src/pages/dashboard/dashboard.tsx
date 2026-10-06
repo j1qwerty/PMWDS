@@ -1,25 +1,46 @@
-import { useEffect, useState, useMemo, type FormEvent } from "react";
+﻿import { useCallback, useEffect, useState, useMemo, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone } from "../../types";
+import type { NotificationItem, Task, Department, OrganizationRecord, User, Project, Milestone, ActivityLogRecord } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { WorkloadBars } from "../shared/WorkloadBars";
 import type { WorkloadItem } from "../shared/WorkloadBars";
 import { ActiveObjectives } from "./ActiveObjectives";
 import { PageSkeleton, useNavHeader, useToast, ModalOverlay } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
+import { notificationTarget } from "../shared/notificationLinks";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import TaskStats from "../shared/dash/TaskStats";
-import TaskPerformanceTable from "../shared/dash/TaskPerformanceTable";
+import type { TaskStatBucket, TaskStatFilter, TaskStatKind } from "../shared/dash/TaskStats";
+import TaskPerformanceTable, { type TaskPerformanceQuery } from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
 import { HighRiskInterventions } from "../shared/dash/HighRiskInterventions";
-import DashboardStats from "./dashbaordStats";
+import DashboardStats from "./dashboardStats";
 import { ProjectOverview } from "../shared/dash/ProjectOverviewChart";
 import { Activity } from "../shared/dash/Activity";
-import Timer from "../shared/dash/Timer";
 import { ProjectFormModal, type ProjectFormState } from "../projectsK/components";
+
+// Temporarily hidden dashboard widgets. Kept behind flags (not deleted) so
+// they can be restored by flipping these back to true.
+//   SHOW_MY_TASKS          - "My Tasks" (Active Objectives) card
+//   SHOW_WORKLOAD_DISTRIBUTION - "Workload Distribution" card
+//   SHOW_ACTIVITY_FILTER   - "All Tasks / My Tasks / Team Tasks" dropdown on the Activity card
+const SHOW_MY_TASKS = false;
+const SHOW_WORKLOAD_DISTRIBUTION = false;
+const SHOW_ACTIVITY_FILTER = false;
+
+/**
+ * How many tasks each stat card's hover list fetches.
+ *
+ * Small on purpose: the card value is the server's exact filtered totalCount,
+ * and the hover list only needs a representative handful to scroll through.
+ * Pulling every task just to count them client-side meant the number was capped
+ * at whatever page was fetched.
+ */
+const TASK_POPUP_PAGE_SIZE = 10;
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -28,7 +49,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   category: "Monitoring",
   plannedStartDate: new Date().toISOString().split("T")[0],
   plannedEndDate: "",
-  plannedBudget: 25000,
+  plannedBudget: 0,
   organizationId: "",
   departmentId: "",
   departmentIds: [],
@@ -39,26 +60,53 @@ const emptyProjectForm = (): ProjectFormState => ({
 export function DashboardPage() {
   const { auth } = useAuth();
   const perm = usePermission();
+  const navigate = useNavigate();
   const { setNavHeader } = useNavHeader();
   const { refresh: refreshAppData } = useAppData();
   const { addToast } = useToast();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
   const canViewTasks = perm.has(PERMISSION_GROUPS.task.view);
-  const [dashboard, setDashboard] = useState<any>(null);
-  const [myTasks, setMyTasks] = useState<Task[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
-  const [overdue, setOverdue] = useState<Task[]>([]);
+  // Per-status buckets behind the task stat cards. Each holds the server's
+  // exact total for that status plus a short list for its hover panel.
+  //
+  // Deliberately NOT /tasks/my-tasks: that endpoint returns every task in scope
+  // for a superadmin, but for anyone else only their own tasks with Completed
+  // and Cancelled filtered out, so the Completed card could never be non-zero.
+  // These buckets are the same population the Task Performance table below
+  // shows, so the cards and the table cannot disagree.
+  const [taskBuckets, setTaskBuckets] = useState<Partial<Record<TaskStatKind, TaskStatBucket>>>({});
+  const [taskBucketsLoading, setTaskBucketsLoading] = useState(true);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
+  // Flat task list for the two widgets still behind feature flags. Fetched
+  // lazily and only when one of those flags is actually on - the stat cards no
+  // longer hold a full list, and handing a 10-row page to the workload
+  // calculation would just produce wrong numbers.
+  const [breakdownTasks, setBreakdownTasks] = useState<Task[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  // Milestones for the task the detail modal has open, so it can show which
+  // milestone the task sits under. Loaded on demand rather than for every
+  // project, since only one modal is ever open at a time.
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogRecord[]>([]);
+  const [taskPerformanceTasks, setTaskPerformanceTasks] = useState<Task[]>([]);
+  const [taskPerformancePage, setTaskPerformancePage] = useState(1);
+  const [taskPerformancePageSize, setTaskPerformancePageSize] = useState(10);
+  const [taskPerformanceTotalCount, setTaskPerformanceTotalCount] = useState(0);
+  const [taskPerformanceTotalPages, setTaskPerformanceTotalPages] = useState(1);
+  const [taskPerformanceLoading, setTaskPerformanceLoading] = useState(false);
+  const [lastTaskPerformanceQuery, setLastTaskPerformanceQuery] = useState<TaskPerformanceQuery | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("All Tasks");
+  // Filter seeded into the task performance table by a TaskStats click.
+  // A filter object rather than a status string because the Delayed card needs
+  // "past due", which no status value expresses.
+  const [taskTableFilter, setTaskTableFilter] = useState<TaskStatFilter>({});
 
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -92,38 +140,95 @@ export function DashboardPage() {
     }
   };
 
+  // One query per card. Each is filtered server-side and ordered so the short
+  // page the hover list gets is the most useful slice: soonest due date first
+  // for open work, most recently due first for finished work.
+  const loadTaskBuckets = useCallback(async () => {
+    if (!auth || !canViewTasks) {
+      setTaskBuckets({});
+      setTaskBucketsLoading(false);
+      return;
+    }
+
+    setTaskBucketsLoading(true);
+
+    const statusQueries: Array<[TaskStatKind, Promise<{ items: Task[]; totalCount: number }>]> = [
+      ["Total", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, sortBy: "dueDate", sortDirection: "asc" })],
+      ["InProgress", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, statuses: "InProgress", sortBy: "dueDate", sortDirection: "asc" })],
+      ["OnHold", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, statuses: "OnHold", sortBy: "dueDate", sortDirection: "asc" })],
+      ["Completed", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, statuses: "Completed", sortBy: "dueDate", sortDirection: "desc" })],
+      // Delayed is past-due-and-unfinished of any status. It must come from this
+      // same endpoint rather than tasks/overdue: that endpoint does not exclude
+      // subtasks, so it reported 77 against this one's 20 for the same
+      // workspace, and the card would still have disagreed with the list its own
+      // click opens. Every other card already counts top-level tasks only.
+      ["Delayed", api.getTasks(auth.token, { page: 1, pageSize: TASK_POPUP_PAGE_SIZE, overdue: true, sortBy: "dueDate", sortDirection: "asc" })],
+    ];
+
+    const settled = await Promise.allSettled(statusQueries.map(([, promise]) => promise));
+
+    const next: Partial<Record<TaskStatKind, TaskStatBucket>> = {};
+    settled.forEach((result, index) => {
+      const kind = statusQueries[index][0];
+      next[kind] =
+        result.status === "fulfilled"
+          ? { total: result.value.totalCount, items: result.value.items }
+          : { total: 0, items: [] };
+    });
+
+    setTaskBuckets(next);
+    setTaskBucketsLoading(false);
+  }, [auth, canViewTasks]);
+
   useEffect(() => {
     if (!auth) return;
     setLoading(true);
+    // Every card on this page is counted from the project and task lists, so
+    // the dashboard aggregate endpoint is no longer requested. It reported
+    // different totals from the same data (and had no project collection at
+    // all), which is what left the Project Overview donut permanently empty.
     Promise.allSettled([
-      api.getDashboard(auth.token),
-      api.getMyTasks(auth.token),
-      api.getPagesData(auth.token, 1, 500),
+      loadTaskBuckets(),
       api.getNotifications(auth.token, true),
       api.getDepartments(auth.token),
       api.getOrganizations(auth.token),
       api.getUsers(auth.token),
       api.getProjects(auth.token),
-      canViewTasks ? api.getOverdueTasks(auth.token) : Promise.resolve([]),
       canViewTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
+      api.getTeamActivityLogs(auth.token, 200),
     ])
-      .then(([dashboardResult, tasksResult, pagesResult, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, overdueResult, escalatedResult]) => {
-        if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
-        if (tasksResult.status === "fulfilled") setMyTasks(tasksResult.value);
-        if (pagesResult.status === "fulfilled") setAllTasks(pagesResult.value.tasks.items as Task[]);
+      .then(([, notificationsResult, departmentsResult, organizationsResult, usersResult, projectsResult, escalatedResult, activityResult]) => {
         if (notificationsResult.status === "fulfilled") setUnread(Array.isArray(notificationsResult.value) ? notificationsResult.value : []);
         if (departmentsResult.status === "fulfilled") setDepartments(departmentsResult.value);
         if (organizationsResult.status === "fulfilled") setOrganizations(organizationsResult.value as OrganizationRecord[]);
         if (usersResult.status === "fulfilled") setUsers(usersResult.value);
         if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
-        if (overdueResult.status === "fulfilled") setOverdue(overdueResult.value as Task[]);
         if (escalatedResult.status === "fulfilled") setEscalatedTasks(escalatedResult.value as Task[]);
-        if (dashboardResult.status === "rejected") {
-          setError(dashboardResult.reason instanceof Error ? dashboardResult.reason.message : "Dashboard unavailable");
+        if (activityResult.status === "fulfilled") setActivityLogs(Array.isArray(activityResult.value) ? activityResult.value : []);
+
+        // Only the project list is load-bearing now: without it every card reads
+        // zero. Surface that rather than rendering an empty dashboard.
+        if (projectsResult.status === "rejected") {
+          setError(
+            projectsResult.reason instanceof Error
+              ? projectsResult.reason.message
+              : "Projects could not be loaded."
+          );
         }
       })
       .finally(() => setLoading(false));
-  }, [auth, canViewTasks]);
+  }, [auth, canViewTasks, loadTaskBuckets]);
+
+  // Only fetched when a widget behind SHOW_MY_TASKS / SHOW_WORKLOAD_DISTRIBUTION
+  // is enabled. Both are off, so this costs nothing today.
+  useEffect(() => {
+    if (!auth) return;
+    if (!SHOW_MY_TASKS && !SHOW_WORKLOAD_DISTRIBUTION) return;
+    api
+      .getTasks(auth.token, { page: 1, pageSize: 200 })
+      .then((response) => setBreakdownTasks(response.items))
+      .catch(() => setBreakdownTasks([]));
+  }, [auth]);
 
   const canEditTasks = perm.hasAny(
     PERMISSION_GROUPS.task.edit,
@@ -131,11 +236,49 @@ export function DashboardPage() {
     PERMISSION_GROUPS.task.assign,
   );
 
+  const loadTaskPerformance = useCallback(async (query: TaskPerformanceQuery) => {
+    if (!auth) return;
+
+    setLastTaskPerformanceQuery(query);
+    setTaskPerformanceLoading(true);
+    try {
+      const response = await api.getTasks(auth.token, {
+        page: query.page,
+        pageSize: query.pageSize,
+        search: query.search,
+        projectId: query.projectId,
+        departmentId: query.departmentId,
+        statuses: query.statuses?.join(","),
+        priorities: query.priorities?.join(","),
+        overdue: query.overdueOnly || undefined,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+      });
+      setTaskPerformanceTasks(response.items);
+      setTaskPerformancePage(response.page);
+      setTaskPerformancePageSize(response.pageSize);
+      setTaskPerformanceTotalCount(response.totalCount);
+      setTaskPerformanceTotalPages(response.totalPages);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Failed to load task performance data", "error");
+      setTaskPerformanceTasks([]);
+      setTaskPerformanceTotalCount(0);
+      setTaskPerformanceTotalPages(1);
+    } finally {
+      setTaskPerformanceLoading(false);
+    }
+  }, [auth, addToast]);
+
   const openTaskDetails = async (task: Task) => {
     if (!auth) return;
     try {
       const freshTask = await api.getTask(auth.token, task.id);
       setSelectedTask(freshTask);
+      // The modal shows the milestone name, so fetch the project's milestones
+      // for the same task. A failure here is not worth blocking the modal for -
+      // it falls back to the name on the task itself.
+      const rows = await api.getMilestonesByProject(auth.token, freshTask.projectId);
+      setMilestones(rows);
     } catch {
       setSelectedTask(task);
     }
@@ -146,15 +289,53 @@ export function DashboardPage() {
     setSelectedTask(task);
   };
 
+  /**
+   * Escalation rows carry the task's projectId and milestoneId, so a click can
+   * go straight to the task inside its project rather than to a list the user
+   * then has to search.
+   */
+  const openEscalatedTask = (task: Task) => {
+    if (task.projectId) {
+      navigate(`/projects/${task.projectId}/tasks?task=${task.id}`);
+    } else {
+      navigate("/projects");
+    }
+  };
+
+  /**
+   * Opening a notification from the dashboard settles its read state before
+   * navigating, so the badge count drops as soon as the user has acted on it.
+   */
+  const openNotification = async (item: NotificationItem) => {
+    if (!item.isRead && auth) {
+      try {
+        await api.markNotificationRead(auth.token, item.id);
+        setUnread((current) => current.filter((n) => n.id !== item.id));
+        await refreshAppData();
+      } catch {
+        // Read state is not worth blocking navigation over.
+      }
+    }
+    navigate(notificationTarget(item));
+  };
+
+  const handleTaskStatsSelect = (filter: TaskStatFilter) => {
+    setTaskTableFilter(filter);
+  };
+
 
   const refreshTaskLists = async () => {
     if (!auth) return;
-    const [tasks, escalated] = await Promise.all([
-      api.getMyTasks(auth.token),
+    // Re-pull the same buckets the cards summarise, so an edit or an escalate is
+    // reflected in the counts without a full page reload.
+    const [, escalated] = await Promise.all([
+      loadTaskBuckets(),
       canEditTasks ? api.getEscalatedTasks(auth.token) : Promise.resolve([]),
     ]);
-    setMyTasks(tasks);
     setEscalatedTasks(escalated);
+    if (lastTaskPerformanceQuery) {
+      await loadTaskPerformance(lastTaskPerformanceQuery);
+    }
     if (selectedTask) {
       setSelectedTask(await api.getTask(auth.token, selectedTask.id));
     }
@@ -163,7 +344,7 @@ export function DashboardPage() {
   const departmentWorkload: WorkloadItem[] = useMemo(() => {
     return departments.map((dept) => {
       const deptUsers = users.filter((u) => u.departmentId === dept.id);
-      const deptTasks = myTasks.filter((t) => {
+      const deptTasks = breakdownTasks.filter((t) => {
         const assignee = users.find((u) => u.id === t.assignedToUserId);
         return assignee?.departmentId === dept.id;
       });
@@ -190,30 +371,53 @@ export function DashboardPage() {
         workloadScore: Math.round(workloadScore),
       };
     });
-  }, [departments, users, myTasks]);
+  }, [departments, users, breakdownTasks]);
 
+  // Real activity: bucket the team's activity log (task created/updated/commented,
+// project and milestone events, ...) by calendar day over the last 7 days. Labels carry
+  // the actual date, so a spike always means something happened that day - unlike the old
+  // weekday buckets, which lumped every event ever created on e.g. a Saturday into one bar.
   const activityData = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    const days: { key: string; label: string; value: number }[] = [];
+    const now = new Date();
+    for (let offset = 6; offset >= 0; offset--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      days.push({ key, label: `${dayNames[d.getDay()]} ${d.getDate()}`, value: 0 });
+    }
+    const byKey = new Map(days.map((d) => [d.key, d]));
 
-    const allTasks = [...myTasks, ...overdue, ...escalatedTasks].filter(
-      (task, index, list) => list.findIndex(t => t.id === task.id) === index
-    );
+    const sourceLogs =
+      selectedActivityFilter === "My Tasks" && auth
+        ? activityLogs.filter((log) => log.userId === auth.userId)
+        : activityLogs;
 
-    const sourceTasks = selectedActivityFilter === "My Tasks"
-      ? myTasks
-      : selectedActivityFilter === "Team Tasks"
-        ? allTasks
-        : allTasks;
+    // Counted over the same logs and the same window as the chart, so the hover
+    // panel can never report a different total than the line above it.
+    const byType = new Map<string, number>();
 
-    sourceTasks.forEach(task => {
-      const date = new Date(task.createdDate);
-      const dayOfWeek = date.getDay();
-      dayCounts[dayOfWeek]++;
+    sourceLogs.forEach((log) => {
+      const at = new Date(log.timestamp);
+      if (Number.isNaN(at.getTime())) return;
+      const key = `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
+      const bucket = byKey.get(key);
+      if (!bucket) return;
+
+      bucket.value++;
+      const label = (log.activityType || "Other").trim() || "Other";
+      byType.set(label, (byType.get(label) ?? 0) + 1);
     });
 
-    return dayNames.map((day, i) => ({ day, value: dayCounts[i] }));
-  }, [myTasks, overdue, escalatedTasks, selectedActivityFilter]);
+    return {
+      points: days.map(({ label, value }) => ({ day: label, value })),
+      breakdown: [...byType.entries()]
+        .map(([label, count]) => ({ label, count }))
+        // Busiest types first; cap the list so the hover panel stays short.
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8),
+    };
+  }, [activityLogs, selectedActivityFilter, auth]);
 
   if (loading) return <PageSkeleton />;
   if (error) return <div className="mx-4 my-2"><div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600">{error}</div></div>;
@@ -221,43 +425,56 @@ export function DashboardPage() {
   return (
     <div>
 
-      <DashboardStats projects={projects} />
+      {/* The "?" explainer is hidden here at the owner's request. The hover panel on
+          each card still works and still uses the same copy. */}
+      <DashboardStats projects={projects} showInfoTip={false} />
       <section>
 
         {/* Dashboard Overview Section */}
         <section className="my-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* High Risk Interventions  */}
-            <HighRiskInterventions tasks={escalatedTasks} />
+            <HighRiskInterventions tasks={escalatedTasks} onSelectTask={openEscalatedTask} />
 
-            {/* Project Overview*/}
+            {/* Project Overview - counted from the loaded project list, which
+                is the same source the stat cards use. The dashboard endpoint
+                has no project collection, so reading it here always yielded 0. */}
             <ProjectOverview
-              newProjects={(dashboard?.totalProjects ?? 0) - (dashboard?.activeProjects ?? 0) - ((dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0)}
-              pendingProjects={dashboard?.activeProjects ?? 0}
-              doneProjects={(dashboard?.projects as Project[])?.filter(p => p.status === 'Completed').length ?? 0}
+              newProjects={projects.filter((p) => p.status === "Planned" || p.status === "NotStarted").length}
+              pendingProjects={projects.filter((p) => p.status === "InProgress" || p.status === "OnHold" || p.status === "Delayed").length}
+              doneProjects={projects.filter((p) => p.status === "Completed" || p.progressPercentage === 100).length}
+              // The "?" explainer is hidden here at the owner's request. The copy stays
+              // in ProjectOverview, so passing true again brings it back.
+              showInfoTip={false}
             />
 
-            {/* Activity Chart */}
+            {/* Activity Chart - the task filter dropdown is hidden via SHOW_ACTIVITY_FILTER */}
             <Activity
-              data={activityData}
+              data={activityData.points}
+              breakdown={activityData.breakdown}
+              isFiltered={selectedActivityFilter === "My Tasks"}
+              filterLabel={selectedActivityFilter === "My Tasks" ? "Your activity" : undefined}
               title="Activity"
-              filterOptions={["All Tasks", "My Tasks", "Team Tasks"]}
+              filterOptions={SHOW_ACTIVITY_FILTER ? ["All Tasks", "My Tasks", "Team Tasks"] : []}
               selectedFilter={selectedActivityFilter}
               onFilterChange={setSelectedActivityFilter}
             />
 
-            {/* Timer */}
-            <Timer tasks={myTasks} token={auth?.token ?? ''} />
+            <NotificationList items={unread} title="Notifications" onOpen={openNotification} />
           </div>
         </section>
 
 
-        {/* Active Objectives , Workload Distribution, Notifications */}
+        {/* Active Objectives , Workload Distribution, Notifications
+            "My Tasks" and "Workload Distribution" are currently hidden via the
+            SHOW_MY_TASKS / SHOW_WORKLOAD_DISTRIBUTION flags above. */}
+        {(SHOW_MY_TASKS || SHOW_WORKLOAD_DISTRIBUTION) && (
         <section className="flex gap-4">
           {/* left - Active Objectives */}
+          {SHOW_MY_TASKS && (
           <div className="flex-1 py-4">
             <ActiveObjectives
-              objectives={myTasks.slice(0, 6).map((task) => {
+              objectives={breakdownTasks.slice(0, 6).map((task) => {
                 const assignedUser = task.assignedToUserId ? users.find((user) => user.id === task.assignedToUserId) : null;
 
                 return {
@@ -273,11 +490,13 @@ export function DashboardPage() {
                 };
               })}
               title="My Tasks"
-              subtitle={`${myTasks.length} tasks`}
+              subtitle={`${breakdownTasks.length} tasks`}
             />
           </div>
+          )}
 
           {/* middle - Workload Distribution */}
+          {SHOW_WORKLOAD_DISTRIBUTION && (
           <div className="flex-1 py-4">
             <WorkloadBars
               items={departmentWorkload}
@@ -285,22 +504,40 @@ export function DashboardPage() {
               isDepartment={true}
             />
           </div>
+          )}
 
           {/* right - Notifications */}
           <div className="flex-1 py-4">
-            <NotificationList items={unread.slice(0, 6)} title="Notifications" />
+            <NotificationList items={unread} title="Notifications" onOpen={openNotification} />
           </div>
         </section>
+        )}
 
         <div className="py-4">
-          <TaskStats tasks={myTasks} />
+          <TaskStats
+            buckets={taskBuckets}
+            loading={taskBucketsLoading}
+            onSelectFilter={handleTaskStatsSelect}
+            // The "?" explainer is hidden here at the owner's request. The hover
+            // panel on each card still works and still uses the same copy.
+            showInfoTip={false}
+          />
         </div>
 
         <TaskPerformanceTable
-          tasks={allTasks}
+          tasks={taskPerformanceTasks}
+          projects={projects}
+          departments={departments}
+          totalCount={taskPerformanceTotalCount}
+          totalPages={taskPerformanceTotalPages}
+          page={taskPerformancePage}
+          pageSize={taskPerformancePageSize}
+          loading={taskPerformanceLoading}
+          onQueryChange={loadTaskPerformance}
           onViewTask={openTaskDetails}
           onEditTask={openTaskEditor}
           canEdit={canEditTasks}
+          initialFilter={taskTableFilter}
         />
 
       </section>
@@ -335,7 +572,9 @@ export function DashboardPage() {
               }
               const freshTask = await api.getTask(auth.token, taskId);
               setSelectedTask(freshTask);
-              setMyTasks(current => current.map(t => t.id === freshTask.id ? freshTask : t));
+              // The edit may have changed the task's status, which moves it
+              // between buckets. Re-fetch rather than patching one list.
+              void loadTaskBuckets();
             } catch (e) {
               addToast(e instanceof Error ? e.message : "Failed to update task", "error");
               throw e;
@@ -349,8 +588,9 @@ export function DashboardPage() {
           onDelete={async (taskId) => {
             if (!auth) return;
             await api.deleteTask(auth.token, taskId);
-            setMyTasks(current => current.filter(t => t.id !== taskId));
             setSelectedTask(null);
+            // refreshTaskLists re-pulls the buckets, so the deleted task leaves
+            // whichever card it was counted in.
             await refreshTaskLists();
           }}
           onEscalate={async () => {
@@ -358,10 +598,6 @@ export function DashboardPage() {
             await api.escalateTask(auth.token, selectedTask.id);
             addToast("Task escalated.");
             await refreshTaskLists();
-          }}
-          onStartTimer={async (taskId, description) => {
-            if (!auth) return;
-            await api.startTaskTimer(auth.token, taskId, description);
           }}
           onRefresh={refreshTaskLists}
         />

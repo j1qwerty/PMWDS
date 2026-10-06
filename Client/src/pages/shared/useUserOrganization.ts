@@ -14,6 +14,10 @@ export function useUserOrganization(users: User[], departments: Department[]) {
     const currentUser = users.find(u => u.id === auth.userId);
     if (!currentUser) return null;
 
+    // Directors can be assigned directly to an organization without a primary
+    // department. Prefer that authoritative user scope before department fallbacks.
+    if (currentUser.organizationId) return currentUser.organizationId;
+
     const primaryDept = currentUser.departments?.find(d => d.isPrimary);
     if (primaryDept?.organizationId) return primaryDept.organizationId;
 

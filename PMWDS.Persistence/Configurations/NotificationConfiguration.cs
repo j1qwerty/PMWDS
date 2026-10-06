@@ -10,6 +10,8 @@ public class NotificationConfiguration
     {
         b.ToTable("Notifications");
         b.HasKey(e => e.Id);
+        b.Property(e => e.UserId)
+        .HasMaxLength(64).IsRequired();
         b.Property(e => e.Title)
         .HasMaxLength(500).IsRequired();
         b.Property(e => e.Message)
@@ -27,5 +29,7 @@ public class NotificationConfiguration
         b.HasIndex(e => e.UserId);
         b.HasIndex(e => e.IsRead);
         b.HasIndex(e => e.CreatedDate);
+        b.HasIndex(e => e.IsDeleted);
+        b.HasIndex(e => new { e.IsDeleted, e.UserId, e.IsRead, e.CreatedDate });
     }
 }

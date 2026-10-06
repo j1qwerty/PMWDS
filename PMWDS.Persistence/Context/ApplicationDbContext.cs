@@ -16,8 +16,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<TaskAssignment> TaskAssignments { get; set; }
     public DbSet<TaskComment> TaskComments { get; set; }
     public DbSet<TaskAttachment> TaskAttachments { get; set; }
-    public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<ProjectDocument> ProjectDocuments { get; set; }
+    public DbSet<UtilizationCertificate> UtilizationCertificates { get; set; }
     public DbSet<ApplicationUser> Users { get; set; }
     public DbSet<Skill> Skills { get; set; }
     public DbSet<UserSkill> UserSkills { get; set; }
@@ -66,8 +66,11 @@ public class ApplicationDbContext : DbContext
             if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType) &&
                 entityType.BaseType == null)
             {
-                builder.Entity(entityType.ClrType)
-                    .HasQueryFilter(GetSoftDeleteFilter(entityType.ClrType));
+                var entity = builder.Entity(entityType.ClrType);
+
+                entity.HasQueryFilter(GetSoftDeleteFilter(entityType.ClrType));
+                entity.Property(nameof(BaseEntity.RowVersion))
+                    .IsConcurrencyToken();
             }
         }
     }

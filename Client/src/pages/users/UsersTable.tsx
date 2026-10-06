@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
 import { formatPercent } from "../../ui";
+import { roleDisplayNames } from "../../permissions";
 import { api } from "../../api";
 import { Avatar, GlassCard } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
@@ -69,7 +70,7 @@ export function UsersTable({
     <GlassCard className="overflow-hidden">
       {/* Filters */}
       <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-[200px] max-w-[28rem]">
           <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
@@ -170,7 +171,7 @@ export function UsersTable({
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-xs font-medium text-slate-600">
-                      {user.roles?.join(", ") || user.jobTitle || "-"}
+                      {roleDisplayNames(user.roles).join(", ") || user.jobTitle || "-"}
                     </span>
                   </td>
                   <td className="px-6 py-4">

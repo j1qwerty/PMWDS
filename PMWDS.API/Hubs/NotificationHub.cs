@@ -1,13 +1,21 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using PMWDS.Application.Security;
+using System.Collections.Concurrent;
 using System.Security.Claims;
 namespace PMWDS.API.Hubs;
 
 [Authorize]
 public class NotificationHub : Hub
 {
-    private static readonly Dictionary<string, string>
-    _connections = new();
+    private static readonly ConcurrentDictionary<string, string> _connections = new();
+    private readonly IAuthorizationService _authorization;
+
+    public NotificationHub(IAuthorizationService authorization)
+    {
+        _authorization = authorization;
+    }
+
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?
@@ -16,8 +24,7 @@ public class NotificationHub : Hub
 
         if (userId != null)
         {
-            _connections[userId] =
-            Context.ConnectionId;
+            _connections[userId] = Context.ConnectionId;
             // Add user to their personal group
             await Groups.AddToGroupAsync(
             Context.ConnectionId,
@@ -46,7 +53,7 @@ public class NotificationHub : Hub
         var userId = Context.User?
         .FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId != null)
-            _connections.Remove(userId);
+            _connections.TryRemove(userId, out _);
         await base.OnDisconnectedAsync(exception);
     }
     /// <summary>
@@ -65,14 +72,29 @@ public class NotificationHub : Hub
     /// <summary>Broadcast to all connected clients</summary>
     public async Task SendBroadcast(
     string title, string message)
-    => await Clients.All.SendAsync(
-    "BroadcastReceived",
-    new
     {
-        title,
-        message,
-        timestamp = DateTime.UtcNow
-    });
+        if (Context.User == null)
+        {
+            throw new HubException("Authentication is required.");
+        }
+
+        var result = await _authorization.AuthorizeAsync(
+            Context.User,
+            AuthorizationPolicies.NotificationsBroadcast);
+        if (!result.Succeeded)
+        {
+            throw new HubException("You do not have permission to broadcast notifications.");
+        }
+
+        await Clients.All.SendAsync(
+        "BroadcastReceived",
+        new
+        {
+            title,
+            message,
+            timestamp = DateTime.UtcNow
+        });
+    }
     public static string? GetConnectionId(string userId)
     => _connections.TryGetValue(
     userId, out var connId)

@@ -15,7 +15,16 @@ export { NavHeader, NavActionButton } from "./nav-header";
 export { RoleGate, Permission, PERMISSION_GROUPS, ROLE_LEVELS, expandPermissions, usePermission } from "./RoleGate";
 export { getProjectDepartmentIds, projectBelongsToDepartment, projectBelongsToAnyDepartment, getProjectDepartments } from "./projectDepartments";
 export { LoadingPage, PageSkeleton, Skeleton } from "./Skeleton";
+export { InfoTip, InfoTipCard, type InfoTipProps } from "./InfoTip";
+export { HoverPanel, StatHoverCard, type HoverRow } from "./HoverPanel";
 export { NotificationList } from "./NotificationList";
+export {
+  notificationTarget,
+  notificationTargetLabel,
+  notificationVisual,
+  priorityChip,
+} from "./notificationLinks";
+export { UtilizationCertificates } from "./UtilizationCertificates";
 export { WorkloadBars } from "./WorkloadBars";
 export { useToast } from "./Toast";
 export { StatusBadge } from "./StatusBadge";
@@ -26,6 +35,10 @@ export { Can, CanAny, CanAll, RoutePermissionGuard } from "./PermissionControls"
 export { NoAccessPage } from "./NoAccessPage";
 export { OverallProgressRing } from "./OverallProgressRing";
 export { resolveFlag, useResolvedFlag } from "./permissionProps";
+export {
+  dependencyMilestoneName,
+  isOutOfScopeMilestone,
+} from "./dependencyMilestoneNames";
 
 export {
   departmentColorPalette,

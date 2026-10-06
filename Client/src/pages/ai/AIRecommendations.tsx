@@ -1,51 +1,59 @@
-import { GlassCard } from "../shared";
+import type { Project, ProjectHealth, Task } from "../../types";
+import { GlassCard, InfoTip } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { computeInsights, type Insight } from "./aiMetrics";
 
-const RECOMMENDATIONS = [
-  {
-    id: 1,
-    title: "Optimize Resource Allocation",
-    description: "Reassign 2 developers from Project B to Vanguard for 2-week sprint",
-    icon: "lightbulb",
-    color: "text-indigo-500",
-  },
-  {
-    id: 2,
-    title: "Address Budget Variance",
-    description: "15% variance detected in Q3 forecast. Review immediately.",
-    icon: "priority_high",
-    color: "text-red-500",
-  },
-  {
-    id: 3,
-    title: "Extend Milestone Delta",
-    description: "7-day extension recommended based on velocity analysis",
-    icon: "schedule",
-    color: "text-emerald-500",
-  },
-];
+interface AIRecommendationsProps {
+  project: Project | null;
+  health: ProjectHealth | null;
+  tasks: Task[];
+  burnout: Array<{ fullName: string; burnoutRisk: number; activeTasks: number }>;
+}
 
-export function AIRecommendations() {
+const TONE: Record<Insight["tone"], { text: string; bg: string; icon: string }> = {
+  red: { text: "text-red-600", bg: "bg-red-50 border-red-100", icon: "priority_high" },
+  amber: { text: "text-amber-600", bg: "bg-amber-50 border-amber-100", icon: "warning" },
+  indigo: { text: "text-indigo-600", bg: "bg-indigo-50 border-indigo-100", icon: "lightbulb" },
+  emerald: { text: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", icon: "check_circle" },
+};
+
+export function AIRecommendations({ project, health, tasks, burnout }: AIRecommendationsProps) {
+  const insights = computeInsights(project, health, tasks, burnout);
+
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Icon name="auto_awesome" size={20} className="text-indigo-500" />
-        <h3 className="text-sm font-bold text-slate-800">AI Recommendations</h3>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Icon name="auto_awesome" size={20} className="text-indigo-500 shrink-0" />
+          <h3 className="text-sm font-bold text-slate-800 truncate">Recommendations</h3>
+        </div>
+        <InfoTip
+          title="Recommendations"
+          summary="Concrete things worth doing about the project you are looking at, most urgent first. Each one names the data that triggered it."
+          points={[
+            "Budget overrun: raised when spend is above the planned budget.",
+            "Overdue tasks: lists the ones past their due date, furthest behind first.",
+            "Unassigned work: open tasks with nobody responsible.",
+            "Stalled tasks: a start date in the past but no progress recorded.",
+            "Team load: anyone whose burnout risk is 60% or above.",
+          ]}
+          note="When the AI health service is available its own weaknesses are added to the end of the list."
+        />
       </div>
 
       <div className="space-y-2">
-        {RECOMMENDATIONS.map((rec) => (
-          <div
-            key={rec.id}
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            <span className={`material-symbols-outlined text-lg ${rec.color} mt-0.5`}>{rec.icon}</span>
-            <div>
-              <span className="text-xs font-semibold text-slate-700 block">{rec.title}</span>
-              <span className="text-[11px] text-slate-500 leading-relaxed">{rec.description}</span>
+        {insights.map((insight) => {
+          const tone = TONE[insight.tone];
+          return (
+            <div key={insight.title} className={`flex items-start gap-3 p-3 rounded-lg border ${tone.bg}`}>
+              <span className={`material-symbols-outlined text-lg ${tone.text} mt-0.5 shrink-0`}>{tone.icon}</span>
+              <div className="min-w-0">
+                <span className={`text-xs font-semibold ${tone.text} block`}>{insight.title}</span>
+                <span className="text-[11px] text-slate-600 leading-relaxed">{insight.detail}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </GlassCard>
   );
