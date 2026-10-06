@@ -451,270 +451,325 @@ export default function TaskPerformanceTable({
             Loading tasks...
           </div>
         )}
-        <table className="w-full min-w-[680px]">
-          <thead>
-            <tr className="border-b border-slate-100">
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <button 
-                  onClick={() => handleSort("title")}
-                  className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+       <table className="w-full min-w-[680px]">
+  <thead>
+    <tr className="border-b border-slate-100">
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <button
+          onClick={() => handleSort("title")}
+          className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+        >
+          Task
+          {getSortIcon("title")}
+        </button>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <button
+          onClick={() => handleSort("progress")}
+          className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+        >
+          Progress
+          {getSortIcon("progress")}
+        </button>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <div ref={statusDropdownRef}>
+          <button
+            onClick={(e) => handleSort("status", e)}
+            className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+          >
+            Status
+            <Icon
+              name="chevron-down"
+              size={12}
+              className={`transition-transform ${
+                showStatusDropdown
+                  ? "rotate-180 text-slate-600"
+                  : "text-slate-300 group-hover:text-slate-400"
+              }`}
+            />
+            {statusFilter.length > 0 && (
+              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+            )}
+          </button>
+          {showStatusDropdown && statusMenuPos && (
+            <div
+              className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
+              style={{
+                top: statusMenuPos.top,
+                left: statusMenuPos.left,
+              }}
+            >
+              <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
+                <span className="text-xs font-medium text-slate-500">
+                  Filter by Status
+                </span>
+                <button
+                  onClick={clearStatusFilter}
+                  className="text-xs text-rose-400 hover:text-rose-600"
                 >
-                  Task
-                  {getSortIcon("title")}
+                  Clear
                 </button>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <button 
-                  onClick={() => handleSort("progress")}
-                  className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
-                >
-                  Progress
-                  {getSortIcon("progress")}
-                </button>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <div ref={statusDropdownRef}>
-                  <button 
-                    onClick={(e) => handleSort("status", e)}
-                    className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+              </div>
+              {statusOptions.map((status) => {
+                const statusColor = getStatusColor(status);
+                return (
+                  <label
+                    key={status}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer"
                   >
-                    Status
-                    <Icon name="chevron-down" size={12} className={`transition-transform ${showStatusDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} />
-                    {statusFilter.length > 0 && (
-                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
-                    )}
-                  </button>
-                  {showStatusDropdown && statusMenuPos && (
-                    <div 
-                      className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
-                      style={{
-                        top: statusMenuPos.top,
-                        left: statusMenuPos.left,
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
-                        <span className="text-xs font-medium text-slate-500">Filter by Status</span>
-                        <button onClick={clearStatusFilter} className="text-xs text-rose-400 hover:text-rose-600">Clear</button>
-                      </div>
-                      {statusOptions.map(status => {
-                        const statusColor = getStatusColor(status);
-                        return (
-                          <label key={status} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={statusFilter.includes(status)}
-                              onChange={() => handleStatusFilter(status)}
-                              className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
-                            />
-                            <span className={`text-xs font-medium ${statusColor.text}`}>{status}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <div ref={priorityDropdownRef}>
-                  <button 
-                    onClick={(e) => handleSort("priority", e)}
-                    className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
-                  >
-                    Priority
-                    <Icon name="chevron-down" size={12} className={`transition-transform ${showPriorityDropdown ? 'rotate-180 text-slate-600' : 'text-slate-300 group-hover:text-slate-400'}`} />
-                    {priorityFilter.length > 0 && (
-                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
-                    )}
-                  </button>
-                  {showPriorityDropdown && priorityMenuPos && (
-                    <div 
-                      className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
-                      style={{
-                        top: priorityMenuPos.top,
-                        left: priorityMenuPos.left,
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
-                        <span className="text-xs font-medium text-slate-500">Filter by Priority</span>
-                        <button onClick={clearPriorityFilter} className="text-xs text-rose-400 hover:text-rose-600">Clear</button>
-                      </div>
-                      {priorityOptions.map(priority => {
-                        const priorityColor = getPriorityColor(priority);
-                        return (
-                          <label key={priority} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={priorityFilter.includes(priority)}
-                              onChange={() => handlePriorityFilter(priority)}
-                              className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
-                            />
-                            <span className={`text-xs font-medium ${priorityColor.text}`}>{priority}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
-                <button 
-                  onClick={() => handleSort("dueDate")}
-                  className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+                    <input
+                      type="checkbox"
+                      checked={statusFilter.includes(status)}
+                      onChange={() => handleStatusFilter(status)}
+                      className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                    />
+                    <span className={`text-xs font-medium ${statusColor.text}`}>
+                      {status}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <div ref={priorityDropdownRef}>
+          <button
+            onClick={(e) => handleSort("priority", e)}
+            className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+          >
+            Priority
+            <Icon
+              name="chevron-down"
+              size={12}
+              className={`transition-transform ${
+                showPriorityDropdown
+                  ? "rotate-180 text-slate-600"
+                  : "text-slate-300 group-hover:text-slate-400"
+              }`}
+            />
+            {priorityFilter.length > 0 && (
+              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+            )}
+          </button>
+          {showPriorityDropdown && priorityMenuPos && (
+            <div
+              className="fixed bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2 min-w-[160px]"
+              style={{
+                top: priorityMenuPos.top,
+                left: priorityMenuPos.left,
+              }}
+            >
+              <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
+                <span className="text-xs font-medium text-slate-500">
+                  Filter by Priority
+                </span>
+                <button
+                  onClick={clearPriorityFilter}
+                  className="text-xs text-rose-400 hover:text-rose-600"
                 >
-                  Due Date
-                  {getSortIcon("dueDate")}
+                  Clear
                 </button>
-              </th>
-              <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {paginatedTasks.map(task => {
-              const statusColor = getStatusColor(task.status);
-              const priorityColor = getPriorityColor(task.priority);
-              const progress = task.progressPercentage || 0;
-              const progressBarColor = getProgressColor(progress);
-              const progressTextColor = getProgressTextColor(progress);
+              </div>
+              {priorityOptions.map((priority) => {
+                const priorityColor = getPriorityColor(priority);
+                return (
+                  <label
+                    key={priority}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={priorityFilter.includes(priority)}
+                      onChange={() => handlePriorityFilter(priority)}
+                      className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                    />
+                    <span className={`text-xs font-medium ${priorityColor.text}`}>
+                      {priority}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        <button
+          onClick={() => handleSort("dueDate")}
+          className="flex items-center gap-1 group hover:text-slate-700 transition-colors"
+        >
+          Due Date
+          {getSortIcon("dueDate")}
+        </button>
+      </th>
+      <th className="text-left text-xs font-medium text-slate-500 py-3 px-2">
+        Actions
+      </th>
+    </tr>
+  </thead>
+  <tbody className="text-sm">
+    {paginatedTasks.map((task) => {
+      const statusColor = getStatusColor(task.status);
+      const priorityColor = getPriorityColor(task.priority);
+      const progress = task.progressPercentage || 0;
+      const progressBarColor = getProgressColor(progress);
+      const progressTextColor = getProgressTextColor(progress);
 
-              // Late is a fact about the date; Delayed is a status someone set.
-              // A task can be late while still sitting in NotStarted, so the two
-              // are shown as separate badges rather than merged - otherwise the
-              // overdue list looks full of "Not Started" and reads as wrong.
-              const late = isOverdueTask(task);
-              const flaggedDelayed = task.status === "Delayed";
-              const lateDays = late ? daysOverdue(task) : 0;
+      // Late is a fact about the date; Delayed is a status someone set.
+      // A task can be late while still sitting in NotStarted, so the two
+      // are shown as separate badges rather than merged - otherwise the
+      // overdue list looks full of "Not Started" and reads as wrong.
+      const late = isOverdueTask(task);
+      const flaggedDelayed = task.status === "Delayed";
+      const lateDays = late ? daysOverdue(task) : 0;
 
-              return (
-               <tr
-  key={task.id}
-  className="border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer"
->
-  <td className="py-4 px-2">
-    <button className="text-left" onClick={() => onViewTask?.(task)}>
-      <div className="font-medium text-slate-700">{task.title}</div>
-      {/* Project and milestone together: the title alone rarely
-          identifies a task, and the milestone is what the work is
-          being delivered under. */}
-      <div className="text-xs text-slate-500 mt-1 flex flex-col gap-0.5">
-        <span>
-          <span className=" text-slate-600">Proj : </span>
-          {task.projectName ?? "General"}
-        </span>
-        {task.milestoneName && (
-          <span className="inline-flex items-center gap-0.5">
-            <span className="font-bold text-slate-600">Mile : </span>
-            <span className="text-slate-300">/</span>
-            <span className="material-symbols-outlined text-[11px] text-slate-400">
-              flag
+      return (
+        <tr
+          key={task.id}
+          className="border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer [&_td]:cursor-pointer"
+        >
+          <td className="py-4 px-2">
+            <button
+              className="text-left cursor-pointer"
+              onClick={() => onViewTask?.(task)}
+            >
+              <div className="font-medium text-slate-700">{task.title}</div>
+              {/* Project and milestone together: the title alone rarely
+                  identifies a task, and the milestone is what the work is
+                  being delivered under. */}
+              <div className="text-xs text-slate-500 mt-1 flex flex-col gap-0.5 ">
+                <span>
+                  <span className=" italic text-slate-600">Proj : </span>
+                  {task.projectName ?? "General"}
+                </span>
+                {task.milestoneName && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <span className=" italic text-slate-600">Mile : </span>
+                    <span className="text-slate-300">/</span>
+                    {/* <span className="material-symbols-outlined text-[11px] text-slate-400">
+                      flag
+                    </span> */}
+                    {task.milestoneName}
+                  </span>
+                )}
+              </div>
+            </button>
+          </td>
+          <td className="py-4 px-2">
+            <div className="flex items-center gap-2">
+              <div className="w-24 bg-slate-100 rounded-full h-1.5">
+                <div
+                  className={`${progressBarColor} h-1.5 rounded-full transition-all duration-300`}
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+              <span className={`text-xs font-medium ${progressTextColor}`}>
+                {progress}%
+              </span>
+            </div>
+          </td>
+          <td className="py-4 px-2">
+            <div className="flex flex-col gap-1 items-start">
+              <span
+                className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}
+              >
+                {task.status}
+              </span>
+              {/*
+                Only shown when the task is late but its status does not
+                already say so. A task flagged Delayed needs no second
+                badge; a Not Started task that overran does.
+              */}
+              {late && !flaggedDelayed && (
+                <span
+                  title={`Past due by ${lateDays} day${
+                    lateDays === 1 ? "" : "s"
+                  }. Its status is still ${
+                    task.status
+                  }, so nothing has flagged it yet.`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-[11px] leading-none">
+                    schedule
+                  </span>
+                  {lateDays}d overdue
+                </span>
+              )}
+              {late && flaggedDelayed && (
+                <span
+                  title={`Past due by ${lateDays} day${
+                    lateDays === 1 ? "" : "s"
+                  }.`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-500 border border-rose-100 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-[11px] leading-none">
+                    schedule
+                  </span>
+                  {lateDays}d
+                </span>
+              )}
+            </div>
+          </td>
+          <td className="py-4 px-2">
+            <span
+              className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}
+            >
+              {task.priority}
             </span>
-            {task.milestoneName}
-          </span>
-        )}
-      </div>
-    </button>
-  </td>
-  <td className="py-4 px-2">
-    <div className="flex items-center gap-2">
-      <div className="w-24 bg-slate-100 rounded-full h-1.5">
-        <div
-          className={`${progressBarColor} h-1.5 rounded-full transition-all duration-300`}
-          style={{ width: `${Math.min(progress, 100)}%` }}
-        />
-      </div>
-      <span className={`text-xs font-medium ${progressTextColor}`}>
-        {progress}%
-      </span>
-    </div>
-  </td>
-  <td className="py-4 px-2">
-    <div className="flex flex-col gap-1 items-start">
-      <span
-        className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}
-      >
-        {task.status}
-      </span>
-      {/*
-        Only shown when the task is late but its status does not
-        already say so. A task flagged Delayed needs no second
-        badge; a Not Started task that overran does.
-      */}
-      {late && !flaggedDelayed && (
-        <span
-          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}. Its status is still ${task.status}, so nothing has flagged it yet.`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-[11px] leading-none">
-            schedule
-          </span>
-          {lateDays}d overdue
-        </span>
-      )}
-      {late && flaggedDelayed && (
-        <span
-          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}.`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-500 border border-rose-100 whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-[11px] leading-none">
-            schedule
-          </span>
-          {lateDays}d
-        </span>
-      )}
-    </div>
-  </td>
-  <td className="py-4 px-2">
-    <span
-      className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}
-    >
-      {task.priority}
-    </span>
-  </td>
-  <td
-    className={`py-4 px-2 ${late ? "font-semibold text-rose-600" : "text-slate-500"}`}
-  >
-    {task.dueDate
-      ? new Date(task.dueDate).toLocaleDateString()
-      : "Not set"}
-  </td>
-  <td className="py-4 px-2">
-    <div className="flex items-center gap-0.5">
-      <button
-        className="text-cyan-500 bg-cyan-50 hover:text-cyan-500 hover:cursor-pointer hover:bg-cyan-100 rounded-lg inline-flex items-center justify-center"
-        style={{ width: "28px", height: "28px" }}
-        title="View task"
-        onClick={() => onViewTask?.(task)}
-      >
-        <Icon name="view" size={16} />
-      </button>
+          </td>
+          <td
+            className={`py-4 px-2 ${
+              late ? "font-semibold text-rose-600" : "text-slate-500"
+            }`}
+          >
+            {task.dueDate
+              ? new Date(task.dueDate).toLocaleDateString()
+              : "Not set"}
+          </td>
+          <td className="py-4 px-2">
+            <div className="flex items-center gap-0.5">
+              <button
+                className="text-cyan-500 bg-cyan-50 hover:text-cyan-500 hover:cursor-pointer hover:bg-cyan-100 rounded-lg inline-flex items-center justify-center"
+                style={{ width: "28px", height: "28px" }}
+                title="View task"
+                onClick={() => onViewTask?.(task)}
+              >
+                <Icon name="view" size={16} />
+              </button>
 
-      {canEdit && (
-        <button
-          className="p-1 text-amber-500 bg-amber-50 hover:text-amber-700 hover:bg-amber-100 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
-          style={{ width: "28px", height: "28px" }}
-          title="Edit task"
-          onClick={() => onEditTask?.(task)}
-        >
-          <Icon name="edit" size={16} />
-        </button>
-      )}
+              {canEdit && (
+                <button
+                  className="p-1 text-amber-500 bg-amber-50 hover:text-amber-700 hover:bg-amber-100 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
+                  style={{ width: "28px", height: "28px" }}
+                  title="Edit task"
+                  onClick={() => onEditTask?.(task)}
+                >
+                  <Icon name="edit" size={16} />
+                </button>
+              )}
 
-      {canDelete && (
-        <button
-          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg inline-flex items-center justify-center"
-          style={{ width: "28px", height: "28px" }}
-          title="Delete task"
-          onClick={() => handleDeleteTask(task.id)}
-        >
-          <span className="material-symbols-outlined text-sm">delete</span>
-        </button>
-      )}
-    </div>
-  </td>
-</tr>
-              );
-            })}
-          </tbody>
-        </table>
+              {canDelete && (
+                <button
+                  className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
+                  style={{ width: "28px", height: "28px" }}
+                  title="Delete task"
+                  onClick={() => handleDeleteTask(task.id)}
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    delete
+                  </span>
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
       </div>
 
       {effectiveTotalCount === 0 && !loading && (
