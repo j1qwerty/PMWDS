@@ -19,6 +19,14 @@ export interface ProjectWorkspaceData {
   tasks: Task[];
   users: User[];
   dependencies: MilestoneDependency[];
+  /**
+   * What this user may change on this project, as computed by the server.
+   *
+   * False until the access call resolves, so controls stay hidden for the moment
+   * before it lands rather than flashing into view and disappearing.
+   */
+  canManageMilestones: boolean;
+  canManageDependencies: boolean;
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
@@ -39,6 +47,8 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
+  const [canManageMilestones, setCanManageMilestones] = useState(false);
+  const [canManageDependencies, setCanManageDependencies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -61,7 +71,7 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     setLoading(true);
     setError("");
     try {
-      const [projectData, milestoneData, taskData, dependencyData, userData, departmentData] = await Promise.all([
+      const [projectData, milestoneData, taskData, dependencyData, userData, departmentData, accessData] = await Promise.all([
         api.getProject(auth.token, projectId).catch(() => {
           return data.projects.find((p) => p.id === projectId) ?? null;
         }),
@@ -70,6 +80,12 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
         api.getMilestoneDependencies(auth.token, projectId),
         api.getUsers(auth.token).catch(() => data.users),
         api.getDepartments(auth.token).catch(() => data.departments),
+        // Defaults to "cannot manage" if it fails, so a broken capability call hides
+        // the controls rather than showing them and then 403ing on save.
+        api.getMilestoneAccess(auth.token, projectId).catch(() => ({
+          canManageMilestones: false,
+          canManageDependencies: false,
+        })),
       ]);
       setProject(projectData);
       setMilestones(milestoneData);
@@ -77,6 +93,8 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
       setDependencies(dependencyData);
       setUsers(userData);
       setDepartments(departmentData);
+      setCanManageMilestones(accessData.canManageMilestones);
+      setCanManageDependencies(accessData.canManageDependencies);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load project data.");
     } finally {
@@ -136,6 +154,8 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     tasks,
     users: users.length ? users : data.users,
     dependencies,
+    canManageMilestones,
+    canManageDependencies,
     loading,
     error,
     refresh: load,

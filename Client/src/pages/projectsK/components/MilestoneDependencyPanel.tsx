@@ -177,6 +177,7 @@ export function MilestoneDependencyPanel({
         milestones={milestones}
         onAdd={onAdd}
         onUpdate={onUpdate}
+        onDelete={handleDelete}
         onClose={() => { setModalOpen(false); setEditDep(null); }}
       />
     </>

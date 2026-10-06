@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, Task } from "../../types";
 import { formatDate } from "../../ui";
 import {
@@ -32,7 +31,15 @@ export function ProjectTasksPage() {
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  const canManageMilestones = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
+  // Milestone and dependency management is a per-project question, answered by the
+  // server: superadmin, this project's own manager, the primary department's head,
+  // or a director. Permission codes cannot express it, because a department head of
+  // another department holds PROJECT_MANAGE and passes every permission check.
+  //
+  // The milestone edit button below used to be gated on canManageTasks instead, so a
+  // department head of an unrelated department could edit milestones from this tab
+  // while being denied the same action on the milestones tab.
+  const canManageMilestones = ws.canManageMilestones;
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -87,17 +94,22 @@ export function ProjectTasksPage() {
         icon: "add_task",
       });
     }
-    actions.push({
-      label: "Dependencies",
-      onClick: () => setDepModalOpen(true),
-      icon: "account_tree",
-    });
+    // Gated: this action was previously pushed unconditionally, so any team member
+    // or viewer who reached this tab could open the dependency form and attempt a
+    // create that the API would reject.
+    if (ws.canManageDependencies) {
+      actions.push({
+        label: "Dependencies",
+        onClick: () => setDepModalOpen(true),
+        icon: "account_tree",
+      });
+    }
     setNavHeader({
       title: `Tasks · ${ws.project.name}`,
       description: "Tasks grouped by milestone",
       actions,
     });
-  }, [setNavHeader, ws.project, canManageTasks]);
+  }, [setNavHeader, ws.project, canManageTasks, canManageMilestones, ws.canManageDependencies]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -502,8 +514,8 @@ export function ProjectTasksPage() {
                     <Icon name="view" size={16} />
                   </button>
 
-                  {canManageTasks && (
-                    // Edit Button 
+                  {canManageMilestones && (
+                    // Edit Button
                     <button
                       title="Edit milestone"
                       className="p-1.5 rounded-lg text-slate-400 bg-amber-50 cursor-pointer hover:text-amber-500 hover:bg-amber-50 transition-colors"

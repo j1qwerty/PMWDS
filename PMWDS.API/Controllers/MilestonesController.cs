@@ -34,6 +34,41 @@ public class MilestonesController : BaseApiController
         _changes = changes;
     }
 
+    /// <summary>
+    /// What the caller is allowed to change on this project.
+    ///
+    /// The client needs this because "can manage milestones" is a per-project
+    /// question, not a per-role one. CanManageProjectAsync resolves it to: the
+    /// superadmin, the project's own project manager, the department head of the
+    /// project's primary department, and a director of the owning organisation. A
+    /// department head of some *other* department holds PROJECT_MANAGE and so
+    /// satisfies every permission-based check, which is why a permission-code gate in
+    /// the browser cannot express this rule and got it wrong in both directions.
+    ///
+    /// Returned from the server rather than recomputed in the browser so there is one
+    /// implementation, and so the client can never offer a control that 403s or hide
+    /// one that would have worked.
+    /// </summary>
+    [HttpGet("by-project/{projectId:guid}/access")]
+    [ProducesResponseType(typeof(ProjectMilestoneAccessDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProjectAccess(Guid projectId, CancellationToken ct)
+    {
+        // Existence first. CanAccessProjectAsync short-circuits to true for a
+        // superadmin without touching the database, so without this an unknown id
+        // came back 200 claiming full manage rights for a project that is not there.
+        if (!await _db.Projects.AnyAsync(p => p.Id == projectId, ct))
+            return NotFound();
+
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+            return Forbid();
+
+        var canManage = await _scope.CanManageProjectAsync(projectId, ct);
+
+        return Ok(new ProjectMilestoneAccessDto(
+            CanManageMilestones: canManage,
+            CanManageDependencies: canManage));
+    }
+
     // ── Milestone Dependency Endpoints ──────────────────────────────────
 
     [HttpGet("by-project/{projectId:guid}/dependencies")]
@@ -166,7 +201,42 @@ public class MilestonesController : BaseApiController
         if (depType == MilestoneDependencyType.ProgressThreshold && (dto.ThresholdPercentage == null || dto.ThresholdPercentage < 0 || dto.ThresholdPercentage > 100))
             return BadRequest(new { message = "Threshold percentage must be between 0 and 100" });
 
-        dep.Update(depType, dto.ThresholdPercentage);
+        // Re-wiring is optional. Omitting the ids keeps the current pair, so the older
+        // payload that only changes the condition still works - the tasks tab and any
+        // other caller depends on that.
+        var prerequisiteId = dto.PrerequisiteMilestoneId ?? dep.PrerequisiteMilestoneId;
+        var dependentId = dto.DependentMilestoneId ?? dep.DependentMilestoneId;
+
+        if (prerequisiteId != dep.PrerequisiteMilestoneId || dependentId != dep.DependentMilestoneId)
+        {
+            if (prerequisiteId == dependentId)
+                return BadRequest(new { message = "A milestone cannot depend on itself" });
+
+            if (!await _db.Milestones.AnyAsync(m => m.Id == prerequisiteId && m.ProjectId == dep.ProjectId, ct))
+                return BadRequest(new { message = "Prerequisite milestone not found in this project" });
+
+            if (!await _db.Milestones.AnyAsync(m => m.Id == dependentId && m.ProjectId == dep.ProjectId, ct))
+                return BadRequest(new { message = "Dependent milestone not found in this project" });
+
+            // Excludes this row, or re-saving an unchanged dependency would collide
+            // with itself and always 400.
+            var duplicate = await _db.MilestoneDependencies.AnyAsync(d =>
+                d.Id != id &&
+                d.PrerequisiteMilestoneId == prerequisiteId &&
+                d.DependentMilestoneId == dependentId &&
+                d.ProjectId == dep.ProjectId, ct);
+            if (duplicate)
+                return BadRequest(new { message = "This dependency already exists" });
+
+            var reverseExists = await _db.MilestoneDependencies.AnyAsync(d =>
+                d.PrerequisiteMilestoneId == dependentId &&
+                d.DependentMilestoneId == prerequisiteId &&
+                d.ProjectId == dep.ProjectId, ct);
+            if (reverseExists)
+                return BadRequest(new { message = "Circular dependency detected" });
+        }
+
+        dep.Update(depType, dto.ThresholdPercentage, prerequisiteId, dependentId);
         dep.SetModified("system");
 
         await _uow.MilestoneDependencies.UpdateAsync(dep, ct);

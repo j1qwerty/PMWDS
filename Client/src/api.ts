@@ -24,6 +24,7 @@ import type {
   LessonLearnedRecord,
   Milestone,
   MilestoneDependency,
+  ProjectMilestoneAccess,
   NotificationItem,
   NotificationTemplateRecord,
   AlertRuleRecord,
@@ -353,6 +354,17 @@ export const api = {
   },
   getMilestoneDependencies(token: string, projectId: string) {
     return request<MilestoneDependency[]>(`milestones/by-project/${projectId}/dependencies`, { token });
+  },
+  /**
+   * What the caller may change on this project: milestones and dependencies.
+   *
+   * Server-computed because the rule is per project, not per role - superadmin, the
+   * project's own manager, the primary department's head, or a director. A
+   * department head of another department holds PROJECT_MANAGE and passes every
+   * permission check, so the client cannot derive this from permissions alone.
+   */
+  getMilestoneAccess(token: string, projectId: string) {
+    return request<ProjectMilestoneAccess>(`milestones/by-project/${projectId}/access`, { token });
   },
   createMilestoneDependency(token: string, payload: Record<string, unknown>) {
     return request<MilestoneDependency>("milestones/dependencies", { token, method: "POST", body: payload });

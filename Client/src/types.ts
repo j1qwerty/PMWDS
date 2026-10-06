@@ -136,6 +136,18 @@ export interface DependencyStatus {
   dependencies: MilestoneDependency[];
 }
 
+/**
+ * Per-project capability flags, returned by
+ * GET /api/v1/milestones/by-project/{id}/access.
+ *
+ * True for the superadmin, the project's own project manager, the department head of
+ * the project's primary department, and a director of the owning organisation.
+ */
+export interface ProjectMilestoneAccess {
+  canManageMilestones: boolean;
+  canManageDependencies: boolean;
+}
+
 export interface Milestone {
   id: string;
   projectId: string;

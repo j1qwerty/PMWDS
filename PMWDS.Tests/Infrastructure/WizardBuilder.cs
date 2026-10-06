@@ -33,6 +33,7 @@ public sealed class WizardBuilder
     private DateTime _end = new(2026, 12, 31);
     private decimal _budget = 1_000_000m;
     private string _priority = "Medium";
+    private string _projectManagerId = string.Empty;
     private Guid? _primaryDepartmentId;
     private readonly List<Guid> _departmentIds = new();
 
@@ -72,6 +73,21 @@ public sealed class WizardBuilder
     public WizardBuilder WithPriority(string priority)
     {
         _priority = priority;
+        return this;
+    }
+
+    /// <summary>
+    /// Assigns the project's manager.
+    ///
+    /// Needed by tests that assert on project-scoped access, because
+    /// RoleScopeService.CanManageProjectAsync grants rights to the project's own
+    /// manager specifically, not to anyone who holds the project-manager role. Without
+    /// this a seeded project manager is not the manager of any test project, so that
+    /// branch cannot be reached.
+    /// </summary>
+    public WizardBuilder WithProjectManager(string userId)
+    {
+        _projectManagerId = userId;
         return this;
     }
 
@@ -132,7 +148,7 @@ public sealed class WizardBuilder
             plannedBudget = _budget,
             departmentId = _primaryDepartmentId.Value,
             departmentIds = _departmentIds,
-            projectManagerId = string.Empty,
+            projectManagerId = _projectManagerId,
             priority = _priority,
         });
 

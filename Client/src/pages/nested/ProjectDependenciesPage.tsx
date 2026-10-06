@@ -4,9 +4,7 @@ import { useAuth } from "../../auth";
 import {
   LoadingPage,
   useNavHeader,
-  usePermission,
   useToast,
-  canManageMilestoneDependencies,
 } from "../shared";
 import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
@@ -15,15 +13,13 @@ import { MilestoneDependencyPanel } from "../projectsK/components";
 export function ProjectDependenciesPage() {
   const ws = useProjectWorkspace();
   const { auth } = useAuth();
-  const perm = usePermission();
   const { setNavHeader } = useNavHeader();
   const { addToast } = useToast();
 
-  // Was `isSuperAdmin || director`, which hid the add, edit and delete controls here
-  // from project managers. The API authorizes those calls with the same Manager
-  // policy the milestones tab now uses, so the controls were hidden behind a gate
-  // stricter than the server's.
-  const canManage = canManageMilestoneDependencies(perm);
+  // Server-computed per project: superadmin, this project's manager, the primary
+  // department's head, or a director. Permission codes cannot express this, because
+  // a department head of another department holds PROJECT_MANAGE too.
+  const canManage = ws.canManageDependencies;
 
   useEffect(() => {
     if (ws.project) {

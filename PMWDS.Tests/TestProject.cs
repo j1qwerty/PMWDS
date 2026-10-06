@@ -50,6 +50,16 @@ public sealed class TestProject : IAsyncDisposable
         return new TestProject(client, result.ProjectId);
     }
 
+    /// <summary>
+    /// Wraps a project that already exists, so it can be disposed of by the test.
+    ///
+    /// Needed when the project has to be built by one session and then used by
+    /// another - for example created by the superadmin and assigned to the seeded
+    /// project manager, because CanManageProjectAsync keys off the project's own
+    /// manager rather than the caller's role.
+    /// </summary>
+    public static TestProject Wrap(ApiClient client, Guid projectId) => new(client, projectId);
+
     /// <summary>Milestones created by <see cref="CreateAsync"/>, in order.</summary>
     public async Task<IReadOnlyList<Guid>> MilestoneIdsAsync()
     {

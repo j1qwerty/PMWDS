@@ -93,7 +93,28 @@ public record CreateMilestoneDependencyDto(
 
 public record UpdateMilestoneDependencyDto(
     string Type,
-    double? ThresholdPercentage = null);
+    double? ThresholdPercentage = null,
+    // Optional so an existing caller that only wants to change the condition keeps
+    // working. Supplying them re-wires the dependency to a different pair of
+    // milestones, which is what the edit modal's milestone dropdowns do. Validated
+    // against the same duplicate and circular-reference rules as creation.
+    Guid? PrerequisiteMilestoneId = null,
+    Guid? DependentMilestoneId = null);
+
+/// <summary>
+/// Per-project capability flags for milestone and dependency management.
+/// </summary>
+/// <param name="CanManageMilestones">
+/// True for the superadmin, the project's own project manager, the department head
+/// of the project's primary department, and a director of the owning organisation.
+/// </param>
+/// <param name="CanManageDependencies">
+/// Same rule. Kept as a separate field because the client renders the two surfaces
+/// separately and a future divergence should be a one-line change here.
+/// </param>
+public record ProjectMilestoneAccessDto(
+    bool CanManageMilestones,
+    bool CanManageDependencies);
 
 // From WebhooksController.cs
 public record WebhookResponse(Guid Id, Guid? IntegrationId, string EventType, string CallbackUrl, List<string> Headers, bool IsActive);

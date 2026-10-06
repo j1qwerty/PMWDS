@@ -11,8 +11,6 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useToast,
-  canManageMilestones as canManageMilestonesFor,
-  canManageMilestoneDependencies,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
@@ -39,13 +37,14 @@ export function ProjectMilestonesPage() {
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  // Was `perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director)`, which
-  // hid the edit button on milestone cards and the New/Edit/Delete buttons on the
-  // dependencies panel from project managers - even though the API's Manager policy
-  // accepts them and the tasks tab, gated on task.manage, already let them edit the
-  // same milestones. Now derived from the same permission set the API enforces.
-  const canManageMilestones = canManageMilestonesFor(perm);
-  const canManageDependencies = canManageMilestoneDependencies(perm);
+  // Server-computed per project. This is not a role question: it resolves to the
+  // superadmin, this project's own manager, the department head of the project's
+  // primary department, and a director. A department head of some *other* department
+  // holds PROJECT_MANAGE and passes every permission check, which is why gating on
+  // permission codes in the browser got this wrong in both directions - too strict
+  // for project managers, too loose for other department heads.
+  const canManageMilestones = ws.canManageMilestones;
+  const canManageDependencies = ws.canManageDependencies;
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -621,6 +620,7 @@ export function ProjectMilestonesPage() {
         milestones={ws.milestones}
         onAdd={handleAddDependency}
         onUpdate={handleUpdateDependency}
+        onDelete={handleDeleteDependency}
         onClose={() => { setDepModalOpen(false); setEditDep(null); }}
       />
 

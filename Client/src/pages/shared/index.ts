@@ -36,11 +36,6 @@ export { NoAccessPage } from "./NoAccessPage";
 export { OverallProgressRing } from "./OverallProgressRing";
 export { resolveFlag, useResolvedFlag } from "./permissionProps";
 export {
-  canManageMilestones,
-  canManageMilestoneDependencies,
-  MILESTONE_MANAGER_PERMISSION_CODES,
-} from "./milestonePermissions";
-export {
   dependencyMilestoneName,
   isOutOfScopeMilestone,
 } from "./dependencyMilestoneNames";
