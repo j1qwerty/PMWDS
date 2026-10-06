@@ -8,6 +8,9 @@ namespace PMWDS.API.Auth;
 
 public sealed class PermissionAuthorizationHandler : AuthorizationHandler<PermissionAuthorizationRequirement>
 {
+    /// <summary>Key the expanded permission set is cached under for the request.</summary>
+    public const string CacheKey = "__pmwds_permissions";
+
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -37,9 +40,8 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
     private async Task<HashSet<string>> GetPermissionsForCurrentUserAsync(ClaimsPrincipal principal)
     {
         var httpContext = _httpContextAccessor.HttpContext;
-        const string cacheKey = "__pmwds_permissions";
 
-        if (httpContext?.Items[cacheKey] is HashSet<string> cached)
+        if (httpContext?.Items[CacheKey] is HashSet<string> cached)
         {
             return cached;
         }
@@ -58,23 +60,52 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
             .Distinct()
             .ToListAsync();
 
+        return Expand(permissions, httpContext);
+    }
+
+    /// <summary>
+    /// Expands raw role permissions into the effective set, applying both
+    /// expansions the catalog defines: an umbrella "manage" grant covers the rest
+    /// of its feature, and an "all departments" grant covers its own-department
+    /// equivalent (plus everything that equivalent already covers).
+    /// </summary>
+    public static HashSet<string> Expand(
+        IEnumerable<string> permissions,
+        HttpContext? httpContext = null)
+    {
         var result = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var permission in permissions)
+
+        // Iterate to a fixed point: an ALL-scope umbrella implies an own-scope
+        // umbrella, which in turn covers the own-scope actions. One pass over the
+        // catalog map would miss the second hop.
+        var frontier = new List<string>(result);
+        var visited = new HashSet<string>(result, StringComparer.OrdinalIgnoreCase);
+
+        while (frontier.Count > 0)
         {
-            if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
+            var current = frontier[^1];
+            frontier.RemoveAt(frontier.Count - 1);
+
+            if (!PermissionCatalog.EffectiveCoverage.TryGetValue(current, out var covered))
             {
                 continue;
             }
 
             foreach (var coveredPermission in covered)
             {
+                if (!visited.Add(coveredPermission))
+                {
+                    continue;
+                }
+
                 result.Add(coveredPermission);
+                frontier.Add(coveredPermission);
             }
         }
 
         if (httpContext != null)
         {
-            httpContext.Items[cacheKey] = result;
+            httpContext.Items[CacheKey] = result;
         }
 
         return result;

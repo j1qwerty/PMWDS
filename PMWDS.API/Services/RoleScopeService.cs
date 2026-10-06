@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Auth;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
@@ -52,6 +53,19 @@ public class RoleScopeService
             return query;
         }
 
+        // The own-department flavour of DEPARTMENT_VIEW limits the department list
+        // to the caller's own departments. The "all departments" flavour keeps the
+        // whole organization visible, which is what a Director needs in order to
+        // assign milestones to any participating department.
+        if (!await HasAllScopeAsync(PermissionCodes.DepartmentView, ct))
+        {
+            var departmentIds = await GetDepartmentIdsAsync(ct);
+            if (departmentIds.Count > 0)
+            {
+                return query.Where(department => departmentIds.Contains(department.Id));
+            }
+        }
+
         var organizationIds = await GetOrganizationIdsAsync(ct);
         return query.Where(department => department.OrganizationId.HasValue && organizationIds.Contains(department.OrganizationId.Value));
     }
@@ -61,6 +75,13 @@ public class RoleScopeService
         if (IsSuperAdmin)
         {
             return query;
+        }
+
+        // "All departments" reaches every project in the organization; the
+        // own-department flavour narrows to the departments the user belongs to.
+        if (await HasAllScopeAsync(PermissionCodes.ProjectView, ct))
+        {
+            return await ScopeProjectsByOrganizationAsync(query, ct);
         }
 
         if (IsDepartmentHead && !IsDirector)
@@ -76,6 +97,23 @@ public class RoleScopeService
                     departmentIds.Contains(m.DepartmentId.Value)));
         }
 
+        var departmentIdsForProject = await GetDepartmentIdsAsync(ct);
+        if (departmentIdsForProject.Count > 0)
+        {
+            return query.Where(project =>
+                departmentIdsForProject.Contains(project.DepartmentId) ||
+                project.ProjectDepartments.Any(pd => departmentIdsForProject.Contains(pd.DepartmentId)));
+        }
+
+        // A user with no department assignment at all (an organization-wide
+        // administrator) has nothing narrower to fall back to.
+        return await ScopeProjectsByOrganizationAsync(query, ct);
+    }
+
+    private async Task<IQueryable<Project>> ScopeProjectsByOrganizationAsync(
+        IQueryable<Project> query,
+        CancellationToken ct)
+    {
         var organizationIds = await GetOrganizationIdsAsync(ct);
         return query.Where(project =>
             (project.Department != null &&
@@ -96,7 +134,7 @@ public class RoleScopeService
 
         var organizationIds = await GetOrganizationIdsAsync(ct);
 
-        if (IsDepartmentHead && !IsDirector)
+        if (IsDepartmentHead && !IsDirector && !await HasAllScopeAsync(PermissionCodes.UserView, ct))
         {
             var departmentIds = await GetDepartmentIdsAsync(ct);
             return query.Where(user =>
@@ -143,6 +181,14 @@ public class RoleScopeService
         if (IsSuperAdmin)
         {
             return true;
+        }
+
+        // Own-department scope: a department the user is not a member of is not
+        // theirs to reach, even inside their own organization.
+        if (!await HasAllScopeAsync(PermissionCodes.DepartmentView, ct))
+        {
+            var departmentIds = await GetDepartmentIdsAsync(ct);
+            return departmentIds.Contains(departmentId);
         }
 
         if (IsDepartmentHead && CurrentUserId is not null)
@@ -299,6 +345,21 @@ public class RoleScopeService
                 projectOrganizations.MilestoneDepartmentIds.Any(departmentIds.Contains);
         }
 
+        // Own-department view is limited to the departments the user belongs to.
+        // Only the "all departments" flavour opens up the whole organization.
+        if (!await HasAllScopeAsync(PermissionCodes.ProjectView, ct))
+        {
+            var departmentIds = await GetDepartmentIdsAsync(ct);
+            if (departmentIds.Count == 0)
+            {
+                return false;
+            }
+
+            return departmentIds.Contains(projectOrganizations.DepartmentId)
+                || projectOrganizations.AssignedDepartmentIds.Any(departmentIds.Contains)
+                || projectOrganizations.MilestoneDepartmentIds.Any(departmentIds.Contains);
+        }
+
         if (projectOrganizations.PrimaryOrganizationId.HasValue &&
             await CanAccessOrganizationAsync(projectOrganizations.PrimaryOrganizationId.Value, ct))
         {
@@ -316,11 +377,30 @@ public class RoleScopeService
         return false;
     }
 
+    /// <summary>
+    /// True when the caller may see the whole of a project rather than only the
+    /// milestones owned by their own department.
+    ///
+    /// This is the gate behind the "primary department" permission. A department
+    /// head whose department is the project's primary department sees everything,
+    /// including milestones assigned to other departments — because it is their
+    /// project. Everyone else who is merely a participating department is limited
+    /// to their own milestones and tasks, so they cannot read the rest of a project
+    /// they only contribute to.
+    /// </summary>
     public async Task<bool> CanAccessProjectAsPrimaryDepartmentAsync(Guid projectId, CancellationToken ct)
     {
         if (IsSuperAdmin || IsDirector)
         {
             return true;
+        }
+
+        // The "all departments" flavour of the primary-department permission is
+        // the same authority reached from another direction, so it opens the same
+        // door.
+        if (await HasAllScopeAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
+        {
+            return await CanAccessProjectAsync(projectId, ct);
         }
 
         if (!IsDepartmentHead || !await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
@@ -440,22 +520,35 @@ public class RoleScopeService
     private async Task<bool> HasPermissionAsync(string permissionCode, CancellationToken ct)
     {
         var permissions = await GetPermissionSnapshotAsync(ct);
-        if (permissions.Contains(PermissionCodes.SystemAdmin) || permissions.Contains(permissionCode))
-        {
-            return true;
-        }
-
-        return permissionCode == PermissionCodes.ProjectPrimaryDepartmentManage &&
-            permissions.Contains(PermissionCodes.ProjectManage);
+        return EffectivePermissionSet(permissions).Contains(permissionCode);
     }
 
     /// <summary>
-    /// Checks any of <paramref name="permissionCodes"/>, expanding the
-    /// <c>*_MANAGE</c> umbrella permissions the same way the authorization handler does.
-    /// Use this when the client needs a capability flag that must agree with what
-    /// the API will actually allow.
+    /// Expands raw role permissions the same way the authorization handler does —
+    /// umbrella "manage" grants cover their feature, and "all departments" grants
+    /// cover the own-department equivalent — so a capability flag computed here can
+    /// never disagree with what the API will actually allow.
+    /// </summary>
+    public static HashSet<string> EffectivePermissionSet(IEnumerable<string> permissions) =>
+        PermissionAuthorizationHandler.Expand(permissions);
+
+    /// <summary>
+    /// Checks any of <paramref name="permissionCodes"/>, applying the same umbrella
+    /// and cross-scope expansion as the authorization handler.
     /// </summary>
     public async Task<bool> HasAnyPermissionAsync(CancellationToken ct, params string[] permissionCodes)
+    {
+        var permissions = await GetPermissionSnapshotAsync(ct);
+        var effective = EffectivePermissionSet(permissions);
+
+        return permissionCodes.Any(code => !string.IsNullOrWhiteSpace(code) && effective.Contains(code));
+    }
+
+    /// <summary>
+    /// True when the user holds the "all departments" flavour of a permission.
+    /// Scope checks use this to decide whether department filtering applies at all.
+    /// </summary>
+    public async Task<bool> HasAllScopeAsync(string ownDepartmentCode, CancellationToken ct)
     {
         var permissions = await GetPermissionSnapshotAsync(ct);
         if (permissions.Contains(PermissionCodes.SystemAdmin))
@@ -463,21 +556,12 @@ public class RoleScopeService
             return true;
         }
 
-        var effective = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase);
-        foreach (var permission in permissions)
-        {
-            if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
-            {
-                continue;
-            }
+        var allCode = PermissionCodes.ToAllScope(ownDepartmentCode);
+        var effective = EffectivePermissionSet(permissions);
 
-            foreach (var coveredPermission in covered)
-            {
-                effective.Add(coveredPermission);
-            }
-        }
-
-        return permissionCodes.Any(code => !string.IsNullOrWhiteSpace(code) && effective.Contains(code));
+        return effective.Contains(allCode)
+            || (PermissionCatalog.EffectiveCoverage.TryGetValue(allCode, out var implied)
+                && implied.Any(code => effective.Contains(code)));
     }
 
     private async Task<HashSet<string>> GetPermissionSnapshotAsync(CancellationToken ct)

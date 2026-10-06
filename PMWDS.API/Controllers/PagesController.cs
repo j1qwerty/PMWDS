@@ -589,22 +589,26 @@ public class PagesController : BaseApiController
     {
         var codes = user.Roles
             .SelectMany(role => role.Permissions)
-            .Select(permission => permission.Code)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return codes.Contains(PermissionCodes.SystemAdmin) ||
-            codes.Contains(permissionCode) ||
-            PermissionCatalog.ManagePermissionCoverage.Any(pair => pair.Value.Contains(permissionCode, StringComparer.OrdinalIgnoreCase) && codes.Contains(pair.Key));
+            .Select(permission => permission.Code);
+        var effective = RoleScopeService.EffectivePermissionSet(codes);
+
+        return effective.Contains(PermissionCodes.SystemAdmin) || effective.Contains(permissionCode);
     }
 
+    /// <summary>
+    /// Drops permissions already implied by another selected umbrella, so the
+    /// client never shows a checkbox that would not change the role's access.
+    /// </summary>
     private static IEnumerable<string> VisiblePermissionCodes(IEnumerable<Permission> permissions)
     {
         var visible = permissions
             .Where(permission => PermissionCatalog.VisibleModules.Contains(permission.Module))
             .ToList();
         var codes = visible.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
+        var coveredCodes = PermissionCatalog.EffectiveCoverage
             .Where(pair => codes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
+            .Where(codes.Contains)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return visible
             .Where(permission => !coveredCodes.Contains(permission.Code))

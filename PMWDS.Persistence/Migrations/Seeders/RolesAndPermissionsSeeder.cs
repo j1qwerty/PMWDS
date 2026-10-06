@@ -15,107 +15,100 @@ internal static class RolesAndPermissionsSeeder
 
     private static async Task SeedPermissionsAsync(ApplicationDbContext context, CancellationToken ct)
     {
-        var specs = new[]
+        // Permissions are declared once, in PermissionCatalog, and seeded from
+        // there. Adding a code anywhere else without adding it to the catalog would
+        // leave the roles UI unable to describe it.
+        foreach (var definition in PermissionCatalog.Definitions)
         {
-            (PermissionCodes.AuthManage, "Manage Authentication", "Manage authentication and access policies.", "Authentication", true),
-            (PermissionCodes.SystemAdmin, "System Administration", "Full system administration access.", "System", true),
-            (PermissionCodes.SystemDatabaseView, "View Database Status", "View active database provider and fallback status.", "System", true),
-            (PermissionCodes.OrganizationManage, "Manage Organizations", "Manage all organization permissions.", "Organization", true),
-            (PermissionCodes.OrganizationView, "View Organizations", "View organization records.", "Organization", true),
-            (PermissionCodes.OrganizationCreate, "Create Organizations", "Create organization records.", "Organization", true),
-            (PermissionCodes.OrganizationEdit, "Edit Organizations", "Update organization records.", "Organization", true),
-            (PermissionCodes.OrganizationDelete, "Delete Organizations", "Delete organization records.", "Organization", true),
-            (PermissionCodes.DepartmentManage, "Manage Departments", "Manage all department permissions.", "Departments", false),
-            (PermissionCodes.DepartmentView, "View Departments", "View department records.", "Departments", false),
-            (PermissionCodes.DepartmentCreate, "Create Departments", "Create department records.", "Departments", false),
-            (PermissionCodes.DepartmentEdit, "Edit Departments", "Update department records.", "Departments", false),
-            (PermissionCodes.DepartmentDelete, "Delete Departments", "Delete department records.", "Departments", false),
-            (PermissionCodes.ProjectManage, "Manage Projects", "Manage all project permissions.", "Projects", false),
-            (PermissionCodes.ProjectView, "View Projects", "View project records.", "Projects", false),
-            (PermissionCodes.ProjectCreate, "Create Projects", "Create project records.", "Projects", false),
-            (PermissionCodes.ProjectEdit, "Edit Projects", "Update project records.", "Projects", false),
-            (PermissionCodes.ProjectDelete, "Delete Projects", "Delete project records.", "Projects", false),
-            (PermissionCodes.ProjectPrimaryDepartmentManage, "Manage Primary Department Projects", "Keep visibility and control of projects created by the primary department.", "Projects", false),
-            (PermissionCodes.MilestoneManage, "Manage Milestones", "Manage all milestone permissions.", "Milestones", false),
-            (PermissionCodes.MilestoneView, "View Milestones", "View milestone records.", "Milestones", false),
-            (PermissionCodes.MilestoneCreate, "Create Milestones", "Create milestone records.", "Milestones", false),
-            (PermissionCodes.MilestoneEdit, "Edit Milestones", "Update milestone records.", "Milestones", false),
-            (PermissionCodes.MilestoneDelete, "Delete Milestones", "Delete milestone records.", "Milestones", false),
-            (PermissionCodes.TaskManage, "Manage Tasks", "Manage all task permissions.", "Tasks", false),
-            (PermissionCodes.TaskView, "View Tasks", "View task records.", "Tasks", false),
-            (PermissionCodes.TaskCreate, "Create Tasks", "Create task records.", "Tasks", false),
-            (PermissionCodes.TaskEdit, "Edit Tasks", "Update task records.", "Tasks", false),
-            (PermissionCodes.TaskDelete, "Delete Tasks", "Delete task records.", "Tasks", false),
-            (PermissionCodes.TaskAssign, "Assign Tasks", "Assign task ownership.", "Tasks", false),
-            (PermissionCodes.TaskCommentCreate, "Create Task Comments", "Add comments to tasks.", "Tasks", false),
-            (PermissionCodes.TaskAttachmentCreate, "Create Task Attachments", "Upload task attachments.", "Tasks", false),
-            (PermissionCodes.TaskTimeTrack, "Track Task Time", "Start and stop task timers.", "Tasks", false),
-            (PermissionCodes.SubtaskManage, "Manage Subtasks", "Manage all subtask permissions.", "Subtasks", false),
-            (PermissionCodes.SubtaskView, "View Subtasks", "View subtask records.", "Subtasks", false),
-            (PermissionCodes.SubtaskCreate, "Create Subtasks", "Create subtask records.", "Subtasks", false),
-            (PermissionCodes.SubtaskEdit, "Edit Subtasks", "Update subtask records.", "Subtasks", false),
-            (PermissionCodes.SubtaskDelete, "Delete Subtasks", "Delete subtask records.", "Subtasks", false),
-            (PermissionCodes.UserManage, "Manage Users", "Manage all user permissions.", "Users", false),
-            (PermissionCodes.UserView, "View Users", "View user records.", "Users", false),
-            (PermissionCodes.UserCreate, "Create Users", "Create user records.", "Users", false),
-            (PermissionCodes.UserEdit, "Edit Users", "Update user records.", "Users", false),
-            (PermissionCodes.UserDelete, "Delete Users", "Deactivate or delete users.", "Users", false),
-            (PermissionCodes.UserDepartmentManage, "Manage User Departments", "Assign users to departments and organizations.", "Users", false),
-            (PermissionCodes.UserProfilePictureManage, "Manage Profile Pictures", "Upload and update user profile pictures.", "Users", false),
-            (PermissionCodes.RoleManage, "Manage Roles", "Manage all role permissions.", "Authorization", true),
-            (PermissionCodes.RoleView, "View Roles", "View role records.", "Authorization", true),
-            (PermissionCodes.RoleCreate, "Create Roles", "Create role records.", "Authorization", true),
-            (PermissionCodes.RoleEdit, "Edit Roles", "Update role records.", "Authorization", true),
-            (PermissionCodes.RoleDelete, "Delete Roles", "Delete role records.", "Authorization", true),
-            (PermissionCodes.PermissionManage, "Manage Permissions", "Manage all permission records.", "Authorization", true),
-            (PermissionCodes.PermissionView, "View Permissions", "View permission records.", "Authorization", true),
-            (PermissionCodes.PermissionCreate, "Create Permissions", "Create permission records.", "Authorization", true),
-            (PermissionCodes.PermissionEdit, "Edit Permissions", "Update permission records.", "Authorization", true),
-            (PermissionCodes.PermissionDelete, "Delete Permissions", "Delete permission records.", "Authorization", true),
-            (PermissionCodes.NotificationManage, "Manage Notifications", "Manage all notification permissions.", "Notifications", false),
-            (PermissionCodes.NotificationView, "View Notifications", "View notifications.", "Notifications", false),
-            (PermissionCodes.NotificationBroadcast, "Broadcast Notifications", "Broadcast notifications to users or groups.", "Notifications", false),
-            (PermissionCodes.NotificationTemplateManage, "Manage Notification Templates", "Create and update notification templates.", "Notifications", true),
-            (PermissionCodes.NotificationRuleManage, "Manage Alert Rules", "Create and update alert rules.", "Notifications", true),
-            (PermissionCodes.ActivityLogManage, "Manage Activity Logs", "Manage all activity log permissions.", "Audit", true),
-            (PermissionCodes.ActivityLogView, "View Activity Logs", "View activity logs.", "Audit", true),
-            (PermissionCodes.ActivityLogCreate, "Create Activity Logs", "Create activity log entries.", "Audit", false),
-            (PermissionCodes.ReportManage, "Manage Reports", "Manage all report permissions.", "Reports", false),
-            (PermissionCodes.ReportView, "View Reports", "View reports.", "Reports", false),
-            (PermissionCodes.ReportCreate, "Create Reports", "Create reports.", "Reports", false),
-            (PermissionCodes.ReportEdit, "Edit Reports", "Update reports.", "Reports", false),
-            (PermissionCodes.ReportDelete, "Delete Reports", "Delete reports.", "Reports", false),
-            (PermissionCodes.KnowledgeView, "View Knowledge", "View knowledge articles and lessons.", "Knowledge", false),
-            (PermissionCodes.KnowledgeCreate, "Create Knowledge", "Create knowledge articles and lessons.", "Knowledge", false),
-            (PermissionCodes.KnowledgeEdit, "Edit Knowledge", "Update knowledge articles and lessons.", "Knowledge", false),
-            (PermissionCodes.KnowledgeDelete, "Delete Knowledge", "Delete knowledge articles and lessons.", "Knowledge", false),
-            (PermissionCodes.IntegrationView, "View Integrations", "View integrations and webhooks.", "Integrations", true),
-            (PermissionCodes.IntegrationCreate, "Create Integrations", "Create integrations and webhooks.", "Integrations", true),
-            (PermissionCodes.IntegrationEdit, "Edit Integrations", "Update integrations and webhooks.", "Integrations", true),
-            (PermissionCodes.IntegrationDelete, "Delete Integrations", "Delete integrations and webhooks.", "Integrations", true),
-            (PermissionCodes.AiView, "View AI", "View AI insights and predictions.", "AI", false),
-            (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true),
-            (PermissionCodes.UtilizationCertificateView, "View Utilization Certificates", "View utilization certificates proving funds were spent as intended.", "Utilization Certificates", false),
-            (PermissionCodes.UtilizationCertificateCreate, "Submit Utilization Certificates", "Upload and submit a utilization certificate against a project milestone or task.", "Utilization Certificates", false),
-            (PermissionCodes.UtilizationCertificateEdit, "Edit Utilization Certificates", "Edit a draft or rejected utilization certificate you own.", "Utilization Certificates", false),
-            (PermissionCodes.UtilizationCertificateReview, "Review Utilization Certificates", "Approve or reject submitted utilization certificates as the finance sign-off authority.", "Utilization Certificates", false),
-            (PermissionCodes.UtilizationCertificateDelete, "Delete Utilization Certificates", "Delete draft or rejected utilization certificates.", "Utilization Certificates", false),
-            (PermissionCodes.UtilizationCertificateManage, "Manage Utilization Certificates", "Full control over utilization certificates, including review and deletion.", "Utilization Certificates", true)
-        };
+            var isGlobal = IsGlobal(definition.Code);
+            var permission = await context.Permissions
+                .FirstOrDefaultAsync(p => p.Code == definition.Code, ct);
 
-        foreach (var spec in specs)
-        {
-            if (await context.Permissions.AnyAsync(p => p.Code == spec.Item1, ct))
+            if (permission is null)
+            {
+                permission = Permission.Create(
+                    definition.Code,
+                    definition.Name,
+                    definition.Description,
+                    definition.Module,
+                    isGlobal);
+                permission.SetCreatedBy(SeedConstants.SeedUser);
+                await context.Permissions.AddAsync(permission, ct);
                 continue;
+            }
 
-            var permission = Permission.Create(spec.Item1, spec.Item2, spec.Item3, spec.Item4, spec.Item5);
-            permission.SetCreatedBy(SeedConstants.SeedUser);
-            await context.Permissions.AddAsync(permission, ct);
+            // Keep the stored copy in step with the catalog so a wording change in
+            // code reaches the roles UI without a manual migration.
+            permission.Update(
+                definition.Name,
+                definition.Description,
+                definition.Module,
+                isGlobal);
+            permission.SetModified(SeedConstants.SeedUser);
         }
 
         await CleanupLegacyPermissionsAsync(context, ct);
+        await RemoveOrphanedPermissionsAsync(context, ct);
         await context.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Permissions that are no longer part of the catalog are removed so they cannot
+    /// be assigned to a role and then silently do nothing. Their links are dropped
+    /// first, otherwise the foreign keys refuse the delete.
+    /// </summary>
+    private static async Task RemoveOrphanedPermissionsAsync(ApplicationDbContext context, CancellationToken ct)
+    {
+        var known = PermissionCatalog.Definitions.Select(definition => definition.Code).ToList();
+        var orphans = await context.Permissions
+            .Where(permission => !known.Contains(permission.Code))
+            .ToListAsync(ct);
+
+        if (orphans.Count == 0)
+        {
+            return;
+        }
+
+        var orphanIds = orphans.Select(permission => permission.Id).ToList();
+        var roles = await context.Roles
+            .Include(role => role.Permissions)
+            .Where(role => role.Permissions.Any(permission => orphanIds.Contains(permission.Id)))
+            .ToListAsync(ct);
+
+        foreach (var role in roles)
+        {
+            foreach (var permissionId in orphanIds)
+            {
+                role.RemovePermission(permissionId);
+            }
+        }
+
+        context.Permissions.RemoveRange(orphans);
+    }
+
+    /// <summary>
+    /// Grants a system-wide nature to the elevated permissions so the roles UI can
+    /// badge them. Deliberately a small, hand-maintained set: this drives a visual
+    /// hint, not authorization.
+    /// </summary>
+    private static bool IsGlobal(string code) => code switch
+    {
+        PermissionCodes.SystemAdmin => true,
+        PermissionCodes.SystemDatabaseView => true,
+        PermissionCodes.AuthManage => true,
+        PermissionCodes.OrganizationManage => true,
+        PermissionCodes.RoleManage => true,
+        PermissionCodes.PermissionManage => true,
+        PermissionCodes.NotificationManage => true,
+        PermissionCodes.NotificationTemplateManage => true,
+        PermissionCodes.NotificationRuleManage => true,
+        PermissionCodes.ActivityLogManage => true,
+        PermissionCodes.ActivityLogView => true,
+        PermissionCodes.AiManage => true,
+        PermissionCodes.DocumentManage => true,
+        PermissionCodes.UtilizationCertificateManage => true,
+        _ => false
+    };
 
     private static async Task CleanupLegacyPermissionsAsync(ApplicationDbContext context, CancellationToken ct)
     {
@@ -167,32 +160,45 @@ internal static class RolesAndPermissionsSeeder
     {
         var permissions = await context.Permissions.ToDictionaryAsync(p => p.Code, ct);
         var allPermissionCodes = permissions.Keys.ToArray();
+
+        // Roles hold the "all departments" flavour wherever their access is meant to
+        // span the organization, and the own-department flavour where it is not.
+        // An ALL grant already implies its own-scope counterpart, so granting the
+        // ALL code alone is sufficient and keeps each list short.
+        string All(string code) => PermissionCodes.ToAllScope(code);
+
         var directorPermissionCodes = new[]
         {
-            PermissionCodes.DepartmentManage,
-            PermissionCodes.ProjectManage,
-            PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneManage,
-            PermissionCodes.TaskManage,
-            PermissionCodes.SubtaskManage,
-            PermissionCodes.UserManage,
+            // A Director administers one organization, so their working reach is
+            // every department inside it.
+            All(PermissionCodes.DepartmentManage),
+            All(PermissionCodes.ProjectManage),
+            All(PermissionCodes.MilestoneManage),
+            All(PermissionCodes.TaskManage),
+            All(PermissionCodes.SubtaskManage),
+            All(PermissionCodes.UserManage),
+            All(PermissionCodes.DocumentManage),
+            All(PermissionCodes.UtilizationCertificateManage),
+            All(PermissionCodes.ReportManage),
             PermissionCodes.NotificationManage,
             PermissionCodes.ActivityLogManage,
-            PermissionCodes.ReportManage,
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
-            PermissionCodes.AiManage,
-            PermissionCodes.UtilizationCertificateManage
+            PermissionCodes.AiManage
         };
         var projectManagerPermissionCodes = new[]
         {
+            // A Project Manager works on their own projects and the teams on them,
+            // so document uploads are open at all three levels but stay department
+            // scoped.
             PermissionCodes.DepartmentView,
             PermissionCodes.ProjectManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
+            PermissionCodes.DocumentManage,
             PermissionCodes.UserView,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogCreate,
@@ -202,12 +208,15 @@ internal static class RolesAndPermissionsSeeder
         };
         var departmentHeadPermissionCodes = new[]
         {
+            // A Department Head owns their department: manage within it, not across
+            // the organization.
             PermissionCodes.DepartmentManage,
             PermissionCodes.ProjectManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneManage,
             PermissionCodes.TaskManage,
             PermissionCodes.SubtaskManage,
+            PermissionCodes.DocumentManage,
             PermissionCodes.UserManage,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogView,
@@ -227,6 +236,10 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.MilestoneView,
             PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
             PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
+            // A team member contributes to their own work, so documents are
+            // uploadable at task level only.
+            PermissionCodes.DocumentView,
+            PermissionCodes.DocumentUploadTask,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogCreate,
             PermissionCodes.UtilizationCertificateView,
@@ -241,6 +254,7 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.MilestoneView,
             PermissionCodes.TaskView,
             PermissionCodes.SubtaskView,
+            PermissionCodes.DocumentView,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogView,
             PermissionCodes.UtilizationCertificateView

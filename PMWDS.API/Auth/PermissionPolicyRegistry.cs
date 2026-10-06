@@ -51,6 +51,24 @@ public static class PermissionPolicyRegistry
         AddCrud(options, "Permissions", PermissionCodes.PermissionManage, PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
         AddCrud(options, "Notifications", PermissionCodes.NotificationManage, PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage);
         AddCrud(options, "UtilizationCertificates", PermissionCodes.UtilizationCertificateManage, PermissionCodes.UtilizationCertificateView, PermissionCodes.UtilizationCertificateCreate, PermissionCodes.UtilizationCertificateEdit, PermissionCodes.UtilizationCertificateDelete);
+        AddCrud(options, "Documents", PermissionCodes.DocumentManage, PermissionCodes.DocumentView, PermissionCodes.DocumentCreate, PermissionCodes.DocumentEdit, PermissionCodes.DocumentDelete);
+
+        // Which levels of the hierarchy a role may upload into. Held as individual
+        // permissions rather than one flag so the upload dialog can offer exactly
+        // the levels the holder is entitled to, with no extra round trip.
+        AddUploadLevelPolicy(
+            options,
+            AuthorizationPolicies.DocumentUpload,
+            PermissionCodes.DocumentUploadProject,
+            PermissionCodes.DocumentUploadMilestone,
+            PermissionCodes.DocumentUploadTask);
+
+        AddUploadLevelPolicy(
+            options,
+            AuthorizationPolicies.UtilizationCertificateDocumentUpload,
+            PermissionCodes.UtilizationCertificateDocumentUploadProject,
+            PermissionCodes.UtilizationCertificateDocumentUploadMilestone,
+            PermissionCodes.UtilizationCertificateDocumentUploadTask);
 
         // Review is deliberately NOT part of AddCrud: a contributor must never be able
         // to approve their own utilization certificate.
@@ -79,6 +97,38 @@ public static class PermissionPolicyRegistry
         options.AddPolicy($"{prefix}.Edit", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, edit));
         options.AddPolicy($"{prefix}.Delete", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, delete));
         options.AddPolicy($"{prefix}.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage));
+    }
+
+    /// <summary>
+    /// Registers one policy per upload level, plus the umbrella that admits any
+    /// level. <paramref name="featureManage"/> is the umbrella for the feature, so a
+    /// full manager is never blocked from uploading at a level that has no separate
+    /// grant.
+    /// </summary>
+    private static void AddUploadLevelPolicy(
+        AuthorizationOptions options,
+        string prefix,
+        string featureManage,
+        params string[] levels)
+    {
+        options.AddPolicy($"{prefix}.Any", policy =>
+            RequireAny(policy, [PermissionCodes.SystemAdmin, featureManage, .. levels]));
+
+        foreach (var level in levels)
+        {
+            options.AddPolicy($"{prefix}.{LevelName(level)}", policy =>
+                RequireAny(policy, PermissionCodes.SystemAdmin, featureManage, level));
+        }
+    }
+
+    /// <summary>
+    /// Derives the trailing segment of a per-level policy name from its permission
+    /// code — DOCUMENT_UPLOAD_MILESTONE becomes "Milestone".
+    /// </summary>
+    private static string LevelName(string levelCode)
+    {
+        var segments = levelCode.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length == 0 ? levelCode : segments[^1];
     }
 
     private static void RequireAny(AuthorizationPolicyBuilder policy, params string[] permissionCodes)

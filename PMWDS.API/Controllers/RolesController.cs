@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PMWDS.API.Auth;
 using PMWDS.API.Middleware;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
@@ -340,16 +341,10 @@ public class RolesController : BaseApiController
             .Distinct()
             .ToListAsync(ct);
 
-        var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
-        foreach (var manageCode in codes)
-        {
-            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
-            {
-                foreach (var c in covered) expanded.Add(c);
-            }
-        }
-
-        return expanded;
+        // Expands umbrella "manage" and cross-scope "all departments" grants so this
+        // reflects what the API will actually let the user assign, not just the
+        // literal codes on their roles.
+        return PermissionAuthorizationHandler.Expand(codes);
     }
 
     private async Task<List<Permission>> LoadAssignablePermissionsAsync(IReadOnlyCollection<Guid> permissionIds, CancellationToken ct)
@@ -365,10 +360,15 @@ public class RolesController : BaseApiController
             .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !PermissionCatalog.AdminOnlyModules.Contains(p.Module))
             .ToList();
 
+        // A permission implied by another that is also selected is redundant: storing it
+        // would let the role's effective rights drift away from what the UI showed.
+        // Keep the umbrella, drop what it covers.
         var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
+
+        var coveredCodes = PermissionCatalog.EffectiveCoverage
             .Where(pair => selectedCodes.Contains(pair.Key))
             .SelectMany(pair => pair.Value)
+            .Where(selectedCodes.Contains)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return assignable
