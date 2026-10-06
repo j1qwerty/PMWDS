@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { InfoTip, StatHoverCard } from "../../shared";
+import { useEffect, useState } from "react";
+import { InfoTip } from "../../shared";
 import { DASHBOARD_OVERVIEW_CARD_HEIGHT } from "../../constants";
 
 interface ActivityDataPoint {
@@ -18,12 +18,6 @@ interface ActivityProps {
   filterOptions?: string[];
   selectedFilter?: string;
   onFilterChange?: (filter: string) => void;
-  /**
-   * Optional breakdown for the hover panel: what the activity actually was.
-   * Counted from the same log entries that produce the chart, so the panel can
-   * never disagree with the line.
-   */
-  breakdown?: { label: string; count: number }[];
   /** True when the figures are limited to one person, matching the chart. */
   isFiltered?: boolean;
   filterLabel?: string;
@@ -45,7 +39,6 @@ export function Activity({
   filterOptions = ["All Tasks"],
   selectedFilter = "All Tasks",
   onFilterChange,
-  breakdown = [],
   isFiltered = false,
   filterLabel,
 }: ActivityProps) {
@@ -54,36 +47,16 @@ export function Activity({
   const activityData: ActivityDataPoint[] =
     data && data.length > 0 ? data : EMPTY_WEEK;
 
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  // Two indices rather than one.
+  //
+  // Hover is transient - it follows the pointer. Click pins, so the popup survives
+  // the pointer leaving to reach a button inside it. Hover wins while it is active,
+  // so moving along the line reads the days in turn, and the pinned day reappears
+  // once the pointer is off the chart.
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
 
   const total = activityData.reduce((sum, point) => sum + point.value, 0);
-  const busiest = activityData.reduce((top, point) => (point.value > top.value ? point : top), activityData[0]);
-  const quietest = activityData.reduce((low, point) => (point.value < low.value ? point : low), activityData[0]);
-
-  // Panel rows. When a breakdown is available it lists what the activity
-  // actually was - that is the part the line cannot show - and falls back to
-  // the per-day counts otherwise, so the panel is never empty for no reason.
-  const dayRows = [...activityData]
-    .sort((a, b) => b.value - a.value)
-    .map((point) => ({
-      title: point.day,
-      subtitle: point.value === 0 ? "Nothing logged" : `${point.value} event${point.value === 1 ? "" : "s"}`,
-      meta: total > 0 ? `${Math.round((point.value / total) * 100)}%` : undefined,
-    }));
-
-  const eventRows = breakdown.map((entry) => ({
-    title: entry.label,
-    meta: `${entry.count}`,
-    subtitle: total > 0 ? `${Math.round((entry.count / total) * 100)}% of activity` : undefined,
-  }));
-
-  const scope = isFiltered
-    ? `${filterLabel ?? selectedFilter} · last 7 days`
-    : "Your workspace · last 7 days";
-
-  const panelRows = eventRows.length > 0 ? eventRows : dayRows;
-  const panelHint = eventRows.length > 0 ? scope : `${scope} · by day`;
 
   // Chart dimensions
   const width = 300;
@@ -117,27 +90,26 @@ export function Activity({
   const areaPath = `${linePath} L${points[points.length - 1].x},${height} L${points[0].x},${height} Z`;
 
   // ── Day popup ──────────────────────────────────────────────────────────
-  // Clicking a point reports that day. Closed on Escape and on a click outside, so
-  // it cannot be left pinned open over the chart.
-  //
-  // The index is clamped rather than reset by an effect when the data changes.
-  // A filter switch rebuilds the points, so the stored index would otherwise point
-  // at a different day than the one the user clicked; clamping just drops it.
-  const safeIndex =
-    selectedIndex !== null && selectedIndex < activityData.length ? selectedIndex : null;
-  const selected = safeIndex === null ? null : points[safeIndex];
+  // Both the index and the lookup are clamped rather than reset by an effect when
+  // the data changes. A filter switch rebuilds the points, so a stored index would
+  // otherwise point at a different day than the one the user was looking at.
+  const inRange = (index: number | null) =>
+    index !== null && index >= 0 && index < activityData.length ? index : null;
+
+  const activeIndex = inRange(hoveredIndex) ?? inRange(pinnedIndex);
+  const selected = activeIndex === null ? null : points[activeIndex];
 
   useEffect(() => {
-    if (selectedIndex === null) return;
+    if (pinnedIndex === null) return;
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedIndex(null);
+      if (e.key === "Escape") setPinnedIndex(null);
     };
     const onClickAway = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest("[data-activity-day]")) return;
       if (target?.closest("[data-activity-popup]")) return;
-      setSelectedIndex(null);
+      setPinnedIndex(null);
     };
 
     document.addEventListener("keydown", onKey);
@@ -146,7 +118,7 @@ export function Activity({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClickAway);
     };
-  }, [selectedIndex]);
+  }, [pinnedIndex]);
 
   // Popup placement. Anchored in HTML rather than SVG because the chart scales with
   // preserveAspectRatio="none", which would turn any circle drawn inside it into an
@@ -160,25 +132,23 @@ export function Activity({
   const popupBelow = popupTopPercent < 50;
   const popupShift = popupLeftPercent > 60 ? "-100%" : popupLeftPercent < 40 ? "0%" : "-50%";
 
+  const hoverProps = (index: number) => ({
+    onMouseEnter: () => setHoveredIndex(index),
+    onMouseLeave: () => setHoveredIndex(null),
+    onFocus: () => setHoveredIndex(index),
+    onBlur: () => setHoveredIndex(null),
+  });
+
+  const clickProps = (index: number) => ({
+    onClick: () => setPinnedIndex(inRange(pinnedIndex) === index ? null : index),
+  });
+
+  const scopeLabel = isFiltered ? filterLabel ?? selectedFilter : "Your workspace";
+
   return (
     <div
-      ref={cardRef}
       className={`group bg-white rounded-2xl p-5 border border-slate-100 shadow-md ${DASHBOARD_OVERVIEW_CARD_HEIGHT} flex flex-col`}
     >
-      <StatHoverCard
-        anchorRef={cardRef}
-        content={{
-          heading: `${title} · last 7 days`,
-          hint: panelHint,
-          rows: panelRows,
-          emptyText: "No activity recorded in this period.",
-          footer:
-            total === 0
-              ? "Nothing logged in the last 7 days"
-              : `${total} event${total === 1 ? "" : "s"} in total · busiest ${busiest.day} (${busiest.value}), quietest ${quietest.day} (${quietest.value})`,
-        }}
-      />
-
       <div className="flex justify-between items-center mb-4 relative">
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
         <div className="flex items-center gap-2">
@@ -201,7 +171,7 @@ export function Activity({
             points={[
               "Each point counts activity log entries recorded that day: tasks created, updated, commented on, escalated or completed, plus project and milestone changes.",
               "The label under each point is the real calendar date, not just the weekday.",
-              "Click any point to see what was logged on that day. Click it again, or press Escape, to close.",
+              "Hover a point, or its label, to see what was logged that day. Click to keep it open.",
               "A day at zero means nothing was logged, not that the data is missing.",
             ]}
             note="This is a count of recorded events, not a measure of how much work was done."
@@ -218,8 +188,8 @@ export function Activity({
             <span className="material-symbols-outlined text-2xl text-slate-300 mb-1.5">insights</span>
             <p className="text-xs font-medium text-slate-500">No activity in the last 7 days</p>
             <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
-              {isFiltered ? filterLabel ?? selectedFilter : "Your workspace"} has no recorded events
-              in this period. The chart appears once something is logged.
+              {scopeLabel} has no recorded events in this period. The chart appears once
+              something is logged.
             </p>
           </div>
         ) : (
@@ -248,16 +218,16 @@ export function Activity({
               <path d={areaPath} fill="url(#activityGradient)" opacity="0.1" />
             </svg>
 
-            {/* Clickable points, in HTML so they stay circular under the chart's
+            {/* Interactive points, in HTML so they stay circular under the chart's
                 non-uniform scaling and so no coordinate maths is needed. */}
             {points.map((point, index) => {
-              const isSelected = safeIndex === index;
+              const isActive = activeIndex === index;
+              const isPinned = inRange(pinnedIndex) === index;
               return (
                 <button
                   key={point.day}
                   type="button"
                   data-activity-day={index}
-                  onClick={() => setSelectedIndex(isSelected ? null : index)}
                   aria-label={`${point.day}: ${point.value} event${point.value === 1 ? "" : "s"}`}
                   className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer
                              focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
@@ -271,16 +241,20 @@ export function Activity({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    zIndex: isSelected ? 20 : 10,
+                    zIndex: isActive ? 20 : 10,
                   }}
+                  {...hoverProps(index)}
+                  {...clickProps(index)}
                 >
                   <span
                     className={`block rounded-full transition-all ${
-                      isSelected
+                      isPinned
+                        ? "bg-violet-700 ring-4 ring-violet-300"
+                        : isActive
                         ? "bg-violet-600 ring-4 ring-violet-200"
                         : point.value === 0
                         ? "bg-white border-2 border-slate-300 group-hover:border-violet-400"
-                        : "bg-violet-500 group-hover:bg-violet-600 group-hover:ring-4 group-hover:ring-violet-100"
+                        : "bg-violet-500 group-hover:bg-violet-600"
                     }`}
                     style={{ width: 9, height: 9 }}
                   />
@@ -335,13 +309,15 @@ export function Activity({
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedIndex(null)}
-                  className="mt-2.5 w-full text-[10px] font-semibold text-slate-500 hover:text-slate-700 py-1 rounded-md hover:bg-slate-50 transition-colors"
-                >
-                  Close
-                </button>
+                {inRange(pinnedIndex) !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setPinnedIndex(null)}
+                    className="mt-2.5 w-full text-[10px] font-semibold text-slate-500 hover:text-slate-700 py-1 rounded-md hover:bg-slate-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -354,12 +330,11 @@ export function Activity({
             key={index}
             type="button"
             data-activity-day={index}
-            onClick={() =>
-              setSelectedIndex(safeIndex === index ? null : index)
-            }
             className={`p-0 transition-colors hover:text-violet-500 ${
-              safeIndex === index ? "text-violet-600 font-semibold" : ""
+              activeIndex === index ? "text-violet-600 font-semibold" : ""
             }`}
+            {...hoverProps(index)}
+            {...clickProps(index)}
           >
             {point.day}
           </button>

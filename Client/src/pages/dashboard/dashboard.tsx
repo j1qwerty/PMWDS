@@ -403,10 +403,8 @@ export function DashboardPage() {
         ? activityLogs.filter((log) => log.userId === auth.userId)
         : activityLogs;
 
-    // Counted over the same logs and the same window as the chart, so the hover
-    // panel can never report a different total than the line above it.
-    const byType = new Map<string, number>();
-
+    // Counted over the same logs and the same window as the chart, so a day's
+    // detail can never report a different total than the line above it.
     sourceLogs.forEach((log) => {
       const at = new Date(log.timestamp);
       if (Number.isNaN(at.getTime())) return;
@@ -415,11 +413,9 @@ export function DashboardPage() {
       if (!bucket) return;
 
       bucket.value++;
+      // Tallied per day, so hovering or clicking a point can say what happened
+      // that day rather than only how many events there were.
       const label = (log.activityType || "Other").trim() || "Other";
-      byType.set(label, (byType.get(label) ?? 0) + 1);
-
-      // Also tallied per day, so clicking a point can say what happened that day
-      // rather than only how many events there were.
       bucket.events.set(label, (bucket.events.get(label) ?? 0) + 1);
     });
 
@@ -427,16 +423,12 @@ export function DashboardPage() {
       points: days.map(({ label, value, events }) => ({
         day: label,
         value,
+        // Busiest types first; capped so the popup stays short.
         events: [...events.entries()]
           .map(([label, count]) => ({ label, count }))
           .sort((a, b) => b.count - a.count)
           .slice(0, 6),
       })),
-      breakdown: [...byType.entries()]
-        .map(([label, count]) => ({ label, count }))
-        // Busiest types first; cap the list so the hover panel stays short.
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8),
     };
   }, [activityLogs, selectedActivityFilter, auth]);
 
@@ -472,7 +464,6 @@ export function DashboardPage() {
             {/* Activity Chart - the task filter dropdown is hidden via SHOW_ACTIVITY_FILTER */}
             <Activity
               data={activityData.points}
-              breakdown={activityData.breakdown}
               isFiltered={selectedActivityFilter === "My Tasks"}
               filterLabel={selectedActivityFilter === "My Tasks" ? "Your activity" : undefined}
               title="Activity"
