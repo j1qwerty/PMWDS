@@ -38,7 +38,6 @@ const allDemoAccountGroups = [
       { email: "superadmin@org1.com", label: "SuperAdmin", icon: "shield_person", color: "bg-red-500" },
       { email: "admin@org1.com", label: "Admin", icon: "admin_panel_settings", color: "bg-purple-500" },
       { email: "manager@org1.com", label: "Manager", icon: "supervisor_account", color: "bg-blue-500" },
-      { email: "rajesh.verma@pwd.up.gov.in", label: "Chief Engineer", icon: "engineering", color: "bg-sky-500" },
     ]
   },
   {

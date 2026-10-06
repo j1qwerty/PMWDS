@@ -358,13 +358,7 @@ export default function TaskPerformanceTable({
             title="Task Performance"
             summary="Every task in the workspace, searchable and filterable, showing how far along each one is."
             points={[
-              "The filters above narrow the list by project, department, status, priority, or text - the text box also matches project and assignee names.",
-              "This is the whole workspace, not just your own tasks. The task cards above it count only yours.",
-              "Click a task name to open its full details, or use the action buttons to edit or delete it.",
-              "Sorting is by any column heading, and paging is server-side, so the counts stay correct on every page.",
-              "Overdue and Delayed are not the same thing. Overdue is a date - unfinished and past its due date. Delayed is a status someone set.",
-              'A task can be overdue while still showing "Not Started". Those rows carry a red "Nd overdue" badge so the two are never confused.',
-              "The Overdue only chip appears when the list is filtered to past-due tasks of any status, which is what clicking the dashboard's Delayed card does."
+              'A task can be overdue while still showing "Not Started". Those rows carry a red badge showing how many days past due they are, such as "7d", so the two are never confused.',
             ]}
             note="Progress is the task's own percentage, or the average of its subtasks when it has any."
           />
