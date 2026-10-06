@@ -379,12 +379,22 @@ export function DashboardPage() {
   // weekday buckets, which lumped every event ever created on e.g. a Saturday into one bar.
   const activityData = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const days: { key: string; label: string; value: number }[] = [];
+    const days: {
+      key: string;
+      label: string;
+      value: number;
+      events: Map<string, number>;
+    }[] = [];
     const now = new Date();
     for (let offset = 6; offset >= 0; offset--) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      days.push({ key, label: `${dayNames[d.getDay()]} ${d.getDate()}`, value: 0 });
+      days.push({
+        key,
+        label: `${dayNames[d.getDay()]} ${d.getDate()}`,
+        value: 0,
+        events: new Map<string, number>(),
+      });
     }
     const byKey = new Map(days.map((d) => [d.key, d]));
 
@@ -407,10 +417,21 @@ export function DashboardPage() {
       bucket.value++;
       const label = (log.activityType || "Other").trim() || "Other";
       byType.set(label, (byType.get(label) ?? 0) + 1);
+
+      // Also tallied per day, so clicking a point can say what happened that day
+      // rather than only how many events there were.
+      bucket.events.set(label, (bucket.events.get(label) ?? 0) + 1);
     });
 
     return {
-      points: days.map(({ label, value }) => ({ day: label, value })),
+      points: days.map(({ label, value, events }) => ({
+        day: label,
+        value,
+        events: [...events.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6),
+      })),
       breakdown: [...byType.entries()]
         .map(([label, count]) => ({ label, count }))
         // Busiest types first; cap the list so the hover panel stays short.
