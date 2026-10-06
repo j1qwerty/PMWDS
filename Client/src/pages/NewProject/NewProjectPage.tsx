@@ -65,9 +65,15 @@ const LEGACY_STEPS: StepConfig[] = [
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
 
-// Executive flow. Steps 5-7 (Departments / Users / Tasks) are intentionally
-// hidden for every executive role - see `visibleSteps` below.
-const EXECUTIVE_STEPS: StepConfig[] = [
+// Standard flow: details, milestones, assign departments per milestone, dependencies.
+// The Departments / Users / Tasks steps are dropped by `visibleSteps` below, so the
+// project's departments come from the milestone assignments rather than a separate
+// step, and tasks are added afterwards from the project's Tasks tab.
+//
+// LEGACY_STEPS above remains only as a fallback for a role that holds PROJECT_MANAGE
+// without one of the recognised role keys - a custom role built on the Roles page.
+// Every seeded role that can open this wizard takes the standard flow.
+const STANDARD_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "milestones", label: "Milestones", icon: "flag" },
   { key: "milestoneDepartments", label: "Assign Departments", icon: "account_tree" },
@@ -150,17 +156,26 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
   const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
-  const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
-  const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
+  const isProjectManager = hasRoleKey(auth?.roleKeys, RoleKey.ProjectManager);
+
+  // The wizard is only reachable by a holder of PROJECT_MANAGE, which in the seeded
+  // roles means these four. Project manager used to be left out of this list and so
+  // fell through to the six-step legacy flow - departments and users as separate
+  // steps - even though its own submit path was already the shared one below.
+  //
+  // Kept as an explicit list rather than "always the standard flow" because a custom
+  // role built on the Roles page can hold PROJECT_MANAGE without any of these role
+  // keys, and that role still needs steps to render.
+  const usesStandardFlow = isSuperAdmin || isDirector || isDepartmentHead || isProjectManager;
+  const steps = usesStandardFlow ? STANDARD_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
   const earlyFinishStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
+  const canEarlyFinish = usesStandardFlow && currentStep === earlyFinishStepIndex;
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  // Executive flows (super admin, director, department head) stop after the
-  // Dependencies step: the Departments / Users / Tasks steps are hidden and the
-  // final visible step submits with "Finish" instead of showing "Next".
-  const visibleSteps = usesExecutiveFlow
+  // The standard flow stops after Dependencies: Departments / Users / Tasks are
+  // hidden, and the final visible step submits with "Finish" instead of "Next".
+  const visibleSteps = usesStandardFlow
     ? steps.slice(0, dependenciesStepIndex + 1)
     : steps;
 
@@ -193,7 +208,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           endDate >= startDate
         );
       case "departments": return selectedDepartmentIds.length > 0;
-      case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
+      case "milestones": return usesStandardFlow ? milestones.length > 0 : true;
       case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
       case "dependencies": return true;
       case "users": return true;
@@ -217,7 +232,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const showSkip = !usesExecutiveFlow && currentStepKey === "milestones" && milestones.length === 0 && dependencies.length === 0;
+  const showSkip = !usesStandardFlow && currentStepKey === "milestones" && milestones.length === 0 && dependencies.length === 0;
 
   const handleSkip = () => {
     const tasksStepIndex = steps.findIndex((step) => step.key === "tasks");
@@ -227,10 +242,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const handleFinish = async () => {
     if (!auth) return;
     const milestoneDeptIds = Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]));
-    const assignedDepartmentIds = usesExecutiveFlow
+    const assignedDepartmentIds = usesStandardFlow
       ? milestoneDeptIds
       : selectedDepartmentIds;
-    const execPrimaryDeptId = usesExecutiveFlow && primaryDepartmentId
+    const resolvedPrimaryDeptId = usesStandardFlow && primaryDepartmentId
       ? primaryDepartmentId
       : (assignedDepartmentIds[0] || "");
     if (assignedDepartmentIds.length === 0) {
@@ -256,7 +271,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         // The budget field is in lakhs; the API stores rupees.
         plannedBudget: lakhsToRupees(budget),
         organizationId: "",
-        departmentId: execPrimaryDeptId,
+        departmentId: resolvedPrimaryDeptId,
         departmentIds: assignedDepartmentIds,
         projectManagerId: "",
         priority,
@@ -337,7 +352,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
 
   const departmentUsers = useMemo(() => {
-    const effectiveDepartmentIds = usesExecutiveFlow
+    const effectiveDepartmentIds = usesStandardFlow
       ? milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]
       : selectedDepartmentIds;
     if (effectiveDepartmentIds.length === 0) return [];
@@ -353,7 +368,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         u.departments?.some((d) => deptSet.has(d.departmentId));
       return belongsToDept;
     });
-  }, [selectedDepartmentIds, milestones, data.users, usesExecutiveFlow]);
+  }, [selectedDepartmentIds, milestones, data.users, usesStandardFlow]);
 
   return (
     <div className="max-w-full mx-auto ">

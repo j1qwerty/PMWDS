@@ -237,7 +237,31 @@ public class ProjectsController : BaseApiController
             return BadRequest(new { message = "Project manager must belong to one of the selected department organizations." });
         }
 
-        var result = await Mediator.Send(new CreateProjectCommand(dto), ct);
+        // Default the manager to the creator when they hold the project-manager role
+        // and none was supplied.
+        //
+        // The wizard sends an empty ProjectManagerId, so every wizard-created project
+        // was managerless. That silently broke the project-manager role specifically:
+        // POST /milestones requires CanManageProjectAsync, which grants the project's
+        // own manager. Nobody was the manager, and a project manager is neither
+        // superadmin, nor a director, nor the head of the project's primary
+        // department, so the check failed and creating the first milestone returned
+        // 403. The project row was left behind with nothing on it. Super admin,
+        // director and department head never hit this because they satisfy
+        // CanManageProjectAsync through their own role.
+        //
+        // Scoped to the project-manager role on purpose. A director or department head
+        // creating a project is not thereby its manager, and defaulting them into that
+        // role would change who can edit the project afterwards.
+        var effectiveDto = dto;
+        if (string.IsNullOrEmpty(dto.ProjectManagerId) &&
+            _scope.IsProjectManager &&
+            _currentUser.UserId is { } creatorId)
+        {
+            effectiveDto = dto with { ProjectManagerId = creatorId };
+        }
+
+        var result = await Mediator.Send(new CreateProjectCommand(effectiveDto), ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Project Created",
