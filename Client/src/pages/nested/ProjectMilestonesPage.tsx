@@ -535,6 +535,7 @@ export function ProjectMilestonesPage() {
         initialData={milestoneModal.edit}
         departments={appData.departments}
         organizations={appData.organizations}
+        projectDepartmentIds={ws.project.departmentIds}
         isSuperAdmin={perm.isSuperAdmin}
         userOrganizationId={userOrganizationId}
         projectEndDate={ws.project.plannedEndDate?.split("T")[0] ?? ""}

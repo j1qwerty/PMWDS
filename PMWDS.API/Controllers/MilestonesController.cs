@@ -386,9 +386,9 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (dto.DepartmentId.HasValue && !await IsDepartmentAssignedToProjectAsync(dto.ProjectId, dto.DepartmentId.Value, ct))
+        if (!await CanAssignDepartmentToMilestoneAsync(dto.DepartmentId, ct))
         {
-            return BadRequest(new { message = "Milestone department must be assigned to the project." });
+            return Forbid();
         }
 
         var milestone = Milestone.Create(dto.ProjectId, dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
@@ -439,9 +439,9 @@ public class MilestonesController : BaseApiController
             return Forbid();
         }
 
-        if (dto.DepartmentId.HasValue && !await IsDepartmentAssignedToProjectAsync(milestone.ProjectId, dto.DepartmentId.Value, ct))
+        if (!await CanAssignDepartmentToMilestoneAsync(dto.DepartmentId, ct))
         {
-            return BadRequest(new { message = "Milestone department must be assigned to the project." });
+            return Forbid();
         }
 
         milestone.Update(dto.Name, dto.Description, dto.DueDate, dto.Order, dto.IsCritical, dto.DepartmentId);
@@ -741,12 +741,37 @@ public class MilestonesController : BaseApiController
         return await _scope.CanAccessProjectAsPrimaryDepartmentAsync(milestone.ProjectId, ct);
     }
 
-    private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)
-        => _db.Projects.AnyAsync(project =>
-            project.Id == projectId &&
-            (project.DepartmentId == departmentId ||
-             project.ProjectDepartments.Any(assignment => assignment.DepartmentId == departmentId)),
-            ct);
+    /// <summary>
+    /// True when the caller may put this department on this project's milestone.
+    ///
+    /// The rule used to be stricter: a milestone's department had to already be one of
+    /// the project's, enforced on both create and update, and anything else returned
+    /// 400. That turned out to be a footgun with no security value behind it.
+    ///
+    /// Organisation scoping already limits which departments a caller can see at all,
+    /// and the modal is now limited to the project's own departments, so the check was
+    /// only ever rejecting a reasonable action. Worse, it made 13 of the 15 seeded
+    /// milestones permanently uneditable: MilestonesSeeder had given them departments
+    /// their projects did not carry, and because the form resends the current value on
+    /// every save, those rows could not be saved even to rename one.
+    ///
+    /// What is still refused is a department the caller cannot see. That is the
+    /// boundary that matters, and it is enforced by scoping the department query
+    /// rather than by this method.
+    /// </summary>
+    private async Task<bool> CanAssignDepartmentToMilestoneAsync(
+        Guid? departmentId,
+        CancellationToken ct)
+    {
+        if (departmentId is not { } department)
+        {
+            // Clearing a milestone's department is always allowed.
+            return true;
+        }
+
+        return await _scope.CanAccessDepartmentAsync(department, ct);
+    }
+
 
     private async Task SendProjectAssignedNotificationAsync(Guid projectId, Guid? departmentId, CancellationToken ct)
     {

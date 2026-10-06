@@ -112,7 +112,33 @@ internal static class MilestonesSeeder
 
     private static MilestoneSpec[] GetMilestoneSpecs(Project project, List<Department> departments)
     {
-        Guid Dept(string code) => departments.FirstOrDefault(d => d.Code == code)?.Id ?? departments.First().Id;
+        // Restricted to the departments this project actually has.
+        //
+        // Previously this looked up codes across every department in the system, so a
+        // milestone could be given REV or JAL for a project carrying neither. The API
+        // requires a milestone's department to be one of its project's, which left 13
+        // of the 15 seeded milestones permanently uneditable - any save resent the
+        // offending department and was refused, even one that only renamed it.
+        var projectDepartmentIds = project.DepartmentId != Guid.Empty
+            ? new HashSet<Guid> { project.DepartmentId }
+            : new HashSet<Guid>();
+        foreach (var assignment in project.ProjectDepartments)
+        {
+            projectDepartmentIds.Add(assignment.DepartmentId);
+        }
+
+        var available = departments.Where(d => projectDepartmentIds.Contains(d.Id)).ToList();
+        if (available.Count == 0)
+        {
+            available = departments;
+        }
+
+        // Falls back to the project's own primary department rather than an unrelated
+        // one, so the seeded data satisfies the same rule the API enforces.
+        Guid Dept(string code)
+            => available.FirstOrDefault(d => d.Code == code)?.Id
+               ?? available.FirstOrDefault(d => d.Id == project.DepartmentId)?.Id
+               ?? available.First().Id;
         var start = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
 
         return new[]

@@ -593,7 +593,8 @@ export default function TaskPerformanceTable({
                           identifies a task, and the milestone is what the work is
                           being delivered under. */}
                       <div className="text-xs text-slate-400 flex items-center gap-1 flex-wrap">
-                        <span>{task.projectName ?? "General"}</span>
+                        <span><span className="font-bold">Proj :  </span>{task.projectName ?? "General"}</span>
+                        <span className="font-bold">Mile : </span>
                         {task.milestoneName && (
                           <>
                             <span className="text-slate-300">/</span>

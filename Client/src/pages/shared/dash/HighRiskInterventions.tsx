@@ -34,9 +34,6 @@ export function HighRiskInterventions({ tasks = [], onSelectTask }: HighRiskInte
             summary="The number is how many tasks have been escalated because they are stuck or at risk. An escalation is raised automatically when a task passes its due date without finishing, and it can also be raised by a manager."
             points={[
               "Each row shows the task, the project it belongs to, who owns it, and when it was due.",
-              "Hover a row for its milestone and escalation level.",
-              "Click any row to open that task inside its project.",
-              "The red dot reflects the task's current status.",
             ]}
             note="Escalated tasks are not deleted - resolving one returns it to the normal task list."
           />
@@ -80,6 +77,8 @@ export function HighRiskInterventions({ tasks = [], onSelectTask }: HighRiskInte
               <div className={`flex items-center gap-[clamp(4px,0.8vw,8px)] mb-[clamp(2px,0.4vw,4px)]`}>
                 <span className={`px-[clamp(4px,1vw,6px)] py-[clamp(2px,0.4vw,4px)] rounded text-[clamp(8px,1vw,10px)] font-bold uppercase ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border} border`}>
                   {task.priority}
+                  {task.dueDate && ` • Due ${new Date(task.dueDate).toLocaleDateString()}`}
+
                 </span>
                 <h3 className="text-[clamp(11px,1.4vw,14px)] font-semibold text-on-surface truncate flex-1 group-hover:text-primary transition-colors">
                   {task.title}
@@ -92,9 +91,8 @@ export function HighRiskInterventions({ tasks = [], onSelectTask }: HighRiskInte
               </div>
 
               <p className="text-[clamp(9px,1.1vw,11px)] text-on-surface-variant truncate">
-                {task.projectName || "General"}
+                proj: {task.projectName || "General"}
                 {task.assignedToUserName && ` • ${task.assignedToUserName}`}
-                {task.dueDate && ` • Due ${new Date(task.dueDate).toLocaleDateString()}`}
               </p>
             </button>
           );
