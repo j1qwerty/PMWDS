@@ -585,108 +585,132 @@ export default function TaskPerformanceTable({
               const lateDays = late ? daysOverdue(task) : 0;
 
               return (
-                <tr key={task.id} className="border-b border-slate-50 hover:bg-slate-50/60">
-                  <td className="py-4 px-2">
-                    <button className="text-left" onClick={() => onViewTask?.(task)}>
-                      <div className="font-medium text-slate-700">{task.title}</div>
-                      {/* Project and milestone together: the title alone rarely
-                          identifies a task, and the milestone is what the work is
-                          being delivered under. */}
-                      <div className="text-xs text-slate-400 flex items-center gap-1 flex-wrap">
-                        <span><span className="font-bold">Proj :  </span>{task.projectName ?? "General"}</span>
-                        <span className="font-bold">Mile : </span>
-                        {task.milestoneName && (
-                          <>
-                            <span className="text-slate-300">/</span>
-                            <span className="inline-flex items-center gap-0.5">
-                              <span className="material-symbols-outlined text-[11px] text-slate-300">flag</span>
-                              {task.milestoneName}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  </td>
-                  <td className="py-4 px-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 bg-slate-100 rounded-full h-1.5">
-                        <div 
-                          className={`${progressBarColor} h-1.5 rounded-full transition-all duration-300`} 
-                          style={{ width: `${Math.min(progress, 100)}%` }} 
-                        />
-                      </div>
-                      <span className={`text-xs font-medium ${progressTextColor}`}>{progress}%</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-2">
-                    <div className="flex flex-col gap-1 items-start">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}>{task.status}</span>
-                      {/*
-                        Only shown when the task is late but its status does not
-                        already say so. A task flagged Delayed needs no second
-                        badge; a Not Started task that overran does.
-                      */}
-                      {late && !flaggedDelayed && (
-                        <span
-                          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}. Its status is still ${task.status}, so nothing has flagged it yet.`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
-                        >
-                          <span className="material-symbols-outlined text-[11px] leading-none">schedule</span>
-                          {lateDays}d overdue
-                        </span>
-                      )}
-                      {late && flaggedDelayed && (
-                        <span
-                          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}.`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-500 border border-rose-100 whitespace-nowrap"
-                        >
-                          <span className="material-symbols-outlined text-[11px] leading-none">schedule</span>
-                          {lateDays}d
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-4 px-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}>{task.priority}</span>
-                  </td>
-                  <td className={`py-4 px-2 ${late ? "font-semibold text-rose-600" : "text-slate-500"}`}>
-                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not set"}
-                  </td>
-                  <td className="py-4 px-2">
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        className="text-cyan-500 bg-cyan-50 hover:text-cyan-500 hover:cursor-pointer hover:bg-cyan-100 rounded-lg inline-flex items-center justify-center"
-                        style={{ width: "28px", height: "28px" }}
-                        title="View task"
-                        onClick={() => onViewTask?.(task)}
-                      >
-                        <Icon name="view" size={16} />
-                      </button>
+               <tr
+  key={task.id}
+  className="border-b border-slate-50 hover:bg-slate-50/60 cursor-pointer"
+>
+  <td className="py-4 px-2">
+    <button className="text-left" onClick={() => onViewTask?.(task)}>
+      <div className="font-medium text-slate-700">{task.title}</div>
+      {/* Project and milestone together: the title alone rarely
+          identifies a task, and the milestone is what the work is
+          being delivered under. */}
+      <div className="text-xs text-slate-500 mt-1 flex flex-col gap-0.5">
+        <span>
+          <span className=" text-slate-600">Proj : </span>
+          {task.projectName ?? "General"}
+        </span>
+        {task.milestoneName && (
+          <span className="inline-flex items-center gap-0.5">
+            <span className="font-bold text-slate-600">Mile : </span>
+            <span className="text-slate-300">/</span>
+            <span className="material-symbols-outlined text-[11px] text-slate-400">
+              flag
+            </span>
+            {task.milestoneName}
+          </span>
+        )}
+      </div>
+    </button>
+  </td>
+  <td className="py-4 px-2">
+    <div className="flex items-center gap-2">
+      <div className="w-24 bg-slate-100 rounded-full h-1.5">
+        <div
+          className={`${progressBarColor} h-1.5 rounded-full transition-all duration-300`}
+          style={{ width: `${Math.min(progress, 100)}%` }}
+        />
+      </div>
+      <span className={`text-xs font-medium ${progressTextColor}`}>
+        {progress}%
+      </span>
+    </div>
+  </td>
+  <td className="py-4 px-2">
+    <div className="flex flex-col gap-1 items-start">
+      <span
+        className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}
+      >
+        {task.status}
+      </span>
+      {/*
+        Only shown when the task is late but its status does not
+        already say so. A task flagged Delayed needs no second
+        badge; a Not Started task that overran does.
+      */}
+      {late && !flaggedDelayed && (
+        <span
+          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}. Its status is still ${task.status}, so nothing has flagged it yet.`}
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap"
+        >
+          <span className="material-symbols-outlined text-[11px] leading-none">
+            schedule
+          </span>
+          {lateDays}d overdue
+        </span>
+      )}
+      {late && flaggedDelayed && (
+        <span
+          title={`Past due by ${lateDays} day${lateDays === 1 ? "" : "s"}.`}
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-rose-50 text-rose-500 border border-rose-100 whitespace-nowrap"
+        >
+          <span className="material-symbols-outlined text-[11px] leading-none">
+            schedule
+          </span>
+          {lateDays}d
+        </span>
+      )}
+    </div>
+  </td>
+  <td className="py-4 px-2">
+    <span
+      className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}
+    >
+      {task.priority}
+    </span>
+  </td>
+  <td
+    className={`py-4 px-2 ${late ? "font-semibold text-rose-600" : "text-slate-500"}`}
+  >
+    {task.dueDate
+      ? new Date(task.dueDate).toLocaleDateString()
+      : "Not set"}
+  </td>
+  <td className="py-4 px-2">
+    <div className="flex items-center gap-0.5">
+      <button
+        className="text-cyan-500 bg-cyan-50 hover:text-cyan-500 hover:cursor-pointer hover:bg-cyan-100 rounded-lg inline-flex items-center justify-center"
+        style={{ width: "28px", height: "28px" }}
+        title="View task"
+        onClick={() => onViewTask?.(task)}
+      >
+        <Icon name="view" size={16} />
+      </button>
 
-                      {canEdit && (
-                        <button
-                          className="p-1 text-amber-500 bg-amber-50 hover:text-amber-700 hover:bg-amber-100 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
-                          style={{ width: "28px", height: "28px" }}
-                          title="Edit task"
-                          onClick={() => onEditTask?.(task)}
-                        >
-                          <Icon name="edit" size={16} /> 
-                        </button>
-                      )}
+      {canEdit && (
+        <button
+          className="p-1 text-amber-500 bg-amber-50 hover:text-amber-700 hover:bg-amber-100 hover:cursor-pointer rounded-lg inline-flex items-center justify-center"
+          style={{ width: "28px", height: "28px" }}
+          title="Edit task"
+          onClick={() => onEditTask?.(task)}
+        >
+          <Icon name="edit" size={16} />
+        </button>
+      )}
 
-                      {canDelete && (
-                        <button
-                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg inline-flex items-center justify-center"
-                          style={{ width: "28px", height: "28px" }}
-                          title="Delete task"
-                          onClick={() => handleDeleteTask(task.id)}
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+      {canDelete && (
+        <button
+          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg inline-flex items-center justify-center"
+          style={{ width: "28px", height: "28px" }}
+          title="Delete task"
+          onClick={() => handleDeleteTask(task.id)}
+        >
+          <span className="material-symbols-outlined text-sm">delete</span>
+        </button>
+      )}
+    </div>
+  </td>
+</tr>
               );
             })}
           </tbody>

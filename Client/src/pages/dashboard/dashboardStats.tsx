@@ -25,10 +25,17 @@ interface StatCardProps {
   to: string;
   /** Plain-language "how this works" copy for the ? popup. */
   tip: { summary: string; points?: string[]; note?: string };
+  /**
+   * Whether to show the "?" explainer in the corner.
+   *
+   * Hidden on the dashboard at the owner's request - the copy is still here and still
+   * drives the hover panel, so this is a display switch rather than a removal.
+   */
+  showInfoTip?: boolean;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
-  icon, value, label, statusKey, heading, hint, rows, footer, tone, to, tip,
+  icon, value, label, statusKey, heading, hint, rows, footer, tone, to, tip, showInfoTip = true,
 }) => {
   const navigate = useNavigate();
   const colors = getStatusColor(statusKey);
@@ -43,16 +50,20 @@ const StatCard: React.FC<StatCardProps> = ({
     >
       <StatHoverCard content={{ heading, hint, rows, footer, tone }} anchorRef={cardRef} />
 
-      <div className="relative flex items-center gap-2 mb-2 pr-5">
+      {/* The right padding only existed to keep the label clear of the absolutely
+          positioned "?", so it goes when the "?" does. */}
+      <div className={`relative flex items-center gap-2 mb-2 ${showInfoTip ? "pr-5" : ""}`}>
         <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
           {icon}
         </div>
         <span className={`text-xs font-medium ${colors.badgeText} uppercase tracking-wider truncate`}>
           {label}
         </span>
-        <span className="absolute top-0 right-0">
-          <InfoTip title={heading} summary={tip.summary} points={tip.points} note={tip.note} />
-        </span>
+        {showInfoTip && (
+          <span className="absolute top-0 right-0">
+            <InfoTip title={heading} summary={tip.summary} points={tip.points} note={tip.note} />
+          </span>
+        )}
       </div>
 
       <div className="relative mt-2">
@@ -73,6 +84,8 @@ const StatCard: React.FC<StatCardProps> = ({
 
 interface DashboardStatsProps {
   projects?: Project[];
+  /** Hides the "?" explainer on every card. See StatCardProps.showInfoTip. */
+  showInfoTip?: boolean;
 }
 
 /** Days past the planned end date; 0 when the project is not yet late. */
@@ -143,7 +156,7 @@ function toRow(p: Project, kind: string): HoverRow {
   };
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
+const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [], showInfoTip = true }) => {
   const counts = {
     Total: projects.length,
     InProgress: projects.filter((p) => p.status === "InProgress").length,
@@ -275,7 +288,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {stats.map((stat) => (
-        <StatCard key={stat.label} {...stat} />
+        <StatCard key={stat.label} {...stat} showInfoTip={showInfoTip} />
       ))}
     </div>
   );

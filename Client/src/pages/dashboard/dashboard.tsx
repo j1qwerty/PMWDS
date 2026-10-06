@@ -425,7 +425,9 @@ export function DashboardPage() {
   return (
     <div>
 
-      <DashboardStats projects={projects} />
+      {/* The "?" explainer is hidden here at the owner's request. The hover panel on
+          each card still works and still uses the same copy. */}
+      <DashboardStats projects={projects} showInfoTip={false} />
       <section>
 
         {/* Dashboard Overview Section */}
