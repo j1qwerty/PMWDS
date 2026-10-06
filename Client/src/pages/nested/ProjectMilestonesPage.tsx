@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, MilestoneDependency, Task } from "../../types";
 import { classNames } from "../../ui";
 import {
@@ -12,6 +11,8 @@ import {
   PERMISSION_GROUPS,
   usePermission,
   useToast,
+  canManageMilestones as canManageMilestonesFor,
+  canManageMilestoneDependencies,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import {
@@ -38,7 +39,13 @@ export function ProjectMilestonesPage() {
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  const canManageMilestones = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
+  // Was `perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director)`, which
+  // hid the edit button on milestone cards and the New/Edit/Delete buttons on the
+  // dependencies panel from project managers - even though the API's Manager policy
+  // accepts them and the tasks tab, gated on task.manage, already let them edit the
+  // same milestones. Now derived from the same permission set the API enforces.
+  const canManageMilestones = canManageMilestonesFor(perm);
+  const canManageDependencies = canManageMilestoneDependencies(perm);
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
@@ -515,7 +522,7 @@ export function ProjectMilestonesPage() {
           <DependenciesPanel
             dependencies={ws.dependencies}
             milestones={ws.milestones}
-            canManage={canManageMilestones}
+            canManage={canManageDependencies}
             onNew={() => { setEditDep(null); setDepModalOpen(true); }}
             onEdit={(dep) => { setEditDep(dep); setDepModalOpen(true); }}
             onDelete={handleDeleteDependency}
