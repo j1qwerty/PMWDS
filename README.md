@@ -14,6 +14,7 @@ The API entry point is `PMWDS.API`. The frontend lives in `Client`.
 | [mssql-issue.md](mssql-issue.md) | The 25-second SQL Server latency problem, its root cause, and the fix |
 | [vps-mssqlserver.md](vps-mssqlserver.md) | Installing SQL Server and Redis on the VPS, and connecting SSMS to it |
 | [vps.md](vps.md) | What is installed on the Contabo VPS and where |
+| [tests/e2e/README.md](tests/e2e/README.md) | Browser end-to-end tests - map files, flows, and how to run them |
 
 
 ## Tech Stack
@@ -36,7 +37,8 @@ PMWDS.Domain/          Entities, enums, domain events, core rules
 PMWDS.Persistence/     EF Core DbContext, repositories, migrations, seed data
 PMWDS.Infrastructure/  Email, cache, audit, file storage, reports, background jobs
 PMWDS.AI/              AI services, chat engine, recommendation and prediction logic
-PMWDS.Tests/          xUnit integration tests (see "Running the tests")
+PMWDS.Tests/          xUnit API integration tests (see "Running the tests")
+tests/e2e/            Playwright browser tests, map files and flows
 Client/                React client application
 ```
 
@@ -207,15 +209,16 @@ login.
 
 | Email | Role | Notes |
 |-------|------|-------|
-| `admin@pmwds.com` | SuperAdmin | Full access |
-| `manager@pmwds.com` | ProjectManager | Project and report management |
-| `head@pmwds.com` | DepartmentHead | Department and capacity management |
-| `lead@pmwds.com` | TeamLead | Team execution workflows |
-| `member@pmwds.com` | TeamMember | Task execution workflows |
-| `viewer@pmwds.com` | Viewer | Read-only style access |
-| `ava.patel@pmwds.com` | TeamMember | Seeded engineering user |
-| `noah.chen@northwind-labs.example` | TeamLead | Seeded operations user |
-| `mia.roberts@contoso-transform.example` | TeamMember | Seeded strategy user |
+| `superadmin@org1.com` | SuperAdmin | Full access |
+| `admin@org1.com` | Director | Portfolio and organization oversight |
+| `manager@org1.com` | ProjectManager | Project and report management |
+| `head.eng@org1.com` | DepartmentHead | Head of PWDC - PWD Civil Division |
+| `head.pmo@org1.com` | DepartmentHead | Head of PWD - Public Works Department |
+| `head.ops@org1.com` | DepartmentHead | Head of PROC - Procurement & Finance |
+| `head.bstr@org1.com` | DepartmentHead | Head of REV - Revenue Department |
+| `head.csv@org1.com` | DepartmentHead | Head of QA - Quality Assurance Cell |
+| `member@org1.com` | TeamMember | Team execution workflows |
+| `viewer@org1.com` | Viewer | Read-only style access |
 
 Change these passwords before using the project outside local development.
 
@@ -242,6 +245,15 @@ On first run, the API seeds representative data across the full product surface:
 - The app auto-detects the database provider in order: SQL Server → SQLite fallback in Development. Run `docker-compose up -d` before starting the API to use SQL Server.
 
 ## Running the tests
+
+There are two suites, and they test different layers:
+
+| Suite | Location | What it covers | Needs the app running? |
+|---|---|---|---|
+| **API integration tests** | `PMWDS.Tests` | The backend end to end over HTTP - auth, permissions, CRUD, cascades, realtime, the wizard's API call sequence | No - it boots the API itself |
+| **Browser end-to-end tests** | `tests/e2e` | The real UI through Playwright - what a user actually sees and clicks, across multiple roles | Yes - API on :5177 and client on :5173 |
+
+### 1. API integration tests (xUnit)
 
 `PMWDS.Tests` holds xUnit integration tests. They boot the real API in-process through
 `WebApplicationFactory<PMWDS.API.TestHost>` and talk to it over HTTP, so they exercise the
@@ -274,7 +286,7 @@ Tests require the seeded accounts, so run them against a seeded database. They u
 fixed test password, configured in code by the test fixture, so they do not depend on
 `Seed__DefaultPassword`.
 
-### Running against a real server
+#### Running against a real server
 
 Set `PMWDS_TEST_BASE_URL` to run the same suite against an already-running instance instead
 of the in-process host:
@@ -296,7 +308,7 @@ registered solely when the provider is SQL Server.
 > **Warning:** the suite creates and deletes real data. Never point it at production
 > without a backup.
 
-### What is covered
+#### What is covered
 
 | Area | File |
 |---|---|
@@ -312,7 +324,7 @@ registered solely when the provider is SQL Server.
 no coverage at all before, and the realtime tests immediately found two mutating endpoints
 that never announced themselves.
 
-### Adding a test
+#### Adding a test
 
 Use the helpers in `PMWDS.Tests/Infrastructure`:
 
@@ -331,13 +343,151 @@ Use the helpers in `PMWDS.Tests/Infrastructure`:
 bearer token and every authorization test silently runs as whichever identity logged in
 last. The fixture gives each session its own client for this reason.
 
+### 2. Browser end-to-end tests (Playwright)
+
+`tests/e2e` drives the actual UI through a real browser, using **text map files** that
+describe every page, form, modal and button. Those files are plain text, so the page
+definitions can be read and edited without touching test code.
+
+Full details: [`tests/e2e/README.md`](tests/e2e/README.md).
+
+#### Setup and run
 
 ```powershell
-dotnet build PMWDS.slnx
-dotnet test PMWDS.slnx
+# one-time
+cd tests\e2e
+npm install
+npx playwright install chromium
+
+# start the app first - API on :5177, client on :5173
+dotnet run --project .\PMWDS.API --urls http://localhost:5177
+cd Client; npm run dev -- --host 127.0.0.1 --port 5173
+
+# then, in tests\e2e
+npm run smoke                        # offline check: maps parse, every key resolves
+
+npm run e2e                          # interactive, step by step
+npm run e2e -- --auto                # automatic, all flows
+npm run e2e -- --auto --mode visible # watch it happen in a browser window
+```
+
+#### Two display modes, two run modes
+
+On startup the script asks how the browser should run, in **both** run modes:
+
+| Mode | Browser | Behaviour |
+|---|---|---|
+| `1` Headless *(default)* | no window | fastest; screenshots only on failure |
+| `2` Visible | real window | you watch every action, slowed to 250ms, screenshot saved **before and after every step** |
+
+```powershell
+npm run e2e -- --mode visible        # skip the question, watch it run
+npm run e2e -- --mode headless       # skip the question, stay hidden
+npm run e2e -- --no-shots            # visible window, no per-step screenshots
+npm run e2e -- --slowmo 500          # slower actions for watching
+```
+
+Within a run, **interactive** (the default) stops before every step and asks - `Y` run,
+`n` skip, `s` screenshot then re-ask, `q` quit. **Automatic** (`--auto`) picks the flows
+once at startup and runs straight through with no per-step prompts, aborting non-zero on
+failure.
+
+Screenshots and generated upload files land in `tests/e2e/e2e-artifacts/`; the run prints
+the exact paths at startup and again at the end. Shots are named
+`NN-<step>-before.png` / `-after.png` / `-FAILED.png`.
+
+#### What it actually does
+
+Seven flows replay one realistic project lifecycle across several people at once. Every role
+gets its own isolated browser context, so the project manager and both department heads are
+genuinely signed in simultaneously, as in a real multi-user test.
+
+| # | Flow | Users | What it does |
+|---|---|---|---|
+| 1 | `project-create` | `pm` | Signs in as the project manager, opens the 4-step creation wizard and fills every step: project name, description, priority, budget, start/end dates, attaches a dummy document, adds two milestones, assigns a different department to each, links them with a dependency, then clicks Finish |
+| 2 | `head-milestones` | `head-civil`, `head-pmo` | Each department head assigned in wizard step 3 signs in and adds their **own** milestone to the same project |
+| 3 | `tasks-subtasks` | both heads | Each head creates two tasks on their milestone - title, dates, estimated hours, priority, milestone - then expands the task card and adds subtasks |
+| 4 | `member-progress` | `member`, `electrical` | Ordinary members open their tasks, then raise a subtask's progress to 40% and 65% with a comment, and move one subtask to In Progress |
+| 5 | `documents` | `pm` | Generates a dummy `.txt` and a dummy `.pdf`, uploads the text file at **project, milestone and task** level, then submits a dummy utilization certificate as a draft |
+| 6 | `edit-delete` | `head-civil` | A department head edits a milestone's name and due date, deletes a milestone through the confirmation modal, and deletes one of their own tasks |
+| 7 | `project-edit-delete` | `pm` | The project manager edits the project's name, description and priority, then deletes the project through the confirmation modal as the final step, tearing down what step 1 created |
+
+The run is self-cleaning in the sense that flow 7 deletes the project it created, so a
+successful full run leaves nothing behind.
+
+#### Test users
+
+All seeded accounts share the password `Pmwds@123` (whatever `Seed__DefaultPassword` was set
+to). Pick one on the command line with `--user <id>`:
+
+| id | Account | Email |
+|---|---|---|
+| `admin` | Admin / Director | `admin@org1.com` |
+| `pm` | Project Manager | `manager@org1.com` |
+| `head-civil` | Head - Civil Division | `head.eng@org1.com` |
+| `head-pmo` | Head - PWD Coordination | `head.pmo@org1.com` |
+| `head-ops` | Head - Procurement | `head.ops@org1.com` |
+| `head-revenue` | Head - Revenue Dept | `head.bstr@org1.com` |
+| `head-qa` | Head - Quality Assurance | `head.csv@org1.com` |
+| `head-tehsildar` | Head - Tehsildar | `sunil.yadav@up.gov.in` |
+| `member` | Team Member | `member@org1.com` |
+| `viewer` | Viewer | `viewer@org1.com` |
+| `ee` | Executive Engineer | `dinesh.kumar@pwd.up.gov.in` |
+| `electrical` | Electrical | `suresh.pandey@up.gov.in` |
+| `sewerage` | Sewerage | `ramesh.yadav@up.gov.in` |
+| `superadmin` | Super Admin | `superadmin@org1.com` |
+
+#### The map files
+
+`tests/e2e/maps/*.txt` - one file per area plus `common.txt` for shared elements (modal
+chrome, toasts, nav, progress and status controls). Entry kinds are `field`, `button`, `nav`,
+`assert` and `api`, grouped by `@group` so the fields and buttons of one form or modal stay
+together:
+
+```text
+@group step-details type=wizard page=projects desc="Step 1 of 4: Project Details"
+
+field projectName placeholder="Enter project name" required=1
+field priority css="select" nth=0,1,2
+button next text="Next"
+api   createProject method=POST path=/api/v1/projects
+assert created text="Project created successfully!"
+@end
+```
+
+The driver tries `css` -> `testid` -> `aria` -> `title` -> `placeholder` -> `role`+`name` ->
+`label` -> `text`, plus `root`, `nth` and `hover` for scoping. When nothing matches it fails
+with the entry, its `file:line`, and every selector it attempted - so a broken map points at
+the exact line to edit.
+
+#### Adding a flow
+
+1. Add a file in `tests/e2e/flows/` exporting a `Flow` with a list of `Step`s.
+2. Register it in `flows/index.ts`.
+3. Run `npm run smoke` - it verifies the maps parse and that every key your flow references
+   actually exists, without launching a browser.
+
+### 3. Client build checks
+
+```powershell
 cd Client
 npm run build
 npm run lint
+```
+
+### Running everything
+
+```powershell
+# API tests (no app needed)
+dotnet test PMWDS.slnx
+
+# Client build checks
+cd Client; npm run build; npm run lint; cd ..
+
+# Browser tests (needs the API and client running)
+cd tests\e2e
+npm run smoke
+npm run e2e -- --auto
 ```
 
 ## Future Improvements
@@ -346,6 +496,6 @@ npm run lint
 - Soft-delete a project's milestones, departments and documents when the project is deleted. Today the project row is only marked deleted, so the `NoAction` foreign keys never cascade and milestone rows are left attached to a project that no longer appears anywhere. `CascadeTests.Deleting_a_project_leaves_its_milestones_undeleted_today` pins the current behaviour.
 - Split SQL Server and SQLite migrations into provider-specific migration sets.
 - Persist AI chat/session history instead of keeping transient in-memory context.
-- Extend the test suite beyond the API - the React client has no test runner at all. Playwright coverage for the wizard and the live-update refresh would be the next step.
+- Extend the browser test coverage in `tests/e2e` beyond the project lifecycle - dashboard, reports, AI, and the live-update refresh. The creation wizard also has no route or step in the URL, so a test cannot deep-link into it; adding a `?step=` param to `NewProjectPage` would allow partial runs.
 - Move secrets to environment variables, user secrets, Azure Key Vault, or another managed secret store.
 - Add production deployment scripts for API, client, SQL Server, Redis, storage, and background workers.
