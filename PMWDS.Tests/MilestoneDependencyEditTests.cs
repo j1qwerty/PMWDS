@@ -40,6 +40,28 @@ public class MilestoneDependencyEditTests : IDisposable
     }
 
     /// <summary>
+    /// Creates a project that <paramref name="session"/> is allowed to reach.
+    ///
+    /// Built by the superadmin, but placed in a department the session belongs to, so
+    /// it falls inside their own-department scope. The session cannot create projects
+    /// itself - a team member and a viewer both lack PROJECT_CREATE - so the project
+    /// has to be built for them rather than by them.
+    /// </summary>
+    private async Task<(TestProject Project, List<Guid> Milestones)> NewProjectInOwnDepartmentAsync(
+    Session session)
+    {
+        var me = await session.Client.GetAsync<JsonElement>("/api/v1/users/me");
+        me.ThrowIfFailed("resolve the session user");
+        var departmentId = me.Data.GetGuid("departmentId");
+
+        var project = await TestProject.CreateAsync(
+            _api.SuperAdmin.Client, $"DepEdit {Guid.NewGuid():N}"[..24], departmentId);
+
+        var milestones = (await project.MilestoneIdsAsync()).ToList();
+        return (project, milestones);
+    }
+
+    /// <summary>
     /// Creates a project whose manager is <paramref name="manager"/>.
     ///
     /// Built by the superadmin so the wizard path is identical to every other test,
@@ -286,6 +308,33 @@ public class MilestoneDependencyEditTests : IDisposable
     public async Task Team_members_and_viewers_are_told_they_cannot_manage(string who)
     {
         var session = who == "viewer" ? _api.Viewer : _api.TeamMember;
+        var created = await NewProjectInOwnDepartmentAsync(session);
+        var project = created.Project;
+        await using var _projectScope = project;
+
+        var access = await session.Client
+            .GetAsync<JsonElement>($"/api/v1/milestones/by-project/{project.ProjectId}/access");
+
+        // 200, not 403. This project is theirs to see - it sits in a department they
+        // belong to - so the endpoint answers, and the answer is that they may not
+        // manage it. That is what the client needs: the control is hidden because the
+        // flag is false, not because the call failed.
+        access.IsSuccess.Should().BeTrue(access.RawBody);
+        access.Data.GetProperty("canManageDependencies").GetBoolean().Should().BeFalse();
+        access.Data.GetProperty("canManageMilestones").GetBoolean().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("team member")]
+    [InlineData("viewer")]
+    public async Task A_project_outside_their_departments_is_not_reachable_at_all(string who)
+    {
+        // The own-department scope means a project with none of their departments on it
+        // is not merely unmanaged, it is invisible. Before the scope split every
+        // project in the organization was readable by any role, which meant a team
+        // member could open a project belonging to a department they have nothing to
+        // do with.
+        var session = who == "viewer" ? _api.Viewer : _api.TeamMember;
         var created = await NewProjectAsync(_api.SuperAdmin);
         var project = created.Project;
         await using var _projectScope = project;
@@ -293,13 +342,7 @@ public class MilestoneDependencyEditTests : IDisposable
         var access = await session.Client
             .GetAsync<JsonElement>($"/api/v1/milestones/by-project/{project.ProjectId}/access");
 
-        // 200, not 403. They can see this project - it is in their organisation - so
-        // the endpoint answers, and the answer is that they may not manage it. That
-        // is what the client needs: the control is hidden because the flag is false,
-        // not because the call failed.
-        access.IsSuccess.Should().BeTrue(access.RawBody);
-        access.Data.GetProperty("canManageDependencies").GetBoolean().Should().BeFalse();
-        access.Data.GetProperty("canManageMilestones").GetBoolean().Should().BeFalse();
+        access.Status.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

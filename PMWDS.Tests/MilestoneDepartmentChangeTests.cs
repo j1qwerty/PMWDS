@@ -44,6 +44,7 @@ public class MilestoneDepartmentChangeTests
         var current = await session.Client
             .GetAsync<JsonElement>($"/api/v1/milestones/by-project/{projectId}");
 
+        current.ThrowIfFailed("list milestones");
         var milestone = current.Data!.EnumerateArray().Single(m => m.GetGuid("id") == milestoneId);
 
         return await session.Client.PutAsync<JsonElement>($"/api/v1/milestones/{milestoneId}", new

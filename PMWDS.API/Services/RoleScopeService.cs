@@ -100,6 +100,17 @@ public class RoleScopeService
         var departmentIdsForProject = await GetDepartmentIdsAsync(ct);
         if (departmentIdsForProject.Count > 0)
         {
+            // Projects the caller is the named manager of stay visible even when they
+            // sit in another department, so the list and the single-project page agree.
+            if (IsProjectManager && CurrentUserId is not null)
+            {
+                var managedBy = CurrentUserId.Value;
+                return query.Where(project =>
+                    project.ProjectManagerId == managedBy ||
+                    departmentIdsForProject.Contains(project.DepartmentId) ||
+                    project.ProjectDepartments.Any(pd => departmentIdsForProject.Contains(pd.DepartmentId)));
+            }
+
             return query.Where(project =>
                 departmentIdsForProject.Contains(project.DepartmentId) ||
                 project.ProjectDepartments.Any(pd => departmentIdsForProject.Contains(pd.DepartmentId)));
@@ -313,6 +324,7 @@ public class RoleScopeService
             {
                 PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
                 project.DepartmentId,
+                project.ProjectManagerId,
                 AssignedDepartmentIds = project.ProjectDepartments
                     .Select(assignment => assignment.DepartmentId)
                     .ToList(),
@@ -330,6 +342,15 @@ public class RoleScopeService
         if (projectOrganizations == null)
         {
             return false;
+        }
+
+        // Someone the project is explicitly assigned to always reaches it, whichever
+        // department it sits in. Without this, a project manager who was handed a
+        // project in another department could manage it (CanManageProjectAsync allows
+        // it) yet be refused the very page that shows it.
+        if (IsProjectManager && CurrentUserId == projectOrganizations.ProjectManagerId)
+        {
+            return true;
         }
 
         if (IsDepartmentHead && !IsDirector)

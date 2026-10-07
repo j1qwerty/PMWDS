@@ -559,15 +559,38 @@ public static class PermissionCatalog
 
         foreach (var (code, implied) in AllScopeImpliedCoverage)
         {
-            // An ALL-scope umbrella also implies the own-department umbrella and
-            // everything that umbrella already covers, so merge rather than replace.
-            var merged = new List<string>(implied);
-            if (ManagePermissionCoverage.TryGetValue(implied[0], out var nested))
+            // Union, never replace. The ALL-scope flavour adds the own-department
+            // equivalent to whatever that equivalent already conferred — but an
+            // ALL-scope umbrella carries its own feature's ALL-scope actions as well,
+            // and replacing the entry here threw those away.
+            //
+            // That is what made a Director holding PROJECT_MANAGE_ALL expand to
+            // PROJECT_MANAGE and the own-department actions, but not to
+            // PROJECT_VIEW_ALL. They were therefore treated as own-department scoped,
+            // which narrowed their project and department lists to a single department.
+            var merged = new List<string>();
+
+            if (effective.TryGetValue(code, out var existing))
             {
-                merged.AddRange(nested);
+                merged.AddRange(existing);
             }
 
-            effective[code] = merged.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            merged.AddRange(implied);
+
+            // An ALL-scope grant also implies the own-department umbrella, and
+            // everything that umbrella covers.
+            foreach (var own in implied)
+            {
+                if (ManagePermissionCoverage.TryGetValue(own, out var nested))
+                {
+                    merged.AddRange(nested);
+                }
+            }
+
+            effective[code] = merged
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(known => !string.Equals(known, code, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
         }
 
         return effective;
