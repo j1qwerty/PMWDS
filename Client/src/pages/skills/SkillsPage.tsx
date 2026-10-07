@@ -659,16 +659,18 @@ export function SkillsPage() {
                     )}
                   </div>
 
-                  <select
-                    value={userOrgFilter}
-                    onChange={(e) => { setUserOrgFilter(e.target.value); setUserDeptFilter(""); }}
-                    className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                  >
-                    <option value="">All Organizations</option>
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id}>{org.name}</option>
-                    ))}
-                  </select>
+                  {perm.isSuperAdmin && (
+                    <select
+                      value={userOrgFilter}
+                      onChange={(e) => { setUserOrgFilter(e.target.value); setUserDeptFilter(""); }}
+                      className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    >
+                      <option value="">All Organizations</option>
+                      {organizations.map((org) => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
+                      ))}
+                    </select>
+                  )}
 
                   <select
                     value={userDeptFilter}

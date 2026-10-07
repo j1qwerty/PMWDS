@@ -513,6 +513,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               milestones={milestones}
               departments={scopedDepartments}
               organizations={data.organizations}
+              canSeeOrganization={isSuperAdmin}
               loading={departmentsLoading}
               onChange={setMilestones}
             />

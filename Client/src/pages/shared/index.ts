@@ -30,6 +30,7 @@ export { useToast } from "./Toast";
 export { StatusBadge } from "./StatusBadge";
 export { PriorityBadge } from "./PriorityBadge";
 export { OrganizationDepartmentFilter } from "./OrganizationDepartmentFilter";
+export { useUserOrganization, useScopedDepartments } from "./useUserOrganization";
 export { ScopedUserSelect } from "./ScopedUserSelect";
 export { Can, CanAny, CanAll, RoutePermissionGuard } from "./PermissionControls";
 export { NoAccessPage } from "./NoAccessPage";

@@ -14,6 +14,15 @@ interface MilestoneDepartmentsStepProps {
   milestones: MilestoneEntry[];
   departments: Department[];
   organizations?: OrganizationRecord[];
+  /**
+   * Whether the organization may be named in the dropdown.
+   *
+   * Superadmin only. Every other role is scoped to their own organization, so
+   * naming it in every option label is noise at best and, with more than one
+   * organization in play, actively confusing: the label implies the choice is
+   * between organizations when it is only ever between departments.
+   */
+  canSeeOrganization?: boolean;
   loading?: boolean;
   onChange: (milestones: MilestoneEntry[]) => void;
 }
@@ -22,6 +31,7 @@ export function MilestoneDepartmentsStep({
   milestones,
   departments,
   organizations = [],
+  canSeeOrganization = false,
   loading = false,
   onChange,
 }: MilestoneDepartmentsStepProps) {
@@ -112,9 +122,10 @@ export function MilestoneDepartmentsStep({
             >
               <option value="">Select department...</option>
               {departments.map((department) => {
-                const orgName = department.organizationId
-                  ? orgNameById.get(department.organizationId)
-                  : undefined;
+                const orgName =
+                  canSeeOrganization && department.organizationId
+                    ? orgNameById.get(department.organizationId)
+                    : undefined;
                 const label = orgName
                   ? `${department.name} (${department.code} · ${orgName})`
                   : department.code

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { OrganizationRecord, User } from "../../../types";
 import { RoleKey, hasRoleKey } from "../../../permissions";
+import { usePermission } from "../../shared";
 
 interface DeptFormModalProps {
   organizations: OrganizationRecord[];
@@ -17,6 +18,11 @@ export function DeptFormModal({
   onSubmit,
   onCancel,
 }: DeptFormModalProps) {
+  // Organization is a superadmin-only concept. For anyone else the department is
+  // created inside the organization they already belong to, so the selector is
+  // removed rather than shown as a single-option list.
+  const perm = usePermission();
+  const canSeeOrganization = perm.isSuperAdmin;
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -88,19 +94,21 @@ export function DeptFormModal({
           />
         </div>
 
-        <div>
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Organization</label>
-          <select
-            value={form.organizationId}
-            onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentHeadUserId: "" })}
-            className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-          >
-            <option value="">Select organization</option>
-            {organizations.map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-        </div>
+        {canSeeOrganization && (
+          <div>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Organization</label>
+            <select
+              value={form.organizationId}
+              onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentHeadUserId: "" })}
+              className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+            >
+              <option value="">Select organization</option>
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Department Head</label>

@@ -14,7 +14,7 @@ interface UsersTableProps {
   token: string;
   canUploadPictures: boolean;
    showOrganizationFilter?: boolean;
-   showOrganizationName?: boolean;
+  showOrganizationName?: boolean;
   canManageUsers?: boolean;
   onPictureUploaded: (user: User) => void;
   onEditUser?: (user: User) => void;
@@ -28,7 +28,9 @@ export function UsersTable({
   organizations,
   token,
   canUploadPictures,
-  showOrganizationFilter = true,
+  // Defaults to hidden. Organization is a superadmin-only concept in the UI, and
+  // a caller that forgets to pass this used to leak the selector to everybody.
+  showOrganizationFilter = false,
   showOrganizationName = false,
   canManageUsers = false,
   onPictureUploaded,

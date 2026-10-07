@@ -51,7 +51,11 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 const ROUTE_GUARDS = {
   projectsK: PERMISSION_GROUPS.project.view,
   notificationsPage: PERMISSION_GROUPS.notification.view,
-  organizationStructure: PERMISSION_GROUPS.organization.view,
+  // Organization is a superadmin-only concept in the UI. The route is gated on
+  // SYSTEM_ADMIN rather than ORGANIZATION_VIEW so that holding the view
+  // permission — which a role can be given without being able to make sense of
+  // anything on the page — does not expose the whole organization tree.
+  organizationStructure: Permission.SystemAdmin,
   departmentsPage: PERMISSION_GROUPS.department.view,
   users: PERMISSION_GROUPS.user.view,
   profiles: PERMISSION_GROUPS.user.view,

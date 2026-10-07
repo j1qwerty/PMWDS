@@ -4,7 +4,7 @@ import { useAuth } from "./auth";
 import { useAppData } from "./appData";
 import { onStatusChanged, type RealtimeStatus } from "./realtime";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
-import { PERMISSION_GROUPS } from "./permissions";
+import { PERMISSION_GROUPS, Permission } from "./permissions";
 import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
 import { roleDisplayNames } from "./permissions";
 
@@ -242,7 +242,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     {
       title: "Team",
       items: [
-        { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [PERMISSION_GROUPS.organization.view] },
+        { path: "/organizationStructure", label: "Organizations", icon: "organization", permissions: [Permission.SystemAdmin] },
         { path: "/departmentsPage", label: "Departments", icon: "departments", permissions: [PERMISSION_GROUPS.department.view] },
         { path: "/users", label: "Users", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },
         { path: "/profiles", label: "Profiles", icon: "users", permissions: [PERMISSION_GROUPS.user.view] },

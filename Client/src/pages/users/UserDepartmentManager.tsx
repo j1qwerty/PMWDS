@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { GlassCard, GradientButton } from "../shared";
+import { GlassCard, GradientButton, useUserOrganization } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 
 interface UserDepartmentManagerProps {
@@ -41,10 +41,25 @@ export function UserDepartmentManager({
     });
   };
 
-  const grouped = organizations.map(org => ({
-    org,
-    departments: departments.filter(dept => dept.organizationId === org.id),
-  }));
+  const { canSeeOrganization } = useUserOrganization(users, departments);
+
+  // Departments are grouped under their organization only when the viewer is
+  // allowed to know what an organization is. For everyone else the grouping
+  // heading was the only place the concept leaked through this panel, and it
+  // invited a question the viewer cannot act on.
+  const grouped = canSeeOrganization
+    ? organizations.map(org => ({
+        key: org.id,
+        label: org.name,
+        departments: departments.filter(dept => dept.organizationId === org.id),
+      }))
+    : [
+        {
+          key: "all",
+          label: "",
+          departments: [...departments],
+        },
+      ];
 
   return (
     <GlassCard className="p-6">
@@ -69,8 +84,10 @@ export function UserDepartmentManager({
 
         <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 p-3">
           {grouped.map(group => (
-            <div key={group.org.id} className="mb-4 last:mb-0">
-              <div className="text-xs font-bold text-slate-500 mb-2">{group.org.name}</div>
+            <div key={group.key} className="mb-4 last:mb-0">
+              {group.label && (
+                <div className="text-xs font-bold text-slate-500 mb-2">{group.label}</div>
+              )}
               <div className="space-y-2">
                 {group.departments.map(dept => (
                   <label key={dept.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2">

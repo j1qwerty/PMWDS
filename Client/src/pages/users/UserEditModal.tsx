@@ -42,15 +42,23 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
     return (ROLE_LEVELS[role] ?? 0) < userMaxLevel;
   });
 
+  // A superadmin picks an organization and sees its departments grouped under it.
+  // For everyone else the organization selector is hidden entirely, so grouping by
+  // it would only print a heading nobody can change or interpret.
   const departmentsByOrg = useMemo(
     () =>
-      organizations
-        .filter((org) => !organizationId || org.id === organizationId)
-        .map((org) => ({
-        org,
-        departments: departments.filter((department) => department.organizationId === org.id),
-      })),
-    [departments, organizationId, organizations],
+      canSelectSuperAdminRole
+        ? organizations
+            .filter((org) => !organizationId || org.id === organizationId)
+            .map((org) => ({
+              key: org.id,
+              label: org.name,
+              departments: departments.filter(
+                (department) => department.organizationId === org.id,
+              ),
+            }))
+        : [{ key: "all", label: "", departments: [...departments] }],
+    [departments, organizationId, organizations, canSelectSuperAdminRole],
   );
 
   const toggleDepartment = (departmentId: string) => {
@@ -166,9 +174,13 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
               </label>
             )}
             <div className="grid gap-3 md:grid-cols-2">
-              {departmentsByOrg.map(({ org, departments: orgDepartments }) => (
-                <div key={org.id} className="rounded-xl border border-slate-100 p-3">
-                  <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">{org.name}</div>
+              {departmentsByOrg.map(({ key, label, departments: orgDepartments }) => (
+                <div key={key} className="rounded-xl border border-slate-100 p-3">
+                  {label && (
+                    <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                      {label}
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {orgDepartments.map((department) => (
                       <label key={department.id} className="flex items-center gap-2 text-sm text-slate-600">
