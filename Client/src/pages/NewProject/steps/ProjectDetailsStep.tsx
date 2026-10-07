@@ -15,9 +15,28 @@ interface ProjectDetailsStepProps {
   primaryDepartmentId?: string;
   departments?: Department[];
   onPrimaryDepartmentChange?: (id: string) => void;
+  /** Files to attach to the project once it exists. */
+  projectDocuments?: File[];
+  onProjectDocumentsChange?: (files: File[]) => void;
+  /** Whether the caller holds the project-level document upload permission. */
+  canUploadProjectDocuments?: boolean;
 }
 
-export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange }: ProjectDetailsStepProps) {
+export function ProjectDetailsStep({
+  name,
+  description,
+  priority,
+  budget,
+  startDate,
+  endDate,
+  onChange,
+  primaryDepartmentId,
+  departments,
+  onPrimaryDepartmentChange,
+  projectDocuments = [],
+  onProjectDocumentsChange,
+  canUploadProjectDocuments = false,
+}: ProjectDetailsStepProps) {
   // The budget is typed in lakhs. Holding the raw text locally keeps typing natural: with a
   // controlled value of 0 the browser edits "0" as a string, so typing 20 lands as "020".
   const [budgetLakhs, setBudgetLakhs] = useState(budget > 0 ? String(budget) : "");
@@ -140,7 +159,70 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
         </div>
       </div>
 
-    
+      {/* Project-level documents.
+          Offered on this step only, and only for a caller holding the project-level
+          upload permission. Milestone- and task-level documents are attached later,
+          from the project's documents tab, because neither a milestone nor a task
+          exists yet at this point in the wizard. */}
+      {canUploadProjectDocuments && onProjectDocumentsChange && (
+        <div>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Project Documents <span className="text-slate-300 font-normal">(optional)</span>
+          </label>
+
+          <div className="flex items-center gap-2">
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-semibold cursor-pointer hover:bg-indigo-100 transition-colors">
+              <span className="material-symbols-outlined text-base">attach_file</span>
+              Attach document
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const added = Array.from(event.target.files ?? []);
+                  if (added.length > 0) {
+                    onProjectDocumentsChange([...projectDocuments, ...added]);
+                  }
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            <p className="text-[10px] text-slate-400">
+              These will be filed against the project itself, so everyone who can see the project
+              sees them.
+            </p>
+          </div>
+
+          {projectDocuments.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {projectDocuments.map((file, index) => (
+                <li
+                  key={`${file.name}-${index}`}
+                  className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5"
+                >
+                  <span className="material-symbols-outlined text-slate-400 text-sm">
+                    description
+                  </span>
+                  <span className="truncate flex-1">{file.name}</span>
+                  <span className="text-[10px] text-slate-400">
+                    {(file.size / 1024).toFixed(0)} KB
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onProjectDocumentsChange(projectDocuments.filter((_, i) => i !== index))
+                    }
+                    className="text-slate-400 hover:text-red-500"
+                    title="Remove"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

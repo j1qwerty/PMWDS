@@ -833,9 +833,33 @@ export type DocumentCategory =
   | "Financial"
   | "UtilizationCertificate";
 
+/**
+ * Which level of the hierarchy a document is attached at.
+ *
+ * Every document belongs to a project. The level decides whether it also belongs
+ * to a milestone or a task, and therefore who can see it.
+ */
+export type DocumentLevel = "Project" | "Milestone" | "Task";
+
+export const DOCUMENT_LEVELS: readonly DocumentLevel[] = ["Project", "Milestone", "Task"];
+
+export const DOCUMENT_LEVEL_LABELS: Record<DocumentLevel, string> = {
+  Project: "Project",
+  Milestone: "Milestone",
+  Task: "Task",
+};
+
+export const DOCUMENT_LEVEL_HINTS: Record<DocumentLevel, string> = {
+  Project: "Sits on the project itself, so everyone who can see the project sees it.",
+  Milestone: "Attached to one milestone, and follows that milestone's department.",
+  Task: "Attached to one task, and follows that task.",
+};
+
 export interface ProjectDocument {
   id: string;
   projectId: string;
+  /** Name of the project the document belongs to, so lists need no second lookup. */
+  projectName?: string | null;
   title: string;
   filePath: string;
   contentType: string;
@@ -844,7 +868,39 @@ export interface ProjectDocument {
   description?: string | null;
   version: string;
   category?: DocumentCategory;
+  level?: DocumentLevel;
+  milestoneId?: string | null;
+  /**
+   * Name of the milestone this document hangs under. For a task-level document
+   * this is the milestone the task belongs to, so the task list can show the
+   * milestone and project a task sits in.
+   */
+  milestoneName?: string | null;
+  taskId?: string | null;
+  taskName?: string | null;
   createdDate: string;
+}
+
+/** Where a new document should be attached. */
+export interface UploadDocumentPayload {
+  level: DocumentLevel;
+  milestoneId?: string | null;
+  taskId?: string | null;
+  category?: DocumentCategory;
+}
+
+/**
+ * The levels the signed-in user may upload at, as the server resolved them.
+ *
+ * The upload dialog renders its level dropdown straight from this, so the levels
+ * on screen are the levels the API will accept rather than a guess from a role.
+ */
+export interface DocumentUploadCapabilities {
+  documentLevels: DocumentLevel[];
+  utilizationCertificateDocumentLevels: DocumentLevel[];
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
 }
 
 export type UtilizationCertificateStatus =

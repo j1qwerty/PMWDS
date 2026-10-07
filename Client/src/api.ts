@@ -33,6 +33,10 @@ import type {
   PermissionRecord,
   Project,
   ProjectDocument,
+  DocumentCategory,
+  DocumentLevel,
+  DocumentUploadCapabilities,
+  UploadDocumentPayload,
   ProjectHealth,
   PredictionResultRecord,
   ReportScheduleRecord,
@@ -260,13 +264,42 @@ export const api = {
       method: "POST",
     });
   },
-  uploadProjectDocument(token: string, id: string, file: File) {
+  uploadProjectDocument(
+    token: string,
+    id: string,
+    file: File,
+    payload?: UploadDocumentPayload,
+  ) {
     const form = new FormData();
     form.set("file", file);
-    return request<void>(`projects/${id}/documents`, { token, method: "POST", body: form });
+    // The level and its target always travel together: the server rejects a
+    // milestone-level upload with no milestone rather than guessing.
+    form.set("level", payload?.level ?? "Project");
+    if (payload?.milestoneId) form.set("milestoneId", payload.milestoneId);
+    if (payload?.taskId) form.set("taskId", payload.taskId);
+    if (payload?.category) form.set("category", payload.category);
+    return request<{ id: string; level: string }>(`projects/${id}/documents`, {
+      token,
+      method: "POST",
+      body: form,
+    });
   },
-  getProjectDocuments(token: string, id: string) {
-    return request<ProjectDocument[]>(`projects/${id}/documents`, { token });
+  getProjectDocuments(
+    token: string,
+    id: string,
+    filters?: { level?: DocumentLevel; category?: DocumentCategory },
+  ) {
+    const query = new URLSearchParams();
+    if (filters?.level) query.set("level", filters.level);
+    if (filters?.category) query.set("category", filters.category);
+    const suffix = query.toString() ? `?${query}` : "";
+    return request<ProjectDocument[]>(`projects/${id}/documents${suffix}`, { token });
+  },
+  getDocumentUploadCapabilities(token: string) {
+    return request<DocumentUploadCapabilities>("projects/documents/upload-capabilities", { token });
+  },
+  deleteProjectDocument(token: string, projectId: string, docId: string) {
+    return request<void>(`projects/${projectId}/documents/${docId}`, { token, method: "DELETE" });
   },
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });

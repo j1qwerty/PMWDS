@@ -9,6 +9,8 @@ import {
   GlassCard,
   useToast,
   LoadingPage,
+  usePermission,
+  PERMISSION_GROUPS,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 import { RoleKey, hasRoleKey } from "../../permissions";
@@ -153,10 +155,26 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 5: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
+  /**
+   * Project-level documents attached on step 1.
+   *
+   * Only project level is offered here on purpose. The wizard's step 1 has no
+   * milestones yet, so a milestone- or task-level document has nothing to point
+   * at; those are attached afterwards from the documents tab, where the milestone
+   * and task exist.
+   */
+  const [projectDocuments, setProjectDocuments] = useState<File[]>([]);
+
   const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
   const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
   const isProjectManager = hasRoleKey(auth?.roleKeys, RoleKey.ProjectManager);
+  const perm = usePermission();
+
+  // The wizard may only offer project-level document upload to someone who holds
+  // that permission. A role can hold PROJECT_MANAGE without it, and the wizard
+  // creates the project as that role, so the upload would be refused.
+  const canUploadProjectDocuments = perm.has(PERMISSION_GROUPS.document.uploadProject);
 
   // The wizard is only reachable by a holder of PROJECT_MANAGE, which in the seeded
   // roles means these four. Project manager used to be left out of this list and so
@@ -278,6 +296,26 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       });
 
       const projectId = project.id;
+
+      // Project-level documents chosen on step 1. The project has to exist before a
+      // file can be filed against it, so these are uploaded immediately after
+      // creation rather than with the milestones.
+      if (canUploadProjectDocuments && projectDocuments.length > 0) {
+        for (const file of projectDocuments) {
+          try {
+            await api.uploadProjectDocument(auth.token, projectId, file, { level: "Project" });
+          } catch (uploadError) {
+            // The project exists and is usable; a failed attachment should not
+            // discard it or lose the rest of the wizard's work.
+            addToast(
+              `Project created, but "${file.name}" could not be uploaded: ${
+                uploadError instanceof Error ? uploadError.message : "unknown error"
+              }`,
+              "error",
+            );
+          }
+        }
+      }
 
       // Create milestones sequentially, collecting real IDs
       const createdMilestoneIds: Record<string, string> = {};
@@ -480,6 +518,9 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               primaryDepartmentId={primaryDepartmentId}
               departments={isSuperAdmin || isDirector ? scopedDepartments : undefined}
               onPrimaryDepartmentChange={isSuperAdmin || isDirector ? setPrimaryDepartmentId : undefined}
+              projectDocuments={projectDocuments}
+              onProjectDocumentsChange={setProjectDocuments}
+              canUploadProjectDocuments={canUploadProjectDocuments}
             />
           )}
           {currentStepKey === "departments" && (

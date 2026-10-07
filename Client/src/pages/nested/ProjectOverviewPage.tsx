@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, MilestoneDependency, ProjectDocument, TaskAttachment } from "../../types";
 import {
   GlassCard,
@@ -13,8 +12,6 @@ import {
   useNavHeader,
   PERMISSION_GROUPS,
   usePermission,
-  useToast,
-  UtilizationCertificates,
   dependencyMilestoneName,
   isOutOfScopeMilestone,
 } from "../shared";
@@ -26,6 +23,7 @@ import { Avatark } from "../shared/Avatark";
 import { TaskStatusDonut, MilestoneTimeline, BudgetBar } from "./components/OverviewCharts";
 import { OverviewAIInsights } from "./components/OverviewAIInsights";
 import { formatLakhs } from "../../ui";
+import { DocumentsSection } from "../projectsK/components/DocumentsSection";
 
 function KpiCard({
   label,
@@ -68,14 +66,12 @@ export function ProjectOverviewPage() {
   const navigate = useNavigate();
   const ws = useProjectWorkspace();
   const { auth } = useAuth();
-  const { addToast } = useToast();
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
 
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
   const [projectDocs, setProjectDocs] = useState<ProjectDocument[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
   const PAGE_SIZE = 15;
   const PIN_THRESHOLD = 5;
   const [sidebarSearch, setSidebarSearch] = useState("");
@@ -83,19 +79,15 @@ export function ProjectOverviewPage() {
   const [savedScrollPos, setSavedScrollPos] = useState(0);
   const [pinnedMilestone, setPinnedMilestone] = useState<Milestone | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const currentUser = ws.users.find((u) => u.id === auth?.userId);
-  const isPrimaryDept = currentUser?.departmentId === ws.project?.departmentId;
-  const canUploadProjectDocs = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director) || isPrimaryDept;
 
+  // Documents are read by DocumentsSection itself now, including the upload level
+  // rules. What remains here is only the count in the card header.
   useEffect(() => {
     if (!ws.project || !auth) return;
-    setLoadingDocs(true);
     api
       .getProjectDocuments(auth.token, ws.project.id)
       .then(setProjectDocs)
-      .catch(() => setProjectDocs([]))
-      .finally(() => setLoadingDocs(false));
+      .catch(() => setProjectDocs([]));
   }, [ws.project?.id, auth]);
 
   useEffect(() => {
@@ -186,13 +178,6 @@ export function ProjectOverviewPage() {
   const totalDocs = projectDocs.length;
   const totalTaskAttachments = ws.tasks.reduce((s, t) => s + (t.attachments?.length || 0), 0);
 
-  // Utilization certificates have their own block above, so keep them out of
-  // the plain document table to avoid showing the same file twice.
-  const plainDocs = useMemo(
-    () => projectDocs.filter((doc) => doc.category !== "UtilizationCertificate"),
-    [projectDocs],
-  );
-
   const uniqueAssignees = new Set<string>();
   for (const task of ws.tasks) {
     if (task.assignees?.length) {
@@ -281,19 +266,6 @@ export function ProjectOverviewPage() {
     if (savedScrollPos > 0) window.scrollTo({ top: savedScrollPos, behavior: "smooth" });
     setSavedScrollPos(0);
   }, [savedScrollPos]);
-
-  const handleDocUpload = async () => {
-    if (!auth || !uploadFile || !ws.project) return;
-    try {
-      await api.uploadProjectDocument(auth.token, ws.project.id, uploadFile);
-      setUploadFile(null);
-      addToast("Document uploaded");
-      const docs = await api.getProjectDocuments(auth.token, ws.project.id);
-      setProjectDocs(docs);
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Upload failed", "error");
-    }
-  };
 
   const getMilestoneProgress = (id: string) => ws.milestones.find((m) => m.id === id)?.progressPercentage || 0;
   const getMilestoneStatus = (id: string) => ws.milestones.find((m) => m.id === id)?.status || "";
@@ -863,100 +835,18 @@ export function ProjectOverviewPage() {
                 </div>
               </div>
               <div className="p-5 flex-1 overflow-y-auto min-h-0 space-y-4">
-                {/* Utilization Certificates get their own block: they carry finance
-                    metadata and an approval lifecycle, not just a file. The
-                    explainer is behind the ? icon so it is not always on screen. */}
-                <UtilizationCertificates
+                {/* The same level-aware, permission-gated section used by the
+                    Documents tab. It used to be a separate implementation here with
+                    its own upload button and its own project-only list, so the two
+                    screens disagreed about what a person could upload and about where
+                    a document ended up. */}
+                <DocumentsSection
                   projectId={ws.project?.id ?? ""}
+                  authToken={auth?.token ?? null}
                   milestones={ws.milestones}
                   tasks={ws.tasks}
+                  variant="compact"
                 />
-
-                {canUploadProjectDocs && (
-                  <div className="flex items-center justify-end">
-                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold cursor-pointer hover:bg-indigo-100 transition-colors border border-indigo-200">
-                      <Icon name="upload" size={14} />
-                      Upload Document
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                      />
-                    </label>
-                  </div>
-                )}
-
-                {uploadFile && (
-                  <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="size-9 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                        <Icon name="file" size={16} className="text-indigo-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-slate-800 truncate">{uploadFile.name}</p>
-                        <p className="text-[10px] text-slate-500">{(uploadFile.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => setUploadFile(null)}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleDocUpload}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                      >
-                        Upload
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {loadingDocs ? (
-                  <div className="text-center text-xs text-slate-400 py-4">Loading documents...</div>
-                ) : plainDocs.length > 0 ? (
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                      <Icon name="hi-folder-open" size={12} />
-                      Project Documents
-                    </h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead className="text-[9px] text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                          <tr>
-                            <th className="text-left px-3 py-2 font-medium">Title</th>
-                            <th className="text-right px-3 py-2 font-medium">Size</th>
-                            <th className="text-right px-3 py-2 font-medium">Version</th>
-                            <th className="text-right px-3 py-2 font-medium">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {plainDocs.slice(0, 5).map((doc) => (
-                            <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-3 py-2 font-medium text-slate-700">{doc.title}</td>
-                              <td className="px-3 py-2 text-right text-slate-500">
-                                {(doc.fileSizeBytes / 1024).toFixed(0)} KB
-                              </td>
-                              <td className="px-3 py-2 text-right text-slate-500">v{doc.version}</td>
-                              <td className="px-3 py-2 text-right text-slate-500">
-                                {new Date(doc.createdDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {plainDocs.length > 5 && (
-                        <div className="text-center pt-2">
-                          <span className="text-[10px] text-indigo-500 font-semibold">+{plainDocs.length - 5} more</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-xs text-slate-400 py-2">No project documents</div>
-                )}
 
                 {totalTaskAttachments > 0 && (
                   <div>
