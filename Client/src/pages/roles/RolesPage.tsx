@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { PermissionRecord, RoleRecord } from "../../types";
-import { roleDisplayName } from "../../permissions";
+import { roleDisplayName, ADMIN_ONLY_MODULES } from "../../permissions";
 import {
   AnimatedBackground,
-  GlassCard,
   LoadingPage,
   PERMISSION_GROUPS,
   ROLE_LEVELS,
@@ -61,14 +60,15 @@ export function RolesPage() {
     return roles.filter((r) => r.permissionLevel < userMaxLevel);
   }, [roles, userMaxLevel, perm.isSuperAdmin]);
 
-  const ADMIN_ONLY_MODULES = new Set(["Authorization", "Authentication", "System"]);
-
+  // A role may only be given a permission the person editing it already holds,
+  // and only within their own reach. Expansion matters here: holding PROJECT_MANAGE
+  // means they can hand out PROJECT_VIEW, so the matrix must offer it.
   const assignablePermissions = useMemo(() => {
     if (!auth) return [];
     if (perm.isSuperAdmin) return permissions;
     const userPermSet = new Set(expandPermissions(auth.permissions));
     return permissions.filter((p) =>
-      !ADMIN_ONLY_MODULES.has(p.module) && userPermSet.has(p.code),
+      !ADMIN_ONLY_MODULES.includes(p.module) && userPermSet.has(p.code),
     );
   }, [permissions, auth, perm.isSuperAdmin]);
 
@@ -200,26 +200,20 @@ export function RolesPage() {
         )}
 
         {activeTab === "permissions" && (
-          <PermissionsTable
-            permissions={permissions}
-            onEdit={(perm) => setPermissionModal({ open: true, editPermission: perm })}
-            onDelete={(perm) => setDeleteConfirm({ open: true, type: "permission", id: perm.id, name: perm.code })}
-            onCreate={() => setPermissionModal({ open: true })}
-            isAdmin={canManagePermissions}
-          />
+          <PermissionsTable permissions={permissions} isAdmin={canManagePermissions} />
         )}
       </div>
 
       {/* Modals */}
       {roleModal.open && (
-        <ModalOverlay onClose={() => setRoleModal({ open: false })}>
-          <RoleFormModal
-            initialData={roleModal.editRole}
-            permissions={assignablePermissions}
-            onSubmit={handleRoleSubmit}
-            onCancel={() => setRoleModal({ open: false })}
-          />
-        </ModalOverlay>
+        // The role modal draws its own full-width overlay: the matrix needs the
+        // whole viewport width to keep the two scope columns readable side by side.
+        <RoleFormModal
+          initialData={roleModal.editRole}
+          permissions={assignablePermissions}
+          onSubmit={handleRoleSubmit}
+          onCancel={() => setRoleModal({ open: false })}
+        />
       )}
 
       {permissionModal.open && (

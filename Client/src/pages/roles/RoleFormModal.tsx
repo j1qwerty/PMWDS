@@ -1,5 +1,23 @@
-import { useState, useEffect, type FormEvent, useMemo, useCallback, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import type { PermissionRecord, RoleRecord } from "../../types";
+import {
+  ALL_PERMISSION_CODES,
+  PERMISSION_COVERAGE,
+  PERMISSION_FEATURES,
+  PERMISSION_MODULE_ORDER,
+  isAllScope,
+  permissionDescription,
+  toAllScope,
+  toOwnScope,
+  type PermissionFeatureDefinition,
+  type PermissionScope,
+} from "../../permissions";
 
 interface RoleFormModalProps {
   initialData?: RoleRecord;
@@ -8,202 +26,339 @@ interface RoleFormModalProps {
   onCancel: () => void;
 }
 
-export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: RoleFormModalProps) {
+type Selection = Set<string>;
+
+/** One rendered row: a feature, an action, and the code at each scope it has. */
+type MatrixRow = {
+  feature: PermissionFeatureDefinition;
+  action: (typeof PERMISSION_FEATURES)[number]["actions"][number];
+  ownCode?: string;
+  allCode?: string;
+};
+
+const SCOPE_HEADINGS: { key: PermissionScope; label: string; hint: string }[] = [
+  {
+    key: "own",
+    label: "Own department",
+    hint: "Only the departments the person belongs to",
+  },
+  {
+    key: "all",
+    label: "All departments",
+    hint: "Every department in the organization",
+  },
+];
+
+/**
+ * Creates or edits a role.
+ *
+ * The permission picker is a matrix rather than a flat list because the model is
+ * not flat: every department-scoped feature has two independent scopes, and the
+ * whole point of the split is that the two are easy to tell apart. Rows are
+ * grouped by feature and the two scopes sit side by side, so reading across a row
+ * answers "what may this role do with its own departments, and with the rest of
+ * the organization".
+ */
+export function RoleFormModal({
+  initialData,
+  permissions,
+  onSubmit,
+  onCancel,
+}: RoleFormModalProps) {
   const [submitting, setSubmitting] = useState(false);
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
-  const permissionsListRef = useRef<HTMLDivElement>(null);
-  
+  const [collapsedModules, setCollapsedModules] = useState<Selection>(new Set());
+  const [expandedFeatures, setExpandedFeatures] = useState<Selection>(new Set());
+
   const [form, setForm] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
     permissionLevel: initialData?.permissionLevel || 10,
   });
-  
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
-    new Set(initialData?.permissions?.map(p => p.id) || [])
-  );
 
-  useEffect(() => {
-    if (initialData) {
-      setForm({
-        name: initialData.name || "",
-        description: initialData.description || "",
-        permissionLevel: initialData.permissionLevel || 10,
-      });
-      setSelectedPermissions(new Set(initialData.permissions?.map(p => p.id) || []));
-    }
-  }, [initialData]);
+  // Only the permissions this role may actually be given. A non-superadmin cannot
+  // assign a permission they do not hold themselves, so offering it would be a lie.
+  const assignableCodes = useMemo(() => {
+    const available = new Set(
+      permissions
+        .map((permission) => permission.code?.toUpperCase())
+        .filter((code): code is string => Boolean(code)),
+    );
 
-  // Memoize grouped permissions to prevent recalculation on every render
-  const groupedPermissions = useMemo(() => {
-    const groups = permissions.reduce((acc, perm) => {
-      const module = perm.module || "Other";
-      if (!acc[module]) {
-        acc[module] = {
-          managePermission: null,
-          regularPermissions: []
-        };
-      }
-      
-      if (perm.code?.endsWith('_manage') || perm.name?.toLowerCase().includes('manage all')) {
-        acc[module].managePermission = perm;
-      } else {
-        acc[module].regularPermissions.push(perm);
-      }
-      
-      return acc;
-    }, {} as Record<string, { 
-      managePermission: PermissionRecord | null, 
-      regularPermissions: PermissionRecord[] 
-    }>);
-    
-    return groups;
+    // A permission the server has not published yet is still shown, so a freshly
+    // added code is visible in the matrix the moment it is seeded rather than
+    // silently missing. What it is not shown as is any code outside the catalogue.
+    return new Set([...available, ...ALL_PERMISSION_CODES].filter((code) => available.has(code) || ALL_PERMISSION_CODES.includes(code)));
   }, [permissions]);
 
-  // Filter modules based on search query
-  const filteredModules = useMemo(() => {
-    if (!searchQuery.trim()) return Object.entries(groupedPermissions);
-    
-    const query = searchQuery.toLowerCase();
-    return Object.entries(groupedPermissions).filter(([moduleName, module]) => {
-      // Check if module name matches
-      if (moduleName.toLowerCase().includes(query)) return true;
-      
-      // Check if any permission matches
-      return module.regularPermissions.some(
-        p => p.name.toLowerCase().includes(query) || 
-             p.code?.toLowerCase().includes(query)
-      ) || (module.managePermission && (
-        module.managePermission.name.toLowerCase().includes(query) ||
-        module.managePermission.code?.toLowerCase().includes(query)
-      ));
-    });
-  }, [groupedPermissions, searchQuery]);
+  const [selected, setSelected] = useState<Selection>(() => {
+    const codes = new Set(
+      (initialData?.permissions ?? [])
+        .map((permission) => permission.code?.toUpperCase())
+        .filter((code): code is string => Boolean(code)),
+    );
+    return codes;
+  });
 
-  // Auto-expand filtered modules
   useEffect(() => {
-    if (searchQuery.trim()) {
-      setExpandedModules(new Set(filteredModules.map(([name]) => name)));
+    if (!initialData) return;
+    setForm({
+      name: initialData.name || "",
+      description: initialData.description || "",
+      permissionLevel: initialData.permissionLevel || 10,
+    });
+    setSelected(
+      new Set(
+        (initialData.permissions ?? [])
+          .map((permission) => permission.code?.toUpperCase())
+          .filter((code): code is string => Boolean(code)),
+      ),
+    );
+  }, [initialData]);
+
+  // ── Matrix construction ───────────────────────────────────────────────────
+
+  const rows = useMemo(() => {
+    const built: MatrixRow[] = [];
+
+    for (const feature of PERMISSION_FEATURES) {
+      for (const action of feature.actions) {
+        const ownCode = assignableCodes.has(action.code) ? action.code : undefined;
+        const allCandidate = toAllScope(action.code);
+        const allCode =
+          feature.departmentScoped && assignableCodes.has(allCandidate)
+            ? allCandidate
+            : undefined;
+
+        if (!ownCode && !allCode) continue;
+        built.push({ feature, action, ownCode, allCode });
+      }
     }
-  }, [searchQuery, filteredModules]);
 
-  const togglePermission = useCallback((permissionId: string) => {
-    setSelectedPermissions(prev => {
-      const newSelection = new Set(prev);
-      if (newSelection.has(permissionId)) {
-        newSelection.delete(permissionId);
-      } else {
-        newSelection.add(permissionId);
-        
-        // If selecting a manage permission, remove individual permissions from that module
-        Object.values(groupedPermissions).forEach(module => {
-          if (module.managePermission?.id === permissionId) {
-            module.regularPermissions.forEach(p => newSelection.delete(p.id));
-          }
-        });
+    return built;
+  }, [assignableCodes]);
+
+  const modules = useMemo(() => {
+    const byModule = new Map<string, MatrixRow[]>();
+    for (const row of rows) {
+      const list = byModule.get(row.feature.module);
+      if (list) list.push(row);
+      else byModule.set(row.feature.module, [row]);
+    }
+
+    const ordered = PERMISSION_MODULE_ORDER.filter((module) => byModule.has(module));
+    const extras = Array.from(byModule.keys()).filter((module) => !ordered.includes(module));
+
+    return [...ordered, ...extras].map((module) => ({
+      module,
+      features: PERMISSION_FEATURES.filter((feature) =>
+        byModule.get(module)?.some((row) => row.feature.key === feature.key),
+      ),
+    }));
+  }, [rows]);
+
+  // ── Search ────────────────────────────────────────────────────────────────
+
+  const query = searchQuery.trim().toLowerCase();
+
+  const matches = useCallback(
+    (row: MatrixRow) => {
+      if (!query) return true;
+      return (
+        row.feature.label.toLowerCase().includes(query) ||
+        row.feature.module.toLowerCase().includes(query) ||
+        row.feature.description.toLowerCase().includes(query) ||
+        row.action.label.toLowerCase().includes(query) ||
+        row.action.code.toLowerCase().includes(query) ||
+        toAllScope(row.action.code).toLowerCase().includes(query)
+      );
+    },
+    [query],
+  );
+
+  const visibleModules = useMemo(
+    () =>
+      modules
+        .map((entry) => ({
+          ...entry,
+          features: entry.features
+            .map((feature) => ({
+              feature,
+              rows: rows.filter((row) => row.feature.key === feature.key && matches(row)),
+            }))
+            .filter((group) => group.rows.length > 0),
+        }))
+        .filter((entry) => entry.features.length > 0),
+    [modules, rows, matches],
+  );
+
+  // ── Selection ─────────────────────────────────────────────────────────────
+
+  const isSelected = useCallback(
+    (code: string | undefined) => Boolean(code && selected.has(code)),
+    [selected],
+  );
+
+  /** The codes a grant confers, filtered to what this role may be given. */
+  const impliedBy = useCallback(
+    (code: string) =>
+      (PERMISSION_COVERAGE[code] ?? []).filter((implied) => assignableCodes.has(implied)),
+    [assignableCodes],
+  );
+
+  const setCodes = useCallback((codes: string[], selectedState: boolean) => {
+    setSelected((previous) => {
+      const next = new Set(previous);
+      for (const code of codes) {
+        if (selectedState) next.add(code);
+        else next.delete(code);
       }
-      return newSelection;
-    });
-  }, [groupedPermissions]);
-
-  const toggleManagePermission = useCallback((moduleName: string) => {
-    const module = groupedPermissions[moduleName];
-    if (!module?.managePermission) return;
-
-    setSelectedPermissions(prev => {
-      const newSelection = new Set(prev);
-      
-      if (newSelection.has(module.managePermission!.id)) {
-        newSelection.delete(module.managePermission!.id);
-      } else {
-        newSelection.add(module.managePermission!.id);
-        module.regularPermissions.forEach(p => newSelection.delete(p.id));
-      }
-      
-      return newSelection;
-    });
-  }, [groupedPermissions]);
-
-  const toggleModule = useCallback((moduleName: string) => {
-    setExpandedModules(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(moduleName)) {
-        newSet.delete(moduleName);
-      } else {
-        newSet.add(moduleName);
-      }
-      return newSet;
+      return next;
     });
   }, []);
 
-  const getModuleSelectionCount = useCallback((moduleName: string): number => {
-    const module = groupedPermissions[moduleName];
-    if (!module) return 0;
-    
-    if (module.managePermission && selectedPermissions.has(module.managePermission.id)) {
-      return module.regularPermissions.length + 1;
-    }
-    
-    return module.regularPermissions.filter(p => selectedPermissions.has(p.id)).length;
-  }, [groupedPermissions, selectedPermissions]);
+  /**
+   * Ticking or unticking a grant moves everything it covers with it.
+   *
+   * This is the requirement that manage means manage: ticking Manage ticks View,
+   * Create, Edit and Delete, and they read as ticked. Un-ticking Manage un-ticks
+   * them too, which the previous one-way cascade never did — it cleared the
+   * children when Manage was ticked and left them gone when it was un-ticked.
+   */
+  const toggleGrant = useCallback(
+    (code: string) => {
+      const willSelect = !selected.has(code);
+      setCodes([code, ...impliedBy(code)], willSelect);
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+      if (!willSelect) {
+        // Anything that implied this grant loses its reason for covering it.
+        setSelected((previous) => {
+          const next = new Set(previous);
+          for (const [grant, covered] of Object.entries(PERMISSION_COVERAGE)) {
+            if (grant !== code && (covered as readonly string[]).includes(code)) {
+              next.delete(code);
+            }
+          }
+          return next;
+        });
+      }
+    },
+    [selected, impliedBy, setCodes],
+  );
+
+  /**
+   * Whether a grant is on because it was ticked in its own right, or only because
+   * an umbrella covers it. Only the former is shown as independently ticked.
+   */
+  const coveredByOther = useCallback(
+    (code: string | undefined) => {
+      if (!code || selected.has(code)) return undefined;
+      return Object.entries(PERMISSION_COVERAGE).find(
+        ([grant, covered]) =>
+          grant !== code &&
+          selected.has(grant) &&
+          (covered as readonly string[]).includes(code),
+      )?.[0];
+    },
+    [selected],
+  );
+
+  const toggleModule = useCallback((module: string) => {
+    setCollapsedModules((previous) => {
+      const next = new Set(previous);
+      if (next.has(module)) next.delete(module);
+      else next.add(module);
+      return next;
+    });
+  }, []);
+
+  const toggleFeature = useCallback((key: string) => {
+    setExpandedFeatures((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // ── Counts ────────────────────────────────────────────────────────────────
+
+  const countsFor = useCallback(
+    (featureRows: MatrixRow[]) => {
+      let selectedCount = 0;
+      let total = 0;
+      for (const row of featureRows) {
+        for (const code of [row.ownCode, row.allCode]) {
+          if (!code) continue;
+          total += 1;
+          if (selected.has(code)) selectedCount += 1;
+        }
+      }
+      return { selectedCount, total };
+    },
+    [selected],
+  );
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit({ ...form, permissionIds: Array.from(selectedPermissions) });
+
+    // Only codes actually ticked are stored. Anything an umbrella already implies
+    // is left out, so the role's stored permissions always say exactly what the
+    // matrix showed.
+    const permissionIds = permissions
+      .filter((permission) => {
+        const code = permission.code?.toUpperCase();
+        return Boolean(code && selected.has(code));
+      })
+      .map((permission) => permission.id);
+
+    onSubmit({ ...form, permissionIds });
   };
 
-  const totalSelected = selectedPermissions.size;
-
-  // Virtual scrolling helper - only render visible items if needed
-  const scrollToModule = (moduleName: string) => {
-    setExpandedModules(prev => new Set([...prev, moduleName]));
-    // Small delay to allow expansion before scrolling
-    setTimeout(() => {
-      const element = document.getElementById(`module-${moduleName}`);
-      element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
-  };
-
-  // Highlight matching text
-  const highlightMatch = (text: string, query: string) => {
-    if (!query.trim()) return text;
-    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
-    return parts.map((part, i) => 
-      part.toLowerCase() === query.toLowerCase() 
-        ? <mark key={i} className="bg-yellow-200 rounded px-0.5">{part}</mark>
-        : part
-    );
-  };
+  const selectedCount = selected.size;
+  const noResults = visibleModules.length === 0;
 
   return (
-    <div className="bg-white rounded-2xl p-6 max-w-[100vw] shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4 flex-shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-          <span className="material-symbols-outlined text-indigo-600 text-xl">
-            {initialData ? "edit" : "shield"}
-          </span>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">
-            {initialData ? "Edit Role" : "Create Role"}
-          </h2>
-          <p className="text-xs text-slate-500">Configure role permissions</p>
-        </div>
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={onCancel} />
 
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 space-y-4">
-        {/* Basic Info - Fixed */}
-        <div className="flex-shrink-0 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+      {/* Deliberately wide: the matrix needs room for two scope columns plus the
+          labels beside them, and squeezing it into a narrow dialog is what made
+          the scope distinction unreadable. */}
+      <div className="relative bg-white rounded-2xl w-[min(1180px,96vw)] max-h-[92vh] shadow-2xl border border-slate-200 flex flex-col">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-indigo-600 text-xl">
+              {initialData ? "edit" : "shield"}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-slate-900">
+              {initialData ? "Edit Role" : "Create Role"}
+            </h2>
+            <p className="text-xs text-slate-500">
+              Tick what this role may do. Each feature has two independent scopes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600"
+            aria-label="Close"
+          >
+            <span className="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-3 gap-3 flex-shrink-0">
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Name *</label>
               <input
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
                 required
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 placeholder="e.g., Project Manager"
@@ -214,47 +369,37 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
               <input
                 type="number"
                 value={form.permissionLevel}
-                onChange={(e) => setForm({ ...form, permissionLevel: Number(e.target.value) })}
+                onChange={(event) =>
+                  setForm({ ...form, permissionLevel: Number(event.target.value) })
+                }
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-                placeholder="10"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Description</label>
+              <input
+                value={form.description}
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                placeholder="Brief description of this role"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 resize-none"
-              placeholder="Brief description of this role"
-            />
-          </div>
-        </div>
-
-        {/* Permissions Section - Scrollable */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex items-center justify-between mb-2 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-600">
-                Permissions
-              </label>
-              <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                {totalSelected} selected
-              </span>
-            </div>
-            
-            {/* Search Bar */}
-            <div className="relative w-48">
+          <div className="px-6 flex items-center gap-3 flex-shrink-0 pb-3">
+            <span className="text-xs font-semibold text-slate-600">Permissions</span>
+            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+              {selectedCount} ticked
+            </span>
+            <div className="relative ml-auto w-64">
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                 search
               </span>
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search permissions..."
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search features or permissions…"
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
               />
               {searchQuery && (
@@ -268,215 +413,296 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
               )}
             </div>
           </div>
-          
-          {/* Scrollable Permissions List - Optimized */}
-          <div 
-            ref={permissionsListRef}
-            className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1"
-            style={{ 
-              willChange: 'transform',
-              transform: 'translateZ(0)',
-              WebkitOverflowScrolling: 'touch'
-            }}
-          >
-            {filteredModules.length === 0 && (
-              <div className="text-center py-8 text-slate-400">
+
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-4 space-y-3">
+            {noResults && (
+              <div className="text-center py-12 text-slate-400">
                 <span className="material-symbols-outlined text-3xl mb-2 block">search_off</span>
-                <p className="text-sm">No permissions found</p>
-                <p className="text-xs mt-1">Try a different search term</p>
+                <p className="text-sm">No permissions match “{searchQuery}”</p>
               </div>
             )}
-            
-            {filteredModules.map(([moduleName, module]) => (
-              <div 
-                key={moduleName} 
-                id={`module-${moduleName}`}
-                className="border border-slate-200 rounded-lg bg-white"
-              >
-                {/* Module Header - Always visible */}
-                <button
-                  type="button"
-                  onClick={() => toggleModule(moduleName)}
-                  className="w-full flex items-center justify-between p-2.5 hover:bg-slate-50 rounded-lg transition-colors"
+
+            {visibleModules.map(({ module, features }) => {
+              const collapsed = collapsedModules.has(module);
+              const moduleRows = features.flatMap((group) => group.rows);
+              const { selectedCount: moduleSelected, total: moduleTotal } =
+                countsFor(moduleRows);
+
+              return (
+                <section
+                  key={module}
+                  className="border border-slate-200 rounded-xl bg-white overflow-hidden"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span 
+                  <button
+                    type="button"
+                    onClick={() => toggleModule(module)}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <span
                       className="material-symbols-outlined text-slate-400 text-lg flex-shrink-0 transition-transform duration-200"
-                      style={{
-                        transform: expandedModules.has(moduleName) ? 'rotate(90deg)' : 'rotate(0deg)'
-                      }}
+                      style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
                     >
                       chevron_right
                     </span>
-                    <div className="text-left min-w-0">
-                      <div className="text-sm font-semibold text-slate-800 truncate">
-                        {searchQuery ? highlightMatch(moduleName, searchQuery) : moduleName}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {module.regularPermissions.length + (module.managePermission ? 1 : 0)} permissions
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                    {getModuleSelectionCount(moduleName) > 0 && (
-                      <span className="text-[11px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-medium">
-                        {getModuleSelectionCount(moduleName)}
+                    <span className="text-sm font-semibold text-slate-800">{module}</span>
+                    <span className="text-[11px] text-slate-400">
+                      {moduleSelected}/{moduleTotal}
+                    </span>
+                    {moduleSelected > 0 && (
+                      <span className="ml-auto text-[11px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">
+                        {moduleSelected} ticked
                       </span>
                     )}
-                    
-                    {module.managePermission && (
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleManagePermission(moduleName);
-                        }}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-green-50 cursor-pointer transition-colors"
-                      >
-                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                          selectedPermissions.has(module.managePermission.id)
-                            ? 'bg-green-500 border-green-500'
-                            : 'border-slate-300'
-                        }`}>
-                          {selectedPermissions.has(module.managePermission.id) && (
-                            <span className="material-symbols-outlined text-white text-[10px]">check</span>
-                          )}
-                        </div>
-                        <span className="text-[11px] font-medium text-green-700 whitespace-nowrap">Manage All</span>
-                      </div>
-                    )}
-                  </div>
-                </button>
+                  </button>
 
-                {/* Expanded Individual Permissions */}
-                {expandedModules.has(moduleName) && (
-                  <div className="border-t border-slate-100 p-2 space-y-1">
-                    {module.managePermission && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-1.5">
-                        <p className="text-[11px] text-amber-700 flex items-start gap-1.5">
-                          <span className="material-symbols-outlined text-amber-500 text-sm flex-shrink-0 mt-0.5">info</span>
-                          <span>
-                            <strong>"Manage All"</strong> includes all view, edit, and delete permissions in this module.
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Individual Permissions */}
-                    <div className="space-y-0.5">
-                      {module.regularPermissions.map((permission) => (
-                        <label
-                          key={permission.id}
-                          className={`
-                            flex items-center gap-2 px-2.5 py-2 rounded-md cursor-pointer transition-colors
-                            ${selectedPermissions.has(permission.id)
-                              ? "bg-indigo-50"
-                              : "hover:bg-slate-50"
-                            }
-                            ${module.managePermission && selectedPermissions.has(module.managePermission.id)
-                              ? "opacity-50 pointer-events-none"
-                              : ""
-                            }
-                          `}
-                        >
-                          <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                            selectedPermissions.has(permission.id)
-                              ? 'bg-indigo-500 border-indigo-500'
-                              : 'border-slate-300'
-                          }`}>
-                            {selectedPermissions.has(permission.id) && (
-                              <span className="material-symbols-outlined text-white text-[10px]">check</span>
-                            )}
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={selectedPermissions.has(permission.id)}
-                            onChange={() => togglePermission(permission.id)}
-                            disabled={!!(module.managePermission && selectedPermissions.has(module.managePermission.id))}
-                            className="hidden"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-slate-700 truncate">
-                              {searchQuery ? highlightMatch(permission.name, searchQuery) : permission.name}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono truncate">
-                              {searchQuery ? highlightMatch(permission.code || '', searchQuery) : permission.code}
-                            </div>
-                          </div>
-                          {permission.isGlobal && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-medium flex-shrink-0">
-                              Global
+                  {!collapsed &&
+                    features.map(({ feature, rows: featureRows }) => {
+                      const expanded = query ? true : expandedFeatures.has(feature.key);
+                      const { selectedCount: featureSelected, total: featureTotal } =
+                        countsFor(featureRows);
+                      const hasBothScopes = featureRows.some((row) => row.allCode);
+
+                      return (
+                        <div key={feature.key} className="border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => toggleFeature(feature.key)}
+                            className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50/70 transition-colors text-left"
+                          >
+                            <span
+                              className="material-symbols-outlined text-slate-300 text-base flex-shrink-0 mt-0.5 transition-transform duration-200"
+                              style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}
+                            >
+                              chevron_right
                             </span>
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                    
-                    {/* Manage All in expanded view */}
-                    {module.managePermission && (
-                      <label
-                        className={`
-                          flex items-center gap-2 px-2.5 py-2 rounded-md cursor-pointer transition-colors mt-1
-                          ${selectedPermissions.has(module.managePermission.id)
-                            ? "bg-green-50 border border-green-200"
-                            : "hover:bg-slate-50 border border-transparent"
-                          }
-                        `}
-                      >
-                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                          selectedPermissions.has(module.managePermission.id)
-                            ? 'bg-green-500 border-green-500'
-                            : 'border-slate-300'
-                        }`}>
-                          {selectedPermissions.has(module.managePermission.id) && (
-                            <span className="material-symbols-outlined text-white text-[10px]">check</span>
-                          )}
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={selectedPermissions.has(module.managePermission.id)}
-                          onChange={() => toggleManagePermission(moduleName)}
-                          className="hidden"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-green-700 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm flex-shrink-0">shield</span>
-                            {searchQuery ? highlightMatch(module.managePermission.name, searchQuery) : module.managePermission.name}
-                          </div>
-                          <div className="text-[10px] text-green-600">
-                            Includes all module permissions
-                          </div>
-                        </div>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium flex-shrink-0">
-                          Manage All
-                        </span>
-                      </label>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[13px] font-semibold text-slate-800">
+                                  {feature.label}
+                                </span>
+                                {featureSelected > 0 && (
+                                  <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-full font-medium">
+                                    {featureSelected}/{featureTotal}
+                                  </span>
+                                )}
+                                {!hasBothScopes && (
+                                  <span
+                                    className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded"
+                                    title="This feature is not owned by a department, so it has a single scope."
+                                  >
+                                    single scope
+                                  </span>
+                                )}
+                              </span>
+                              <span className="block text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                                {feature.description}
+                              </span>
+                            </span>
+                          </button>
 
-        {/* Actions - Fixed at bottom */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 flex-shrink-0">
-          <button 
-            type="button" 
-            onClick={onCancel} 
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit" 
-            disabled={submitting || !form.name} 
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Saving..." : (initialData ? "Update Role" : "Create Role")}
-          </button>
-        </div>
-      </form>
+                          {expanded && (
+                            <table className="w-full border-t border-slate-100">
+                              <thead>
+                                <tr className="bg-slate-50/60">
+                                  <th className="text-left px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 w-[46%]">
+                                    Action
+                                  </th>
+                                  {hasBothScopes
+                                    ? SCOPE_HEADINGS.map((heading) => (
+                                        <th
+                                          key={heading.key}
+                                          className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400"
+                                          title={heading.hint}
+                                        >
+                                          <span className="flex items-center gap-1">
+                                            {heading.label}
+                                            <span
+                                              className="material-symbols-outlined text-[13px] text-slate-300 hover:text-slate-500"
+                                              title={heading.hint}
+                                            >
+                                              help
+                                            </span>
+                                          </span>
+                                        </th>
+                                      ))
+                                    : (
+                                        <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                                          Grant
+                                        </th>
+                                      )}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                {featureRows.map((row) => (
+                                  <tr key={`${row.feature.key}-${row.action.code}`}>
+                                    <td className="px-4 py-2 align-top">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-medium text-slate-700">
+                                          {row.action.label}
+                                        </span>
+                                        {row.action.action === "manage" && (
+                                          <span
+                                            className="material-symbols-outlined text-[14px] text-emerald-500"
+                                            title="Ticking this also ticks every other action in this feature at the same scope."
+                                          >
+                                            shield
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 font-mono">
+                                        {row.ownCode}
+                                      </div>
+                                      {permissionDescription(row.ownCode) && (
+                                        <p className="text-[10px] text-slate-500 leading-relaxed mt-1 max-w-prose">
+                                          {permissionDescription(row.ownCode)}
+                                        </p>
+                                      )}
+                                    </td>
+
+                                    {hasBothScopes ? (
+                                      <>
+                                        <td className="px-3 py-2 align-top">
+                                          <ScopeCell
+                                            code={row.ownCode}
+                                            ticked={isSelected(row.ownCode)}
+                                            impliedBy={coveredByOther(row.ownCode)}
+                                            onToggle={toggleGrant}
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2 align-top">
+                                          <ScopeCell
+                                            code={row.allCode}
+                                            ticked={isSelected(row.allCode)}
+                                            impliedBy={coveredByOther(row.allCode)}
+                                            onToggle={toggleGrant}
+                                          />
+                                        </td>
+                                      </>
+                                    ) : (
+                                      <td className="px-3 py-2 align-top">
+                                        <ScopeCell
+                                          code={row.ownCode}
+                                          ticked={isSelected(row.ownCode)}
+                                          impliedBy={coveredByOther(row.ownCode)}
+                                          onToggle={toggleGrant}
+                                        />
+                                      </td>
+                                    )}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      );
+                    })}
+                </section>
+              );
+            })}
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center gap-3 flex-shrink-0">
+            <p className="text-[11px] text-slate-400 max-w-xl">
+              Ticking <strong>Manage</strong> ticks every other action in that feature at the same
+              scope. An all-departments grant also satisfies the own-department policy, so it is
+              never necessary to tick both.
+            </p>
+            <div className="ml-auto flex gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !form.name.trim()}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? "Saving…" : initialData ? "Update Role" : "Create Role"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   );
+}
+
+/**
+ * One scope's checkbox.
+ *
+ * Three visual states, because they mean different things:
+ *  - ticked: this grant is held
+ *  - ticked but filled by an umbrella: held only because something else covers it,
+ *    so unticking here would not change anything
+ *  - unticked: not held
+ */
+function ScopeCell({
+  code,
+  ticked,
+  impliedBy,
+  onToggle,
+}: {
+  code: string | undefined;
+  ticked: boolean;
+  impliedBy: string | undefined;
+  onToggle: (code: string) => void;
+}) {
+  if (!code) {
+    return <span className="text-[11px] text-slate-300">—</span>;
+  }
+
+  const all = isAllScope(code);
+  const title = impliedBy
+    ? `Implied by ${impliedBy}. Un-tick ${impliedBy} to remove it.`
+    : permissionDescription(code);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(code)}
+      title={title}
+      aria-pressed={ticked}
+      aria-label={`${all ? "All departments" : "Own department"}: ${permissionLabelFor(code)}`}
+      className={`group inline-flex items-center gap-2 px-2 py-1 -mx-2 rounded-lg transition-colors ${
+        ticked ? "hover:bg-emerald-50" : "hover:bg-slate-50"
+      }`}
+    >
+      <span
+        className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+          ticked
+            ? impliedBy
+              ? "bg-emerald-400 border-emerald-400"
+              : "bg-indigo-600 border-indigo-600"
+            : "border-slate-300 group-hover:border-slate-400"
+        }`}
+      >
+        {ticked && (
+          <span className="material-symbols-outlined text-white text-[11px]">
+            {impliedBy ? "check" : "check"}
+          </span>
+        )}
+      </span>
+      <span className="flex flex-col items-start leading-tight">
+        <span
+          className={`text-[10px] font-mono ${
+            ticked ? "text-slate-700" : "text-slate-400"
+          }`}
+        >
+          {code}
+        </span>
+        {impliedBy && <span className="text-[9px] text-emerald-600">implied</span>}
+      </span>
+    </button>
+  );
+}
+
+function permissionLabelFor(code: string): string {
+  const own = toOwnScope(code);
+  const entry = PERMISSION_FEATURES.flatMap((feature) => feature.actions).find(
+    (candidate) => candidate.code === own,
+  );
+  return `${entry?.label ?? own}${isAllScope(code) ? " (all departments)" : ""}`;
 }
