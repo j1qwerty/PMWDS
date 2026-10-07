@@ -2,6 +2,9 @@ namespace PMWDS.Application.Security;
 
 public static class AuthorizationPolicies
 {
+    /// <summary>Prefix for the per-entity CRUD policies registered by the policy registry.</summary>
+    public const string DocumentsPrefix = "Documents";
+
     public const string Authenticated = "Authenticated";
     public const string SuperAdmin = "SuperAdmin";
     public const string Director = "Director";

@@ -21,7 +21,35 @@ public class ProjectDocumentConfiguration : IEntityTypeConfiguration<ProjectDocu
             .HasConversion<string>()
             .HasMaxLength(40);
 
+        b.Property(e => e.Level)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         b.HasIndex(e => e.Category);
+        b.HasIndex(e => e.Level);
+
+        // NoAction, not Cascade. Projects already cascade to ProjectDocuments
+        // directly, so a cascading Milestone or Task path would give SQL Server two
+        // cascade routes into the same table, which it rejects outright. Milestones
+        // and tasks are also soft-deleted, so the database would never fire the
+        // cascade anyway. Attachment cleanup therefore happens in application code,
+        // alongside the utilization-certificate unlinking that already works this
+        // way.
+        b.HasOne(e => e.Milestone)
+            .WithMany()
+            .HasForeignKey(e => e.MilestoneId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        b.HasOne(e => e.Task)
+            .WithMany()
+            .HasForeignKey(e => e.TaskId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // The document list for a project is always filtered by level, and a task
+        // document is always fetched with its parent task's name.
+        b.HasIndex(e => new { e.ProjectId, e.Level });
+        b.HasIndex(e => e.MilestoneId);
+        b.HasIndex(e => e.TaskId);
     }
 }
 

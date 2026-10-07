@@ -51,7 +51,7 @@ public static class PermissionPolicyRegistry
         AddCrud(options, "Permissions", PermissionCodes.PermissionManage, PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
         AddCrud(options, "Notifications", PermissionCodes.NotificationManage, PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage);
         AddCrud(options, "UtilizationCertificates", PermissionCodes.UtilizationCertificateManage, PermissionCodes.UtilizationCertificateView, PermissionCodes.UtilizationCertificateCreate, PermissionCodes.UtilizationCertificateEdit, PermissionCodes.UtilizationCertificateDelete);
-        AddCrud(options, "Documents", PermissionCodes.DocumentManage, PermissionCodes.DocumentView, PermissionCodes.DocumentCreate, PermissionCodes.DocumentEdit, PermissionCodes.DocumentDelete);
+        AddCrud(options, AuthorizationPolicies.DocumentsPrefix, PermissionCodes.DocumentManage, PermissionCodes.DocumentView, PermissionCodes.DocumentCreate, PermissionCodes.DocumentEdit, PermissionCodes.DocumentDelete);
 
         // Which levels of the hierarchy a role may upload into. Held as individual
         // permissions rather than one flag so the upload dialog can offer exactly

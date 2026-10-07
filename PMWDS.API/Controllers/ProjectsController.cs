@@ -6,10 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
+using PMWDS.Application.DTOs.Documents;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Features.Projects.Commands;
 using PMWDS.Application.Features.Projects.Queries;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
 using PMWDS.Infrastructure.Services;
@@ -26,6 +28,12 @@ public class ProjectsController : BaseApiController
     private readonly RoleScopeService _scope;
     private readonly ApplicationDbContext _db;
     private readonly IDataChangeNotifier _changes;
+
+    /// <summary>
+    /// Upload ceiling for ordinary project documents, matching the limit already
+    /// applied to utilization certificates.
+    /// </summary>
+    private const long MaxUploadBytes = 10_000_000;
 
     public ProjectsController(
         IMediator mediator,
@@ -407,17 +415,40 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
+    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<IActionResult> UploadDocument(
     Guid id,
     IFormFile file,
     [FromForm] DocumentCategory? category,
+    [FromForm] DocumentLevel level,
+    [FromForm] Guid? milestoneId,
+    [FromForm] Guid? taskId,
     CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(id, ct))
+        if (file.Length > MaxUploadBytes)
+        {
+            return BadRequest(new { message = "The file exceeds the maximum upload size." });
+        }
+
+        var levelCheck = await ValidateDocumentTargetAsync(id, level, milestoneId, taskId, ct);
+        if (levelCheck != null)
+        {
+            return levelCheck;
+        }
+
+        // The upload level is a permission in its own right, separate from managing the
+        // project. A role can manage a project and still only be entitled to file
+        // documents at, say, task level.
+        if (!await _scope.HasAnyPermissionAsync(ct, [.. PermissionCatalog.UploadLevelPermissionsFor(level)]))
+        {
+            return Forbid();
+        }
+
+        if (!await CanUploadDocumentAtAsync(id, level, milestoneId, taskId, ct))
         {
             return Forbid();
         }
@@ -440,33 +471,258 @@ public class ProjectsController : BaseApiController
             file.Length,
             _currentUser.UserId ?? "system",
             description: null,
-            category: resolvedCategory);
+            category: resolvedCategory,
+            level: level,
+            milestoneId: milestoneId,
+            taskId: taskId);
 
         await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Document Uploaded",
-            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to project \"{project.Name}\"",
+            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to {DescribeLevel(level, milestoneId, taskId)} of project \"{project.Name}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["projectId"] = id,
                 ["projectName"] = project.Name,
                 ["documentId"] = doc.Id,
                 ["fileName"] = file.FileName,
-                ["fileSize"] = file.Length
+                ["fileSize"] = file.Length,
+                ["level"] = level.ToString()
             },
             ProjectId: id
         );
 
         await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
 
-        return Ok();
+        return Ok(new { id = doc.Id, level = doc.Level });
+    }
+
+    /// <summary>
+    /// Whether the caller may file a document at this level of this project.
+    ///
+    /// Managing the project is sufficient at every level. Below the project it is
+    /// not required: the levels are progressively narrower, so a person doing task
+    /// level work is entitled to attach a document to their own task even though they
+    /// do not manage the project. This mirrors how task attachments are already
+    /// authorised, so filing a document behaves the same way as attaching a file to
+    /// the task itself.
+    /// </summary>
+    private async Task<bool> CanUploadDocumentAtAsync(
+    Guid projectId,
+    DocumentLevel level,
+    Guid? milestoneId,
+    Guid? taskId,
+    CancellationToken ct)
+    {
+        if (await _scope.CanManageProjectAsync(projectId, ct))
+        {
+            return true;
+        }
+
+        if (level == DocumentLevel.Task && taskId.HasValue)
+        {
+            return await _scope.CanAccessProjectAsync(projectId, ct)
+                && await CanWorkOnTaskAsync(taskId.Value, ct);
+        }
+
+        // Milestone level is only opened up to someone who owns the milestone's
+        // department, or to the project's primary department.
+        if (level == DocumentLevel.Milestone && milestoneId.HasValue)
+        {
+            return await CanAccessMilestoneDepartmentAsync(milestoneId.Value, projectId, ct);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether the caller is the task's assignee or otherwise works on it. Mirrors
+    /// TaskWorkflowService.CanWorkOnTaskAsync, which also admits project managers;
+    /// that branch is already covered above.
+    /// </summary>
+    private async Task<bool> CanWorkOnTaskAsync(Guid taskId, CancellationToken ct)
+    {
+        var currentUserId = _scope.CurrentUserId;
+        if (currentUserId is null)
+        {
+            return false;
+        }
+
+        // AssignedToUserId is the primary owner and Assignments are additional
+        // assignees; either makes the caller someone who works on the task.
+        var userId = currentUserId.Value;
+        return await _db.Tasks
+            .Where(task => task.Id == taskId)
+            .AnyAsync(task =>
+                task.AssignedToUserId == userId ||
+                task.Assignments.Any(assignment =>
+                    assignment.UserId == userId && !assignment.IsDeleted),
+                ct);
+    }
+
+    /// <summary>
+    /// Confirms the level and the milestone or task it points at agree with each
+    /// other, that the target belongs to this project, and that the caller can reach
+    /// it. Returns null when the request is valid.
+    /// </summary>
+    private async Task<IActionResult?> ValidateDocumentTargetAsync(
+    Guid projectId,
+    DocumentLevel level,
+    Guid? milestoneId,
+    Guid? taskId,
+    CancellationToken ct)
+    {
+        switch (level)
+        {
+            case DocumentLevel.Project:
+                if (milestoneId.HasValue || taskId.HasValue)
+                {
+                    return BadRequest(new { message = "A project-level document must not name a milestone or task." });
+                }
+
+                return null;
+
+            case DocumentLevel.Milestone:
+                if (!milestoneId.HasValue)
+                {
+                    return BadRequest(new { message = "A milestone-level document must name a milestone." });
+                }
+
+                var milestoneExists = await _db.Milestones
+                    .AnyAsync(m => m.Id == milestoneId.Value && m.ProjectId == projectId, ct);
+                if (!milestoneExists)
+                {
+                    return BadRequest(new { message = "That milestone does not belong to this project." });
+                }
+
+                // A department that only contributes its own milestones must not file
+                // documents against somebody else's milestone, or it could use the
+                // document list to read work it is not entitled to.
+                if (!await CanAccessMilestoneDepartmentAsync(milestoneId.Value, projectId, ct))
+                {
+                    return Forbid();
+                }
+
+                return null;
+
+            case DocumentLevel.Task:
+                if (!taskId.HasValue)
+                {
+                    return BadRequest(new { message = "A task-level document must name a task." });
+                }
+
+                var taskRecord = await _db.Tasks
+                    .Where(t => t.Id == taskId.Value)
+                    .Select(t => new { t.ProjectId, t.MilestoneId, MilestoneDepartmentId = t.Milestone != null ? t.Milestone.DepartmentId : (Guid?)null })
+                    .FirstOrDefaultAsync(ct);
+
+                if (taskRecord == null)
+                {
+                    return NotFound();
+                }
+
+                if (taskRecord.ProjectId != projectId)
+                {
+                    return BadRequest(new { message = "That task does not belong to this project." });
+                }
+
+                return null;
+
+            default:
+                return BadRequest(new { message = "Unknown document level." });
+        }
+    }
+
+    /// <summary>
+    /// A milestone the caller can act on: either the whole project is theirs to
+    /// manage, or the milestone belongs to one of their departments.
+    /// </summary>
+    private async Task<bool> CanAccessMilestoneDepartmentAsync(
+    Guid milestoneId,
+    Guid projectId,
+    CancellationToken ct)
+    {
+        if (await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct) ||
+            await _scope.CanManageProjectAsync(projectId, ct))
+        {
+            return true;
+        }
+
+        var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
+        if (departmentIds.Count == 0)
+        {
+            return false;
+        }
+
+        var milestoneDepartmentId = await _db.Milestones
+            .Where(m => m.Id == milestoneId)
+            .Select(m => m.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+
+        return milestoneDepartmentId.HasValue && departmentIds.Contains(milestoneDepartmentId.Value);
+    }
+
+    private static string DescribeLevel(DocumentLevel level, Guid? milestoneId, Guid? taskId) => level switch
+    {
+        DocumentLevel.Milestone => $"milestone {milestoneId}",
+        DocumentLevel.Task => $"task {taskId}",
+        _ => "the project"
+    };
+
+    /// <summary>
+    /// The levels the caller may upload into, for ordinary documents and for
+    /// utilization certificates alike. Returned by the API so the upload dialog can
+    /// offer exactly these levels rather than guessing from the role.
+    /// </summary>
+    [HttpGet("documents/upload-capabilities")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetDocumentUploadCapabilities(CancellationToken ct)
+    {
+        var documentLevels = await ResolveUploadLevelsAsync(
+            PermissionCatalog.UploadLevelPermissionsFor, ct);
+
+        var certificateLevels = await ResolveUploadLevelsAsync(
+            PermissionCatalog.CertificateUploadLevelPermissionsFor, ct);
+
+        return Ok(new DocumentUploadCapabilities(
+            documentLevels,
+            certificateLevels,
+            documentLevels.Contains(DocumentLevel.Project),
+            documentLevels.Contains(DocumentLevel.Milestone),
+            documentLevels.Contains(DocumentLevel.Task)));
+    }
+
+    /// <summary>
+    /// Turns "any of these permissions suffices at this level" into the list of
+    /// levels the caller may actually use, so the upload dialog can offer exactly
+    /// those rather than guessing from a role name.
+    /// </summary>
+    private async Task<List<DocumentLevel>> ResolveUploadLevelsAsync(
+    Func<DocumentLevel, IReadOnlyList<string>> permissionsFor,
+    CancellationToken ct)
+    {
+        var levels = new List<DocumentLevel>();
+
+        foreach (var level in Enum.GetValues<DocumentLevel>())
+        {
+            if (await _scope.HasAnyPermissionAsync(ct, [.. permissionsFor(level)]))
+            {
+                levels.Add(level);
+            }
+        }
+
+        return levels;
     }
 
     [HttpGet("{id:guid}/documents")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetDocuments(
+    Guid id,
+    [FromQuery] DocumentLevel? level,
+    [FromQuery] DocumentCategory? category,
+    CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
@@ -477,28 +733,92 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        var docs = await _uow.ProjectDocuments.FindAsync(d => d.ProjectId == id);
-        return Ok(docs.Select(d => new
+        // Visibility mirrors the milestone list exactly, and that rule is deliberately
+        // narrow: only a department head who is *not* the project's primary
+        // department is cut down to their own milestones. Everyone else who can reach
+        // the project already sees all of its milestones, so filtering them here too
+        // would make the documents tab reveal less than the milestones tab beside it,
+        // which is confusing rather than careful.
+        var restrictToOwnDepartments =
+            _scope.IsDepartmentHead
+            && !_scope.IsDirector
+            && !_scope.IsSuperAdmin
+            && !await _scope.CanAccessProjectAsPrimaryDepartmentAsync(id, ct);
+
+        var query = _db.ProjectDocuments
+            .Where(d => d.ProjectId == id && !d.IsDeleted);
+
+        if (level.HasValue)
         {
-            d.Id,
-            d.ProjectId,
-            d.Title,
-            d.FilePath,
-            d.ContentType,
-            d.FileSizeBytes,
-            d.UploadedByUserId,
-            d.Description,
-            d.Version,
-            d.Category,
-            d.CreatedDate
-        }));
+            query = query.Where(d => d.Level == level.Value);
+        }
+
+        if (category.HasValue)
+        {
+            query = query.Where(d => d.Category == category.Value);
+        }
+
+        if (restrictToOwnDepartments)
+        {
+            var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
+            if (departmentIds.Count == 0)
+            {
+                return Ok(Array.Empty<ProjectDocumentDto>());
+            }
+
+            var visibleDepartmentIds = departmentIds;
+            query = query.Where(d =>
+                d.Level == DocumentLevel.Project ||
+                (d.Level == DocumentLevel.Milestone && d.Milestone != null &&
+                    d.Milestone.DepartmentId.HasValue &&
+                    visibleDepartmentIds.Contains(d.Milestone.DepartmentId.Value)) ||
+                (d.Level == DocumentLevel.Task &&
+                    (d.Task == null || d.Task.MilestoneId == null ||
+                        (d.Task.Milestone != null && d.Task.Milestone.DepartmentId.HasValue &&
+                            visibleDepartmentIds.Contains(d.Task.Milestone.DepartmentId.Value)))));
+        }
+
+        // A task-level document also reports the milestone it sits under, so the task
+        // documents tab can show the milestone and project a task belongs to without
+        // the client making a second request to find out.
+        var docs = await query
+            .OrderByDescending(d => d.CreatedDate)
+            .Select(d => new ProjectDocumentDto(
+                d.Id,
+                d.ProjectId,
+                project.Name,
+                d.Title,
+                d.FilePath,
+                d.ContentType,
+                d.FileSizeBytes,
+                d.UploadedByUserId,
+                d.Description,
+                d.Version,
+                d.Category,
+                d.Level,
+                d.MilestoneId,
+                d.Milestone != null
+                    ? d.Milestone.Name
+                    : d.Task != null && d.Task.Milestone != null
+                        ? d.Task.Milestone.Name
+                        : null,
+                d.TaskId,
+                d.Task != null ? d.Task.Title : null,
+                d.CreatedDate))
+            .ToListAsync(ct);
+
+        return Ok(docs);
     }
 
     [HttpGet("{id:guid}/documents/{docId:guid}/download")]
     public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
     {
-        var docs = await _uow.ProjectDocuments.FindAsync(d => d.Id == docId && d.ProjectId == id);
-        var doc = docs.FirstOrDefault();
+        var doc = await _db.ProjectDocuments
+            .Include(d => d.Milestone)
+            .Include(d => d.Task)
+            .ThenInclude(t => t!.Milestone)
+            .FirstOrDefaultAsync(d => d.Id == docId && d.ProjectId == id && !d.IsDeleted, ct);
+
         if (doc == null)
             return NotFound();
 
@@ -507,8 +827,109 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
+        // Same scope rule as the list, so a document can never be downloaded that the
+        // list would have withheld.
+        var restrictToOwnDepartments =
+            _scope.IsDepartmentHead
+            && !_scope.IsDirector
+            && !_scope.IsSuperAdmin
+            && !await _scope.CanAccessProjectAsPrimaryDepartmentAsync(id, ct);
+
+        if (restrictToOwnDepartments && !await CanSeeDocumentAsync(doc, ct))
+        {
+            return Forbid();
+        }
+
         var stream = await _localFiles.DownloadFileAsync(doc.FilePath, ct);
         return File(stream, doc.ContentType, doc.Title);
+    }
+
+    private async Task<bool> CanSeeDocumentAsync(ProjectDocument doc, CancellationToken ct)
+    {
+        if (doc.IsProjectLevel())
+        {
+            return true;
+        }
+
+        var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
+        if (departmentIds.Count == 0)
+        {
+            return false;
+        }
+
+        var ownerDepartmentId = doc.Level switch
+        {
+            DocumentLevel.Milestone => doc.Milestone?.DepartmentId,
+            DocumentLevel.Task => doc.Task?.Milestone?.DepartmentId,
+            _ => null
+        };
+
+        // A task with no milestone has no department of its own, so it follows the
+        // project and is visible to anyone who can see the project.
+        return ownerDepartmentId is null || departmentIds.Contains(ownerDepartmentId.Value);
+    }
+
+    [HttpDelete("{id:guid}/documents/{docId:guid}")]
+    [Authorize(Policy = $"{AuthorizationPolicies.DocumentsPrefix}.Delete")]
+    public async Task<IActionResult> DeleteDocument(Guid id, Guid docId, CancellationToken ct)
+    {
+        var doc = await _db.ProjectDocuments
+            .Include(d => d.Milestone)
+            .Include(d => d.Task)
+            .ThenInclude(t => t!.Milestone)
+            .FirstOrDefaultAsync(d => d.Id == docId && d.ProjectId == id && !d.IsDeleted, ct);
+
+        if (doc == null)
+        {
+            return NotFound();
+        }
+
+        if (!await _scope.CanManageProjectAsync(id, ct))
+        {
+            return Forbid();
+        }
+
+        // Same scope rule as the list, so a document can never be deleted or
+        // downloaded that the list would have withheld. Checking this
+        // unconditionally would block a superadmin, who has no department
+        // assignments to match against.
+        var restrictToOwnDepartments =
+            _scope.IsDepartmentHead
+            && !_scope.IsDirector
+            && !_scope.IsSuperAdmin
+            && !await _scope.CanAccessProjectAsPrimaryDepartmentAsync(id, ct);
+
+        if (restrictToOwnDepartments && !await CanSeeDocumentAsync(doc, ct))
+        {
+            return Forbid();
+        }
+
+        // A utilization certificate must be withdrawn through its own endpoint,
+        // which enforces the review lifecycle. Removing the file directly would
+        // leave an approved financial claim with no evidence behind it.
+        if (doc.IsUtilizationCertificate())
+        {
+            return BadRequest(new { message = "Delete this utilization certificate from the utilization certificates section so its review history is preserved." });
+        }
+
+        var title = doc.Title;
+        _db.ProjectDocuments.Remove(doc);
+        await _uow.SaveChangesAsync(ct);
+
+        HttpContext.Items["ActivityLog"] = new ActivityLogContext(
+            ActivityType: "Document Deleted",
+            Description: $"{_currentUser.FullName} deleted document \"{title}\"",
+            Metadata: new Dictionary<string, object>
+            {
+                ["projectId"] = id,
+                ["documentId"] = docId
+            },
+            ProjectId: id
+        );
+
+        await _changes.NotifyAsync(DataChangeScopes.Documents, docId.ToString(), id, ct);
+
+        return NoContent();
     }
 
     [HttpDelete("{id:guid}")]

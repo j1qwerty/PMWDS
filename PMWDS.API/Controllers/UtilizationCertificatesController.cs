@@ -93,6 +93,16 @@ public class UtilizationCertificatesController : ControllerBase
         if (!await ValidateWorkItemLinksAsync(dto.ProjectId, dto.MilestoneId, dto.TaskId, ct))
             return BadRequest(new { message = "The linked milestone or task does not belong to this project." });
 
+        // A certificate is filed at the level it is linked to, and each level is a
+        // separate permission: attaching a finance claim at task level is a different
+        // authority from attaching an ordinary document there.
+        var level = ResolveDocumentLevel(dto.MilestoneId, dto.TaskId);
+        if (!await _scope.HasAnyPermissionAsync(
+                ct, [.. PermissionCatalog.CertificateUploadLevelPermissionsFor(level)]))
+        {
+            return Forbid();
+        }
+
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
         var filePath = await _localFiles.UploadDocumentAsync(
@@ -108,7 +118,10 @@ public class UtilizationCertificatesController : ControllerBase
             file.Length,
             _currentUser.UserId ?? "system",
             dto.Description,
-            DocumentCategory.UtilizationCertificate);
+            DocumentCategory.UtilizationCertificate,
+            level,
+            dto.MilestoneId,
+            dto.TaskId);
         document.SetCreatedBy(_currentUser.UserId ?? "system");
         await _uow.ProjectDocuments.AddAsync(document, ct);
 
@@ -220,6 +233,15 @@ public class UtilizationCertificatesController : ControllerBase
         if (!await ValidateWorkItemLinksAsync(certificate.ProjectId, dto.MilestoneId, dto.TaskId, ct))
             return BadRequest(new { message = "The linked milestone or task does not belong to this project." });
 
+        // Re-linking a certificate moves it to a different level of the hierarchy, so
+        // the destination level's upload permission applies to the move as well.
+        var newLevel = ResolveDocumentLevel(dto.MilestoneId, dto.TaskId);
+        if (!await _scope.HasAnyPermissionAsync(
+                ct, [.. PermissionCatalog.CertificateUploadLevelPermissionsFor(newLevel)]))
+        {
+            return Forbid();
+        }
+
         certificate.UpdateDetails(
             dto.CertificateNumber.Trim(),
             dto.FundingSource.Trim(),
@@ -231,6 +253,27 @@ public class UtilizationCertificatesController : ControllerBase
             dto.TaskId,
             dto.Purpose);
         certificate.SetModified(_currentUser.UserId ?? "system");
+
+        // Keep the backing document at the same level as the certificate, so the
+        // document list and the certificate list never disagree about where this
+        // evidence is filed.
+        if (loaded.Document is not null)
+        {
+            if (newLevel == DocumentLevel.Task && dto.TaskId.HasValue)
+            {
+                loaded.Document.AttachToTask(dto.TaskId.Value);
+            }
+            else if (newLevel == DocumentLevel.Milestone && dto.MilestoneId.HasValue)
+            {
+                loaded.Document.AttachToMilestone(dto.MilestoneId.Value);
+            }
+            else
+            {
+                loaded.Document.AttachToProject();
+            }
+
+            await _uow.ProjectDocuments.UpdateAsync(loaded.Document, ct);
+        }
 
         await _uow.UtilizationCertificates.UpdateAsync(certificate, ct);
         await _uow.SaveChangesAsync(ct);
@@ -513,5 +556,17 @@ public class UtilizationCertificatesController : ControllerBase
             return false;
 
         return true;
+    }
+
+    /// <summary>
+    /// Where in the hierarchy a certificate is filed. A certificate linked to a task
+    /// is task level even when that task also sits under a milestone, because the
+    /// task is the more specific claim about what was purchased.
+    /// </summary>
+    private static DocumentLevel ResolveDocumentLevel(Guid? milestoneId, Guid? taskId)
+    {
+        if (taskId.HasValue) return DocumentLevel.Task;
+        if (milestoneId.HasValue) return DocumentLevel.Milestone;
+        return DocumentLevel.Project;
     }
 }

@@ -20,6 +20,22 @@ public class ProjectDocument : BaseEntity
     /// </summary>
     public DocumentCategory Category { get; private set; } = DocumentCategory.General;
 
+    /// <summary>
+    /// Which level of the hierarchy this document is attached at. Every document
+    /// belongs to a project; the level decides whether it also belongs to a
+    /// milestone or a task, and so whose department scope it inherits.
+    /// </summary>
+    public DocumentLevel Level { get; private set; } = DocumentLevel.Project;
+
+    /// <summary>Set when <see cref="Level"/> is <see cref="DocumentLevel.Milestone"/>.</summary>
+    public Guid? MilestoneId { get; private set; }
+
+    /// <summary>Set when <see cref="Level"/> is <see cref="DocumentLevel.Task"/>.</summary>
+    public Guid? TaskId { get; private set; }
+
+    public Milestone? Milestone { get; private set; }
+    public ProjectTask? Task { get; private set; }
+
     protected ProjectDocument() { }
 
     public static ProjectDocument Create(
@@ -27,7 +43,25 @@ public class ProjectDocument : BaseEntity
     string filePath, string contentType,
     long sizeBytes, string userId,
     string? description = null,
-    DocumentCategory category = DocumentCategory.General)
+    DocumentCategory category = DocumentCategory.General) =>
+        Create(projectId, title, filePath, contentType, sizeBytes, userId,
+            description, category, DocumentLevel.Project, null, null);
+
+    /// <summary>
+    /// Creates a document at a specific level of the hierarchy.
+    /// </summary>
+    /// <param name="level">Which level the document is attached at.</param>
+    /// <param name="milestoneId">Required when <paramref name="level"/> is Milestone.</param>
+    /// <param name="taskId">Required when <paramref name="level"/> is Task.</param>
+    public static ProjectDocument Create(
+    Guid projectId, string title,
+    string filePath, string contentType,
+    long sizeBytes, string userId,
+    string? description,
+    DocumentCategory category,
+    DocumentLevel level,
+    Guid? milestoneId,
+    Guid? taskId)
     {
         return new ProjectDocument
         {
@@ -38,9 +72,63 @@ public class ProjectDocument : BaseEntity
             FileSizeBytes = sizeBytes,
             UploadedByUserId = userId,
             Description = description,
-            Category = category
+            Category = category,
+            Level = level,
+            MilestoneId = level == DocumentLevel.Milestone ? milestoneId : null,
+            TaskId = level == DocumentLevel.Task ? taskId : null
         };
     }
+
+    /// <summary>
+    /// Re-points the document at a different milestone or task. The level always
+    /// follows, so the two can never disagree.
+    /// </summary>
+    public void AttachToMilestone(Guid milestoneId)
+    {
+        Level = DocumentLevel.Milestone;
+        MilestoneId = milestoneId;
+        TaskId = null;
+    }
+
+    /// <inheritdoc cref="AttachToMilestone"/>
+    public void AttachToTask(Guid taskId)
+    {
+        Level = DocumentLevel.Task;
+        TaskId = taskId;
+        MilestoneId = null;
+    }
+
+    /// <inheritdoc cref="AttachToMilestone"/>
+    public void AttachToProject()
+    {
+        Level = DocumentLevel.Project;
+        MilestoneId = null;
+        TaskId = null;
+    }
+
+    /// <summary>
+    /// Drops the milestone or task this document was filed under, promoting it to a
+    /// project-level document rather than deleting it.
+    ///
+    /// Milestones and tasks are soft-deleted and the foreign keys are NoAction, so
+    /// the row would otherwise survive still pointing at something the UI no longer
+    /// shows. Promoting keeps the file reachable instead of stranding it.
+    /// </summary>
+    public void PromoteToProjectLevel()
+    {
+        Level = DocumentLevel.Project;
+        MilestoneId = null;
+        TaskId = null;
+    }
+
+    /// <summary>True when this document sits under a milestone rather than the project itself.</summary>
+    public bool IsMilestoneLevel() => Level == DocumentLevel.Milestone;
+
+    /// <summary>True when this document sits under a task.</summary>
+    public bool IsTaskLevel() => Level == DocumentLevel.Task;
+
+    /// <summary>True when this document sits directly on the project.</summary>
+    public bool IsProjectLevel() => Level == DocumentLevel.Project;
 
     /// <summary>
     /// The title is display-only, so strip control characters and any path structure a client may

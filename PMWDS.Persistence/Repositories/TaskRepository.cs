@@ -224,6 +224,18 @@ public class TaskRepository
             certificate.UnlinkTask();
         }
 
+        // Documents filed under a task are promoted to project level rather than
+        // deleted. They belong to the project, not to the task; the same NoAction
+        // foreign key reasoning as above applies, and removing a task should not
+        // take a project-level file with it.
+        var taskDocuments = await _context.ProjectDocuments
+            .Where(d => d.TaskId.HasValue && taskIds.Contains(d.TaskId.Value))
+            .ToListAsync(ct);
+        foreach (var document in taskDocuments)
+        {
+            document.PromoteToProjectLevel();
+        }
+
         var tasks = await _dbSet
         .Where(t => taskIds.Contains(t.Id))
         .OrderByDescending(t => t.ParentTaskId.HasValue)

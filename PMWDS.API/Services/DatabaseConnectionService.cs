@@ -876,6 +876,30 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_Milestones_DepartmentId\" ON \"Milestones\" (\"DepartmentId\")", ct);
             }
 
+            // Documents became level-aware (project / milestone / task). SQLite
+            // development databases are built by EnsureCreated from the model rather
+            // than by migrations, so an existing database does not pick the new
+            // columns up on its own. Every document that predates this was uploaded
+            // against its project, so it is a project-level document.
+            if (!await HasSqliteColumnAsync(connection, "ProjectDocuments", "Level", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDocuments\" ADD COLUMN \"Level\" TEXT NOT NULL DEFAULT 'Project'", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_Level\" ON \"ProjectDocuments\" (\"Level\")", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_ProjectId_Level\" ON \"ProjectDocuments\" (\"ProjectId\", \"Level\")", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "ProjectDocuments", "MilestoneId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDocuments\" ADD COLUMN \"MilestoneId\" TEXT NULL", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_MilestoneId\" ON \"ProjectDocuments\" (\"MilestoneId\")", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "ProjectDocuments", "TaskId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDocuments\" ADD COLUMN \"TaskId\" TEXT NULL", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_TaskId\" ON \"ProjectDocuments\" (\"TaskId\")", ct);
+            }
+
             await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
             await RemoveLegacyAiSettingsIsActiveColumnAsync(connection, ct);
         }
