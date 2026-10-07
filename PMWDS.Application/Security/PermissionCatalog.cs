@@ -1,5 +1,7 @@
 namespace PMWDS.Application.Security;
 
+using PMWDS.Domain.Enums;
+
 /// <summary>The four CRUD actions every feature exposes, plus the umbrella "manage".</summary>
 public enum PermissionAction
 {
@@ -7,7 +9,14 @@ public enum PermissionAction
     Create,
     Edit,
     Delete,
-    Manage
+    Manage,
+
+    /// <summary>
+    /// An action that is not one of the four — assigning a task, approving a
+    /// certificate, choosing a document upload level. Carries its own description
+    /// and is never treated as an umbrella.
+    /// </summary>
+    Special
 }
 
 /// <summary>Which slice of data a permission reaches.</summary>
@@ -292,6 +301,83 @@ public static class PermissionCatalog
         Features.ToDictionary(feature => feature.Key, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Actions that are not plain CRUD need their own prose. Written out rather
+    /// than generated because each one has a specific consequence a role admin
+    /// needs to read before granting it.
+    ///
+    /// Declared before <see cref="Definitions"/> because the static initialisers in
+    /// this class run in declaration order, and building the definitions reads
+    /// this table for their descriptions.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> SpecialDescriptions =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [PermissionCodes.SystemAdmin] =
+                "Unrestricted access to everything, including organization, role and permission administration.",
+            [PermissionCodes.SystemDatabaseView] = "View the active database provider and fallback status.",
+            [PermissionCodes.AuthManage] = "Configure authentication providers and policies.",
+
+            [PermissionCodes.ProjectPrimaryDepartmentManage] =
+                "Full view and control of projects whose primary department is one the user heads, including milestones assigned to other departments. Without it, a department head working on someone else's project sees only their own milestones and tasks.",
+
+            [PermissionCodes.TaskAssign] = "Assign or reassign who a task belongs to.",
+            [PermissionCodes.TaskCommentCreate] = "Add comments to a task.",
+            [PermissionCodes.TaskAttachmentCreate] = "Attach files to a task.",
+            [PermissionCodes.TaskTimeTrack] = "Start and stop task timers.",
+
+            [PermissionCodes.UserDepartmentManage] = "Assign users to departments and organizations.",
+            [PermissionCodes.UserProfilePictureManage] = "Upload and update user profile pictures.",
+
+            [PermissionCodes.NotificationBroadcast] = "Broadcast a notification to users or groups.",
+            [PermissionCodes.NotificationTemplateManage] = "Create and update notification templates.",
+            [PermissionCodes.NotificationRuleManage] = "Create and update alert rules.",
+
+            [PermissionCodes.ActivityLogCreate] =
+                "Record activity log entries. The log is append-only: there is no edit or delete.",
+
+            [PermissionCodes.AiManage] = "Manage AI providers, models and training data.",
+
+            [PermissionCodes.UtilizationCertificateReview] =
+                "Approve or reject a submitted utilization certificate. Kept separate from submitting so a contributor can never sign off their own claim.",
+
+            [PermissionCodes.DocumentUploadProject] =
+                "Upload documents at project level — they sit on the project itself rather than a milestone or task.",
+            [PermissionCodes.DocumentUploadMilestone] =
+                "Upload documents at milestone level, against a milestone in a project the user can reach.",
+            [PermissionCodes.DocumentUploadTask] =
+                "Upload documents at task level, against a task in a project the user can reach.",
+
+            [PermissionCodes.UtilizationCertificateDocumentUploadProject] =
+                "Attach a utilization certificate document at project level.",
+            [PermissionCodes.UtilizationCertificateDocumentUploadMilestone] =
+                "Attach a utilization certificate document at milestone level.",
+            [PermissionCodes.UtilizationCertificateDocumentUploadTask] =
+                "Attach a utilization certificate document at task level."
+        };
+
+    /// <summary>
+    /// Extra permissions that a grant additionally confers, beyond the umbrella's
+    /// own feature.
+    ///
+    /// A few permissions are bundled deliberately rather than left as standalone
+    /// opt-ins. PROJECT_MANAGE confers PROJECT_PRIMARY_DEPARTMENT_MANAGE: a role that
+    /// manages projects outright does not also need a separate grant just to see the
+    /// projects it manages. Submitting a utilization certificate confers the right to
+    /// choose the level its document is filed at, since submitting is what puts that
+    /// document on disk.
+    ///
+    /// Declared before <see cref="Definitions"/> because the static initialisers in
+    /// this class run in declaration order, and building the coverage maps reads it.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string[]> AdditionalManageCoverage =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            [PermissionCodes.ProjectManage] = [PermissionCodes.ProjectPrimaryDepartmentManage],
+            [PermissionCodes.UtilizationCertificateCreate] =
+                [.. PermissionCodes.UtilizationCertificateDocumentUploadLevels]
+        };
+
+    /// <summary>
     /// Every permission the product understands, in module/feature/action order.
     /// </summary>
     public static readonly IReadOnlyList<PermissionDefinition> Definitions = BuildDefinitions();
@@ -375,12 +461,15 @@ public static class PermissionCatalog
 
             foreach (var code in feature.SpecialCodes)
             {
-                var action = ActionOf(code);
-                Add(code, feature, action, null);
+                // Declared Special, never Manage: a special action is a distinct
+                // authority, not an umbrella over its feature. TASK_ASSIGN does not
+                // end in a CRUD suffix, so inferring the action from the code would
+                // misread it as Manage and make it cover the whole Tasks feature.
+                Add(code, feature, PermissionAction.Special, null);
 
                 if (feature.IsDepartmentScoped)
                 {
-                    Add(PermissionCodes.ToAllScope(code), feature, action, PermissionScope.AllDepartments);
+                    Add(PermissionCodes.ToAllScope(code), feature, PermissionAction.Special, PermissionScope.AllDepartments);
                 }
             }
         }
@@ -396,22 +485,51 @@ public static class PermissionCatalog
     {
         var coverage = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
 
+        // Read Definitions rather than ByCode: the two are built in declaration order, and
+        // ByCode is declared after this map.
+        var known = new HashSet<string>(
+            Definitions.Select(definition => definition.Code),
+            StringComparer.OrdinalIgnoreCase);
+
         foreach (var definition in Definitions.Where(d => d.Action == PermissionAction.Manage))
         {
             var covered = Definitions
                 .Where(other => other.Feature == definition.Feature
                     && !string.Equals(other.Code, definition.Code, StringComparison.OrdinalIgnoreCase)
                     && other.Scope == definition.Scope)
-                .Select(other => other.Code)
-                .ToArray();
+                .Select(other => other.Code);
 
-            if (covered.Length > 0)
+            coverage[definition.Code] = Merge(covered);
+        }
+
+        foreach (var (code, extra) in AdditionalManageCoverage)
+        {
+            if (!known.Contains(code))
             {
-                coverage[definition.Code] = covered;
+                continue;
             }
+
+            coverage[code] = coverage.TryGetValue(code, out var existing)
+                ? Merge([.. existing, .. extra])
+                : Merge(extra);
         }
 
         return coverage;
+
+        // Never emit an empty entry: the expansion walk treats a missing key as
+        // "confers nothing", which is the same thing but does not pay for a lookup.
+        string[] Merge(IEnumerable<string>? codes)
+        {
+            if (codes is null)
+            {
+                return [];
+            }
+
+            return codes
+                .Where(code => code is not null && known.Contains(code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
     }
 
     private static IReadOnlyDictionary<string, string[]> BuildAllScopeImpliedCoverage()
@@ -522,57 +640,6 @@ public static class PermissionCatalog
         }));
     }
 
-    /// <summary>
-    /// Actions that are not plain CRUD need their own prose. Written out rather
-    /// than generated because each one has a specific consequence a role admin
-    /// needs to read before granting it.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, string> SpecialDescriptions =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            [PermissionCodes.SystemAdmin] =
-                "Unrestricted access to everything, including organization, role and permission administration.",
-            [PermissionCodes.SystemDatabaseView] = "View the active database provider and fallback status.",
-            [PermissionCodes.AuthManage] = "Configure authentication providers and policies.",
-
-            [PermissionCodes.ProjectPrimaryDepartmentManage] =
-                "Full view and control of projects whose primary department is one the user heads, including milestones assigned to other departments. Without it, a department head working on someone else's project sees only their own milestones and tasks.",
-
-            [PermissionCodes.TaskAssign] = "Assign or reassign who a task belongs to.",
-            [PermissionCodes.TaskCommentCreate] = "Add comments to a task.",
-            [PermissionCodes.TaskAttachmentCreate] = "Attach files to a task.",
-            [PermissionCodes.TaskTimeTrack] = "Start and stop task timers.",
-
-            [PermissionCodes.UserDepartmentManage] = "Assign users to departments and organizations.",
-            [PermissionCodes.UserProfilePictureManage] = "Upload and update user profile pictures.",
-
-            [PermissionCodes.NotificationBroadcast] = "Broadcast a notification to users or groups.",
-            [PermissionCodes.NotificationTemplateManage] = "Create and update notification templates.",
-            [PermissionCodes.NotificationRuleManage] = "Create and update alert rules.",
-
-            [PermissionCodes.ActivityLogCreate] =
-                "Record activity log entries. The log is append-only: there is no edit or delete.",
-
-            [PermissionCodes.AiManage] = "Manage AI providers, models and training data.",
-
-            [PermissionCodes.UtilizationCertificateReview] =
-                "Approve or reject a submitted utilization certificate. Kept separate from submitting so a contributor can never sign off their own claim.",
-
-            [PermissionCodes.DocumentUploadProject] =
-                "Upload documents at project level — they sit on the project itself rather than a milestone or task.",
-            [PermissionCodes.DocumentUploadMilestone] =
-                "Upload documents at milestone level, against a milestone in a project the user can reach.",
-            [PermissionCodes.DocumentUploadTask] =
-                "Upload documents at task level, against a task in a project the user can reach.",
-
-            [PermissionCodes.UtilizationCertificateDocumentUploadProject] =
-                "Attach a utilization certificate document at project level.",
-            [PermissionCodes.UtilizationCertificateDocumentUploadMilestone] =
-                "Attach a utilization certificate document at milestone level.",
-            [PermissionCodes.UtilizationCertificateDocumentUploadTask] =
-                "Attach a utilization certificate document at task level."
-        };
-
     private static int ModuleSortOrder(string module)
     {
         var index = ModuleOrder.ToList().FindIndex(candidate =>
@@ -582,8 +649,50 @@ public static class PermissionCatalog
 
     // ── Lookup helpers used by the API ───────────────────────────────────────
 
+    /// <summary>
+    /// Whether a code is an "all departments" flavour, decided purely from the suffix.
+    ///
+    /// Deliberately independent of <see cref="Definitions"/>: naming a definition is
+    /// what builds those definitions, so consulting them from here would read a
+    /// half-initialised field during static setup.
+    /// </newString>
     public static bool IsAllScope(string code) =>
         code.EndsWith(PermissionCodes.AllScopeSuffix, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The permission codes that govern uploading a document at a given level, as an
+    /// "any of these suffices" check. Callers pass the level's own code; the umbrella
+    /// for the feature covers it, so a full manager is never blocked.
+    /// </summary>
+    public static IReadOnlyList<string> UploadLevelPermissionsFor(DocumentLevel level) => level switch
+    {
+        DocumentLevel.Milestone => [PermissionCodes.DocumentManage, PermissionCodes.DocumentUploadMilestone],
+        DocumentLevel.Task => [PermissionCodes.DocumentManage, PermissionCodes.DocumentUploadTask],
+        _ => [PermissionCodes.DocumentManage, PermissionCodes.DocumentUploadProject]
+    };
+
+    /// <summary>The utilization certificate upload permissions for a given level.</summary>
+    public static IReadOnlyList<string> CertificateUploadLevelPermissionsFor(DocumentLevel level) => level switch
+    {
+        DocumentLevel.Milestone =>
+        [
+            PermissionCodes.UtilizationCertificateManage,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateDocumentUploadMilestone
+        ],
+        DocumentLevel.Task =>
+        [
+            PermissionCodes.UtilizationCertificateManage,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateDocumentUploadTask
+        ],
+        _ =>
+        [
+            PermissionCodes.UtilizationCertificateManage,
+            PermissionCodes.UtilizationCertificateCreate,
+            PermissionCodes.UtilizationCertificateDocumentUploadProject
+        ]
+    };
 
     public static IReadOnlyList<string> CodesForFeature(string featureKey) =>
         Definitions.Where(d => d.Feature == featureKey).Select(d => d.Code).ToList();
@@ -592,13 +701,4 @@ public static class PermissionCatalog
         Definitions.Where(d => string.Equals(d.Module, module, StringComparison.OrdinalIgnoreCase))
             .Select(d => d.Code).ToList();
 
-    /// <summary>
-    /// True when the code belongs to a department-scoped feature and therefore has
-    /// an "all departments" counterpart.
-    /// </summary>
-    public static bool HasAllScopeFlavour(string code) =>
-        ByCode.TryGetValue(PermissionCodes.ToOwnScope(code), out var definition)
-        && definition.Scope is null
-        && FeaturesByKey.TryGetValue(definition.Feature, out var feature)
-        && feature.IsDepartmentScoped;
-}
+    }

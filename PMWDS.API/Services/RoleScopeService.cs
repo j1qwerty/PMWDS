@@ -556,12 +556,16 @@ public class RoleScopeService
             return true;
         }
 
+        // Only the ALL flavour itself counts, directly or through an ALL-scope
+        // umbrella that covers it.
+        //
+        // The implied-coverage map deliberately runs the other way round — an ALL
+        // grant implies its own-department equivalent — so consulting it here would
+        // ask "does the caller hold the own-department code?", which every caller
+        // with any scope at all does. That silently promoted every department head
+        // to all-departments reach and defeated the whole split.
         var allCode = PermissionCodes.ToAllScope(ownDepartmentCode);
-        var effective = EffectivePermissionSet(permissions);
-
-        return effective.Contains(allCode)
-            || (PermissionCatalog.EffectiveCoverage.TryGetValue(allCode, out var implied)
-                && implied.Any(code => effective.Contains(code)));
+        return EffectivePermissionSet(permissions).Contains(allCode);
     }
 
     private async Task<HashSet<string>> GetPermissionSnapshotAsync(CancellationToken ct)
